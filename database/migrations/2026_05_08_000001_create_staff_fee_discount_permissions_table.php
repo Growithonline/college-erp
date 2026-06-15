@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('staff_member_id')->constrained('staff_members')->onDelete('cascade');
             $table->foreignId('fee_type_id')->constrained('fee_types')->onDelete('cascade');
             $table->timestamps();
-            $table->unique(['staff_member_id', 'fee_type_id']);
+            $table->unique(['staff_member_id', 'fee_type_id'], 'staff_fee_disc_perm_unique');
         });
     }
 
