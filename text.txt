@@ -1,0 +1,108 @@
+All students page, Add admission page
+Institute Admin Dashboard:
+=> Admission
+4) All Admissions:
+i) Advance filter me source select karne ke baad source details nahi show kar raha hai
+ii) Advance filter container ko collapsable kar do
+
+
+  iii) Student list, isme father name, mother name ka 2 column show karana hai
+4) Admission Approvals:
+i) List me father aur mother name ka separate column
+ii) Student unique id show karna hai
+iii) Pending approval ko review karne ke baad abhi sirf approve ka option hai, isme reject, re-submit, cancelled ye sab bhi option ho, with reason
+iv) Admission approve hone ke baad bhi jo status with reason change kar sake
+
+Admission Section Changes:
+
+4) All Admissions:
+
+Advance filter mein source select karne ke baad source details nahi show ho rahi — yeh fix karna hai
+Advance filter container ko collapsable banana hai
+Student list mein father name aur mother name ke 2 alag columns show karane hain
+
+Admission Approvals:
+
+List mein father name aur mother name ke separate columns show karne hain
+Student unique ID show karni hai
+Pending approval ko review karne ke baad abhi sirf Approve ka option hai — isme yeh options bhi add karne hain (with reason):
+Reject
+Re-submit
+Cancelled
+Admission approve hone ke baad bhi status with reason change kar sakein
+
+All Admissions (v, vi, vii):
+
+v) Filter section mein date range + course + course type ka bhi filter ho
+vi) Export option ho alag-alag format mein — jo filter kiya ho wahi data export ho (e.g., last 1 week ke pending approvals)
+vii) PDF export ka UI thik/presentable banana hai
+Admission Approval Review Page:
+
+i) Document view section add karo — jo docs admission ke time upload hue the
+ii) Fee receipt jo admission ke time pay hui — uska view + download ho
+iii) Abhi sirf basic details hain — isme office details, course details, personal details, education, address, scholarship — sabhi sections show hone chahiye
+
+Online Admission:
+
+i) List mein father + mother name column add karo
+Filter mein aur options chahiye: course, duration, etc.
+Student Promotion → Semester Promotion:
+
+i) List mein student ID, father name, mother name ke separate columns
+Session Promotion:
+
+Same as above
+Promotion Report:
+
+i) List mein student ID, father name, mother name ke separate columns
+ii) Print/export ka UI thik karna — presentable banana
+Final Outcome Page:
+
+i) List mein student ID, roll no, enroll no, UID, father name, mother name ke separate columns
+ii) Export option add karo
+
+Students Section
+Global Search:
+
+Fix UI/UX — columns + text small kiya ja sake
+UID column add karna hai
+Student Wallet:
+
+Page mein Hinglish text ko English mein change karo
+Search field ke live dropdown mein abhi sirf name/ID/course/mobile hai — usme father name + mother name bhi add karo
+Fee History:
+
+Same changes jo Student Wallet mein bataye
+
+Quick Admission List Page:
+
+Filter mein course type, course, date range add karo
+Guide column add karna hai
+
+All Students + Admission Reports
+Quick Admission List (continued):
+
+List mein father + mother name columns add karo
+All Students:
+
+Filter modify karna hai
+List mein father + mother name add karo
+
+All Admission Report Page:
+
+Std ID, father name, mother name ke separate columns add karo
+Filter mein source details nahi hai — fix karo
+List mein submitted date column add karo
+PDF export ka font small karo — ek page mein jyada data dikhay
+Full Form Admission Report Page:
+
+List mein father name, mother name, submitted date column add karo
+Reports (All Types)
+Text aur columns ka size small karo
+PDF export presentable banana — ek page mein jyada data
+CSV/Excel export mein sabhi columns aane chahiye — with headings/headlines
+Online Admission Report: Same as Full Form Report page, search filter me semester add karo (semester 1, semester 2, semester 3, etc)
+Center Admission Report: Same as above
+Channel Partner Admission: Same as above
+Staff Admission: Same as above
+Blocked/Inactive Students: Same as above + reason column add karo

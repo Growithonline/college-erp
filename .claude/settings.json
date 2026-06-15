@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"phone\\\\|mobile\" database/migrations/*student*)",
+      "Bash(grep -n \"commission\\\\|thana\\\\|perm_thana\" database/migrations/*student* app/Models/Student.php)",
+      "Bash(grep -n \"lockForUpdate\\\\|sharedLock\\\\|pessimistic\" app/Services/*.php)",
+      "Bash(grep -A 50 ''\\\\''$request->input' app/Http/Controllers/Institute/Admission/AdmissionController.php)",
+      "Bash(php artisan:*)"
+    ]
+  }
+}

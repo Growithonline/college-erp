@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rn \"part_name\\\\|coursePart\\\\|current_semester\" 'd:/Gaurangi Work/college-erp/resources/views/institute/fee/' --include=*.php)"
+    ]
+  }
+}
