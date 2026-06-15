@@ -13,7 +13,7 @@ return new class extends Migration {
                 $table->foreignId('academic_session_id')->constrained('academic_sessions')->onDelete('cascade');
                 $table->unsignedSmallInteger('student_limit');
                 $table->timestamps();
-                $table->unique(['course_stream_id', 'academic_session_id']);
+                $table->unique(['course_stream_id', 'academic_session_id'], 'ssl_stream_session_unique');
             });
         }
 

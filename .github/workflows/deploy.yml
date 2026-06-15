@@ -1,30 +1,74 @@
-name: Deploy to VPS
+name: Deploy to Production
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   deploy:
+    name: Deploy to bmc.gtsaas.in
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, curl, zip, gd, bcmath, intl, mysql
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install NPM dependencies & Build assets
+        run: |
+          npm ci
+          npm run build
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 10m  
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /var/www/college-erp
+            set -e
+            cd /var/www/bmc.gtsaas.in
+
+            # Pull latest code
             git pull origin main
-            composer install --no-dev --optimize-autoloader
+
+            # Install PHP dependencies
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            # Install Node dependencies & build assets
+            npm ci
+            npm run build
+
+            # Run migrations
             php artisan migrate --force
+
+            # Clear & rebuild caches
             php artisan config:cache
             php artisan route:cache
-            php artisan view:clear
             php artisan view:cache
-            chown -R www-data:www-data /var/www/college-erp/storage
-            chown -R www-data:www-data /var/www/college-erp/bootstrap/cache
+            php artisan event:cache
+
+            # Restart queue worker
+            php artisan queue:restart
+
+            # Fix permissions
+            sudo chown -R www-data:www-data storage bootstrap/cache
+            sudo chmod -R 775 storage bootstrap/cache
+
+            echo "Deployment complete!"
