@@ -40,7 +40,7 @@ return new class extends Migration
 
         Schema::create('library_staff_permissions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('library_staff_id')->unique()->constrained()->cascadeOnDelete();
+            $table->foreignId('library_staff_id')->unique()->constrained('library_staff')->cascadeOnDelete();
             $table->string('preset', 30)->nullable();
             $table->json('permissions');
             $table->timestamps();
@@ -48,7 +48,7 @@ return new class extends Migration
 
         Schema::create('library_login_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('library_staff_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('library_staff_id')->constrained('library_staff')->cascadeOnDelete();
             $table->string('ip_address', 45)->nullable();
             $table->string('user_agent', 300)->nullable();
             $table->enum('status', ['success', 'failed_otp', 'locked']);

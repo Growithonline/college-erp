@@ -27,7 +27,7 @@ return new class extends Migration
         }
         Schema::create('library_staff_activity_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('library_staff_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('library_staff_id')->constrained('library_staff')->cascadeOnDelete();
             $table->string('action', 50);        // login, logout, profile_update, ip_change, etc.
             $table->string('subject')->nullable(); // e.g. "Book: ISBN 978-xxx"
             $table->text('details')->nullable();
