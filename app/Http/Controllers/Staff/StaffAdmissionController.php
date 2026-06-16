@@ -197,6 +197,16 @@ class StaffAdmissionController extends Controller
         abort_unless($staff->canUseQuickAdmissionForm(), 403, 'Quick admission form is not permitted for your account.');
         $instituteId   = $staff->institute_id;
         $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->firstOrFail();
+
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')->orderByDesc('id')->get();
+        if (!($staff->restrict_session_access ?? false)) {
+            $admissibleSessions = $allSessions;
+        } else {
+            $allowed = array_map('intval', $staff->allowed_session_ids ?? []);
+            $admissibleSessions = $allSessions->filter(fn($s) => $s->is_active || in_array($s->id, $allowed))->values();
+        }
+
         $formConfig    = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'quick');
         $courses       = Course::where('institute_id', $instituteId)
             ->where('status', true)
@@ -236,7 +246,7 @@ class StaffAdmissionController extends Controller
         $staffFeeAllowedTypes = $perms->isNotEmpty() ? $perms->toArray() : null;
 
         return view('staff.admissions.quick-create', compact(
-            'activeSession', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
+            'activeSession', 'admissibleSessions', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
             'centers', 'partners', 'allowedPaymentModes', 'bankAccounts',
             'staffMaxDiscount', 'staffFeeAllowedTypes'
         ));
@@ -260,6 +270,16 @@ class StaffAdmissionController extends Controller
         abort_unless($staff->canUseFullAdmissionForm(), 403, 'Full admission form is not permitted for your account.');
         $instituteId   = $staff->institute_id;
         $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->firstOrFail();
+
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')->orderByDesc('id')->get();
+        if (!($staff->restrict_session_access ?? false)) {
+            $admissibleSessions = $allSessions;
+        } else {
+            $allowed = array_map('intval', $staff->allowed_session_ids ?? []);
+            $admissibleSessions = $allSessions->filter(fn($s) => $s->is_active || in_array($s->id, $allowed))->values();
+        }
+
         $formConfig    = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'admission');
         $sections      = \App\Http\Controllers\Institute\Master\AdmissionFormController::getSections('admission');
         $courses       = Course::where('institute_id', $instituteId)
@@ -278,7 +298,7 @@ class StaffAdmissionController extends Controller
         $transportStops    = TransportRouteStop::with('route:id,name')->whereHas('route', fn($q) => $q->where('institute_id', $instituteId))->where('status', true)->orderBy('sequence')->get();
 
         return view('staff.admissions.create', compact(
-            'activeSession', 'formConfig', 'sections', 'courses', 'courseTypes', 'studentTypes',
+            'activeSession', 'admissibleSessions', 'formConfig', 'sections', 'courses', 'courseTypes', 'studentTypes',
             'centers', 'partners',
             'transportRoutes', 'transportVehicles', 'transportDrivers', 'transportStops'
         ));

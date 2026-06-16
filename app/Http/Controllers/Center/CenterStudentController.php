@@ -279,7 +279,13 @@ class CenterStudentController extends Controller
         $activeSession = AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)->firstOrFail();
 
-        abort_unless($center->canAdmitInSession($activeSession->id), 403, 'Admission in the current session is not permitted for this center.');
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')->orderByDesc('id')->get();
+        $admissibleSessions = $allSessions->filter(
+            fn($s) => $s->is_active || $center->canAdmitInSession($s->id)
+        )->values();
+
+        abort_unless($admissibleSessions->isNotEmpty(), 403, 'No admissible sessions found for this center.');
 
         $formConfig   = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'quick');
         $studentTypes = StudentTypeController::getActiveTypes($instituteId);
@@ -319,7 +325,7 @@ class CenterStudentController extends Controller
         })->values();
 
         return view('center.admission.quick-create', compact(
-            'activeSession', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
+            'activeSession', 'admissibleSessions', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
             'centers', 'partners', 'center', 'allowedPaymentModes', 'bankAccounts'
         ));
     }
@@ -331,8 +337,8 @@ class CenterStudentController extends Controller
         abort_unless($center->canUseQuickAdmissionForm(), 403, 'Quick admission form not permitted for this center.');
 
         // Server-side session check
-        $sessionId = $request->filled('academic_session_id')
-            ? (int) $request->academic_session_id
+        $sessionId = $request->filled('session_id')
+            ? (int) $request->session_id
             : (int) AcademicSession::where('institute_id', $center->institute_id)->where('is_active', true)->value('id');
         abort_unless(
             $center->canAdmitInSession($sessionId),
@@ -368,7 +374,13 @@ class CenterStudentController extends Controller
         $activeSession = AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)->firstOrFail();
 
-        abort_unless($center->canAdmitInSession($activeSession->id), 403, 'Admission in the current session is not permitted for this center.');
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')->orderByDesc('id')->get();
+        $admissibleSessions = $allSessions->filter(
+            fn($s) => $s->is_active || $center->canAdmitInSession($s->id)
+        )->values();
+
+        abort_unless($admissibleSessions->isNotEmpty(), 403, 'No admissible sessions found for this center.');
 
         $formConfig   = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'admission');
         $sections     = \App\Http\Controllers\Institute\Master\AdmissionFormController::getSections('admission');
@@ -392,7 +404,7 @@ class CenterStudentController extends Controller
         $transportStops    = TransportRouteStop::with('route:id,name')->whereHas('route', fn($q) => $q->where('institute_id', $instituteId))->where('status', true)->orderBy('sequence')->get();
 
         return view('center.admission.create', compact(
-            'activeSession', 'formConfig', 'sections', 'courses', 'courseTypes', 'studentTypes',
+            'activeSession', 'admissibleSessions', 'formConfig', 'sections', 'courses', 'courseTypes', 'studentTypes',
             'centers', 'partners', 'center',
             'transportRoutes', 'transportVehicles', 'transportDrivers', 'transportStops'
         ));
@@ -404,8 +416,8 @@ class CenterStudentController extends Controller
         $center = $this->center();
         abort_unless($center->canUseFullAdmissionForm(), 403, 'Full admission form not permitted for this center.');
 
-        $sessionId = $request->filled('academic_session_id')
-            ? (int) $request->academic_session_id
+        $sessionId = $request->filled('session_id')
+            ? (int) $request->session_id
             : (int) AcademicSession::where('institute_id', $center->institute_id)->where('is_active', true)->value('id');
         abort_unless(
             $center->canAdmitInSession($sessionId),

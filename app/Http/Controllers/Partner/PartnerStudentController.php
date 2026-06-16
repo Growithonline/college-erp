@@ -171,7 +171,12 @@ class PartnerStudentController extends Controller
         $activeSession = AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)->firstOrFail();
 
-        abort_unless($partner->canAdmitInSession($activeSession->id), 403, 'Admission in the current session is not permitted for this partner.');
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')->orderByDesc('id')->get();
+        $admissibleSessions = $allSessions->filter(
+            fn($s) => $s->is_active || $partner->canAdmitInSession($s->id)
+        )->values();
+        abort_unless($admissibleSessions->isNotEmpty(), 403, 'No admissible sessions found for this partner.');
 
         $formConfig   = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'quick');
         $studentTypes = StudentTypeController::getActiveTypes($instituteId);
@@ -208,7 +213,7 @@ class PartnerStudentController extends Controller
         }
 
         return view('partner.admissions.quick-create', compact(
-            'activeSession', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
+            'activeSession', 'admissibleSessions', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
             'centers', 'partners', 'partner', 'allowedPaymentModes', 'bankAccounts'
         ));
     }
@@ -219,8 +224,8 @@ class PartnerStudentController extends Controller
         $partner = $this->partner();
         abort_unless($partner->canUseQuickAdmissionForm(), 403, 'Quick admission form not permitted for this partner.');
 
-        $sessionId = $request->filled('academic_session_id')
-            ? (int) $request->academic_session_id
+        $sessionId = $request->filled('session_id')
+            ? (int) $request->session_id
             : (int) AcademicSession::where('institute_id', $partner->institute_id)->where('is_active', true)->value('id');
         abort_unless(
             $partner->canAdmitInSession($sessionId),
@@ -255,7 +260,12 @@ class PartnerStudentController extends Controller
         $activeSession = AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)->firstOrFail();
 
-        abort_unless($partner->canAdmitInSession($activeSession->id), 403, 'Admission in the current session is not permitted for this partner.');
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')->orderByDesc('id')->get();
+        $admissibleSessions = $allSessions->filter(
+            fn($s) => $s->is_active || $partner->canAdmitInSession($s->id)
+        )->values();
+        abort_unless($admissibleSessions->isNotEmpty(), 403, 'No admissible sessions found for this partner.');
 
         $formConfig  = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'admission');
         $sections    = \App\Http\Controllers\Institute\Master\AdmissionFormController::getSections('admission');
@@ -279,7 +289,7 @@ class PartnerStudentController extends Controller
         $transportStops    = TransportRouteStop::with('route:id,name')->whereHas('route', fn($q) => $q->where('institute_id', $instituteId))->where('status', true)->orderBy('sequence')->get();
 
         return view('partner.admissions.create', compact(
-            'activeSession', 'formConfig', 'sections', 'courses', 'courseTypes', 'studentTypes',
+            'activeSession', 'admissibleSessions', 'formConfig', 'sections', 'courses', 'courseTypes', 'studentTypes',
             'centers', 'partners', 'partner',
             'transportRoutes', 'transportVehicles', 'transportDrivers', 'transportStops'
         ));
@@ -291,8 +301,8 @@ class PartnerStudentController extends Controller
         $partner = $this->partner();
         abort_unless($partner->canUseFullAdmissionForm(), 403, 'Full admission form not permitted for this partner.');
 
-        $sessionId = $request->filled('academic_session_id')
-            ? (int) $request->academic_session_id
+        $sessionId = $request->filled('session_id')
+            ? (int) $request->session_id
             : (int) AcademicSession::where('institute_id', $partner->institute_id)->where('is_active', true)->value('id');
         abort_unless($partner->canAdmitInSession($sessionId), 403, 'Admission in this session is not permitted for your account.');
 
