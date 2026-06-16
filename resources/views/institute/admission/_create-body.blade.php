@@ -864,6 +864,8 @@ function updateEduRows(typeId) {
             if (!show) {
                 if (el.hasAttribute('required')) el.dataset.wasRequired = 'true';
                 el.removeAttribute('required');
+                el.setCustomValidity('');
+                el.classList.remove('is-invalid', 'is-valid');
             } else if (el.dataset.wasRequired === 'true') {
                 el.setAttribute('required', '');
             }

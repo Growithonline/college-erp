@@ -320,7 +320,7 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
         }
 
         form.querySelectorAll('tr').forEach(row => {
-            if (row.querySelector('[name^="education["]') && !validateEducationRow(row)) {
+            if (row.querySelector('[name^="education["]') && row.style.display !== 'none' && !validateEducationRow(row)) {
                 isValid = false;
             }
         });
