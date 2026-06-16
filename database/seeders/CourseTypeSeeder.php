@@ -9,21 +9,29 @@ class CourseTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        $types = [
-            ['name' => 'UG',       'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'PG',       'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Diploma',  'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'PhD',      'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Certificate', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'ITI',      'created_at' => now(), 'updated_at' => now()],
-        ];
+        $types = ['UG', 'PG', 'Diploma', 'PhD', 'Certificate', 'ITI'];
 
-        // Duplicate avoid karo
-        foreach ($types as $type) {
-            DB::table('course_types')->updateOrInsert(
-                ['name' => $type['name']],
-                $type
-            );
+        $institutes = DB::table('institutes')->pluck('id');
+
+        if ($institutes->isEmpty()) {
+            $this->command->warn('No institutes found — skipping CourseTypeSeeder.');
+            return;
+        }
+
+        foreach ($institutes as $instituteId) {
+            foreach ($types as $i => $name) {
+                DB::table('course_types')->updateOrInsert(
+                    ['institute_id' => $instituteId, 'name' => $name],
+                    [
+                        'institute_id' => $instituteId,
+                        'name'         => $name,
+                        'sort_order'   => $i + 1,
+                        'is_active'    => true,
+                        'created_at'   => now(),
+                        'updated_at'   => now(),
+                    ]
+                );
+            }
         }
     }
 }

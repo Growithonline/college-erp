@@ -9,9 +9,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            SuperAdminSeeder::class,  // Super admin login
-            CourseTypeSeeder::class,  // UG, PG, Diploma etc
-            InstituteSeeder::class,   // Blooming Buds Academy
+            SuperAdminSeeder::class, // Super admin login
+            InstituteSeeder::class,  // Blooming Buds Academy (staff roles + accounting bhi setup karta hai)
         ]);
     }
 }
