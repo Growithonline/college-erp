@@ -109,6 +109,8 @@ use App\Http\Controllers\Partner\PartnerFeeController;
 use App\Http\Controllers\Partner\PartnerReportController;
 
 // ── Public receipt viewer (QR code scan — no auth required) ────────
+Route::get('/', fn() => view('welcome'))->name('welcome');
+
 Route::get('/receipt/balance', [\App\Http\Controllers\PublicReceiptController::class, 'balance'])->name('receipt.balance')->middleware('throttle:30,1');
 Route::get('/receipt/record',  [\App\Http\Controllers\PublicReceiptController::class, 'record'])->name('receipt.record')->middleware('throttle:30,1');
 
