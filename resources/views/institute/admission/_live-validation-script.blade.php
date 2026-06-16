@@ -322,11 +322,16 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
         form.querySelectorAll('tr').forEach(row => {
             if (row.querySelector('[name^="education["]') && row.style.display !== 'none' && !validateEducationRow(row)) {
                 isValid = false;
+                console.warn('❌ EDU ROW failed:', row.dataset?.eduKey, row);
             }
         });
 
+        const _beforeCheck = isValid;
         if (!form.checkValidity()) {
             isValid = false;
+            // Find exactly which field failed checkValidity
+            const _failedNative = [...form.querySelectorAll('input,select,textarea')].filter(el => !el.validity?.valid);
+            console.warn('❌ form.checkValidity() = false, custom-validators passed:', _beforeCheck, 'failed native fields:', _failedNative.map(el => ({ name: el.name, value: el.value, validity: el.validity })));
         }
 
         if (report) {
