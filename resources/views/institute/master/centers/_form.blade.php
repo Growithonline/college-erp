@@ -81,8 +81,10 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold small">State</label>
-                            <input type="text" name="state" value="{{ old('state', $c->state ?? '') }}"
-                                   class="form-control form-control-sm" style="text-transform:uppercase">
+                            <select name="state" id="centerStateSelect" class="form-select form-select-sm"
+                                    data-saved="{{ old('state', $c->state ?? '') }}">
+                                <option value="">— Select State —</option>
+                            </select>
                         </div>
                     </div>
                 </div>

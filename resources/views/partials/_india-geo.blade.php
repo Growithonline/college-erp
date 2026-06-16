@@ -95,5 +95,12 @@ window.INDIA_GEO = {
             populateDistrictSelect(qPermDist, this.value, '');
         });
     }
+
+    // Standalone state-only selects (Center, Channel Partner forms)
+    ['centerStateSelect', 'partnerStateSelect'].forEach(function (id) {
+        var sel = document.getElementById(id);
+        if (!sel) return;
+        populateStateSelect(sel, sel.dataset.saved || '');
+    });
 })();
 </script>

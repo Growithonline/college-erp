@@ -75,8 +75,10 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold small">State</label>
-                            <input type="text" name="state" value="{{ old('state', $p->state ?? '') }}"
-                                   class="form-control form-control-sm" style="text-transform:uppercase">
+                            <select name="state" id="partnerStateSelect" class="form-select form-select-sm"
+                                    data-saved="{{ old('state', $p->state ?? '') }}">
+                                <option value="">— Select State —</option>
+                            </select>
                         </div>
                     </div>
                 </div>

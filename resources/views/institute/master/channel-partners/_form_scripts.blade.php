@@ -1,3 +1,5 @@
+@include('partials._india-geo')
+
 @push('scripts')
 <script>
 document.getElementById('pcanDiscount')?.addEventListener('change', function () {
