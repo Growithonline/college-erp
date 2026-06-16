@@ -28,7 +28,7 @@
             <p class="text-muted mb-0" style="font-size:13px;">
                 OTP sent to
                 @if($student->email)
-                    <strong>{{ substr($student->email, 0, 3) }}***@{{ explode('@', $student->email)[1] }}</strong>
+                    <strong>{{ substr($student->email, 0, 3) }}***{{ '@' . explode('@', $student->email)[1] }}</strong>
                 @endif
                 @if($student->mobile)
                     & mobile <strong>******{{ substr($student->mobile, -4) }}</strong>
