@@ -2230,6 +2230,95 @@ document.addEventListener('DOMContentLoaded', function () {
         el.value = el.value.toUpperCase();
         try { el.setSelectionRange(pos, pos); } catch(_) {}
     }, true);
+
+    // Initialize draft persistence
+    initQuickFormDraft();
 });
+
+// ── Form draft — sessionStorage pe save karo, refresh pe restore ─────
+(function () {
+    const DRAFT_KEY = 'adm_quick_{{ auth()->id() ?? 0 }}';
+    const HAS_PHP_DATA = @json(!empty(old()) || !empty($qd ?? []));
+    const CASCADE = new Set(['course_type_id','course_id','course_stream_id','course_part_id']);
+    let draftTimer = null;
+
+    function saveDraft() {
+        const form = document.getElementById('quickForm');
+        if (!form) return;
+        const data = {};
+        form.querySelectorAll('input:not([type="file"]):not([type="hidden"]), select, textarea').forEach(el => {
+            if (!el.name || el.name === '_token' || el.readOnly) return;
+            if (el.type === 'radio' || el.type === 'checkbox') {
+                if (el.checked) data[el.name] = el.value;
+            } else if (data[el.name] === undefined) {
+                data[el.name] = el.value;
+            }
+        });
+        try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch(_) {}
+    }
+
+    function clearDraft() { try { sessionStorage.removeItem(DRAFT_KEY); } catch(_) {} }
+
+    function restoreDraft() {
+        if (HAS_PHP_DATA) return;
+        let data;
+        try { data = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); } catch(_) { return; }
+        if (!data || !Object.keys(data).length) return;
+
+        const form = document.getElementById('quickForm');
+        if (!form) return;
+
+        // Restore all simple (non-cascade) fields
+        form.querySelectorAll('input:not([type="file"]):not([type="hidden"]), select, textarea').forEach(el => {
+            if (!el.name || CASCADE.has(el.name) || el.name === '_token' || el.readOnly) return;
+            if (data[el.name] === undefined) return;
+            if (el.type === 'radio' || el.type === 'checkbox') {
+                el.checked = (el.value === data[el.name]);
+            } else {
+                el.value = data[el.name];
+            }
+        });
+
+        // Re-trigger scholarship visibility
+        const schEl = form.querySelector('[name="has_scholarship"]');
+        if (schEl && schEl.checked && typeof toggleScholarship === 'function') toggleScholarship(true);
+
+        // Cascade: course type → course → stream → part
+        const typeId   = data['course_type_id'];
+        const courseId = data['course_id'];
+        const streamId = data['course_stream_id'];
+        const partId   = data['course_part_id'];
+
+        if (typeId) {
+            const el = form.querySelector('[name="course_type_id"]');
+            if (el) { el.value = typeId; filterCoursesByType(typeId); }
+        }
+        if (courseId) {
+            const el = form.querySelector('[name="course_id"]');
+            if (el) { el.value = courseId; loadStreams(courseId); }
+            setTimeout(() => {
+                if (streamId) {
+                    const el = form.querySelector('[name="course_stream_id"]');
+                    if (el) { el.value = streamId; el.dispatchEvent(new Event('change')); }
+                }
+                setTimeout(() => {
+                    if (partId) {
+                        const el = form.querySelector('[name="course_part_id"]');
+                        if (el) el.value = partId;
+                    }
+                }, 400);
+            }, 300);
+        }
+    }
+
+    window.initQuickFormDraft = function () {
+        restoreDraft();
+        const form = document.getElementById('quickForm');
+        if (!form) return;
+        form.addEventListener('input',  () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 600); }, true);
+        form.addEventListener('change', () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 600); }, true);
+        form.addEventListener('submit', clearDraft, { once: true });
+    };
+})();
 </script>
 @endpush
