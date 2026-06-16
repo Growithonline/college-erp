@@ -30,7 +30,7 @@
             <p class="text-gray-500 text-sm">Select your role to continue</p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-4xl">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 w-full max-w-5xl">
 
             {{-- Institute Admin --}}
             <a href="{{ url('/login') }}" class="card bg-white rounded-2xl shadow-md p-6 flex flex-col items-center gap-4 hover:shadow-xl">
@@ -87,6 +87,21 @@
                     <p class="text-xs text-gray-500 mt-1">Partner commission portal</p>
                 </div>
                 <span class="mt-auto w-full text-center bg-purple-600 text-white text-sm py-2 rounded-lg font-medium">Login</span>
+            </a>
+
+            {{-- Student --}}
+            <a href="{{ url('/student/login') }}" class="card bg-white rounded-2xl shadow-md p-6 flex flex-col items-center gap-4 hover:shadow-xl">
+                <div class="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422A12.083 12.083 0 0121 13c0 5.523-4.477 10-9 10S3 18.523 3 13c0-.538.068-1.06.196-1.562L12 14z"/>
+                    </svg>
+                </div>
+                <div class="text-center">
+                    <h3 class="font-semibold text-gray-800 text-base">Student</h3>
+                    <p class="text-xs text-gray-500 mt-1">Student portal</p>
+                </div>
+                <span class="mt-auto w-full text-center bg-teal-600 text-white text-sm py-2 rounded-lg font-medium">Login</span>
             </a>
 
         </div>
