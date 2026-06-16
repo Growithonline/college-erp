@@ -1529,16 +1529,6 @@ window.addEventListener('DOMContentLoaded', function() {
                 // Only visible invalid fields — for scroll target
                 const visibleInvalid = allInvalid.filter(el => el.offsetParent !== null);
 
-                // DEBUG: console mein dekho kya fail hua
-                console.group('🔴 Form Validation Debug');
-                console.log('admissionLiveValidation:', typeof window.admissionLiveValidation, window.admissionLiveValidation ? 'SET' : 'UNDEFINED/NULL');
-                console.log('validateForm result:', _validationResult, '(type:', typeof _validationResult, ')');
-                console.log('allInvalid count:', allInvalid.length, allInvalid.map(el => ({ name: el.name, id: el.id, value: el.value })));
-                const emptyRequired = [...admissionForm.querySelectorAll('[required]')].filter(el => !el.value);
-                console.log('Empty required fields:', emptyRequired.map(el => ({ name: el.name, id: el.id })));
-                console.log('was-validated on form:', admissionForm.classList.contains('was-validated'));
-                console.groupEnd();
-
                 const fieldNames = [];
                 allInvalid.forEach(el => {
                     // Strategy 1: native labels API (most accurate)

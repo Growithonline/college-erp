@@ -1739,10 +1739,7 @@ function refreshQuickFeePreview() {
     })
         .then(response => {
             if (!response.ok) {
-                return response.text().then(text => {
-                    console.error('[FeePreview] HTTP Error', response.status, text);
-                    return Promise.reject(response.status);
-                });
+                return response.text().then(() => Promise.reject(response.status));
             }
             return response.json();
         })
@@ -1750,9 +1747,7 @@ function refreshQuickFeePreview() {
             if (requestId !== quickFeePreviewRequestId) return;
             renderQuickFeeRows(data?.fee_data?.items || [], preservedMap);
         })
-        .catch((err) => {
-            if (requestId !== quickFeePreviewRequestId) return;
-            console.error('[FeePreview] Fetch failed:', err);
+        .catch(() => {
             // Error pe existing rows preserve karo — silently clear mat karo
         });
 }

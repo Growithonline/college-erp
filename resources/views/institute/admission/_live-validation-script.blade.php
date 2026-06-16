@@ -273,14 +273,12 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
             const field = form.querySelector(`[name="${name}"]`);
             if (field && !validateExactDigits(field, length, message)) {
                 isValid = false;
-                console.warn('❌ DIGITS failed:', name, '=', JSON.stringify(field.value));
             }
         });
 
         const emailField = form.querySelector('[name="email"]');
         if (emailField && !validateEmail(emailField)) {
             isValid = false;
-            console.warn('❌ EMAIL failed:', JSON.stringify(emailField.value));
         }
 
         [
@@ -292,57 +290,44 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
             const field = form.querySelector(`[name="${name}"]`);
             if (field && !validateNameField(field, label)) {
                 isValid = false;
-                console.warn('❌ NAME failed:', name, '=', JSON.stringify(field.value));
             }
         });
 
         const dobField = form.querySelector('[name="dob"]');
         if (dobField && !validateDateNotFuture(dobField, 'Date of birth cannot be in the future.')) {
             isValid = false;
-            console.warn('❌ DOB failed:', JSON.stringify(dobField.value));
         }
 
         const admissionDateField = form.querySelector('[name="admission_date"]');
         if (admissionDateField && !validateDateNotFuture(admissionDateField, 'Admission date cannot be in the future.')) {
             isValid = false;
-            console.warn('❌ ADMISSION DATE failed:', JSON.stringify(admissionDateField.value));
         }
 
         const submittedDateField = form.querySelector('[name="submitted_date"]');
         if (submittedDateField && !validateDateNotFuture(submittedDateField, 'Submitted date cannot be in the future.')) {
             isValid = false;
-            console.warn('❌ SUBMITTED DATE failed:', JSON.stringify(submittedDateField.value));
         }
 
         if (admissionDateField && submittedDateField && !validateDateOrder(submittedDateField, admissionDateField, 'Submitted date cannot be earlier than admission date.')) {
             isValid = false;
-            console.warn('❌ DATE ORDER (submitted<admission) failed: admission=', admissionDateField.value, 'submitted=', submittedDateField.value);
         }
 
         if (admissionDateField && dobField && !validateDateOrder(admissionDateField, dobField, 'Admission date cannot be earlier than date of birth.')) {
             isValid = false;
-            console.warn('❌ DATE ORDER (admission<dob) failed: dob=', dobField.value, 'admission=', admissionDateField.value);
         }
 
-        const _srcResult = validateAdmissionSource(form);
-        if (!_srcResult) {
+        if (!validateAdmissionSource(form)) {
             isValid = false;
-            const _srcField = form.querySelector('[name="admission_source_id"]:not([disabled])');
-            console.warn('❌ ADMISSION SOURCE failed: source=', form.querySelector('[name="admission_source"]')?.value, 'id=', _srcField?.value);
         }
 
         form.querySelectorAll('tr').forEach(row => {
             if (row.querySelector('[name^="education["]') && row.style.display !== 'none' && !validateEducationRow(row)) {
                 isValid = false;
-                console.warn('❌ EDU ROW failed:', row.dataset?.eduKey, row);
             }
         });
 
-        const _beforeCheck = isValid;
         if (!form.checkValidity()) {
             isValid = false;
-            const _failedNative = [...form.querySelectorAll('input,select,textarea')].filter(el => !el.validity?.valid);
-            console.warn('❌ form.checkValidity() = false, custom-validators passed:', _beforeCheck, 'failed native fields:', _failedNative.map(el => ({ name: el.name, value: el.value, validity: el.validity })));
         }
 
         if (report) {

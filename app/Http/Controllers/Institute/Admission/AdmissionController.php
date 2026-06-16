@@ -2062,8 +2062,10 @@ class AdmissionController extends Controller
 
         session(['admission_preview' => $formData]);
 
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->firstOrFail();
+        $activeSession = $this->resolveAdmissionSession(
+            $instituteId,
+            $request->filled('session_id') ? (int) $request->session_id : null
+        );
 
         $stream = CourseStream::with('course')->find($request->course_stream_id);
         $part   = $firstPart;
