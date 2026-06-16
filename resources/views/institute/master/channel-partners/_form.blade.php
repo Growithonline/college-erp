@@ -3,6 +3,15 @@
     $edit = $isEdit ?? false;
 @endphp
 
+{{-- Global error banner --}}
+@if($errors->any())
+<div class="alert alert-danger alert-dismissible mb-3">
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Please fix the following errors:</div>
+    <ul class="mb-0 ps-3">@foreach($errors->all() as $err)<li class="small">{{ $err }}</li>@endforeach</ul>
+</div>
+@endif
+
 <div class="row g-4">
 
     {{-- ── Left: sticky info + save ───────────────────────────────────── --}}
@@ -28,7 +37,8 @@
                     <div class="mb-2">
                         <label class="form-label fw-semibold small">Mobile <span class="text-danger">*</span></label>
                         <input type="text" name="mobile" value="{{ old('mobile', $p->mobile ?? '') }}"
-                               class="form-control form-control-sm @error('mobile') is-invalid @enderror" maxlength="15">
+                               class="form-control form-control-sm @error('mobile') is-invalid @enderror"
+                               maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit number">
                         @error('mobile') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 

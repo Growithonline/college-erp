@@ -3,6 +3,22 @@
     $edit = $isEdit ?? false;
 @endphp
 
+{{-- Server-side global errors (edit form / non-AJAX) --}}
+@if($errors->any())
+<div class="alert alert-danger alert-dismissible mb-3">
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Please fix the following errors:</div>
+    <ul class="mb-0 ps-3">@foreach($errors->all() as $err)<li class="small">{{ $err }}</li>@endforeach</ul>
+</div>
+@endif
+
+{{-- AJAX global error (create form) --}}
+<div id="centerGlobalError" class="alert alert-danger alert-dismissible mb-3 d-none">
+    <button type="button" class="btn-close" onclick="document.getElementById('centerGlobalError').classList.add('d-none')"></button>
+    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Please fix the following errors:</div>
+    <ul id="centerGlobalErrorList" class="mb-0 ps-3"></ul>
+</div>
+
 <div class="row g-4">
 
     {{-- ── Left: sticky info + save ───────────────────────────────────── --}}
@@ -29,7 +45,10 @@
                         <div class="col-7">
                             <label class="form-label fw-semibold small">Mobile</label>
                             <input type="text" name="mobile" value="{{ old('mobile', $c->mobile ?? '') }}"
-                                   class="form-control form-control-sm" maxlength="15">
+                                   class="form-control form-control-sm @error('mobile') is-invalid @enderror"
+                                   maxlength="10" inputmode="numeric" pattern="[0-9]{10}"
+                                   placeholder="10-digit number">
+                            @error('mobile') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-5">
                             <label class="form-label fw-semibold small">Code</label>

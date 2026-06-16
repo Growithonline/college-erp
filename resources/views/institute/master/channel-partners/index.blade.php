@@ -90,13 +90,10 @@
                                    class="btn btn-outline-primary btn-sm">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="{{ route('master.channel-partners.destroy', $partner) }}"
-                                      onsubmit="return confirm('Delete {{ $partner->name }}?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-outline-danger btn-sm">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="openDeleteModal('{{ route('master.channel-partners.destroy', $partner) }}', '{{ addslashes($partner->name) }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -106,4 +103,68 @@
         </div>
     </div>
 @endif
+
+{{-- Delete Confirmation Modal --}}
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash me-2"></i>Delete Partner</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">Are you sure you want to delete <strong id="deleteTargetName"></strong>?</p>
+                <p class="text-muted small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+var _deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+var _deleteUrl   = '';
+
+function openDeleteModal(url, name) {
+    _deleteUrl = url;
+    document.getElementById('deleteTargetName').textContent = '"' + name + '"';
+    _deleteModal.show();
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', async function () {
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting…';
+    try {
+        var res = await fetch(_deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        var data = await res.json();
+        _deleteModal.hide();
+        if (data.success) {
+            window.showToast?.(data.message, 'success');
+            setTimeout(function () { window.location.reload(); }, 900);
+        } else {
+            window.showToast?.(data.message || 'Delete failed.', 'danger');
+        }
+    } catch (e) {
+        _deleteModal.hide();
+        window.showToast?.('Network error. Please try again.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+    }
+});
+</script>
+@endpush
 @endsection

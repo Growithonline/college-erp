@@ -52,7 +52,7 @@ class ChannelPartnerController extends Controller
     {
         $request->validate([
             'name'                => 'required|string|max:100',
-            'mobile'              => 'required|string|max:15',
+            'mobile'              => 'required|digits:10',
             'email'               => 'required|email|unique:channel_partners,email',
             'address'             => 'nullable|string|max:255',
             'city'                => 'nullable|string|max:50',
@@ -125,7 +125,7 @@ class ChannelPartnerController extends Controller
 
         $request->validate([
             'name'                => 'required|string|max:100',
-            'mobile'              => 'required|string|max:15',
+            'mobile'              => 'required|digits:10',
             'commission_percent'  => 'nullable|numeric|min:0|max:100',
             'admission_form_type' => 'required|in:full,quick,both',
             'allowed_courses'     => 'nullable|array',
@@ -183,8 +183,19 @@ class ChannelPartnerController extends Controller
     public function destroy(ChannelPartner $channelPartner)
     {
         abort_if($channelPartner->institute_id !== $this->instituteId(), 403);
-        $channelPartner->delete();
-        return redirect()->route('master.channel-partners.index')->with('success', 'Partner deleted!');
+        try {
+            $channelPartner->delete();
+            if (request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => "Partner \"{$channelPartner->name}\" deleted."]);
+            }
+            return redirect()->route('master.channel-partners.index')->with('success', 'Partner deleted!');
+        } catch (Throwable $e) {
+            $msg = 'Cannot delete this partner — they may have linked data.';
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
     }
 
     public function toggle(ChannelPartner $channelPartner)

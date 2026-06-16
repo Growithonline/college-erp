@@ -56,7 +56,7 @@ class CenterController extends Controller
         $validated = $request->validate([
             'name'                => 'required|string|max:100',
             'code'                => 'nullable|string|max:20',
-            'mobile'              => 'nullable|string|max:15',
+            'mobile'              => 'nullable|digits:10',
             'email'               => 'required|email|unique:centers,email',
             'city'                => 'nullable|string|max:50',
             'address'             => 'nullable|string|max:255',
@@ -149,7 +149,7 @@ class CenterController extends Controller
 
         $request->validate([
             'name'                => 'required|string|max:100',
-            'mobile'              => 'nullable|string|max:15',
+            'mobile'              => 'nullable|digits:10',
             'admission_form_type' => 'required|in:full,quick,both',
             'allowed_courses'     => 'nullable|array',
             'allowed_courses.*'   => 'integer|exists:courses,id',
@@ -212,11 +212,26 @@ class CenterController extends Controller
         abort_if($center->institute_id !== $this->instituteId(), 403);
 
         if ($center->students()->exists()) {
-            return back()->withErrors(['delete' => "Cannot delete \"{$center->name}\" — students are linked to this center."]);
+            $msg = "Cannot delete \"{$center->name}\" — students are linked to this center.";
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->withErrors(['delete' => $msg]);
         }
 
-        $center->delete();
-        return redirect()->route('master.centers.index')->with('success', 'Center deleted!');
+        try {
+            $center->delete();
+            if (request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => "Center \"{$center->name}\" deleted."]);
+            }
+            return redirect()->route('master.centers.index')->with('success', 'Center deleted!');
+        } catch (Throwable $e) {
+            $msg = 'Cannot delete this center — it may have linked data.';
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
     }
 
     public function toggle(Center $center)

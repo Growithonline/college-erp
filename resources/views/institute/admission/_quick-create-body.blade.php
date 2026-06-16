@@ -218,6 +218,27 @@
 <form method="POST" action="{{ isset($storeRoute) ? $storeRoute : route('admissions.quick-store') }}" enctype="multipart/form-data" id="quickForm">
 @csrf
 
+{{-- ══ Session Selection ═══════════════════════════════════════════════ --}}
+@if(isset($admissibleSessions) && $admissibleSessions->count() > 1)
+<div class="card border-0 shadow-sm mb-2" style="border-left:4px solid #6366f1!important;">
+    <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
+        <i class="bi bi-calendar3 text-primary"></i>
+        <label class="form-label fw-semibold small mb-0 text-nowrap">Admission Session</label>
+        <select name="session_id" id="quickSessionSelect" class="form-select form-select-sm" style="max-width:220px;">
+            @foreach($admissibleSessions as $sess)
+            <option value="{{ $sess->id }}"
+                {{ old('session_id', $activeSession?->id) == $sess->id ? 'selected' : '' }}>
+                {{ $sess->name }}{{ $sess->is_active ? ' (Current)' : '' }}
+            </option>
+            @endforeach
+        </select>
+        <small class="text-muted">Default is current session.</small>
+    </div>
+</div>
+@else
+<input type="hidden" name="session_id" value="{{ $activeSession?->id }}">
+@endif
+
 {{-- ══════════════════════════════════════════════════════════ --}}
 {{-- STEP 1: COURSE SELECTION — ALWAYS FIRST                   --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
@@ -783,16 +804,20 @@
                 <input type="text" name="perm_thana" id="quickPermThana" class="{{ $fc }}" value="{{ $qv('perm_thana') }}" {{ $fieldRequired('perm_thana') ? 'required' : '' }}>
             </div>
             @endif
-            @if($fieldEnabled('perm_district'))
-            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
-                <label class="form-label small fw-semibold mb-1">District @if($fieldRequired('perm_district'))<span class="text-danger">*</span>@endif</label>
-                <input type="text" name="perm_district" id="quickPermDistrict" class="{{ $fc }}" value="{{ $qv('perm_district') }}" {{ $fieldRequired('perm_district') ? 'required' : '' }}>
-            </div>
-            @endif
             @if($fieldEnabled('perm_state'))
             <div class="col-md-{{ $isCompact ? 2 : 4 }}">
                 <label class="form-label small fw-semibold mb-1">State @if($fieldRequired('perm_state'))<span class="text-danger">*</span>@endif</label>
-                <input type="text" name="perm_state" id="quickPermState" class="{{ $fc }}" value="{{ $qv('perm_state') }}" {{ $fieldRequired('perm_state') ? 'required' : '' }}>
+                <select name="perm_state" id="quickPermState" class="{{ $fc }}" {{ $fieldRequired('perm_state') ? 'required' : '' }} data-saved="{{ $qv('perm_state') }}">
+                    <option value="">— Select State —</option>
+                </select>
+            </div>
+            @endif
+            @if($fieldEnabled('perm_district'))
+            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
+                <label class="form-label small fw-semibold mb-1">District @if($fieldRequired('perm_district'))<span class="text-danger">*</span>@endif</label>
+                <select name="perm_district" id="quickPermDistrict" class="{{ $fc }}" {{ $fieldRequired('perm_district') ? 'required' : '' }} data-saved="{{ $qv('perm_district') }}">
+                    <option value="">— Select District —</option>
+                </select>
             </div>
             @endif
             @if($fieldEnabled('perm_pincode'))
@@ -1066,6 +1091,8 @@
 
 </div>
 </div>
+
+@include('partials._india-geo')
 
 @push('scripts')
 {{-- TomSelect for subject dropdowns --}}

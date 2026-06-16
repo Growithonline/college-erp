@@ -62,6 +62,27 @@
     <button type="button" class="btn-close" onclick="document.getElementById('jsValidationError').style.setProperty('display','none','important')"></button>
 </div>
 
+{{-- ══ Session Selection ══════════════════════════════════════════════ --}}
+@if(isset($admissibleSessions) && $admissibleSessions->count() > 1)
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #6366f1!important;">
+    <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
+        <i class="bi bi-calendar3 text-primary"></i>
+        <label class="form-label fw-semibold small mb-0 text-nowrap">Admission Session</label>
+        <select name="session_id" id="admissionSessionSelect" class="form-select form-select-sm" style="max-width:220px;">
+            @foreach($admissibleSessions as $sess)
+            <option value="{{ $sess->id }}"
+                {{ old('session_id', $activeSession?->id) == $sess->id ? 'selected' : '' }}>
+                {{ $sess->name }}{{ $sess->is_active ? ' (Current)' : '' }}
+            </option>
+            @endforeach
+        </select>
+        <small class="text-muted">Default is current session; select previous session if permitted.</small>
+    </div>
+</div>
+@else
+<input type="hidden" name="session_id" value="{{ $activeSession?->id }}">
+@endif
+
 {{-- ═══════════════════════════════════════ --}}
 {{-- 1. COURSE DETAILS (SABSE PEHLE)         --}}
 {{-- ═══════════════════════════════════════ --}}
@@ -675,13 +696,17 @@
             <div class="col-md-2"><label class="form-label small fw-semibold">Thana @if($fieldRequired('perm_thana'))<span class="text-danger">*</span>@endif</label>
             <input type="text" name="perm_thana" class="form-control form-control-sm" value="{{ $pv('perm_thana') }}" {{ $fieldRequired('perm_thana') ? 'required' : '' }} oninput="onPermAddressChange()"></div>
             @endif
-            @if($fieldEnabled('perm_district'))
-            <div class="col-md-3"><label class="form-label small fw-semibold">District @if($fieldRequired('perm_district'))<span class="text-danger">*</span>@endif</label>
-            <input type="text" name="perm_district" class="form-control form-control-sm" value="{{ $pv('perm_district') }}" {{ $fieldRequired('perm_district') ? 'required' : '' }} oninput="onPermAddressChange()"></div>
-            @endif
             @if($fieldEnabled('perm_state'))
             <div class="col-md-3"><label class="form-label small fw-semibold">State @if($fieldRequired('perm_state'))<span class="text-danger">*</span>@endif</label>
-            <input type="text" name="perm_state" class="form-control form-control-sm" value="{{ $pv('perm_state') }}" {{ $fieldRequired('perm_state') ? 'required' : '' }} oninput="onPermAddressChange()"></div>
+            <select name="perm_state" id="permStateSelect" class="form-select form-select-sm" {{ $fieldRequired('perm_state') ? 'required' : '' }} data-saved="{{ $pv('perm_state') }}">
+                <option value="">— Select State —</option>
+            </select></div>
+            @endif
+            @if($fieldEnabled('perm_district'))
+            <div class="col-md-3"><label class="form-label small fw-semibold">District @if($fieldRequired('perm_district'))<span class="text-danger">*</span>@endif</label>
+            <select name="perm_district" id="permDistrictSelect" class="form-select form-select-sm" {{ $fieldRequired('perm_district') ? 'required' : '' }} data-saved="{{ $pv('perm_district') }}">
+                <option value="">— Select District —</option>
+            </select></div>
             @endif
             @if($fieldEnabled('perm_pincode'))
             <div class="col-md-2"><label class="form-label small fw-semibold">Pin Code @if($fieldRequired('perm_pincode'))<span class="text-danger">*</span>@endif</label>
@@ -788,6 +813,8 @@
 
 </form>
 @endif
+
+@include('partials._india-geo')
 
 @push('scripts')
 {{-- TomSelect — tag-style multi-select dropdown --}}

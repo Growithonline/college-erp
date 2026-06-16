@@ -96,20 +96,40 @@ if (form && form.action.includes('/centers') && !form.action.includes('/centers/
 function clearFormErrors() {
     document.querySelectorAll('.ajax-field-error').forEach(function (el) { el.remove(); });
     document.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+    var banner = document.getElementById('centerGlobalError');
+    if (banner) { banner.classList.add('d-none'); document.getElementById('centerGlobalErrorList').innerHTML = ''; }
 }
 
 function showFieldErrors(errors) {
+    var list = document.getElementById('centerGlobalErrorList');
+    if (list) list.innerHTML = '';
+
     for (var field in errors) {
+        var msgs = errors[field];
         var input = document.querySelector('[name="' + field + '"]');
-        if (!input) continue;
-        input.classList.add('is-invalid');
-        var div = document.createElement('div');
-        div.className = 'invalid-feedback ajax-field-error';
-        div.textContent = errors[field][0];
-        input.parentNode.appendChild(div);
+        if (input) {
+            input.classList.add('is-invalid');
+            var div = document.createElement('div');
+            div.className = 'invalid-feedback ajax-field-error';
+            div.textContent = msgs[0];
+            input.parentNode.appendChild(div);
+        }
+        if (list) {
+            var li = document.createElement('li');
+            li.className = 'small';
+            li.textContent = msgs[0];
+            list.appendChild(li);
+        }
     }
-    var first = document.querySelector('.is-invalid');
-    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    var banner = document.getElementById('centerGlobalError');
+    if (banner && list && list.children.length) {
+        banner.classList.remove('d-none');
+        banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        var first = document.querySelector('.is-invalid');
+        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 </script>
 @endpush

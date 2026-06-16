@@ -122,6 +122,85 @@ class AdmissionController extends Controller
         };
     }
 
+    private function admissibleSessions(int $instituteId): \Illuminate\Support\Collection
+    {
+        $all = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')
+            ->orderByDesc('id')
+            ->get();
+
+        $panel = $this->panelPrefix();
+        if ($panel === 'institute') {
+            return $all;
+        }
+
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $all;
+        }
+
+        if ($panel === 'staff') {
+            if (!($user->restrict_session_access ?? false)) {
+                return $all;
+            }
+            $allowed = array_map('intval', $user->allowed_session_ids ?? []);
+            return $all->filter(fn($s) => $s->is_active || in_array($s->id, $allowed))->values();
+        }
+
+        // Center / ChannelPartner — use allowed_sessions JSON
+        $allowedSessions = $user->allowed_sessions ?? null;
+        if (empty($allowedSessions)) {
+            return $all;
+        }
+
+        $admissibleIds = collect($allowedSessions)
+            ->filter(fn($p) => !empty($p['admission']))
+            ->pluck('id')
+            ->map('intval')
+            ->all();
+
+        return $all->filter(fn($s) => $s->is_active || in_array($s->id, $admissibleIds))->values();
+    }
+
+    private function resolveAdmissionSession(int $instituteId, ?int $requestedId): AcademicSession
+    {
+        $active = AcademicSession::where('institute_id', $instituteId)
+            ->where('is_active', true)->firstOrFail();
+
+        if (!$requestedId || $requestedId === $active->id) {
+            return $active;
+        }
+
+        $session = AcademicSession::where('institute_id', $instituteId)->findOrFail($requestedId);
+
+        $panel = $this->panelPrefix();
+        if ($panel === 'institute') {
+            return $session;
+        }
+
+        $user = $this->authenticatedUser();
+
+        if ($panel === 'staff') {
+            if (!($user->restrict_session_access ?? false)) {
+                return $session;
+            }
+            $allowed = array_map('intval', $user->allowed_session_ids ?? []);
+            abort_unless(in_array($session->id, $allowed), 403, 'You do not have permission to admit to this session.');
+            return $session;
+        }
+
+        $allowedSessions = $user->allowed_sessions ?? null;
+        if (empty($allowedSessions)) {
+            return $session;
+        }
+
+        $hasPermission = collect($allowedSessions)
+            ->first(fn($p) => (int) ($p['id'] ?? 0) === $session->id && !empty($p['admission']));
+
+        abort_unless($hasPermission, 403, 'You do not have permission to admit to this session.');
+        return $session;
+    }
+
     private function admissionCreateView(): string
     {
         return match ($this->panelPrefix()) {
@@ -1862,8 +1941,10 @@ class AdmissionController extends Controller
         $studentTypes = StudentTypeController::getActiveTypes($instituteId);
         $transportData = $this->transportSelectionData($instituteId);
 
+        $admissibleSessions = $this->admissibleSessions($instituteId);
+
         return view($this->admissionCreateView(), compact(
-            'activeSession', 'formConfig', 'sections',
+            'activeSession', 'admissibleSessions', 'formConfig', 'sections',
             'centers', 'partners', 'courses', 'courseTypes', 'studentTypes'
         ) + $transportData);
     }
@@ -2019,8 +2100,10 @@ class AdmissionController extends Controller
             isset($formData['course_stream_id']) ? (int) $formData['course_stream_id'] : null
         );
 
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->firstOrFail();
+        $activeSession = $this->resolveAdmissionSession(
+            $instituteId,
+            isset($formData['session_id']) ? (int) $formData['session_id'] : null
+        );
 
         // ── Seat availability check ──────────────────────────────────
         $streamId = $formData['course_stream_id'] ?? null;
@@ -3296,9 +3379,12 @@ class AdmissionController extends Controller
         $bankAccounts = $this->allowedBankAccounts($instituteId, $allowedPaymentModes, $allowedBankIds);
         $bankModeOverride = $allowedBankIds !== null ? implode(',', $allowedPaymentModes) : null;
 
+        $admissibleSessions = $this->admissibleSessions($instituteId);
+
         return view($this->quickCreateView(),
             compact(
                 'activeSession',
+                'admissibleSessions',
                 'formConfig',
                 'quickFormConfig',
                 'courses',
@@ -3338,8 +3424,10 @@ class AdmissionController extends Controller
             ]);
         }
 
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->firstOrFail();
+        $activeSession = $this->resolveAdmissionSession(
+            $instituteId,
+            $request->filled('session_id') ? (int) $request->session_id : null
+        );
 
         $allowedPaymentModes = $this->allowedPaymentModes();
         if (!in_array($request->payment_mode, $allowedPaymentModes, true)) {

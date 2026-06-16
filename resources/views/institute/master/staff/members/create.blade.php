@@ -93,7 +93,8 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold small">Mobile <span class="text-danger">*</span></label>
                     <input type="text" name="mobile" value="{{ old('mobile', $staffMember->mobile ?? '') }}"
-                           class="form-control form-control-sm @error('mobile') is-invalid @enderror">
+                           class="form-control form-control-sm @error('mobile') is-invalid @enderror"
+                           maxlength="10" inputmode="numeric" pattern="[0-9]{10}" placeholder="10-digit number">
                     @error('mobile')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 

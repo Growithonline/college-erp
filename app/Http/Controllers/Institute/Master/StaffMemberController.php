@@ -145,7 +145,7 @@ class StaffMemberController extends Controller
         Validator::make($request->all(), [
             'staff_role_id' => ['required', Rule::exists('staff_roles', 'id')->where('institute_id', $this->instituteId())],
             'name'          => 'required|string|max:100',
-            'mobile'        => 'required|string|max:15',
+            'mobile'        => 'required|digits:10',
             'email'         => 'required|email|unique:staff_members,email',
             'joining_date'  => 'nullable|date',
             'salary'        => 'nullable|numeric|min:0',
@@ -364,7 +364,7 @@ class StaffMemberController extends Controller
         Validator::make($request->all(), [
             'staff_role_id' => ['required', Rule::exists('staff_roles', 'id')->where('institute_id', $this->instituteId())],
             'name'          => 'required|string|max:100',
-            'mobile'        => 'required|string|max:15',
+            'mobile'        => 'required|digits:10',
             'salary'        => 'nullable|numeric|min:0',
             'staff_category' => 'required|in:Teaching,Office,Non-Teaching,Guest',
             'payroll_type' => 'required|in:monthly,daily',
@@ -514,8 +514,19 @@ class StaffMemberController extends Controller
     public function destroy(StaffMember $staffMember)
     {
         abort_if($staffMember->institute_id !== $this->instituteId(), 403);
-        $staffMember->delete();
-        return redirect()->route('master.staff-members.index')->with('success', 'Staff deleted!');
+        try {
+            $staffMember->delete();
+            if (request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => "Staff \"{$staffMember->name}\" deleted."]);
+            }
+            return redirect()->route('master.staff-members.index')->with('success', 'Staff deleted!');
+        } catch (Throwable $e) {
+            $msg = 'Cannot delete this staff member — they may have linked data.';
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
     }
 
     public function toggle(StaffMember $staffMember)
