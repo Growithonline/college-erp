@@ -764,7 +764,7 @@
                         $oldEdu = old('education', []);
                         $eduRow = $oldEdu[$loop->index] ?? ($pd['education'][$loop->index] ?? []);
                     @endphp
-                    <tr>
+                    <tr data-edu-key="{{ str_replace('edu_', '', $fKey) }}">
                         <td style="font-size:11px;font-weight:600;color:#1e40af;">{{ $examName }}</td>
                         <td>
                             @if($examName === '12TH')
@@ -843,6 +843,33 @@ $courseStreamsData = $courses->mapWithKeys(function($c) {
 });
 @endphp
 const courseStreams = @json($courseStreamsData);
+const courseTypeLevels = @json($courseTypes->pluck('education_level', 'id'));
+const EDU_LEVEL_ROWS = {
+    ug:          ['10th','12th','other'],
+    pg:          ['10th','12th','graduation','other'],
+    diploma:     ['10th','12th','other'],
+    certificate: ['10th','other'],
+    phd:         ['10th','12th','graduation','other'],
+    other:       ['10th','12th','graduation','other'],
+};
+const ALL_EDU_ROWS = ['10th','12th','graduation','other'];
+
+function updateEduRows(typeId) {
+    const level = typeId ? courseTypeLevels[typeId] : null;
+    const visible = (level && EDU_LEVEL_ROWS[level]) ? EDU_LEVEL_ROWS[level] : ALL_EDU_ROWS;
+    document.querySelectorAll('tr[data-edu-key]').forEach(tr => {
+        const show = visible.includes(tr.dataset.eduKey);
+        tr.style.display = show ? '' : 'none';
+        tr.querySelectorAll('input, select').forEach(el => {
+            if (!show) {
+                if (el.hasAttribute('required')) el.dataset.wasRequired = 'true';
+                el.removeAttribute('required');
+            } else if (el.dataset.wasRequired === 'true') {
+                el.setAttribute('required', '');
+            }
+        });
+    });
+}
 
 let currentStreamId   = null;
 let currentYearNumber = 1;
@@ -868,6 +895,7 @@ function filterCoursesByType(typeId) {
         courseSel.value = '';
         loadStreams('');
     }
+    updateEduRows(typeId);
 }
 
 function loadStreams(courseId) {

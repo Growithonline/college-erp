@@ -38,10 +38,11 @@ class CourseTypeController extends Controller
         $maxSort = CourseType::forInstitute($instituteId)->max('sort_order') ?? 0;
 
         CourseType::create([
-            'institute_id' => $instituteId,
-            'name'         => $name,
-            'sort_order'   => $maxSort + 1,
-            'is_active'    => true,
+            'institute_id'    => $instituteId,
+            'name'            => $name,
+            'sort_order'      => $maxSort + 1,
+            'is_active'       => true,
+            'education_level' => $request->input('education_level') ?: null,
         ]);
 
         return back()->with('success', 'Course type "' . $name . '" added!');
@@ -61,7 +62,10 @@ class CourseTypeController extends Controller
             return back()->withErrors(['name_' . $courseType->id => '"' . $name . '" already exists.'])->withInput();
         }
 
-        $courseType->update(['name' => $name]);
+        $courseType->update([
+            'name'            => $name,
+            'education_level' => $request->input('education_level') ?: null,
+        ]);
         return back()->with('success', 'Course type updated!');
     }
 
@@ -91,6 +95,6 @@ class CourseTypeController extends Controller
             ->active()
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'education_level']);
     }
 }

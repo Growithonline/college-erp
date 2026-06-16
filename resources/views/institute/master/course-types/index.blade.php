@@ -37,6 +37,16 @@
                         <div class="form-text text-muted">Will be saved in uppercase (e.g. UG, PG, DIPLOMA)</div>
                         @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Education Level</label>
+                        <select name="education_level" class="form-select form-select-sm">
+                            <option value="">— Not Set (show all rows) —</option>
+                            @foreach(\App\Models\CourseType::EDUCATION_LEVELS as $val => $label)
+                            <option value="{{ $val }}" {{ old('education_level') === $val ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text text-muted">Controls which exam rows appear in the admission form.</div>
+                    </div>
                     <button type="submit" class="btn btn-primary btn-sm w-100">
                         <i class="bi bi-plus-lg me-1"></i>Add Course Type
                     </button>
@@ -66,6 +76,7 @@
                         <tr>
                             <th class="text-muted" style="width:40px;">#</th>
                             <th>Name</th>
+                            <th>Education Level</th>
                             <th>Courses</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -76,17 +87,34 @@
                         <tr>
                             <td class="text-muted small">{{ $i + 1 }}</td>
                             <td>
-                                <form method="POST" action="{{ route('master.course-types.update', $ct) }}" class="d-flex gap-2 align-items-center">
+                                <form method="POST" action="{{ route('master.course-types.update', $ct) }}" class="d-flex gap-2 align-items-center flex-wrap">
                                     @csrf @method('PUT')
                                     <input type="text" name="name"
                                            class="form-control form-control-sm @error('name_' . $ct->id) is-invalid @enderror"
                                            value="{{ old('name_' . $ct->id, $ct->name) }}"
-                                           style="max-width:180px;text-transform:uppercase">
+                                           style="max-width:140px;text-transform:uppercase">
+                                    <select name="education_level" class="form-select form-select-sm" style="max-width:160px;">
+                                        <option value="">— Not Set —</option>
+                                        @foreach(\App\Models\CourseType::EDUCATION_LEVELS as $val => $label)
+                                        <option value="{{ $val }}" {{ old('education_level_' . $ct->id, $ct->education_level) === $val ? 'selected' : '' }}>{{ $val }}</option>
+                                        @endforeach
+                                    </select>
                                     @error('name_' . $ct->id)<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     <button type="submit" class="btn btn-outline-primary btn-sm" title="Save">
                                         <i class="bi bi-check-lg"></i>
                                     </button>
                                 </form>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill
+                                    {{ $ct->education_level === 'ug' ? 'bg-primary-subtle text-primary border border-primary-subtle' :
+                                      ($ct->education_level === 'pg' ? 'bg-success-subtle text-success border border-success-subtle' :
+                                      ($ct->education_level === 'diploma' ? 'bg-warning-subtle text-warning border border-warning-subtle' :
+                                      ($ct->education_level === 'certificate' ? 'bg-info-subtle text-info border border-info-subtle' :
+                                      ($ct->education_level === 'phd' ? 'bg-danger-subtle text-danger border border-danger-subtle' :
+                                      'bg-secondary-subtle text-secondary border')))) }} small">
+                                    {{ $ct->education_level ? strtoupper($ct->education_level) : '—' }}
+                                </span>
                             </td>
                             <td>
                                 <span class="badge bg-secondary-subtle text-secondary border">{{ $ct->courses->count() }}</span>

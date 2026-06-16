@@ -877,7 +877,7 @@
                 <tbody>
                     @foreach($eduFields as $i => $fKey)
                     @if($fieldEnabled($fKey))
-                    <tr>
+                    <tr data-edu-key="{{ str_replace('q_edu_', '', $fKey) }}">
                         <td class="fw-semibold text-primary" style="font-size:11px;">{{ $eduLabels[$fKey] }}
                             <input type="hidden" name="education[{{ $i }}][exam_name]" value="{{ $eduLabels[$fKey] }}">
                         </td>
@@ -1098,6 +1098,12 @@
 {{-- TomSelect for subject dropdowns --}}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<style>
+#quickForm input[type="text"]:not([readonly]),
+#quickForm textarea:not([readonly]) {
+    text-transform: uppercase;
+}
+</style>
 @include('institute.admission._live-validation-script')
 @php
 $courseDataRaw = $courses->map(function($c) {
@@ -1124,6 +1130,34 @@ const OLD_FEE_ITEMS = @json(old('fee_items', []));
 const STAFF_MAX_DISCOUNT = {{ isset($staffMaxDiscount) && $staffMaxDiscount !== null ? (int)$staffMaxDiscount : 'null' }};
 const STAFF_FEE_ALLOWED_TYPES = @json($staffFeeAllowedTypes ?? null);
 
+const courseTypeLevels = @json($courseTypes->pluck('education_level', 'id'));
+const EDU_LEVEL_ROWS = {
+    ug:          ['10th','12th','other'],
+    pg:          ['10th','12th','graduation','other'],
+    diploma:     ['10th','12th','other'],
+    certificate: ['10th','other'],
+    phd:         ['10th','12th','graduation','other'],
+    other:       ['10th','12th','graduation','other'],
+};
+const ALL_EDU_ROWS = ['10th','12th','graduation','other'];
+
+function updateEduRows(typeId) {
+    const level = typeId ? courseTypeLevels[typeId] : null;
+    const visible = (level && EDU_LEVEL_ROWS[level]) ? EDU_LEVEL_ROWS[level] : ALL_EDU_ROWS;
+    document.querySelectorAll('tr[data-edu-key]').forEach(tr => {
+        const show = visible.includes(tr.dataset.eduKey);
+        tr.style.display = show ? '' : 'none';
+        tr.querySelectorAll('input, select').forEach(el => {
+            if (!show) {
+                if (el.hasAttribute('required')) el.dataset.wasRequired = 'true';
+                el.removeAttribute('required');
+            } else if (el.dataset.wasRequired === 'true') {
+                el.setAttribute('required', '');
+            }
+        });
+    });
+}
+
 function filterCoursesByType(typeId) {
     const courseSel = document.getElementById('courseSelect');
     const currentVal = courseSel.value;
@@ -1142,6 +1176,7 @@ function filterCoursesByType(typeId) {
         courseSel.value = '';
         loadStreams('');
     }
+    updateEduRows(typeId);
 }
 
 function loadStreams(courseId) {
@@ -2182,6 +2217,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     setTimeout(refreshQuickFeePreview, 900);
+
+    // Initialize education rows based on pre-selected course type
+    const initTypeId = document.getElementById('courseTypeSelect')?.value;
+    if (initTypeId) updateEduRows(initTypeId);
+
+    // Auto-uppercase all text inputs (except email fields)
+    document.getElementById('quickForm')?.addEventListener('input', function(e) {
+        const el = e.target;
+        if (el.type !== 'text' || el.readOnly) return;
+        const pos = el.selectionStart;
+        el.value = el.value.toUpperCase();
+        try { el.setSelectionRange(pos, pos); } catch(_) {}
+    }, true);
 });
 </script>
 @endpush

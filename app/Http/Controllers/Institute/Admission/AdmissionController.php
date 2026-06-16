@@ -1641,8 +1641,29 @@ class AdmissionController extends Controller
             ? ['q_edu_10th', 'q_edu_12th', 'q_edu_graduation', 'q_edu_other']
             : ['edu_10th', 'edu_12th', 'edu_graduation', 'edu_other'];
 
+        // Determine applicable edu rows based on selected course type's education_level
+        $courseTypeId = request()->input('course_type_id');
+        $eduLevel = $courseTypeId
+            ? \App\Models\CourseType::where('id', $courseTypeId)
+                ->where('institute_id', $this->instituteId())
+                ->value('education_level')
+            : null;
+
+        $eduRowsByLevel = [
+            'ug'          => ['edu_10th','edu_12th','edu_other','q_edu_10th','q_edu_12th','q_edu_other'],
+            'pg'          => ['edu_10th','edu_12th','edu_graduation','edu_other','q_edu_10th','q_edu_12th','q_edu_graduation','q_edu_other'],
+            'diploma'     => ['edu_10th','edu_12th','edu_other','q_edu_10th','q_edu_12th','q_edu_other'],
+            'certificate' => ['edu_10th','edu_other','q_edu_10th','q_edu_other'],
+            'phd'         => ['edu_10th','edu_12th','edu_graduation','edu_other','q_edu_10th','q_edu_12th','q_edu_graduation','q_edu_other'],
+            'other'       => ['edu_10th','edu_12th','edu_graduation','edu_other','q_edu_10th','q_edu_12th','q_edu_graduation','q_edu_other'],
+        ];
+        $applicableEduRows = $eduLevel ? ($eduRowsByLevel[$eduLevel] ?? null) : null;
+
         foreach ($educationFields as $index => $fieldKey) {
             if (!$this->fieldEnabled($formConfig, $fieldKey)) {
+                continue;
+            }
+            if ($applicableEduRows !== null && !in_array($fieldKey, $applicableEduRows, true)) {
                 continue;
             }
 
