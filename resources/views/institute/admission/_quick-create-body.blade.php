@@ -2263,7 +2263,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (HAS_PHP_DATA) return;
         // Only restore on browser reload (F5), not on fresh navigation
         const navType = (performance.getEntriesByType?.('navigation') ?? [])[0]?.type;
-        if (navType && navType !== 'reload') { clearDraft(); return; }
+        if (navType !== 'reload') { clearDraft(); return; }
         let data;
         try { data = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); } catch(_) { return; }
         if (!data || !Object.keys(data).length) return;
@@ -2320,7 +2320,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!form) return;
         form.addEventListener('input',  () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 600); }, true);
         form.addEventListener('change', () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 600); }, true);
-        form.addEventListener('submit', clearDraft, { once: true });
+        form.addEventListener('submit', () => { clearTimeout(draftTimer); clearDraft(); }, { once: true });
     };
 })();
 </script>
