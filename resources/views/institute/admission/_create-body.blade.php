@@ -1521,7 +1521,8 @@ window.addEventListener('DOMContentLoaded', function() {
             event.preventDefault();
             hideJsError();
 
-            if (!window.admissionLiveValidation?.validateForm(admissionForm, { report: true })) {
+            const _validationResult = window.admissionLiveValidation?.validateForm(admissionForm, { report: true });
+            if (!_validationResult) {
                 // All invalid fields (including hidden) — for label extraction
                 const allInvalid = [...admissionForm.querySelectorAll('.is-invalid, :invalid')]
                     .filter(el => el.tagName !== 'FORM');
@@ -1529,10 +1530,13 @@ window.addEventListener('DOMContentLoaded', function() {
                 const visibleInvalid = allInvalid.filter(el => el.offsetParent !== null);
 
                 // DEBUG: console mein dekho kya fail hua
-                console.group('🔴 Form Validation Failed — Debug Info');
-                console.log('allInvalid elements:', allInvalid.length, allInvalid.map(el => ({ name: el.name, id: el.id, value: el.value, display: el.style.display, validity: el.validity?.valid })));
+                console.group('🔴 Form Validation Debug');
+                console.log('admissionLiveValidation:', typeof window.admissionLiveValidation, window.admissionLiveValidation ? 'SET' : 'UNDEFINED/NULL');
+                console.log('validateForm result:', _validationResult, '(type:', typeof _validationResult, ')');
+                console.log('allInvalid count:', allInvalid.length, allInvalid.map(el => ({ name: el.name, id: el.id, value: el.value })));
                 const emptyRequired = [...admissionForm.querySelectorAll('[required]')].filter(el => !el.value);
-                console.log('Empty required fields:', emptyRequired.map(el => ({ name: el.name, id: el.id, type: el.type })));
+                console.log('Empty required fields:', emptyRequired.map(el => ({ name: el.name, id: el.id })));
+                console.log('was-validated on form:', admissionForm.classList.contains('was-validated'));
                 console.groupEnd();
 
                 const fieldNames = [];
