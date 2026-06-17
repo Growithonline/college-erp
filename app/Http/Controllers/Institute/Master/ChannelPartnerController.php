@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Services\InstituteMailer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class ChannelPartnerController extends Controller
@@ -39,9 +40,10 @@ class ChannelPartnerController extends Controller
 
     public function index()
     {
-        $partners = ChannelPartner::where('institute_id', $this->instituteId())
-            ->orderBy('name')->get();
-        return view('institute.master.channel-partners.index', compact('partners'));
+        $id = $this->instituteId();
+        $partners = ChannelPartner::where('institute_id', $id)->orderBy('name')->get();
+        $trashedCount = ChannelPartner::onlyTrashed()->where('institute_id', $id)->count();
+        return view('institute.master.channel-partners.index', compact('partners', 'trashedCount'));
     }
 
     public function create()
@@ -54,7 +56,7 @@ class ChannelPartnerController extends Controller
         $request->validate([
             'name'                => 'required|string|max:100',
             'mobile'              => 'required|digits:10',
-            'email'               => 'required|email|unique:channel_partners,email',
+            'email'               => ['required', 'email', Rule::unique('channel_partners', 'email')->whereNull('deleted_at')],
             'address'             => 'nullable|string|max:255',
             'city'                => 'nullable|string|max:50',
             'state'               => 'nullable|string|max:50',
@@ -187,16 +189,50 @@ class ChannelPartnerController extends Controller
         try {
             $channelPartner->delete();
             if (request()->wantsJson()) {
-                return response()->json(['success' => true, 'message' => "Partner \"{$channelPartner->name}\" deleted."]);
+                return response()->json(['success' => true, 'message' => "Partner \"{$channelPartner->name}\" archived successfully."]);
             }
-            return redirect()->route('master.channel-partners.index')->with('success', 'Partner deleted!');
+            return redirect()->route('master.channel-partners.index')->with('success', "Partner \"{$channelPartner->name}\" archived. You can restore from the Archived list.");
         } catch (Throwable $e) {
-            $msg = 'Cannot delete this partner — they may have linked data.';
+            $msg = 'Could not archive this partner. Please try again.';
             if (request()->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
             return back()->with('error', $msg);
         }
+    }
+
+    public function trashed()
+    {
+        $partners = ChannelPartner::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->orderByDesc('deleted_at')
+            ->get();
+
+        return view('institute.master.channel-partners.trashed', compact('partners'));
+    }
+
+    public function restore(int $id)
+    {
+        $partner = ChannelPartner::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->findOrFail($id);
+
+        $partner->restore();
+
+        return redirect()->route('master.channel-partners.trashed')
+            ->with('success', "Partner \"{$partner->name}\" restored successfully.");
+    }
+
+    public function forceDelete(int $id)
+    {
+        $partner = ChannelPartner::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->findOrFail($id);
+
+        $partner->forceDelete();
+
+        return redirect()->route('master.channel-partners.trashed')
+            ->with('success', "Partner \"{$partner->name}\" permanently deleted.");
     }
 
     public function toggle(ChannelPartner $channelPartner)

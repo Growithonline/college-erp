@@ -188,13 +188,17 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('centers/{id}/force-delete',      [CenterController::class, 'forceDelete'])->name('centers.force-delete');
 
         Route::resource('channel-partners', ChannelPartnerController::class);
-        Route::post('channel-partners/{channelPartner}/toggle', [ChannelPartnerController::class, 'toggle'])
-             ->name('channel-partners.toggle');
+        Route::post('channel-partners/{channelPartner}/toggle',      [ChannelPartnerController::class, 'toggle'])->name('channel-partners.toggle');
+        Route::get('channel-partners/archived/list',                 [ChannelPartnerController::class, 'trashed'])->name('channel-partners.trashed');
+        Route::post('channel-partners/{id}/restore',                 [ChannelPartnerController::class, 'restore'])->name('channel-partners.restore');
+        Route::delete('channel-partners/{id}/force-delete',          [ChannelPartnerController::class, 'forceDelete'])->name('channel-partners.force-delete');
 
         Route::resource('staff-roles', StaffRoleController::class);
         Route::resource('staff-members', StaffMemberController::class);
-        Route::post('staff-members/{staffMember}/toggle', [StaffMemberController::class, 'toggle'])
-             ->name('staff-members.toggle');
+        Route::post('staff-members/{staffMember}/toggle',            [StaffMemberController::class, 'toggle'])->name('staff-members.toggle');
+        Route::get('staff-members/archived/list',                    [StaffMemberController::class, 'trashed'])->name('staff-members.trashed');
+        Route::post('staff-members/{id}/restore',                    [StaffMemberController::class, 'restore'])->name('staff-members.restore');
+        Route::delete('staff-members/{id}/force-delete',             [StaffMemberController::class, 'forceDelete'])->name('staff-members.force-delete');
 
         // Phase 8: Bank Accounts & Payment Permissions
         Route::get('bank-accounts',                        [BankAccountController::class, 'index'])->name('bank-accounts.index');

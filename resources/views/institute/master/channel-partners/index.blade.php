@@ -6,11 +6,19 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold">Channel Partners</h4>
-        <small class="text-muted">{{ $partners->count() }} partner(s) registered</small>
+        <small class="text-muted">{{ $partners->count() }} active partner(s)</small>
     </div>
-    <a href="{{ route('master.channel-partners.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i> Add Partner
-    </a>
+    <div class="d-flex gap-2">
+        @if($trashedCount > 0)
+        <a href="{{ route('master.channel-partners.trashed') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-archive me-1"></i> Archived
+            <span class="badge bg-secondary ms-1">{{ $trashedCount }}</span>
+        </a>
+        @endif
+        <a href="{{ route('master.channel-partners.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Partner
+        </a>
+    </div>
 </div>
 
 @if($partners->isEmpty())
@@ -90,9 +98,9 @@
                                    class="btn btn-outline-primary btn-sm">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <button type="button" class="btn btn-outline-danger btn-sm"
+                                <button type="button" class="btn btn-outline-secondary btn-sm" title="Archive Partner"
                                         onclick="openDeleteModal('{{ route('master.channel-partners.destroy', $partner) }}', '{{ addslashes($partner->name) }}')">
-                                    <i class="bi bi-trash"></i>
+                                    <i class="bi bi-archive"></i>
                                 </button>
                             </div>
                         </td>
@@ -104,22 +112,22 @@
     </div>
 @endif
 
-{{-- Delete Confirmation Modal --}}
+{{-- Archive Confirmation Modal --}}
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-trash me-2"></i>Delete Partner</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-archive me-2 text-secondary"></i>Archive Partner</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-1">Are you sure you want to delete <strong id="deleteTargetName"></strong>?</p>
-                <p class="text-muted small mb-0">This action cannot be undone.</p>
+                <p class="mb-1">Archive <strong id="deleteTargetName"></strong>?</p>
+                <p class="text-muted small mb-0">Partner will be deactivated and moved to Archived list. Wallet and commission data stays safe. You can restore anytime.</p>
             </div>
             <div class="modal-footer border-0 pt-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="bi bi-trash me-1"></i>Delete
+                <button type="button" class="btn btn-outline-secondary" id="confirmDeleteBtn">
+                    <i class="bi bi-archive me-1"></i>Archive
                 </button>
             </div>
         </div>
@@ -162,7 +170,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async func
         window.showToast?.('Network error. Please try again.', 'danger');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-trash me-1"></i>Delete';
+        btn.innerHTML = '<i class="bi bi-archive me-1"></i>Archive';
     }
 });
 </script>

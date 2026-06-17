@@ -98,8 +98,9 @@ class StaffMemberController extends Controller
 
         $hasCoursePermTable = $this->optionalTableExists('staff_course_permissions');
         $hasOverridesTable  = $this->optionalTableExists('staff_permission_overrides');
+        $trashedCount = StaffMember::onlyTrashed()->where('institute_id', $this->instituteId())->count();
 
-        return view('institute.master.staff.members.index', compact('staff', 'hasCoursePermTable', 'hasOverridesTable'));
+        return view('institute.master.staff.members.index', compact('staff', 'hasCoursePermTable', 'hasOverridesTable', 'trashedCount'));
     }
 
     public function create()
@@ -149,7 +150,7 @@ class StaffMemberController extends Controller
             'staff_role_id' => ['required', Rule::exists('staff_roles', 'id')->where('institute_id', $this->instituteId())],
             'name'          => 'required|string|max:100',
             'mobile'        => 'required|digits:10',
-            'email'         => 'required|email|unique:staff_members,email',
+            'email'         => ['required', 'email', Rule::unique('staff_members', 'email')->whereNull('deleted_at')],
             'joining_date'  => 'nullable|date',
             'salary'        => 'nullable|numeric|min:0',
             'staff_category' => 'required|in:Teaching,Office,Non-Teaching,Guest',
@@ -520,16 +521,50 @@ class StaffMemberController extends Controller
         try {
             $staffMember->delete();
             if (request()->wantsJson()) {
-                return response()->json(['success' => true, 'message' => "Staff \"{$staffMember->name}\" deleted."]);
+                return response()->json(['success' => true, 'message' => "Staff \"{$staffMember->name}\" archived successfully."]);
             }
-            return redirect()->route('master.staff-members.index')->with('success', 'Staff deleted!');
+            return redirect()->route('master.staff-members.index')->with('success', "Staff \"{$staffMember->name}\" archived. You can restore from the Archived list.");
         } catch (Throwable $e) {
-            $msg = 'Cannot delete this staff member — they may have linked data.';
+            $msg = 'Could not archive this staff member. Please try again.';
             if (request()->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
             return back()->with('error', $msg);
         }
+    }
+
+    public function trashed()
+    {
+        $staff = StaffMember::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->orderByDesc('deleted_at')
+            ->get();
+
+        return view('institute.master.staff.members.trashed', compact('staff'));
+    }
+
+    public function restore(int $id)
+    {
+        $member = StaffMember::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->findOrFail($id);
+
+        $member->restore();
+
+        return redirect()->route('master.staff-members.trashed')
+            ->with('success', "Staff \"{$member->name}\" restored successfully.");
+    }
+
+    public function forceDelete(int $id)
+    {
+        $member = StaffMember::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->findOrFail($id);
+
+        $member->forceDelete();
+
+        return redirect()->route('master.staff-members.trashed')
+            ->with('success', "Staff \"{$member->name}\" permanently deleted.");
     }
 
     public function toggle(StaffMember $staffMember)

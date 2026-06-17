@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class ChannelPartner extends Authenticatable
 {
+    use SoftDeletes;
     private const PERMISSION_MAP = [
         'admission_add'  => 'can_add_admission',
         'student_view'   => 'can_view_students',
