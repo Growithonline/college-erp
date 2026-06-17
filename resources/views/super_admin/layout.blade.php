@@ -87,23 +87,91 @@
     </div>
 
     <div class="sa-content">
-        @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show py-2 mb-3">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
-        </div>
-        @endif
-        @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show py-2 mb-3">
-            <i class="bi bi-exclamation-triangle me-2"></i>{{ $errors->first() }}
-            <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
-        </div>
-        @endif
-
         @yield('content')
     </div>
 </div>
 
+{{-- Toast Notifications --}}
+<div id="toast-container" style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;flex-direction:column;gap:10px;min-width:320px;max-width:400px;"></div>
+
+@if(session('success'))
+<script>window.__flashToast = { type: 'success', message: @json(session('success')) };</script>
+@elseif(session('error'))
+<script>window.__flashToast = { type: 'error', message: @json(session('error')) };</script>
+@elseif($errors->any())
+<script>window.__flashToast = { type: 'error', message: @json($errors->first()) };</script>
+@endif
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+    var config = {
+        success: { bg: '#f0fdf4', border: '#22c55e', icon: '✓', iconBg: '#22c55e', title: 'Success' },
+        error:   { bg: '#fef2f2', border: '#ef4444', icon: '✕', iconBg: '#ef4444', title: 'Error' },
+        warning: { bg: '#fffbeb', border: '#f59e0b', icon: '!', iconBg: '#f59e0b', title: 'Warning' },
+    };
+
+    window.showToast = function (type, message, duration) {
+        duration = duration || 4500;
+        var c = config[type] || config.success;
+        var container = document.getElementById('toast-container');
+
+        var toast = document.createElement('div');
+        toast.style.cssText = [
+            'background:' + c.bg,
+            'border:1px solid ' + c.border,
+            'border-left:4px solid ' + c.border,
+            'border-radius:12px',
+            'box-shadow:0 8px 32px rgba(0,0,0,0.12)',
+            'padding:14px 16px 10px',
+            'display:flex',
+            'gap:12px',
+            'align-items:flex-start',
+            'opacity:0',
+            'transform:translateY(16px)',
+            'transition:opacity 0.28s ease,transform 0.28s ease',
+            'overflow:hidden',
+            'position:relative',
+        ].join(';');
+
+        toast.innerHTML =
+            '<div style="width:28px;height:28px;border-radius:50%;background:' + c.iconBg + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + c.icon + '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:2px;">' + c.title + '</div>' +
+                '<div style="font-size:13px;color:#475569;line-height:1.45;word-break:break-word;">' + message + '</div>' +
+                '<div class="toast-bar" style="height:3px;border-radius:2px;background:' + c.border + ';margin-top:10px;width:100%;transform-origin:left;transition:width linear ' + duration + 'ms;"></div>' +
+            '</div>' +
+            '<button onclick="dismissToast(this.closest(\'[data-toast]\'))" style="background:none;border:none;padding:0;cursor:pointer;color:#94a3b8;font-size:16px;line-height:1;flex-shrink:0;margin-top:-2px;">&#x2715;</button>';
+
+        toast.setAttribute('data-toast', '1');
+        container.appendChild(toast);
+
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateY(0)';
+                var bar = toast.querySelector('.toast-bar');
+                if (bar) { bar.style.width = '0%'; }
+            });
+        });
+
+        var timer = setTimeout(function () { dismissToast(toast); }, duration);
+        toast.__timer = timer;
+    };
+
+    window.dismissToast = function (toast) {
+        if (!toast || toast.__dismissed) return;
+        toast.__dismissed = true;
+        clearTimeout(toast.__timer);
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+    };
+
+    if (window.__flashToast) {
+        showToast(window.__flashToast.type, window.__flashToast.message);
+    }
+})();
+</script>
 </body>
 </html>
