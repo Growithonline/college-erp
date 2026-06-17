@@ -1080,16 +1080,11 @@
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <script>window.__flashToast = { message: @json(session('success')), type: 'success' };</script>
+    @elseif(session('error'))
+    <script>window.__flashToast = { message: @json(session('error')), type: 'danger' };</script>
+    @elseif($errors->any())
+    <script>window.__flashToast = { message: @json($errors->first()), type: 'danger' };</script>
     @endif
 
     @yield('content')
@@ -1098,30 +1093,82 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 {{-- Global Toast Container --}}
-<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1100;">
-    <div id="globalToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body fw-semibold" id="globalToastBody"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    </div>
-</div>
+<div id="toast-container" style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;flex-direction:column;gap:10px;min-width:320px;max-width:400px;"></div>
 
 <script>
-window.showToast = function (message, type) {
-    type = type || 'danger';
-    var toast = document.getElementById('globalToast');
-    var body  = document.getElementById('globalToastBody');
-    toast.className = 'toast align-items-center text-bg-' + type + ' border-0';
-    body.textContent = message;
-    bootstrap.Toast.getOrCreateInstance(toast, { delay: 6000 }).show();
-};
+(function () {
+    var cfg = {
+        success: { bg:'#f0fdf4', border:'#22c55e', icon:'✓', iconBg:'#22c55e', title:'Success' },
+        danger:  { bg:'#fef2f2', border:'#ef4444', icon:'✕', iconBg:'#ef4444', title:'Error' },
+        warning: { bg:'#fffbeb', border:'#f59e0b', icon:'!', iconBg:'#f59e0b', title:'Warning' },
+    };
 
-// Global handler — catches unhandled promise rejections anywhere on the page
-window.addEventListener('unhandledrejection', function (event) {
-    console.error('Unhandled promise rejection:', event.reason);
-    window.showToast('An unexpected error occurred. Please refresh the page.', 'danger');
-});
+    window.showToast = function (message, type, duration) {
+        type     = type     || 'danger';
+        duration = duration || 4500;
+        var c   = cfg[type] || cfg.danger;
+        var box = document.getElementById('toast-container');
+
+        var t = document.createElement('div');
+        t.setAttribute('data-toast','1');
+        t.style.cssText = [
+            'background:'+c.bg,
+            'border:1px solid '+c.border,
+            'border-left:4px solid '+c.border,
+            'border-radius:12px',
+            'box-shadow:0 8px 32px rgba(0,0,0,0.12)',
+            'padding:14px 16px 10px',
+            'display:flex',
+            'gap:12px',
+            'align-items:flex-start',
+            'opacity:0',
+            'transform:translateY(16px)',
+            'transition:opacity 0.28s ease,transform 0.28s ease',
+            'overflow:hidden',
+            'position:relative',
+        ].join(';');
+
+        t.innerHTML =
+            '<div style="width:28px;height:28px;border-radius:50%;background:'+c.iconBg+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+c.icon+'</div>'+
+            '<div style="flex:1;min-width:0;">'+
+                '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:2px;">'+c.title+'</div>'+
+                '<div style="font-size:13px;color:#475569;line-height:1.45;word-break:break-word;">'+message+'</div>'+
+                '<div class="toast-bar" style="height:3px;border-radius:2px;background:'+c.border+';margin-top:10px;width:100%;transform-origin:left;transition:width linear '+duration+'ms;"></div>'+
+            '</div>'+
+            '<button onclick="dismissToast(this.closest(\'[data-toast]\'))" style="background:none;border:none;padding:0;cursor:pointer;color:#94a3b8;font-size:16px;line-height:1;flex-shrink:0;margin-top:-2px;">&#x2715;</button>';
+
+        box.appendChild(t);
+
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                t.style.opacity   = '1';
+                t.style.transform = 'translateY(0)';
+                var bar = t.querySelector('.toast-bar');
+                if (bar) bar.style.width = '0%';
+            });
+        });
+
+        var timer = setTimeout(function () { dismissToast(t); }, duration);
+        t.__timer = timer;
+    };
+
+    window.dismissToast = function (t) {
+        if (!t || t.__dismissed) return;
+        t.__dismissed = true;
+        clearTimeout(t.__timer);
+        t.style.opacity   = '0';
+        t.style.transform = 'translateY(8px)';
+        setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
+    };
+
+    window.addEventListener('unhandledrejection', function (e) {
+        window.showToast('An unexpected error occurred. Please refresh the page.', 'danger');
+    });
+
+    if (window.__flashToast) {
+        showToast(window.__flashToast.message, window.__flashToast.type);
+    }
+})();
 </script>
 
 @stack('scripts')

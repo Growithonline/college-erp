@@ -13,12 +13,6 @@
     </a>
 </div>
 
-@if($errors->has('delete'))
-<div class="alert alert-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>{{ $errors->first('delete') }}</div>
-@endif
-@if(session('error'))
-<div class="alert alert-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}</div>
-@endif
 
 @if($centers->isEmpty())
 <div class="card border-0 shadow-sm text-center py-5">
