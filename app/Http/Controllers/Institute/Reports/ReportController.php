@@ -2828,10 +2828,10 @@ class ReportController extends Controller
 
         $sessions     = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courseTypes  = \App\Models\CourseType::where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
-        $courses      = Course::where('institute_id', $instituteId)->where('status', true)->with('courseType')->orderBy('name')->get();
+        $courses      = Course::where('institute_id', $instituteId)->where('status', true)->with('type')->orderBy('name')->get();
         $subjects     = \App\Models\Subject::where('institute_id', $instituteId)->orderBy('name')->get();
 
-        $query = PracticalFeeTokenBatch::with(['course.courseType', 'subject', 'session', 'entries.student'])
+        $query = PracticalFeeTokenBatch::with(['course.type', 'subject', 'session', 'entries.student'])
             ->where('institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
             ->when($request->course_type_id, fn($q) => $q->whereHas('course', fn($cq) => $cq->where('course_type_id', $request->course_type_id)))
@@ -2880,7 +2880,7 @@ class ReportController extends Controller
                         $rowNum++,
                         $b->session?->name ?? '',
                         $b->title ?? ('Token #' . $b->id),
-                        $b->course?->courseType?->name ?? '',
+                        $b->course?->type?->name ?? '',
                         $b->course?->name ?? '',
                         $b->subject?->name ?? '',
                         $b->semester ? 'S' . $b->semester : '',
