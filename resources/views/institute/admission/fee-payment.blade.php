@@ -943,7 +943,7 @@ function togglePaymentFields() {
         dtInput.value = today + 'T' + timePart;
         // Lock date to today — only allow time changes
         dtInput.min = today + 'T00:00';
-        dtInput.max = today + 'T23:59';
+        dtInput.max = today + 'T' + timePart;
     }
     if (refInput)  refInput.required  = isNonCash;
     if (dtInput)   dtInput.required   = isNonCash;

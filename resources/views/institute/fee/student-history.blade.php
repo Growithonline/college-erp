@@ -138,7 +138,14 @@
                                 <span class="badge bg-danger" style="font-size:9px;">Cancelled</span>
                             @endif
                         </td>
-                        <td class="hcol_date small">{{ $inv->payment_date->format('d M Y') }}</td>
+                        <td class="hcol_date small">
+                            {{ $inv->payment_date->format('d M Y') }}
+                            @if($inv->payment_datetime && $inv->payment_mode !== 'cash')
+                                <div class="text-muted" style="font-size:10px;" title="Actual payment received time">
+                                    <i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('h:i A') }}
+                                </div>
+                            @endif
+                        </td>
                         <td class="hcol_sem text-center">
                             @if($inv->semester)
                                 <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">S{{ $inv->semester }}</span>

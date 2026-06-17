@@ -3905,10 +3905,7 @@ class AdmissionController extends Controller
                 'bank_name'           => $request->bank_name,
                 'payment_date'        => $paymentDate,
                 'payment_datetime'    => $paymentDatetime,
-                'remarks'             => trim(implode("\n", array_filter([
-                    $request->remarks,
-                    $paymentDatetimeNote,
-                ]))) ?: null,
+                'remarks'             => $request->remarks ?: null,
                 'collected_by'        => $this->authenticatedUser()?->name,
                 'collected_by_staff_id' => auth()->guard('staff')->id(),
                 'collected_by_center_id' => auth()->guard('center')->id(),

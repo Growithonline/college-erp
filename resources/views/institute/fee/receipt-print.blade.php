@@ -362,9 +362,7 @@ body { font-family: Arial, sans-serif; background:#f1f5f9; }
                 </div>
                 <div class="inv-date">
                     <b>{{ \Carbon\Carbon::parse($rDate)->format('d M Y') }}</b><br>
-                    @if($receipt->payment_datetime)
-                        <span style="font-size:8px;">{{ \Carbon\Carbon::parse($receipt->payment_datetime)->format('h:i A') }}</span>
-                    @endif
+                    <span style="font-size:8px;">{{ now()->format('h:i A') }}</span>
                 </div>
             </div>
 
@@ -522,7 +520,7 @@ body { font-family: Arial, sans-serif; background:#f1f5f9; }
             </div>
 
             {{-- 3. Payment / receipt details --}}
-            <div style="{{ $fr }}"><span style="white-space:nowrap;">Date:</span><span>{{ \Carbon\Carbon::parse($rDate)->format('d/m/Y') }} @if(isset($receipt->payment_datetime) && $receipt->payment_datetime) {{ \Carbon\Carbon::parse($receipt->payment_datetime)->format('h:i A') }}@endif</span></div>
+            <div style="{{ $fr }}"><span style="white-space:nowrap;">Date:</span><span>{{ \Carbon\Carbon::parse($rDate)->format('d/m/Y') }} {{ now()->format('h:i A') }}</span></div>
             <div style="{{ $fr }}"><span style="white-space:nowrap;">Receipt No:</span><span style="text-align:right;max-width:44mm;word-break:break-word;">{{ $rNo }}</span></div>
             <div style="{{ $fr }}"><span style="white-space:nowrap;">Mode:</span><span>{{ strtoupper($payMode) }}</span></div>
             @if($receipt->transaction_ref ?? null)

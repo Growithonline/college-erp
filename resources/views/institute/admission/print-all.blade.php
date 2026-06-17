@@ -726,9 +726,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
             </div>
             <div class="inv-date">
                 <b>{{ \Carbon\Carbon::parse($invoice->payment_date)->format('d M Y') }}</b><br>
-                @if($invoice->payment_datetime)
-                    <span style="font-size:8px;">{{ \Carbon\Carbon::parse($invoice->payment_datetime)->format('h:i A') }}</span>
-                @endif
+                <span style="font-size:8px;">{{ now()->format('h:i A') }}</span>
             </div>
         </div>
 
@@ -853,7 +851,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
     <div style="text-align:center;font-size:11px;font-weight:700;border:1px solid #000;padding:2px;margin:3px 0;">Fee Receipt ({{ $student->session->name ?? '' }})</div>
 
     {{-- 3. Payment / receipt details --}}
-    <div style="{{ $fr }}"><span style="white-space:nowrap;">Date:</span><span>{{ $invoice->payment_date?->format('d/m/Y') }}@if($invoice->payment_datetime) {{ $invoice->payment_datetime->format('h:i A') }}@endif</span></div>
+    <div style="{{ $fr }}"><span style="white-space:nowrap;">Date:</span><span>{{ $invoice->payment_date?->format('d/m/Y') }} {{ now()->format('h:i A') }}</span></div>
     <div style="{{ $fr }}"><span style="white-space:nowrap;">Receipt No:</span><span style="text-align:right;max-width:44mm;word-break:break-word;">{{ $invoice->invoice_no }}</span></div>
     <div style="{{ $fr }}"><span style="white-space:nowrap;">Mode:</span><span>{{ strtoupper($invoice->payment_mode ?? '') }}</span></div>
     @if($invoice->transaction_ref)
@@ -997,7 +995,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
             <table class="ftbl" style="margin-top:8px;">
                 <tr>
                     <td class="lc">Invoice No</td><td class="vc">{{ $invoice->invoice_no }}</td>
-                    <td class="lc">Payment Date & Time</td><td class="vc">{{ $invoice->payment_date?->format('d-m-Y') }}@if($invoice->payment_datetime) {{ $invoice->payment_datetime->format('h:i A') }}@endif</td>
+                    <td class="lc">Payment Date & Time</td><td class="vc">{{ $invoice->payment_date?->format('d-m-Y') }} {{ now()->format('h:i A') }}</td>
                 </tr>
                 <tr>
                     <td class="lc">Payment Mode</td><td class="vc">{{ strtoupper($invoice->payment_mode ?? '') }}</td>
@@ -1102,7 +1100,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
     {{-- Fee section --}}
     <div style="border-top:1px dashed #333;border-bottom:1px dashed #333;text-align:center;font-size:10px;font-weight:700;margin:3px 0;padding:1px 0;">FEE RECEIPT</div>
     <div style="{{ $sr }}"><span>Receipt No:</span><span>{{ $invoice->invoice_no }}</span></div>
-    <div style="{{ $sr }}"><span>Date:</span><span>{{ $invoice->payment_date?->format('d/m/Y') }}@if($invoice->payment_datetime) {{ $invoice->payment_datetime->format('h:i A') }}@endif</span></div>
+    <div style="{{ $sr }}"><span>Date:</span><span>{{ $invoice->payment_date?->format('d/m/Y') }} {{ now()->format('h:i A') }}</span></div>
     <div style="{{ $sr }}"><span>Pay Mode:</span><span>{{ strtoupper($invoice->payment_mode ?? '') }}</span></div>
     @if($invoice->transaction_ref)
     <div style="{{ $sr }}"><span>Ref:</span><span>{{ $invoice->transaction_ref }}</span></div>

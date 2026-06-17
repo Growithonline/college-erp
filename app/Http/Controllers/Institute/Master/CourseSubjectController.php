@@ -271,7 +271,7 @@ class CourseSubjectController extends Controller
             'optional'   => $subjects->where('subject_role', 'optional')->values(),
         ];
 
-        // Stream year rules (min/max minor count)
+        // Stream year rules (min/max major & minor count)
         $yearRule = \App\Models\StreamYearSubjectRule::where('course_stream_id', (int) $validated['stream_id'])
             ->where('year_number', (int) $validated['year_number'])
             ->first();
@@ -280,6 +280,8 @@ class CourseSubjectController extends Controller
             'success'   => true,
             'grouped'   => $grouped,
             'year_rule' => $yearRule ? [
+                'major_min' => $yearRule->major_min,
+                'major_max' => $yearRule->major_max,
                 'minor_min' => $yearRule->minor_optional_min,
                 'minor_max' => $yearRule->minor_optional_max,
             ] : null,

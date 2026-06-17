@@ -171,6 +171,9 @@
                             <span class="badge bg-{{ $color }} bg-opacity-10 text-{{ $color }} border border-{{ $color }}">
                                 {{ strtoupper($inv->payment_mode) }}
                             </span>
+                            @if($inv->payment_datetime && $inv->payment_mode !== 'cash')
+                                <div class="text-muted" style="font-size:10px;"><i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('h:i A') }}</div>
+                            @endif
                         </td>
                         <td class="text-end fw-bold text-success">Rs {{ number_format($inv->paid_amount) }}</td>
                         <td class="text-center">

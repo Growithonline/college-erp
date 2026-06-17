@@ -2089,11 +2089,17 @@ function toggleQuickBankAccount() {
     if (timeWrap && timeInput) {
         timeWrap.style.display = isCash ? 'none' : '';
         timeInput.required = !isCash;
-        // Pre-fill with current LOCAL datetime if empty
-        if (!isCash && !timeInput.value) {
+        // Pre-fill with current LOCAL datetime if empty; always cap max to current time
+        if (!isCash) {
             const now = new Date();
             const pad = n => String(n).padStart(2, '0');
-            timeInput.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            const today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+            const curr  = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            if (!timeInput.value) {
+                timeInput.value = `${today}T${curr}`;
+            }
+            timeInput.min = `${today}T00:00`;
+            timeInput.max = `${today}T${curr}`;
         }
     }
 }

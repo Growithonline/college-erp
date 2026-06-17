@@ -57,7 +57,12 @@
                         <div class="fw-semibold">{{ $inv->student?->name ?? '—' }}</div>
                         <div class="text-muted" style="font-size:11px;">{{ $inv->student?->student_uid }}</div>
                     </td>
-                    <td class="small text-muted">{{ $inv->payment_date?->format('d M Y') }}</td>
+                    <td class="small text-muted">
+                        {{ $inv->payment_date?->format('d M Y') }}
+                        @if($inv->payment_datetime && $inv->payment_mode !== 'cash')
+                            <div style="font-size:10px;"><i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('h:i A') }}</div>
+                        @endif
+                    </td>
                     <td class="text-center">
                         @if($inv->semester)
                             <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">S{{ $inv->semester }}</span>

@@ -1884,7 +1884,7 @@ function togglePaymentFields() {
         const _t = String(_n.getHours()).padStart(2,'0') + ':' + String(_n.getMinutes()).padStart(2,'0');
         paymentDatetimeInput.value = _d + 'T' + _t;
         paymentDatetimeInput.min   = _d + 'T00:00';
-        paymentDatetimeInput.max   = _d + 'T23:59';
+        paymentDatetimeInput.max   = _d + 'T' + _t;
     }
     if (paymentDateLabel) {
         paymentDateLabel.innerHTML = isNonCash
