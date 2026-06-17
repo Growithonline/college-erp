@@ -1449,7 +1449,7 @@ class FeeCollectionController extends Controller
             'Invoice No', 'Date', 'Time', 'Student', 'Student ID', 'Roll No',
             'Father Name', 'Mother Name', 'Course', 'Stream', 'Year', 'Sem',
             'Fee Items', 'Bank / Account', 'Transaction Ref', 'Collected By',
-            'Payment Mode', 'Collection (Rs)', 'Fine (Rs)', 'Discount (Rs)', 'Total (Rs)', 'Status',
+            'Payment Mode', 'Collection (Rs)', 'Fine (Rs)', 'Discount (Rs)', 'Due (Rs)', 'Total (Rs)', 'Status',
         ];
 
         $expRows = $invoices->map(fn($inv) => [
@@ -1473,6 +1473,7 @@ class FeeCollectionController extends Controller
             number_format($inv->paid_amount, 2),
             number_format($inv->items->sum('fine'), 2),
             number_format($inv->discount ?? 0, 2),
+            number_format(max(0, ($inv->total_amount ?? 0) - $inv->paid_amount - ($inv->discount ?? 0)), 2),
             number_format($inv->paid_amount + ($inv->discount ?? 0), 2),
             $inv->is_cancelled ? 'Cancelled' : 'Active',
         ])->toArray();

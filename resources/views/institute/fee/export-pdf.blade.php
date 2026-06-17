@@ -6,78 +6,77 @@
     <style>
         @page { size: A4 landscape; margin: 7mm 6mm 7mm 6mm; }
         * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 7.5px; color: #1f2937; margin:0; padding:0; line-height:1.2; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 7.5px; color: #000; margin:0; padding:0; line-height:1.2; }
 
         /* ── Header ── */
-        .hdr { display:table; width:100%; border-bottom:2px solid #1e3a5f; padding-bottom:4px; margin-bottom:4px; }
+        .hdr { display:table; width:100%; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:4px; }
         .hdr-l, .hdr-m, .hdr-r { display:table-cell; vertical-align:middle; }
-        .hdr-l { width:40px; padding-right:6px; }
+        .hdr-l { width:42px; padding-right:6px; }
         .logo-box {
-            width:36px; height:36px; border:1px solid #cbd5e1; border-radius:5px;
-            text-align:center; line-height:36px; font-size:13px; font-weight:800;
-            color:#1d4ed8; overflow:hidden; background:#eff6ff;
+            width:36px; height:36px; border:1.5px solid #000; border-radius:4px;
+            text-align:center; line-height:36px; font-size:14px; font-weight:900;
+            color:#000; overflow:hidden; background:#f0f0f0;
         }
-        .logo-box img { width:36px; height:36px; object-fit:cover; border-radius:5px; }
-        .inst-name { font-size:13px; font-weight:800; color:#0f172a; }
-        .inst-sub  { font-size:7px; color:#1d4ed8; font-weight:700; }
-        .hdr-r { text-align:right; font-size:7px; color:#475569; white-space:nowrap; }
+        .logo-box img { width:36px; height:36px; object-fit:cover; border-radius:4px; display:block; }
+        .inst-name { font-size:14px; font-weight:900; color:#000; }
+        .inst-sub  { font-size:7.5px; color:#000; font-weight:700; }
+        .hdr-r { text-align:right; font-size:7px; color:#000; font-weight:600; white-space:nowrap; }
         .hdr-r div { margin-bottom:1px; }
 
         /* ── Summary row ── */
         .sum-bar { margin-bottom:4px; }
         .sum-bar span {
             display:inline-block; border-radius:3px; padding:2px 7px; margin-right:4px;
-            font-size:7px; font-weight:700; white-space:nowrap;
+            font-size:7px; font-weight:800; white-space:nowrap; border:1px solid #000; color:#000;
         }
-        .s-green  { background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; }
-        .s-blue   { background:#dbeafe; color:#1d4ed8; border:1px solid #bfdbfe; }
-        .s-orange { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
-        .s-red    { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+        .s-green  { background:#c8f5d8; }
+        .s-blue   { background:#c8e0ff; }
+        .s-orange { background:#ffe5c0; }
+        .s-red    { background:#ffd0d0; }
 
-        /* ── Mode breakdown ── */
-        .mode-bar { margin-bottom:4px; }
+        /* ── Mode breakdown inline badges ── */
         .mb {
             display:inline-block; border-radius:3px; padding:1px 5px; margin-right:3px;
-            font-size:6.5px; font-weight:700; white-space:nowrap;
+            font-size:6.5px; font-weight:800; white-space:nowrap; border:1px solid #aaa; color:#000;
         }
-        .m-cash   { background:#dcfce7; color:#15803d; }
-        .m-upi    { background:#dbeafe; color:#1d4ed8; }
-        .m-online { background:#cffafe; color:#0e7490; }
-        .m-cheque { background:#fef9c3; color:#a16207; }
-        .m-dd     { background:#f3f4f6; color:#374151; }
-        .m-neft   { background:#f3e8ff; color:#7e22ce; }
-        .m-rtgs   { background:#fce7f3; color:#be185d; }
+        .m-cash   { background:#c8f5d8; }
+        .m-upi    { background:#c8e0ff; }
+        .m-online { background:#c0f5f5; }
+        .m-cheque { background:#fff3c0; }
+        .m-dd     { background:#e8e8e8; }
+        .m-neft   { background:#e8d8ff; }
+        .m-rtgs   { background:#ffd8f0; }
 
         /* ── Table ── */
         table.t { width:100%; border-collapse:collapse; table-layout:fixed; }
         table.t thead th {
-            background:#1e3a5f; color:#fff; font-size:6.5px; font-weight:700;
-            padding:3px 3px; text-align:left; white-space:nowrap; overflow:hidden;
+            background:#1e3a5f; color:#fff; font-size:6.5px; font-weight:800;
+            padding:2px 2px; text-align:left; white-space:nowrap; overflow:hidden;
         }
         table.t thead th.r { text-align:right; }
         table.t thead th.c { text-align:center; }
         table.t tbody td {
-            padding:2px 3px; font-size:7px; border-bottom:1px solid #e5e7eb;
-            vertical-align:middle; overflow:hidden; white-space:nowrap;
+            padding:2px 2px; font-size:6.5px; font-weight:600; color:#000;
+            border-bottom:1px solid #bbb; vertical-align:middle;
+            overflow:hidden; white-space:nowrap;
         }
-        table.t tbody tr:nth-child(even) { background:#f8fafc; }
-        table.t tbody tr.cx { background:#fef2f2 !important; color:#b91c1c; }
+        table.t tbody tr:nth-child(even) { background:#f0f0f0; }
+        table.t tbody tr.cx { background:#ffe0e0 !important; }
         table.t tfoot td {
-            background:#e2e8f0; font-weight:700; font-size:7px;
-            padding:3px; border-top:1.5px solid #94a3b8;
+            background:#d0d8e8; font-weight:800; font-size:7.5px; color:#000;
+            padding:3px; border-top:2px solid #555;
         }
-        .r  { text-align:right; }
-        .c  { text-align:center; }
-        .fw { font-weight:700; }
-        .g  { color:#15803d; }
-        .rd { color:#dc2626; }
-        .or { color:#d97706; }
-        .mu { color:#9ca3af; }
+        .r   { text-align:right; }
+        .c   { text-align:center; }
+        .fw  { font-weight:800; }
+        .g   { color:#000; font-weight:800; }
+        .rd  { color:#000; font-weight:800; }
+        .or  { color:#000; font-weight:800; }
 
         /* ── Footer ── */
-        .ftr { margin-top:4px; border-top:1px solid #e2e8f0; padding-top:3px;
+        .ftr { margin-top:4px; border-top:1px solid #000; padding-top:3px;
                display:table; width:100%; }
-        .ftr-l, .ftr-r { display:table-cell; font-size:6.5px; color:#94a3b8; }
+        .ftr-l, .ftr-r { display:table-cell; font-size:6.5px; color:#000; font-weight:600; }
         .ftr-r { text-align:right; }
 
         @media print {
@@ -87,14 +86,27 @@
 </head>
 <body>
 
-{{-- ── HEADER ──────────────────────────────────────────────────── --}}
+@php
+    /* Logo: try storage/ prefix first (Laravel disk pattern), then direct public path */
+    $logoUrl = null;
+    if (!empty($institute->image)) {
+        if (file_exists(public_path('storage/' . $institute->image))) {
+            $logoUrl = asset('storage/' . $institute->image);
+        } elseif (file_exists(public_path($institute->image))) {
+            $logoUrl = asset($institute->image);
+        }
+    }
+    $initials = strtoupper(substr($institute->short_name ?: $institute->name, 0, 2));
+@endphp
+
+{{-- ── HEADER ─────────────────────────────────────────────────── --}}
 <div class="hdr">
     <div class="hdr-l">
         <div class="logo-box">
-            @if(!empty($institute->image) && file_exists(public_path($institute->image)))
-                <img src="{{ public_path($institute->image) }}" alt="Logo">
+            @if($logoUrl)
+                <img src="{{ $logoUrl }}" alt="Logo">
             @else
-                {{ strtoupper(substr($institute->short_name ?: $institute->name, 0, 2)) }}
+                {{ $initials }}
             @endif
         </div>
     </div>
@@ -109,7 +121,7 @@
     </div>
 </div>
 
-{{-- ── SUMMARY + MODE BAR ───────────────────────────────────────── --}}
+{{-- ── SUMMARY + MODE BAR ──────────────────────────────────────── --}}
 @php
     $activeInvoices = $invoices->where('is_cancelled', false);
     $totalFine      = $activeInvoices->sum(fn($i) => $i->items->sum('fine'));
@@ -130,28 +142,29 @@
     @endif
 </div>
 
-{{-- ── TABLE ────────────────────────────────────────────────────── --}}
+{{-- ── TABLE ───────────────────────────────────────────────────── --}}
 @php
-    $activePaid = 0; $activeFine = 0; $activeDisc = 0;
+    $activePaid = 0; $activeFine = 0; $activeDisc = 0; $activeDue = 0;
 @endphp
 <table class="t" cellspacing="0" cellpadding="0">
     <thead>
         <tr>
-            <th class="c" style="width:16px;">#</th>
-            <th style="width:56px;">Invoice No</th>
-            <th style="width:44px;">Date</th>
-            <th style="width:90px;">Student</th>
-            <th style="width:58px;">Student ID</th>
-            <th style="width:80px;">Course / Year</th>
-            <th style="width:52px;">Father Name</th>
-            <th style="width:72px;">Fee Items</th>
-            <th style="width:56px;">Txn Ref / Bank</th>
-            <th style="width:52px;">Collected By</th>
-            <th style="width:38px;">Mode</th>
-            <th class="r" style="width:40px;">Collected</th>
-            <th class="r" style="width:30px;">Fine</th>
-            <th class="r" style="width:34px;">Discount</th>
-            <th class="r" style="width:40px;">Total</th>
+            <th class="c" style="width:13px;">#</th>
+            <th style="width:48px;">Invoice No</th>
+            <th style="width:34px;">Date</th>
+            <th style="width:74px;">Student</th>
+            <th style="width:46px;">Student ID</th>
+            <th style="width:68px;">Course / Year</th>
+            <th style="width:42px;">Father Name</th>
+            <th style="width:58px;">Fee Items</th>
+            <th style="width:46px;">Txn Ref / Bank</th>
+            <th style="width:42px;">Collected By</th>
+            <th style="width:30px;">Mode</th>
+            <th class="r" style="width:33px;">Collected</th>
+            <th class="r" style="width:22px;">Fine</th>
+            <th class="r" style="width:26px;">Discount</th>
+            <th class="r" style="width:26px;">Due</th>
+            <th class="r" style="width:33px;">Total</th>
         </tr>
     </thead>
     <tbody>
@@ -161,6 +174,7 @@
             $fine     = $inv->items->sum('fine');
             $discount = $inv->discount ?? 0;
             $total    = $inv->paid_amount + $discount;
+            $due      = max(0, ($inv->total_amount ?? 0) - $inv->paid_amount - $discount);
             $courseLine = implode(' · ', array_filter([
                 $student?->stream?->course?->name,
                 $student?->stream?->name,
@@ -171,53 +185,54 @@
                 $activePaid += $inv->paid_amount;
                 $activeFine += $fine;
                 $activeDisc += $discount;
+                $activeDue  += $due;
             }
         @endphp
         <tr class="{{ $inv->is_cancelled ? 'cx' : '' }}">
-            <td class="c mu">{{ $i + 1 }}</td>
-            <td style="font-size:6.5px; font-weight:700; color:#334155;">
-                {{ $inv->invoice_no }}
-                @if($inv->is_cancelled)<span style="color:#991b1b; font-size:6px;"> ✕</span>@endif
+            <td class="c" style="color:#000;">{{ $i + 1 }}</td>
+            <td style="font-weight:800; color:#000;">
+                {{ $inv->invoice_no }}@if($inv->is_cancelled) <span style="font-size:5.5px;">[X]</span>@endif
             </td>
-            <td class="mu">{{ $inv->payment_date?->format('d/m/Y') }}</td>
-            <td class="fw" style="overflow:hidden;">{{ Str::limit($student?->name ?? '—', 22) }}</td>
-            <td class="mu" style="font-size:6.5px;">{{ $student?->student_uid ?? '—' }}</td>
-            <td class="mu" style="font-size:6.5px; overflow:hidden;">{{ Str::limit($courseLine, 28) }}</td>
-            <td class="mu" style="font-size:6.5px; overflow:hidden;">{{ Str::limit($student?->father_name ?? '—', 18) }}</td>
-            <td style="font-size:6.5px; overflow:hidden;">{{ Str::limit($inv->items->pluck('fee_name')->implode(', '), 30) ?: '—' }}</td>
-            <td class="mu" style="font-size:6.5px; overflow:hidden;">
-                {{ Str::limit($inv->transaction_ref ?? '—', 16) }}
-                @if($inv->bank_name) <span style="color:#94a3b8;">/{{ Str::limit($inv->bank_name, 10) }}</span>@endif
+            <td style="color:#000;">{{ $inv->payment_date?->format('d/m/Y') }}</td>
+            <td class="fw">{{ Str::limit($student?->name ?? '—', 20) }}</td>
+            <td style="color:#000;">{{ $student?->student_uid ?? '—' }}</td>
+            <td style="color:#000;">{{ Str::limit($courseLine, 25) }}</td>
+            <td style="color:#000;">{{ Str::limit($student?->father_name ?? '—', 15) }}</td>
+            <td style="color:#000;">{{ Str::limit($inv->items->pluck('fee_name')->implode(', '), 26) ?: '—' }}</td>
+            <td style="color:#000;">
+                {{ Str::limit($inv->transaction_ref ?? '—', 12) }}@if($inv->bank_name) /{{ Str::limit($inv->bank_name, 6) }}@endif
             </td>
-            <td class="mu" style="font-size:6.5px; overflow:hidden;">{{ Str::limit($inv->collected_by ?? '—', 16) }}</td>
+            <td style="color:#000;">{{ Str::limit($inv->collected_by ?? '—', 14) }}</td>
             <td>
                 <span class="mb {{ $modeCssMap[$inv->payment_mode] ?? '' }}">{{ strtoupper($inv->payment_mode) }}</span>
             </td>
-            <td class="r fw g">{{ number_format($inv->paid_amount, 0) }}</td>
-            <td class="r {{ $fine > 0 ? 'fw rd' : 'mu' }}">{{ $fine > 0 ? number_format($fine, 0) : '—' }}</td>
-            <td class="r {{ $discount > 0 ? 'fw or' : 'mu' }}">{{ $discount > 0 ? number_format($discount, 0) : '—' }}</td>
+            <td class="r fw">{{ number_format($inv->paid_amount, 0) }}</td>
+            <td class="r fw">{{ $fine > 0 ? number_format($fine, 0) : '—' }}</td>
+            <td class="r fw">{{ $discount > 0 ? number_format($discount, 0) : '—' }}</td>
+            <td class="r fw" style="{{ $due > 0 ? 'color:#c0392b;' : '' }}">{{ $due > 0 ? number_format($due, 0) : '—' }}</td>
             <td class="r fw">{{ number_format($total, 0) }}</td>
         </tr>
         @empty
-        <tr><td colspan="15" style="text-align:center; padding:10px; color:#9ca3af;">No records found.</td></tr>
+        <tr><td colspan="16" style="text-align:center; padding:10px; color:#000; font-weight:600;">No records found.</td></tr>
         @endforelse
     </tbody>
     @if($invoices->count() > 0)
     <tfoot>
         <tr>
-            <td colspan="11" class="r" style="color:#475569; font-size:6.5px;">
+            <td colspan="11" class="r" style="font-size:7px; color:#000;">
                 TOTAL &mdash; {{ $activeInvoices->count() }} active invoice(s)
             </td>
-            <td class="r g">{{ number_format($activePaid, 0) }}</td>
-            <td class="r {{ $activeFine > 0 ? 'rd' : 'mu' }}">{{ $activeFine > 0 ? number_format($activeFine, 0) : '—' }}</td>
-            <td class="r {{ $activeDisc > 0 ? 'or' : 'mu' }}">{{ $activeDisc > 0 ? number_format($activeDisc, 0) : '—' }}</td>
-            <td class="r">{{ number_format($activePaid + $activeDisc, 0) }}</td>
+            <td class="r fw">{{ number_format($activePaid, 0) }}</td>
+            <td class="r fw">{{ $activeFine > 0 ? number_format($activeFine, 0) : '—' }}</td>
+            <td class="r fw">{{ $activeDisc > 0 ? number_format($activeDisc, 0) : '—' }}</td>
+            <td class="r fw" style="{{ $activeDue > 0 ? 'color:#c0392b;' : '' }}">{{ $activeDue > 0 ? number_format($activeDue, 0) : '—' }}</td>
+            <td class="r fw">{{ number_format($activePaid + $activeDisc, 0) }}</td>
         </tr>
     </tfoot>
     @endif
 </table>
 
-{{-- ── FOOTER ───────────────────────────────────────────────────── --}}
+{{-- ── FOOTER ──────────────────────────────────────────────────── --}}
 <div class="ftr">
     <div class="ftr-l">{{ $institute->name }} &mdash; Fee Collection Report &mdash; Confidential</div>
     <div class="ftr-r">Generated: {{ now()->setTimezone('Asia/Kolkata')->format('d M Y, h:i A') }}</div>
