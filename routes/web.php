@@ -182,8 +182,10 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('fee-structure/subject-fees/{subjectFeeRule}',  [SubjectFeeRuleController::class, 'destroy'])->name('fee-structure.subject-fees.destroy');
 
         Route::resource('centers', CenterController::class);
-        Route::post('centers/{center}/toggle', [CenterController::class, 'toggle'])
-             ->name('centers.toggle');
+        Route::post('centers/{center}/toggle',          [CenterController::class, 'toggle'])->name('centers.toggle');
+        Route::get('centers/archived/list',             [CenterController::class, 'trashed'])->name('centers.trashed');
+        Route::post('centers/{id}/restore',             [CenterController::class, 'restore'])->name('centers.restore');
+        Route::delete('centers/{id}/force-delete',      [CenterController::class, 'forceDelete'])->name('centers.force-delete');
 
         Route::resource('channel-partners', ChannelPartnerController::class);
         Route::post('channel-partners/{channelPartner}/toggle', [ChannelPartnerController::class, 'toggle'])

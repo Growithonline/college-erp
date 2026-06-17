@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class Center extends Authenticatable
 {
-    use Notifiable;
+    use Notifiable, SoftDeletes;
 
     private const PERMISSION_MAP = [
         'admission_add'  => 'can_add_admission',

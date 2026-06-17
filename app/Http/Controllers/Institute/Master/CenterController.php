@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class CenterController extends Controller
@@ -43,8 +44,10 @@ class CenterController extends Controller
 
     public function index()
     {
-        $centers = Center::where('institute_id', $this->instituteId())->orderBy('name')->get();
-        return view('institute.master.centers.index', compact('centers'));
+        $id       = $this->instituteId();
+        $centers  = Center::where('institute_id', $id)->orderBy('name')->get();
+        $trashedCount = Center::onlyTrashed()->where('institute_id', $id)->count();
+        return view('institute.master.centers.index', compact('centers', 'trashedCount'));
     }
 
     public function create()
@@ -58,7 +61,7 @@ class CenterController extends Controller
             'name'                => 'required|string|max:100',
             'code'                => 'nullable|string|max:20',
             'mobile'              => 'nullable|digits:10',
-            'email'               => 'required|email|unique:centers,email',
+            'email'               => ['required', 'email', Rule::unique('centers', 'email')->whereNull('deleted_at')],
             'city'                => 'nullable|string|max:50',
             'address'             => 'nullable|string|max:255',
             'state'               => 'nullable|string|max:50',
@@ -212,27 +215,57 @@ class CenterController extends Controller
     {
         abort_if($center->institute_id !== $this->instituteId(), 403);
 
-        if ($center->students()->exists()) {
-            $msg = "Cannot delete \"{$center->name}\" — students are linked to this center.";
-            if (request()->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $msg], 422);
-            }
-            return back()->withErrors(['delete' => $msg]);
-        }
-
         try {
             $center->delete();
             if (request()->wantsJson()) {
-                return response()->json(['success' => true, 'message' => "Center \"{$center->name}\" deleted."]);
+                return response()->json(['success' => true, 'message' => "Center \"{$center->name}\" archived successfully."]);
             }
-            return redirect()->route('master.centers.index')->with('success', 'Center deleted!');
+            return redirect()->route('master.centers.index')->with('success', "Center \"{$center->name}\" archived. You can restore it from the Archived list.");
         } catch (Throwable $e) {
-            $msg = 'Cannot delete this center — it may have linked data.';
+            $msg = 'Could not archive this center. Please try again.';
             if (request()->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
             return back()->with('error', $msg);
         }
+    }
+
+    public function trashed()
+    {
+        $centers = Center::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->orderByDesc('deleted_at')
+            ->get();
+
+        return view('institute.master.centers.trashed', compact('centers'));
+    }
+
+    public function restore(int $id)
+    {
+        $center = Center::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->findOrFail($id);
+
+        $center->restore();
+
+        return redirect()->route('master.centers.trashed')
+            ->with('success', "Center \"{$center->name}\" restored successfully.");
+    }
+
+    public function forceDelete(int $id)
+    {
+        $center = Center::onlyTrashed()
+            ->where('institute_id', $this->instituteId())
+            ->findOrFail($id);
+
+        if ($center->students()->exists()) {
+            return back()->with('error', "Cannot permanently delete \"{$center->name}\" — students are linked to this center.");
+        }
+
+        $center->forceDelete();
+
+        return redirect()->route('master.centers.trashed')
+            ->with('success', "Center \"{$center->name}\" permanently deleted.");
     }
 
     public function toggle(Center $center)
