@@ -150,13 +150,16 @@
 </div>
 
 {{-- Table --}}
+<style>
+    #fee-collection-table th, #fee-collection-table td { padding: 5px 8px !important; }
+</style>
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0 align-middle" style="font-size:12px; min-width:2000px;">
+            <table id="fee-collection-table" class="table table-hover table-sm mb-0 align-middle" style="font-size:12px; min-width:2000px;">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3" style="white-space:nowrap;">Invoice No</th>
+                        <th style="white-space:nowrap;">Invoice No</th>
                         <th style="white-space:nowrap;">Student Name</th>
                         <th style="white-space:nowrap;">Roll No</th>
                         <th style="white-space:nowrap;">UIN No</th>
@@ -183,10 +186,10 @@
                         $st = $inv->student;
                         $fineTotal = $inv->items->sum('fine');
                         $studentWallet = $st?->wallets->firstWhere('academic_session_id', $inv->academic_session_id);
-                        $due = max(0, (float) ($studentWallet?->main_b ?? 0));
+                        $due = $studentWallet && $studentWallet->main_b < 0 ? abs((float) $studentWallet->main_b) : 0;
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">
-                        <td class="ps-3">
+                        <td>
                             <span class="badge bg-light text-dark border fw-semibold" style="font-size:11px;">{{ $inv->invoice_no }}</span>
                             <div class="text-muted" style="font-size:10px;">
                                 {{ $inv->payment_date?->format('d M Y') }}
