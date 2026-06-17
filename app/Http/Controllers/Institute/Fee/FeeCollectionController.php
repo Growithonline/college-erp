@@ -409,7 +409,7 @@ class FeeCollectionController extends Controller
         $dateTo = $request->date_to ?? now()->toDateString();
 
         $status = $request->get('status', 'all');
-        $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'session', 'items'])
+        $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'student.wallets', 'session', 'items'])
             ->where('institute_id', $instituteId);
         if ($staff = $this->currentStaff()) {
             $staff->scopeFeeInvoices($query);

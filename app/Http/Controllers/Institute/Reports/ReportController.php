@@ -2820,14 +2820,24 @@ class ReportController extends Controller
         $instituteId   = $this->instituteId();
         $institute     = \App\Models\Institute::find($instituteId);
         $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
-        $sessionId     = $request->session_id ?? $activeSession?->id;
-        $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
-        $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
 
-        $query = PracticalFeeTokenBatch::with(['course', 'subject', 'session', 'entries.student'])
+        // Allow null sessionId for "All Sessions"
+        $sessionId = $request->has('session_id')
+            ? ($request->session_id ?: null)
+            : $activeSession?->id;
+
+        $sessions     = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes  = \App\Models\CourseType::where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
+        $courses      = Course::where('institute_id', $instituteId)->where('status', true)->with('courseType')->orderBy('name')->get();
+        $subjects     = \App\Models\Subject::where('institute_id', $instituteId)->orderBy('name')->get();
+
+        $query = PracticalFeeTokenBatch::with(['course.courseType', 'subject', 'session', 'entries.student'])
             ->where('institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->when($request->course_type_id, fn($q) => $q->whereHas('course', fn($cq) => $cq->where('course_type_id', $request->course_type_id)))
             ->when($request->course_id, fn($q) => $q->where('course_id', $request->course_id))
+            ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
+            ->when($request->semester, fn($q) => $q->where('semester', $request->semester))
             ->when($request->batch_id, fn($q) => $q->where('id', $request->batch_id))
             ->orderByDesc('collection_date');
 
@@ -2838,44 +2848,56 @@ class ReportController extends Controller
 
         $export = $request->input('export');
         if ($export) {
-            $sessionName = $sessions->firstWhere('id', $sessionId)?->name ?? '';
-            $courseName  = $request->course_id ? ($courses->firstWhere('id', $request->course_id)?->name ?? '') : '';
-            $batchTitle  = '';
+            $sessionName     = $sessionId ? ($sessions->firstWhere('id', $sessionId)?->name ?? '') : 'All Sessions';
+            $courseTypeName  = $request->course_type_id ? ($courseTypes->firstWhere('id', $request->course_type_id)?->name ?? '') : '';
+            $courseName      = $request->course_id ? ($courses->firstWhere('id', $request->course_id)?->name ?? '') : '';
+            $subjectName     = $request->subject_id ? ($subjects->firstWhere('id', $request->subject_id)?->name ?? '') : '';
+            $semesterLabel   = $request->semester ? ('Sem ' . $request->semester) : '';
+            $batchTitle      = '';
             if ($request->batch_id && $batches->count() === 1) {
                 $batchTitle = $batches->first()?->title ?? ('Token #' . $batches->first()?->id);
             }
 
             if ($export === 'pdf') {
                 return view('institute.reports.practical-token-collection-print', compact(
-                    'batches', 'grandTotal', 'grandStudents', 'sessionName', 'courseName', 'batchTitle'
-                ))->with('instituteName', $institute?->name ?? 'Institute');
+                    'batches', 'grandTotal', 'grandStudents',
+                    'sessionName', 'courseTypeName', 'courseName', 'subjectName', 'semesterLabel', 'batchTitle',
+                    'institute'
+                ));
             }
 
             // Build flat rows for CSV/Excel
-            $headers = ['#', 'Batch', 'Course', 'Subject', 'Semester', 'Date',
-                        'Student Name', 'Student ID', 'Roll No', 'Father Name', 'Mother Name',
-                        'Amount (Rs)', 'Fine (Rs)', 'Discount (Rs)', 'Status', 'Posted By'];
+            $headers = [
+                '#', 'Session', 'Batch', 'Course Type', 'Course', 'Subject', 'Semester', 'Collection Date',
+                'Student Name', 'Mobile', 'Student ID', 'Roll No', 'Father Name', 'Mother Name',
+                'Token Amt (Rs)', 'Amount (Rs)', 'Fine (Rs)', 'Discount (Rs)', 'Status', 'Posted On', 'Posted By',
+            ];
             $rows = [];
             $rowNum = 1;
             foreach ($batches as $b) {
                 foreach ($b->entries as $entry) {
                     $rows[] = [
                         $rowNum++,
+                        $b->session?->name ?? '',
                         $b->title ?? ('Token #' . $b->id),
+                        $b->course?->courseType?->name ?? '',
                         $b->course?->name ?? '',
                         $b->subject?->name ?? '',
-                        $b->semester,
+                        $b->semester ? 'S' . $b->semester : '',
                         $b->collection_date?->format('d/m/Y') ?? '',
                         $entry->student?->name ?? '',
+                        $entry->student?->mobile ?? '',
                         $entry->student?->student_uid ?? '',
                         $entry->student?->roll_no ?? '',
                         $entry->student?->father_name ?? '',
                         $entry->student?->mother_name ?? '',
-                        number_format((float)$entry->amount, 2),
-                        number_format((float)$entry->fine, 2),
-                        number_format((float)$entry->discount, 2),
+                        number_format((float) $b->token_amount, 2),
+                        number_format((float) $entry->amount, 2),
+                        number_format((float) $entry->fine, 2),
+                        number_format((float) $entry->discount, 2),
                         ucfirst($entry->status ?? 'pending'),
-                        $entry->entered_by_name,
+                        $entry->posted_at?->format('d/m/Y') ?? '',
+                        $entry->entered_by_name ?? '',
                     ];
                 }
             }
@@ -2888,7 +2910,8 @@ class ReportController extends Controller
         }
 
         return view('institute.reports.practical-token-collection', compact(
-            'batches', 'sessions', 'courses', 'sessionId', 'grandTotal', 'grandStudents'
+            'batches', 'sessions', 'courseTypes', 'courses', 'subjects',
+            'sessionId', 'grandTotal', 'grandStudents'
         ));
     }
 

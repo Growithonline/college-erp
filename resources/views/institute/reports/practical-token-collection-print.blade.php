@@ -6,14 +6,21 @@
 <style>
     @page { size: A4 landscape; margin: 10mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; font-size: 11px; color: #111; background: #fff; }
-    .page-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 12px; }
-    .page-header h2 { font-size: 16px; font-weight: 700; }
-    .page-header p  { font-size: 11px; color: #555; margin-top: 2px; }
-    .filter-info { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;
-                   padding: 6px 10px; margin-bottom: 12px; font-size: 11px; display: flex; gap: 20px; }
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #111; background: #fff; }
+    .page-header { border-bottom: 2px solid #0f766e; padding-bottom: 8px; margin-bottom: 12px; }
+    .header-table { width: 100%; border-collapse: collapse; }
+    .header-table td { vertical-align: middle; padding: 0; }
+    .logo-box { width: 52px; height: 52px; border: 1px solid #d1d5db; border-radius: 8px;
+                text-align: center; line-height: 52px; font-size: 18px; font-weight: 700;
+                color: #0f766e; overflow: hidden; }
+    .logo-box img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; }
+    .inst-name { font-size: 17px; font-weight: 700; color: #0f172a; }
+    .inst-sub  { font-size: 10px; color: #0f766e; font-weight: 600; margin-top: 2px; }
+    .meta-right { text-align: right; font-size: 9px; color: #475569; line-height: 1.8; }
+    .filter-info { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;
+                   padding: 5px 10px; margin-bottom: 10px; font-size: 10px; display: flex; gap: 16px; flex-wrap: wrap; }
     .filter-info span { color: #444; }
-    .filter-info strong { color: #111; }
+    .filter-info strong { color: #0f766e; }
     .batch-block { margin-bottom: 18px; page-break-inside: avoid; }
     .batch-title { background: #1e293b; color: #fff; padding: 5px 10px;
                    font-size: 12px; font-weight: 700; border-radius: 4px 4px 0 0;
@@ -42,15 +49,36 @@
 </head>
 <body>
 
+{{-- Header --}}
 <div class="page-header">
-    <h2>{{ $instituteName }}</h2>
-    <p>Practical Token Collection Report</p>
-    <p>
-        Session: <strong>{{ $sessionName }}</strong>
-        @if($courseName) &nbsp;|&nbsp; Course: <strong>{{ $courseName }}</strong> @endif
-        @if($batchTitle) &nbsp;|&nbsp; Batch: <strong>{{ $batchTitle }}</strong> @endif
-        &nbsp;|&nbsp; Generated: <strong>{{ now()->format('d M Y, h:i A') }}</strong>
-    </p>
+    <table class="header-table" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width:62px; padding-right:10px;">
+                <div class="logo-box">
+                    @php $logoPath = storage_path('app/public/' . ($institute->image ?? '')); @endphp
+                    @if(!empty($institute->image) && file_exists($logoPath))
+                        <img src="{{ $logoPath }}" alt="Logo">
+                    @else
+                        {{ strtoupper(substr($institute->short_name ?? $institute->name ?? 'IN', 0, 2)) }}
+                    @endif
+                </div>
+            </td>
+            <td>
+                <div class="inst-name">{{ $institute->name ?? '' }}</div>
+                <div class="inst-sub">Practical Token Collection Report</div>
+            </td>
+            <td class="meta-right">
+                <div>Session: <strong>{{ $sessionName }}</strong></div>
+                @if($courseTypeName ?? '') <div>Course Type: <strong>{{ $courseTypeName }}</strong></div> @endif
+                @if($courseName ?? '')     <div>Course: <strong>{{ $courseName }}</strong></div> @endif
+                @if($subjectName ?? '')    <div>Subject: <strong>{{ $subjectName }}</strong></div> @endif
+                @if($semesterLabel ?? '')  <div>Semester: <strong>{{ $semesterLabel }}</strong></div> @endif
+                @if($batchTitle ?? '')     <div>Batch: <strong>{{ $batchTitle }}</strong></div> @endif
+                <div>Generated: <strong>{{ now()->format('d M Y, h:i A') }}</strong></div>
+                <div>Total Records: <strong>{{ $batches->count() }} batch(es) &middot; {{ $grandStudents }} student(s)</strong></div>
+            </td>
+        </tr>
+    </table>
 </div>
 
 @foreach($batches as $batch)

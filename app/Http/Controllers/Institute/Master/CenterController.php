@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Institute\Master;
 
 use App\Http\Controllers\Controller;
 use App\Mail\CenterCredentialsMail;
+use App\Services\InstituteMailer;
 use App\Models\AcademicSession;
 use App\Models\Center;
 use App\Models\CenterFeeDiscountPermission;
@@ -313,7 +314,7 @@ class CenterController extends Controller
 
         try {
             $center->loadMissing('institute');
-            Mail::to($center->email)->send(new CenterCredentialsMail($center, $plainPassword));
+            InstituteMailer::send($center->institute_id, $center->email, new CenterCredentialsMail($center, $plainPassword));
             return true;
         } catch (Throwable $e) {
             report($e);

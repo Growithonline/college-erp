@@ -50,7 +50,7 @@ class InstituteController extends Controller
         $user->update(['password' => Hash::make($request->password)]);
 
         if ($request->boolean('notify_email')) {
-            Mail::raw(
+            Mail::mailer('smtp')->raw(
                 "Hello {$user->name},\n\n" .
                 "Your password for College ERP has been reset by the Super Admin.\n\n" .
                 "New Password: {$request->password}\n\n" .
@@ -131,7 +131,7 @@ class InstituteController extends Controller
 
         // ── Step 2: Email — completely outside DB transaction ────────────────
         try {
-            Mail::to($user->email)->send(new InstituteCredentialMail(
+            Mail::mailer('smtp')->to($user->email)->send(new InstituteCredentialMail(
                 ownerName:     $request->input('owner_name'),
                 instituteName: $request->input('name'),
                 instituteUid:  $uid,
@@ -175,7 +175,7 @@ class InstituteController extends Controller
         $user->update(['password' => Hash::make($plainPassword)]);
 
         try {
-            Mail::to($user->email)->send(new InstituteCredentialMail(
+            Mail::mailer('smtp')->to($user->email)->send(new InstituteCredentialMail(
                 ownerName:     $institute->owner_name,
                 instituteName: $institute->name,
                 instituteUid:  $institute->institute_uid,
@@ -185,7 +185,8 @@ class InstituteController extends Controller
                 logoUrl:       asset('images/logog.png'),
             ));
         } catch (\Throwable $e) {
-            return back()->with('error', 'Password reset but email failed: ' . $e->getMessage());
+            \Log::warning('Resend credentials email failed', ['institute_id' => $institute->id, 'error' => $e->getMessage()]);
+            return back()->with('error', 'Password was reset but the email could not be delivered. Please check platform SMTP settings.');
         }
 
         return back()->with('success', 'Credentials resent successfully to ' . $user->email);

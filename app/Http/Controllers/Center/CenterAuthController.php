@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use App\Services\InstituteMailer;
 use Throwable;
 
 class CenterAuthController extends Controller
@@ -50,7 +50,7 @@ class CenterAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
-        Mail::to($center->email)->send(new CenterOtpMail($center, $otp));
+        InstituteMailer::send($center->institute_id, $center->email, new CenterOtpMail($center, $otp));
 
         if ($center->mobile) {
             SmsService::sendOtp($center->mobile, $otp);

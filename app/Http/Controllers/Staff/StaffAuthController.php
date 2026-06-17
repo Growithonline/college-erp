@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use App\Services\InstituteMailer;
 use Throwable;
 
 class StaffAuthController extends Controller
@@ -55,7 +55,7 @@ class StaffAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
-        Mail::to($staff->email)->send(new StaffOtpMail($staff, $otp));
+        InstituteMailer::send($staff->institute_id, $staff->email, new StaffOtpMail($staff, $otp));
 
         if ($staff->mobile) {
             SmsService::sendOtp($staff->mobile, $otp);

@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use App\Services\InstituteMailer;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -317,7 +317,7 @@ class LibraryStaffAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? self::OTP_TTL_MINUTES;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? self::THROTTLE_SECONDS;
 
-        Mail::to($staff->email)->send(new LibraryStaffOtpMail($staff, $otp));
+        InstituteMailer::send($staff->institute_id, $staff->email, new LibraryStaffOtpMail($staff, $otp));
 
         Cache::put($this->otpCacheKey($staff->id), [
             'hash' => Hash::make($otp),
@@ -347,7 +347,9 @@ class LibraryStaffAuthController extends Controller
         try {
             $adminEmail = $staff->institute?->user?->email ?? null;
             if ($adminEmail) {
-                Mail::to($adminEmail)->send(
+                InstituteMailer::send(
+                    $staff->institute_id,
+                    $adminEmail,
                     new LibraryStaffAccountLockedMail($staff, $lockedUntil, $ip)
                 );
             }

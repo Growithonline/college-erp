@@ -14,8 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Throwable;
+use App\Services\InstituteMailer;
 
 class StudentAuthController extends Controller
 {
@@ -50,7 +49,7 @@ class StudentAuthController extends Controller
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
         if ($student->email) {
-            Mail::to($student->email)->send(new StudentOtpMail($student, $otp));
+            InstituteMailer::send($student->institute_id, $student->email, new StudentOtpMail($student, $otp));
         }
 
         $mobile = $student->mobile ?? $student->father_mobile;

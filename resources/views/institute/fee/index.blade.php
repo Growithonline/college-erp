@@ -192,12 +192,12 @@
                             <i class="bi bi-layout-three-columns"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end p-2" style="min-width:200px;" onclick="event.stopPropagation()">
-                            @foreach(['col_invoice'=>'Invoice No & Time','col_student'=>'Student','col_uid'=>'Student ID / UIN','col_father'=>'Father / Mother','col_course'=>'Course / Year','col_session'=>'Session','col_utr'=>'UTR / Ref No.','col_discount'=>'Discount','col_remarks'=>'Remarks','col_by'=>'Collected By','col_centre'=>'Centre','col_mode'=>'Payment Mode','col_amount'=>'Amount'] as $col=>$label)
+                            @foreach(['col_invoice'=>'Invoice No & Time','col_student'=>'Student','col_uid'=>'Student ID / UIN','col_father'=>'Father / Mother','col_course'=>'Course / Year','col_session'=>'Session','col_utr'=>'UTR / Ref No.','col_discount'=>'Discount','col_remarks'=>'Remarks','col_by'=>'Collected By','col_centre'=>'Centre','col_mode'=>'Payment Mode','col_amount'=>'Amount','col_fine'=>'Fine','col_due'=>'Due'] as $col=>$label)
                             <li>
                                 <label class="dropdown-item d-flex align-items-center gap-2 small py-1" style="cursor:pointer;">
                                     <input type="checkbox" class="col-toggle" data-col="{{ $col }}"
                                            onchange="toggleCol('{{ $col }}', this.checked)"
-                                           {{ in_array($col, ['col_invoice','col_student','col_uid','col_father','col_course','col_mode','col_amount']) ? 'checked' : '' }}>
+                                           {{ in_array($col, ['col_invoice','col_student','col_uid','col_father','col_course','col_mode','col_amount','col_fine','col_due']) ? 'checked' : '' }}>
                                     {{ $label }}
                                 </label>
                             </li>
@@ -231,6 +231,8 @@
                         <th class="col_mode">Mode</th>
                         <th class="col_amount text-end">Collection</th>
                         <th class="text-end">Total Amt</th>
+                        <th class="col_fine text-end">Fine</th>
+                        <th class="col_due text-end">Due</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -240,6 +242,9 @@
                         $modeColors = ['cash'=>'success','upi'=>'primary','online'=>'info','cheque'=>'warning','dd'=>'secondary','neft'=>'dark','rtgs'=>'dark'];
                         $color = $modeColors[$inv->payment_mode] ?? 'secondary';
                         $student = $inv->student;
+                        $fineTotal = $inv->items->sum('fine');
+                        $studentWallet = $student?->wallets->firstWhere('academic_session_id', $inv->academic_session_id);
+                        $due = $studentWallet && $studentWallet->main_b < 0 ? abs((float) $studentWallet->main_b) : 0;
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">
                         <td class="ps-3 col_invoice">
@@ -293,6 +298,12 @@
                         </td>
                         <td class="col_amount text-end fw-bold text-success">Rs {{ number_format($inv->paid_amount) }}</td>
                         <td class="text-end fw-bold">Rs {{ number_format($inv->paid_amount + ($inv->discount ?? 0)) }}</td>
+                        <td class="col_fine text-end fw-bold {{ $fineTotal > 0 ? 'text-danger' : 'text-muted' }}">
+                            {{ $fineTotal > 0 ? 'Rs '.number_format($fineTotal) : '—' }}
+                        </td>
+                        <td class="col_due text-end fw-bold {{ $due > 0 ? 'text-danger' : 'text-muted' }}">
+                            {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
+                        </td>
                         <td class="text-center">
                             <a href="{{ route($receiptRoute, [$inv->student_id, $inv->id]) }}"
                                class="btn btn-sm btn-outline-primary" title="Print" target="_blank">
@@ -314,7 +325,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="15" class="text-center py-5 text-muted">
+                        <td colspan="17" class="text-center py-5 text-muted">
                             <i class="bi bi-receipt fs-2 d-block mb-2"></i>No fee collections found
                         </td>
                     </tr>

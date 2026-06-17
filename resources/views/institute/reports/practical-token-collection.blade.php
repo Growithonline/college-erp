@@ -64,60 +64,135 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <form method="GET" class="row g-2 align-items-end" id="filterForm">
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Session</label>
+
+            {{-- Session --}}
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Session</label>
                 <select name="session_id" class="form-select form-select-sm">
+                    <option value="">All Sessions</option>
                     @foreach($sessions as $sess)
-                        <option value="{{ $sess->id }}" {{ $sess->id == $sessionId ? 'selected' : '' }}>{{ $sess->name }}</option>
+                        <option value="{{ $sess->id }}" {{ $sess->id == $sessionId ? 'selected' : '' }}>
+                            {{ $sess->name }}{{ $sess->is_active ? ' (Active)' : '' }}
+                        </option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Course</label>
-                <select name="course_id" class="form-select form-select-sm">
+
+            {{-- Course Type --}}
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Course Type</label>
+                <select name="course_type_id" id="courseTypeFilter" class="form-select form-select-sm">
+                    <option value="">All Types</option>
+                    @foreach($courseTypes as $ct)
+                        <option value="{{ $ct->id }}" {{ request('course_type_id') == $ct->id ? 'selected' : '' }}>
+                            {{ $ct->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Course --}}
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Course</label>
+                <select name="course_id" id="courseFilter" class="form-select form-select-sm">
                     <option value="">All Courses</option>
                     @foreach($courses as $c)
-                        <option value="{{ $c->id }}" {{ request('course_id') == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                        <option value="{{ $c->id }}"
+                                data-type="{{ $c->course_type_id }}"
+                                {{ request('course_id') == $c->id ? 'selected' : '' }}>
+                            {{ $c->name }}
+                        </option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-auto d-flex gap-2">
-                <button class="btn btn-primary btn-sm">Filter</button>
+
+            {{-- Subject / Stream --}}
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Subject / Stream</label>
+                <select name="subject_id" class="form-select form-select-sm">
+                    <option value="">All Subjects</option>
+                    @foreach($subjects as $sub)
+                        <option value="{{ $sub->id }}" {{ request('subject_id') == $sub->id ? 'selected' : '' }}>
+                            {{ $sub->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Year / Semester --}}
+            <div class="col-md-1">
+                <label class="form-label small fw-semibold mb-1">Semester</label>
+                <select name="semester" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    @for($i = 1; $i <= 8; $i++)
+                        <option value="{{ $i }}" {{ request('semester') == $i ? 'selected' : '' }}>S{{ $i }}</option>
+                    @endfor
+                </select>
+            </div>
+
+            {{-- Buttons --}}
+            <div class="col-auto d-flex gap-2 align-items-end">
+                <button class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Filter</button>
                 <a href="{{ route('reports.fee-collection.practical-token') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
 
             {{-- Export Controls --}}
             @if($batches->isNotEmpty())
-            <div class="col-md-3 ms-auto">
-                <label class="form-label small fw-semibold">Export Batch</label>
-                <select name="batch_id" id="exportBatchId" class="form-select form-select-sm">
-                    <option value="">All Batches</option>
-                    @foreach($batches as $b)
-                        <option value="{{ $b->id }}" {{ request('batch_id') == $b->id ? 'selected' : '' }}>
-                            {{ $b->title ?? ('Token #' . $b->id) }} — {{ $b->course?->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-auto d-flex gap-1 align-items-end">
-                <button type="submit" name="export" value="csv"
-                        class="btn btn-outline-success btn-sm" formnovalidate>
-                    <i class="bi bi-filetype-csv me-1"></i>CSV
-                </button>
-                <button type="submit" name="export" value="excel"
-                        class="btn btn-outline-primary btn-sm" formnovalidate>
-                    <i class="bi bi-file-earmark-excel me-1"></i>Excel
-                </button>
-                <button type="submit" name="export" value="pdf"
-                        class="btn btn-outline-danger btn-sm" formnovalidate
-                        onclick="this.form.target='_blank'">
-                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-                </button>
+            <div class="col-12 border-top pt-2 mt-1 d-flex align-items-end gap-2 flex-wrap">
+                <div style="min-width:220px;">
+                    <label class="form-label small fw-semibold mb-1">Export Batch</label>
+                    <select name="batch_id" id="exportBatchId" class="form-select form-select-sm">
+                        <option value="">All Batches</option>
+                        @foreach($batches as $b)
+                            <option value="{{ $b->id }}" {{ request('batch_id') == $b->id ? 'selected' : '' }}>
+                                {{ $b->title ?? ('Token #' . $b->id) }} — {{ $b->course?->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="d-flex gap-1 align-items-end">
+                    <button type="submit" name="export" value="csv"
+                            class="btn btn-outline-success btn-sm" formnovalidate>
+                        <i class="bi bi-filetype-csv me-1"></i>CSV
+                    </button>
+                    <button type="submit" name="export" value="excel"
+                            class="btn btn-outline-primary btn-sm" formnovalidate>
+                        <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                    </button>
+                    <button type="submit" name="export" value="pdf"
+                            class="btn btn-outline-danger btn-sm" formnovalidate
+                            onclick="this.form.target='_blank'">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                    </button>
+                </div>
             </div>
             @endif
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    const typeSelect   = document.getElementById('courseTypeFilter');
+    const courseSelect = document.getElementById('courseFilter');
+    const allOptions   = Array.from(courseSelect.options);
+
+    function filterCourses() {
+        const typeId = typeSelect.value;
+        const current = courseSelect.value;
+        courseSelect.innerHTML = '';
+        allOptions.forEach(opt => {
+            if (!typeId || !opt.dataset.type || opt.dataset.type === typeId || opt.value === '') {
+                courseSelect.appendChild(opt.cloneNode(true));
+            }
+        });
+        courseSelect.value = current;
+    }
+
+    typeSelect.addEventListener('change', filterCourses);
+    filterCourses();
+})();
+</script>
 
 {{-- Batch Cards --}}
 @forelse($batches as $batchIdx => $batch)

@@ -11,6 +11,7 @@ use App\Models\LibraryStaffPermission;
 use App\Models\StaffMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\InstituteMailer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -109,7 +110,9 @@ class LibraryStaffController extends Controller
         // Welcome email — non-fatal if it fails
         if ($staff) {
             try {
-                Mail::to($staff->email)->send(
+                InstituteMailer::send(
+                    auth()->user()->institute_id,
+                    $staff->email,
                     new LibraryStaffWelcomeMail($staff, route('library_staff.login'))
                 );
             } catch (Throwable $e) {

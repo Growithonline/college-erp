@@ -26,6 +26,7 @@
                         <th>City</th>
                         <th class="text-center">Students</th>
                         <th>Subscription</th>
+                        <th class="text-center">Email</th>
                         <th class="text-center">Status</th>
                         <th class="text-center pe-3">Action</th>
                     </tr>
@@ -79,6 +80,27 @@
                             @endif
                         </td>
                         <td class="text-center">
+                            @if($inst->hasSmtp())
+                                <span class="badge bg-success-subtle text-success border border-success-subtle"
+                                      title="Own SMTP verified — emails sent from {{ $inst->smtp_from_email }}"
+                                      data-bs-toggle="tooltip">
+                                    <i class="bi bi-envelope-check-fill me-1"></i>Own
+                                </span>
+                            @elseif(filled($inst->smtp_host))
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle"
+                                      title="SMTP saved but not yet verified"
+                                      data-bs-toggle="tooltip">
+                                    <i class="bi bi-envelope-exclamation me-1"></i>Unverified
+                                </span>
+                            @else
+                                <span class="badge bg-secondary-subtle text-secondary"
+                                      title="Using platform SMTP"
+                                      data-bs-toggle="tooltip">
+                                    <i class="bi bi-envelope me-1"></i>Platform
+                                </span>
+                            @endif
+                        </td>
+                        <td class="text-center">
                             @if($inst->status === 'active')
                             <span class="badge bg-success-subtle text-success">Active</span>
                             @else
@@ -115,5 +137,9 @@
         </div>
     </div>
 </div>
+
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+</script>
 
 @endsection

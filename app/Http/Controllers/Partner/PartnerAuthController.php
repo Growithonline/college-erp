@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use App\Services\InstituteMailer;
 use Throwable;
 
 class PartnerAuthController extends Controller
@@ -49,7 +49,7 @@ class PartnerAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
-        Mail::to($partner->email)->send(new PartnerOtpMail($partner, $otp));
+        InstituteMailer::send($partner->institute_id, $partner->email, new PartnerOtpMail($partner, $otp));
 
         Cache::put($this->otpCacheKey($partner->id), [
             'hash'     => Hash::make($otp),

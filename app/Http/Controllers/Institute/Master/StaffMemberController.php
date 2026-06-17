@@ -17,6 +17,7 @@ use App\Models\Account;
 use App\Models\InstituteBankAccount;
 use App\Mail\StaffCredentialsMail;
 use App\Services\AccountingSetupService;
+use App\Services\InstituteMailer;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +68,9 @@ class StaffMemberController extends Controller
         try {
             $staffMember->loadMissing('role', 'institute');
 
-            Mail::to($staffMember->email)->send(
+            InstituteMailer::send(
+                $staffMember->institute_id,
+                $staffMember->email,
                 new StaffCredentialsMail($staffMember, $plainPassword)
             );
 

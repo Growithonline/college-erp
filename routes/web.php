@@ -243,6 +243,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('sms/reminders',         [SmsDueReminderController::class, 'index'])->name('sms.reminders.index');
         Route::post('sms/reminders/save',   [SmsDueReminderController::class, 'save'])->name('sms.reminders.save');
         Route::post('sms/reminders/toggle', [SmsDueReminderController::class, 'toggle'])->name('sms.reminders.toggle');
+
+        // Email (SMTP) Settings
+        Route::get('settings/email',             [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'index'])->name('settings.email');
+        Route::post('settings/email/save',       [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'save'])->name('settings.email.save');
+        Route::post('settings/email/test',       [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'testConnection'])->name('settings.email.test');
+        Route::post('settings/email/disconnect', [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'disconnect'])->name('settings.email.disconnect');
     });
 
     // Library Staff management — institute admin only (CRUD, reports)

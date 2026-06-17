@@ -12,7 +12,7 @@ class Institute extends Model
     protected $fillable = [
         'institute_uid',
         'name',
-        'short_name',       // BBA, SGHPG, DPGC — for Student ID
+        'short_name',
         'mobile',
         'email',
         'image',
@@ -30,7 +30,28 @@ class Institute extends Model
         'subscription_start',
         'subscription_end',
         'status',
+        'smtp_host',
+        'smtp_port',
+        'smtp_encryption',
+        'smtp_username',
+        'smtp_password',
+        'smtp_from_name',
+        'smtp_from_email',
+        'smtp_verified',
     ];
+
+    protected $casts = [
+        'smtp_password' => 'encrypted',
+        'smtp_verified' => 'boolean',
+    ];
+
+    public function hasSmtp(): bool
+    {
+        return $this->smtp_verified &&
+               filled($this->smtp_host) &&
+               filled($this->smtp_username) &&
+               filled($this->smtp_password);
+    }
 
     public function users()
     {

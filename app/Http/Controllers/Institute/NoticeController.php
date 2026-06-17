@@ -13,6 +13,7 @@ use App\Models\StaffMember;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Services\InstituteMailer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -316,7 +317,7 @@ class NoticeController extends Controller
 
         foreach ($recipients->unique() as $email) {
             try {
-                Mail::to($email)->queue(new NoticePublishedMail($notice));
+                InstituteMailer::queue($instituteId, $email, new NoticePublishedMail($notice));
             } catch (\Throwable) {
                 // email fail hone pe notice create block na ho
             }

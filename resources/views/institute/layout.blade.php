@@ -982,6 +982,18 @@
             </div>
         </li>
 
+        {{-- Email Settings --}}
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('settings.email*') ? 'active' : '' }}"
+               href="{{ route('settings.email') }}">
+                <i class="bi bi-envelope-gear"></i> Email Settings
+                @php $inst = auth()->user()?->institute; @endphp
+                @if($inst && $inst->hasSmtp())
+                    <span class="ms-auto badge bg-success-subtle text-success border border-success-subtle" style="font-size:9px;padding:2px 5px;">ON</span>
+                @endif
+            </a>
+        </li>
+
         {{-- Bulk Student Correction --}}
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('admissions.bulk-correction*') ? 'active' : '' }}"

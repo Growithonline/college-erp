@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\CourseType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Services\InstituteMailer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Throwable;
@@ -235,7 +236,7 @@ class ChannelPartnerController extends Controller
 
         try {
             $partner->loadMissing('institute');
-            Mail::to($partner->email)->send(new PartnerCredentialsMail($partner, $plainPassword));
+            InstituteMailer::send($partner->institute_id, $partner->email, new PartnerCredentialsMail($partner, $plainPassword));
             return true;
         } catch (Throwable $e) {
             report($e);

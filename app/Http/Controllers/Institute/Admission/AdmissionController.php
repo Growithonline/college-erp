@@ -41,6 +41,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use App\Mail\StudentCredentialsMail;
+use App\Services\InstituteMailer;
 use App\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -381,7 +382,7 @@ class AdmissionController extends Controller
 
         if ($student->email) {
             try {
-                Mail::to($student->email)->queue(new StudentCredentialsMail($student, $plainPassword));
+                InstituteMailer::queue($student->institute_id, $student->email, new StudentCredentialsMail($student, $plainPassword));
                 $emailSent = true;
             } catch (\Throwable) {}
         }
@@ -421,7 +422,7 @@ class AdmissionController extends Controller
 
         if ($student->email) {
             try {
-                Mail::to($student->email)->queue(new StudentCredentialsMail($student, $plainPassword));
+                InstituteMailer::queue($student->institute_id, $student->email, new StudentCredentialsMail($student, $plainPassword));
             } catch (\Throwable) {}
         }
 

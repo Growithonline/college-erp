@@ -175,6 +175,85 @@
     </div>
 </div>
 
+{{-- Email SMTP Status --}}
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pb-0 pt-3 d-flex align-items-center justify-content-between">
+                <h6 class="fw-bold mb-0"><i class="bi bi-envelope-gear text-primary me-2"></i>Email (SMTP) Configuration</h6>
+                @if($institute->hasSmtp())
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                        <i class="bi bi-check-circle-fill me-1"></i> Own SMTP — Verified
+                    </span>
+                @elseif(filled($institute->smtp_host))
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> Saved — Not Verified
+                    </span>
+                @else
+                    <span class="badge bg-secondary-subtle text-secondary px-3 py-2">
+                        <i class="bi bi-envelope me-1"></i> Using Platform SMTP
+                    </span>
+                @endif
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+
+                    {{-- Status Summary --}}
+                    <div class="col-md-4">
+                        <div class="p-3 rounded-3 h-100 {{ $institute->hasSmtp() ? 'bg-success-subtle' : (filled($institute->smtp_host) ? 'bg-warning-subtle' : 'bg-light') }}">
+                            <p class="small fw-bold mb-2 {{ $institute->hasSmtp() ? 'text-success' : (filled($institute->smtp_host) ? 'text-warning' : 'text-muted') }}">
+                                Email Source
+                            </p>
+                            @if($institute->hasSmtp())
+                                <p class="mb-1 small"><strong>From:</strong> {{ $institute->smtp_from_name }}</p>
+                                <p class="mb-1 small"><strong>Email:</strong> {{ $institute->smtp_from_email }}</p>
+                                <p class="mb-0 small"><strong>Host:</strong> {{ $institute->smtp_host }}:{{ $institute->smtp_port }}</p>
+                            @elseif(filled($institute->smtp_host))
+                                <p class="mb-1 small"><strong>Host:</strong> {{ $institute->smtp_host }}:{{ $institute->smtp_port }}</p>
+                                <p class="mb-0 small text-warning fw-semibold">Connection not verified yet.</p>
+                            @else
+                                <p class="mb-0 small text-muted">This institute has not configured its own SMTP. All emails are sent via platform mail server.</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- What goes where --}}
+                    <div class="col-md-8">
+                        <p class="small fw-semibold text-muted mb-2">Email routing for this institute:</p>
+                        <div class="row g-2">
+                            @php $ownSmtp = $institute->hasSmtp(); @endphp
+                            @foreach([
+                                ['icon'=>'bi-person-badge','label'=>'Staff credentials & OTP',    'own'=>true],
+                                ['icon'=>'bi-mortarboard','label'=>'Student credentials & OTP',   'own'=>true],
+                                ['icon'=>'bi-buildings',  'label'=>'Center credentials & OTP',    'own'=>true],
+                                ['icon'=>'bi-people',     'label'=>'Channel partner credentials', 'own'=>true],
+                                ['icon'=>'bi-megaphone',  'label'=>'Notice emails',               'own'=>true],
+                                ['icon'=>'bi-envelope-at','label'=>'Institute onboarding',         'own'=>false],
+                                ['icon'=>'bi-bell',       'label'=>'Subscription notices',        'own'=>false],
+                            ] as $row)
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                                    <i class="bi {{ $row['icon'] }} text-muted" style="font-size:13px;flex-shrink:0;"></i>
+                                    <span class="small flex-grow-1" style="font-size:12px;">{{ $row['label'] }}</span>
+                                    @if($row['own'] && $ownSmtp)
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:9px;white-space:nowrap;">Own SMTP</span>
+                                    @elseif($row['own'])
+                                        <span class="badge bg-secondary-subtle text-secondary" style="font-size:9px;white-space:nowrap;">Platform</span>
+                                    @else
+                                        <span class="badge bg-primary-subtle text-primary" style="font-size:9px;white-space:nowrap;">Platform</span>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Password Reset --}}
 <div class="row g-3 mt-1">
     <div class="col-md-6">
