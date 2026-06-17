@@ -26,13 +26,22 @@
     @else
     <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
     @endif
-    <form method="POST" action="{{ route('super_admin.institutes.toggle', $institute->id) }}" class="ms-auto">
-        @csrf @method('PATCH')
-        <button type="submit" class="btn btn-sm btn-outline-{{ $institute->status === 'active' ? 'danger' : 'success' }}">
-            <i class="bi bi-{{ $institute->status === 'active' ? 'slash-circle' : 'check-circle' }} me-1"></i>
-            {{ $institute->status === 'active' ? 'Deactivate' : 'Activate' }}
-        </button>
-    </form>
+    <div class="ms-auto d-flex gap-2">
+        <form method="POST" action="{{ route('super_admin.institutes.resend-credentials', $institute->id) }}"
+              onsubmit="return confirm('This will reset the admin password and send new credentials to {{ $institute->owner_email }}. Continue?')">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-envelope-arrow-up me-1"></i> Resend Credentials
+            </button>
+        </form>
+        <form method="POST" action="{{ route('super_admin.institutes.toggle', $institute->id) }}">
+            @csrf @method('PATCH')
+            <button type="submit" class="btn btn-sm btn-outline-{{ $institute->status === 'active' ? 'danger' : 'success' }}">
+                <i class="bi bi-{{ $institute->status === 'active' ? 'slash-circle' : 'check-circle' }} me-1"></i>
+                {{ $institute->status === 'active' ? 'Deactivate' : 'Activate' }}
+            </button>
+        </form>
+    </div>
 </div>
 
 <div class="row g-3">

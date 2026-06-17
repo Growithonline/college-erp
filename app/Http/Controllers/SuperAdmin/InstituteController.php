@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInstituteRequest;
 use App\Models\Institute;
+use App\Mail\InstituteCredentialMail;
 use App\Models\SmsLog;
 use App\Models\User;
 use App\Services\AccountingSetupService;
@@ -130,17 +131,15 @@ class InstituteController extends Controller
 
         // ── Step 2: Email — completely outside DB transaction ────────────────
         try {
-            Mail::raw(
-                "Welcome to College ERP\n\n" .
-                "Institute ID: {$uid}\n" .
-                "Login Email: {$user->email}\n" .
-                "Temporary Password: {$plainPassword}\n\n" .
-                "Login URL: " . url('/login') . "\n\n" .
-                "Please change your password after first login.",
-                function ($message) use ($user) {
-                    $message->to($user->email)->subject('Your Institute Login Credentials');
-                }
-            );
+            Mail::to($user->email)->send(new InstituteCredentialMail(
+                ownerName:     $request->input('owner_name'),
+                instituteName: $request->input('name'),
+                instituteUid:  $uid,
+                email:         $user->email,
+                password:      $plainPassword,
+                loginUrl:      url('/login'),
+                logoUrl:       asset('images/logog.png'),
+            ));
         } catch (\Throwable $mailEx) {
             \Log::warning('Institute welcome email failed', [
                 'institute_id' => $institute->id,
@@ -164,6 +163,32 @@ class InstituteController extends Controller
         return redirect()
             ->route('super_admin.institutes.create')
             ->with('success', 'Institute created and credentials sent to email.');
+    }
+
+    public function resendCredentials(Institute $institute)
+    {
+        $user = User::where('institute_id', $institute->id)
+            ->where('role', 'institute_admin')
+            ->firstOrFail();
+
+        $plainPassword = Str::random(10);
+        $user->update(['password' => Hash::make($plainPassword)]);
+
+        try {
+            Mail::to($user->email)->send(new InstituteCredentialMail(
+                ownerName:     $institute->owner_name,
+                instituteName: $institute->name,
+                instituteUid:  $institute->institute_uid,
+                email:         $user->email,
+                password:      $plainPassword,
+                loginUrl:      url('/login'),
+                logoUrl:       asset('images/logog.png'),
+            ));
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Password reset but email failed: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Credentials resent successfully to ' . $user->email);
     }
 
     private function generateInstituteUID(): string
