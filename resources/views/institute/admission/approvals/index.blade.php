@@ -158,9 +158,17 @@
                 @forelse($students as $i => $student)
                     @php
                         $source = $student->admission_source ?? 'direct';
-                        $admittedBy = $student->admittedBy?->name ? 'Staff: '.$student->admittedBy->name : 'Admin / Direct';
-                        if ($source === 'center') $admittedBy = 'Center';
-                        elseif ($source === 'channel_partner') $admittedBy = 'Channel Partner';
+                        if ($source === 'center') {
+                            $srcName = \App\Models\Center::find($student->admission_source_id)?->name ?? 'Center';
+                            $admittedBy = 'Center: ' . $srcName;
+                        } elseif ($source === 'channel_partner') {
+                            $srcName = \App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner';
+                            $admittedBy = 'Partner: ' . $srcName;
+                        } elseif ($student->admittedBy?->name) {
+                            $admittedBy = 'Staff: ' . $student->admittedBy->name;
+                        } else {
+                            $admittedBy = 'Admin / Direct';
+                        }
                         $statusClass = match($student->status) {
                             'pending' => 'bg-warning text-dark',
                             'active'  => 'bg-success',

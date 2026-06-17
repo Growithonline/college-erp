@@ -1723,7 +1723,7 @@ function refreshQuickFeePreview() {
         subject_ids: getSelectedSubjectIds(),
         semester: selectedSemester,
         student_type: document.querySelector('[name="student_type"]')?.value || 'regular',
-        admission_source: document.getElementById('sourceSelect')?.value || 'direct',
+        admission_source: document.getElementById('sourceSelect')?.value || document.querySelector('input[name="admission_source"]')?.value || 'direct',
         category: document.querySelector('[name="category"]')?.value || 'general',
         gender: document.querySelector('[name="gender"]')?.value || 'other',
     };

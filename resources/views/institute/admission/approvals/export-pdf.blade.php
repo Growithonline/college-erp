@@ -170,9 +170,15 @@
     <tbody>
         @forelse($exportStudents as $i => $student)
             @php
-                $admittedBy = $student->admittedBy?->name ? 'Staff: '.$student->admittedBy->name : 'Admin/Direct';
-                if ($student->admission_source === 'center') $admittedBy = 'Center';
-                elseif ($student->admission_source === 'channel_partner') $admittedBy = 'Partner';
+                if ($student->admission_source === 'center') {
+                    $admittedBy = 'Center: ' . (\App\Models\Center::find($student->admission_source_id)?->name ?? 'Center');
+                } elseif ($student->admission_source === 'channel_partner') {
+                    $admittedBy = 'Partner: ' . (\App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner');
+                } elseif ($student->admittedBy?->name) {
+                    $admittedBy = 'Staff: ' . $student->admittedBy->name;
+                } else {
+                    $admittedBy = 'Admin/Direct';
+                }
                 $badgeClass = match($student->status) {
                     'pending'   => 'badge-pending',
                     'active'    => 'badge-active',

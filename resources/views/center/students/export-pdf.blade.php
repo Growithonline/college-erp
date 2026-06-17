@@ -145,7 +145,13 @@
             <td class="muted">{{ $student->coursePart?->year_label ?? '—' }}</td>
             <td class="num muted">{{ $student->current_semester ? 'S'.$student->current_semester : '—' }}</td>
             <td class="muted">{{ $student->session?->name ?? '—' }}</td>
-            <td style="font-size:7.5px;">{{ $student->admittedBy?->name ?? '—' }}</td>
+            <td style="font-size:7.5px;">
+                @if($student->admittedBy?->name){{ $student->admittedBy->name }}
+                @elseif($student->admission_source === 'center'){{ \App\Models\Center::find($student->admission_source_id)?->name ?? 'Center' }}
+                @elseif($student->admission_source === 'channel_partner'){{ \App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner' }}
+                @else —
+                @endif
+            </td>
             <td><span class="badge {{ $badgeClass }}">{{ ucfirst($student->status ?? 'pending') }}</span></td>
             <td class="muted">{{ $student->admission_date?->format('d/m/Y') ?? '—' }}</td>
         </tr>

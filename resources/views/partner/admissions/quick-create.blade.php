@@ -11,6 +11,11 @@
     $feePreviewUrl = route('partner.admissions.fee-preview');
     $formColClass  = 'col-12';
     $formInnerCols = 4;
+    // Lock admission source to this channel partner
+    $partnerUser = $partner ?? auth()->guard('partner')->user();
+    $admissionSourceLocked     = 'channel_partner';
+    $admissionSourceLockedId   = $partnerUser->id;
+    $admissionSourceLockedName = $partnerUser->name;
 @endphp
 @include('institute.admission._quick-create-body')
 @endsection

@@ -214,10 +214,20 @@
                         </span>
                     </td>
                     <td class="small">
-                        @if($student->admittedBy)
+                        @if($student->admittedBy?->name)
                             <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle"
                                   style="font-size:10.5px;">
                                 <i class="bi bi-person-badge me-1"></i>{{ $student->admittedBy->name }}
+                            </span>
+                        @elseif($student->admission_source === 'center')
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle"
+                                  style="font-size:10.5px;">
+                                <i class="bi bi-building me-1"></i>{{ \App\Models\Center::find($student->admission_source_id)?->name ?? 'Center' }}
+                            </span>
+                        @elseif($student->admission_source === 'channel_partner')
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning-subtle"
+                                  style="font-size:10.5px;">
+                                <i class="bi bi-person-workspace me-1"></i>{{ \App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner' }}
                             </span>
                         @else
                             <span class="text-muted">—</span>
