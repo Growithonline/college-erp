@@ -277,6 +277,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/collect',                     [FeeCollectionController::class, 'create'])->name('create');
         Route::post('/collect',                    [FeeCollectionController::class, 'store'])->name('store');
         Route::get('/search-student',              [FeeCollectionController::class, 'searchStudent'])->name('search-student');
+        Route::get('/export',                      [FeeCollectionController::class, 'export'])->name('export');
         Route::get('/{student}/history',           [FeeCollectionController::class, 'studentHistory'])->name('student-history');
         Route::get('/{student}/receipt/{invoice}', [FeeCollectionController::class, 'receipt'])->name('receipt');
         Route::get('/{student}/wallet',            [WalletController::class, 'studentWallet'])->name('wallet.student');
@@ -920,6 +921,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('fee/collect',                     [StaffFeeController::class, 'create'])->name('fee.create');
         Route::post('fee/collect',                    [StaffFeeController::class, 'store'])->name('fee.store');
         Route::get('fee/search-student',              [StaffFeeController::class, 'searchStudent'])->name('fee.search-student');
+        Route::get('fee/export',                      [StaffFeeController::class, 'export'])->name('fee.export');
         Route::get('fee/{student}/receipt/{invoice}', [StaffFeeController::class, 'receipt'])->name('fee.receipt');
         Route::get('fee/history',                     [StaffFeeController::class, 'index'])->name('fee.index');
         Route::get('fee/{student}/history',           [StaffFeeController::class, 'studentHistory'])->name('fee.student-history');

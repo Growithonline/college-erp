@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Institute\Fee;
 
 use App\Http\Controllers\Controller;
+use App\Traits\ExportsTabularData;
 use App\Models\AcademicSession;
 use App\Models\CenterWallet;
 use App\Models\ChannelWallet;
@@ -23,6 +24,8 @@ use Illuminate\Support\Facades\DB;
 
 class FeeCollectionController extends Controller
 {
+    use \App\Traits\ExportsTabularData;
+
     private function feeItemKey(array $item): string
     {
         return sha1(implode('|', [
@@ -1351,6 +1354,139 @@ class FeeCollectionController extends Controller
             'totalPaid',
             'sessionBalances'
         ));
+    }
+
+    public function export(Request $request)
+    {
+        if (!in_array($request->export, ['pdf', 'csv', 'excel'])) {
+            abort(400, 'Invalid export type.');
+        }
+
+        $instituteId = $this->instituteId();
+        $institute   = \App\Models\Institute::find($instituteId);
+        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+
+        $dateFrom  = $request->date_from ?? now()->toDateString();
+        $dateTo    = $request->date_to ?? now()->toDateString();
+        $status    = $request->get('status', 'all');
+        $sessionId = $request->session_id ?? $activeSession?->id;
+        $sessionObj = $sessionId ? AcademicSession::find($sessionId) : null;
+
+        $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'items', 'bankAccount'])
+            ->where('institute_id', $instituteId);
+
+        if ($staff = $this->currentStaff()) {
+            $staff->scopeFeeInvoices($query);
+            if ($staff->hasRestrictedCourseAccess()) {
+                $query->whereHas('student.stream', fn($q) => $q->whereIn('course_id', $staff->allowedCourseIds() ?: [-1]));
+            }
+        } elseif ($center = auth()->guard('center')->user()) {
+            $query->where(fn($q) => $q
+                ->where('collected_by_center_id', $center->id)
+                ->orWhere(fn($sq) => $sq->whereNull('collected_by_center_id')->where('collected_by', $center->name))
+            );
+        } elseif ($partner = auth()->guard('partner')->user()) {
+            $query->where(fn($q) => $q
+                ->where('collected_by_partner_id', $partner->id)
+                ->orWhere(fn($sq) => $sq->whereNull('collected_by_partner_id')->where('collected_by', $partner->name))
+            );
+        }
+
+        if ($status === 'active') {
+            $query->where('is_cancelled', false);
+        } elseif ($status === 'cancelled') {
+            $query->where('is_cancelled', true);
+        }
+
+        if ($sessionId) {
+            $query->where('academic_session_id', $sessionId);
+        }
+
+        $query->whereDate('payment_date', '>=', $dateFrom)
+              ->whereDate('payment_date', '<=', $dateTo);
+
+        if ($request->course_id) {
+            $query->whereHas('student.stream', fn($q) => $q->where('course_id', $request->course_id));
+        }
+        if ($request->semester) {
+            $query->where('semester', $request->semester);
+        }
+        if ($request->collected_by) {
+            $query->where('collected_by', $request->collected_by);
+        }
+        if ($request->payment_mode) {
+            $query->where('payment_mode', $request->payment_mode);
+        }
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_no', 'like', "%{$search}%")
+                  ->orWhereHas('student', fn($sq) => $sq->where('name', 'like', "%{$search}%")
+                      ->orWhere('mobile', 'like', "%{$search}%")
+                      ->orWhere('student_uid', 'like', "%{$search}%"));
+            });
+        }
+
+        $invoices = $query->orderBy('payment_date', 'desc')->orderBy('id', 'desc')->get();
+
+        if ($request->export === 'pdf') {
+            $totalPaid      = $invoices->where('is_cancelled', false)->sum('paid_amount');
+            $totalInvoices  = $invoices->count();
+            $cancelledCount = $invoices->where('is_cancelled', true)->count();
+            $modeWise = $invoices->where('is_cancelled', false)->groupBy('payment_mode')->map(fn($g) => [
+                'count'  => $g->count(),
+                'amount' => $g->sum('paid_amount'),
+            ]);
+            $dateRange = \Carbon\Carbon::parse($dateFrom)->format('d M Y') . ' to ' . \Carbon\Carbon::parse($dateTo)->format('d M Y');
+
+            return view('institute.fee.export-pdf', compact(
+                'invoices', 'institute', 'sessionObj', 'dateFrom', 'dateTo',
+                'totalPaid', 'totalInvoices', 'cancelledCount', 'modeWise', 'dateRange'
+            ));
+        }
+
+        $expHeaders = [
+            'Invoice No', 'Date', 'Time', 'Student', 'Student ID', 'Roll No',
+            'Father Name', 'Mother Name', 'Course', 'Stream', 'Year', 'Sem',
+            'Fee Items', 'Bank / Account', 'Transaction Ref', 'Collected By',
+            'Payment Mode', 'Collection (Rs)', 'Fine (Rs)', 'Discount (Rs)', 'Total (Rs)', 'Status',
+        ];
+
+        $expRows = $invoices->map(fn($inv) => [
+            $inv->invoice_no,
+            $inv->payment_date?->format('d/m/Y'),
+            $inv->created_at?->setTimezone('Asia/Kolkata')->format('h:i A'),
+            $inv->student?->name ?? '',
+            $inv->student?->student_uid ?? '',
+            $inv->student?->roll_no ?? '—',
+            $inv->student?->father_name ?? '—',
+            $inv->student?->mother_name ?? '—',
+            $inv->student?->stream?->course?->name ?? '',
+            $inv->student?->stream?->name ?? '',
+            $inv->student?->coursePart?->year_label ?? '—',
+            $inv->semester ? 'Sem ' . $inv->semester : '—',
+            $inv->items->pluck('fee_name')->implode(', '),
+            $inv->bankAccount?->display_label ?: ($inv->bank_name ?: '—'),
+            $inv->transaction_ref ?? '—',
+            $inv->collected_by ?? '—',
+            strtoupper($inv->payment_mode),
+            number_format($inv->paid_amount, 2),
+            number_format($inv->items->sum('fine'), 2),
+            number_format($inv->discount ?? 0, 2),
+            number_format($inv->paid_amount + ($inv->discount ?? 0), 2),
+            $inv->is_cancelled ? 'Cancelled' : 'Active',
+        ])->toArray();
+
+        $filename  = 'fee-collection-' . now()->format('Ymd');
+        $instName  = $institute?->name ?? 'Institute';
+        $dateRange = \Carbon\Carbon::parse($dateFrom)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($dateTo)->format('d M Y');
+        $sessName  = $sessionObj?->name ?? ($sessionId ? 'Session' : 'All Sessions');
+
+        if ($request->export === 'excel') {
+            return $this->exportFeeCollectionExcel($expHeaders, $expRows, $filename . '.xlsx', $instName, $dateRange, $sessName);
+        }
+
+        return $this->exportCsv($expHeaders, $expRows, $filename . '.csv');
     }
 
     public function searchStudent(Request $request)

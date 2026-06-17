@@ -3,6 +3,7 @@
     $layout          = $isStaff ? 'staff.layout'              : 'institute.layout';
     $feeIndexRoute   = $isStaff ? 'staff.fee.index'           : 'fee.index';
     $feeCreateRoute  = $isStaff ? 'staff.fee.create'          : 'fee.create';
+    $feeExportRoute  = $isStaff ? 'staff.fee.export'          : 'fee.export';
     $receiptRoute    = $isStaff ? 'staff.fee.receipt'         : 'fee.receipt';
     $historyRoute    = $isStaff ? 'staff.fee.student-history' : 'fee.student-history';
     $studentHistoryRoute = $historyRoute; // backward compat alias
@@ -182,11 +183,39 @@
                         $todayParams = array_merge(request()->except(['date_from','date_to']), ['date_from'=>now()->toDateString(),'date_to'=>now()->toDateString()]);
                         $monthParams = array_merge(request()->except(['date_from','date_to']), ['date_from'=>now()->startOfMonth()->toDateString(),'date_to'=>now()->toDateString()]);
                         $isToday = $dateFrom == now()->toDateString() && $dateTo == now()->toDateString();
+                        $exportParams = array_merge(request()->except(['page']), []);
                     @endphp
                     <a href="{{ route($feeIndexRoute, $todayParams) }}"
                        class="btn btn-sm {{ $isToday ? 'btn-primary' : 'btn-outline-secondary' }}">Today</a>
                     <a href="{{ route($feeIndexRoute, $monthParams) }}"
                        class="btn btn-sm btn-outline-secondary">This Month</a>
+                    {{-- Export dropdown --}}
+                    <div class="dropdown">
+                        <button class="btn btn-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Export">
+                            <i class="bi bi-download me-1"></i>Export
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:170px;">
+                            <li>
+                                <a class="dropdown-item small" target="_blank"
+                                   href="{{ route($feeExportRoute, array_merge($exportParams, ['export'=>'pdf'])) }}">
+                                    <i class="bi bi-filetype-pdf me-2 text-danger"></i>PDF (Print)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item small"
+                                   href="{{ route($feeExportRoute, array_merge($exportParams, ['export'=>'excel'])) }}">
+                                    <i class="bi bi-filetype-xlsx me-2 text-success"></i>Excel (.xlsx)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item small"
+                                   href="{{ route($feeExportRoute, array_merge($exportParams, ['export'=>'csv'])) }}">
+                                    <i class="bi bi-filetype-csv me-2 text-secondary"></i>CSV
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    {{-- Column visibility --}}
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             <i class="bi bi-layout-three-columns"></i>
