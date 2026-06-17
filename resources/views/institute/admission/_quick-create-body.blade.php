@@ -1303,6 +1303,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     toggleSourceFields(oldSource);
+    toggleQuickBankAccount();
 });
 
 // ── Seat availability check ──────────────────────────────────────────
