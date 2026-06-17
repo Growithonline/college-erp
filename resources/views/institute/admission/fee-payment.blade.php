@@ -937,26 +937,18 @@ function togglePaymentFields() {
     // Payment Date & Time — mandatory for non-cash; auto-set date to today when shown
     if (datetimeField) datetimeField.style.display = isNonCash ? 'block' : 'none';
     if (isNonCash && dtInput) {
-        const now     = new Date();
-        const today   = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+        const now      = new Date();
+        const today    = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
         const timePart = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-        dtInput.value = today + 'T' + timePart;
-        // Lock date to today — only allow time changes
+        if (!dtInput.value) {
+            dtInput.value = today + 'T' + timePart;
+        }
         dtInput.min = today + 'T00:00';
         dtInput.max = today + 'T' + timePart;
     }
     if (refInput)  refInput.required  = isNonCash;
     if (dtInput)   dtInput.required   = isNonCash;
 }
-
-// Enforce today's date on non-cash payment — prevent back-date even if typed manually
-document.getElementById('paymentDatetimeInput')?.addEventListener('input', function () {
-    const n = new Date();
-    const d = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0');
-    if (this.value && this.value.split('T')[0] !== d) {
-        this.value = d + 'T' + (this.value.split('T')[1] || String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0'));
-    }
-});
 
 function handlePaymentModeChange() {
     syncBankAccountRequirement();

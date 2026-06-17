@@ -829,11 +829,10 @@ class FeeCollectionController extends Controller
             } catch (\Exception $e) {}
         }
 
-        $paymentDate = $this->shouldLockPaymentDate()
+        // Non-cash: payment_date = today (receipt generation date), not the stored audit datetime
+        $paymentDate = ($this->shouldLockPaymentDate() || $request->payment_mode !== 'cash')
             ? now()->toDateString()
-            : ($request->filled('payment_date')
-                ? $request->payment_date
-                : $paymentDatetime->toDateString());
+            : ($request->filled('payment_date') ? $request->payment_date : now()->toDateString());
 
         if (!in_array($request->payment_mode, $allowedPaymentModes, true)) {
             return back()->withErrors([

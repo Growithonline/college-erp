@@ -193,8 +193,8 @@
                             <span class="badge bg-light text-dark border fw-semibold" style="font-size:11px;">{{ $inv->invoice_no }}</span>
                             <div class="text-muted" style="font-size:10px;">
                                 {{ $inv->payment_date?->format('d M Y') }}
-                                @if($inv->payment_datetime)
-                                    · {{ $inv->payment_datetime->format('h:i A') }}
+                                @if($inv->payment_datetime && $inv->payment_mode !== 'cash')
+                                    · {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('d M · h:i A') }}
                                 @endif
                                 @if($inv->is_cancelled)
                                     <span class="badge bg-danger ms-1" style="font-size:9px;">Cancelled</span>

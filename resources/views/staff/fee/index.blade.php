@@ -60,7 +60,7 @@
                     <td class="small text-muted">
                         {{ $inv->payment_date?->format('d M Y') }}
                         @if($inv->payment_datetime && $inv->payment_mode !== 'cash')
-                            <div style="font-size:10px;"><i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('h:i A') }}</div>
+                            <div style="font-size:10px;"><i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('d M · h:i A') }}</div>
                         @endif
                     </td>
                     <td class="text-center">

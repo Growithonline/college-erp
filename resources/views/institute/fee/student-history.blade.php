@@ -142,7 +142,7 @@
                             {{ $inv->payment_date->format('d M Y') }}
                             @if($inv->payment_datetime && $inv->payment_mode !== 'cash')
                                 <div class="text-muted" style="font-size:10px;" title="Actual payment received time">
-                                    <i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('h:i A') }}
+                                    <i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('d M · h:i A') }}
                                 </div>
                             @endif
                         </td>

@@ -3701,11 +3701,12 @@ class AdmissionController extends Controller
         }
 
         $year = StudentIdService::getYearFromSession($activeSession->name);
-        $paymentDate = $this->shouldLockPaymentDate()
+        // Non-cash: payment_date = today (receipt generation date), cash: use form-submitted date
+        $paymentDate = ($this->shouldLockPaymentDate() || $request->payment_mode !== 'cash')
             ? now()->toDateString()
             : $request->payment_date;
 
-        // For non-cash: extract actual payment datetime for remarks
+        // For non-cash: store actual payment datetime for audit
         $paymentDatetimeNote = null;
         $paymentDatetime = null;
         if ($request->payment_mode !== 'cash' && $request->filled('payment_datetime')) {
@@ -3713,10 +3714,6 @@ class AdmissionController extends Controller
                 $dt = \Carbon\Carbon::parse($request->payment_datetime)->setTimezone('Asia/Kolkata');
                 $paymentDatetime = $dt;
                 $paymentDatetimeNote = 'Payment received: ' . $dt->format('d M Y, h:i A');
-                // Override payment_date with actual payment date
-                if (!$this->shouldLockPaymentDate()) {
-                    $paymentDate = $dt->toDateString();
-                }
             } catch (\Exception $e) {
                 return back()->withErrors([
                     'payment_datetime' => 'Payment date & time is invalid. Please enter a valid date and time.',

@@ -172,7 +172,7 @@
                                 {{ strtoupper($inv->payment_mode) }}
                             </span>
                             @if($inv->payment_datetime && $inv->payment_mode !== 'cash')
-                                <div class="text-muted" style="font-size:10px;"><i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('h:i A') }}</div>
+                                <div class="text-muted" style="font-size:10px;"><i class="bi bi-clock"></i> {{ $inv->payment_datetime->setTimezone('Asia/Kolkata')->format('d M · h:i A') }}</div>
                             @endif
                         </td>
                         <td class="text-end fw-bold text-success">Rs {{ number_format($inv->paid_amount) }}</td>
