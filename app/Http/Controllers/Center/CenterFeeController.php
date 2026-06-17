@@ -45,7 +45,7 @@ class CenterFeeController extends Controller
         $dateFrom = $request->date_from ?? now()->toDateString();
         $dateTo   = $request->date_to   ?? now()->toDateString();
 
-        $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'session'])
+        $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'session', 'items'])
             ->where('institute_id', $instituteId)
             ->where(fn($q) => $q
                 ->where('collected_by_center_id', $center->id)

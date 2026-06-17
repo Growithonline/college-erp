@@ -153,11 +153,12 @@
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle" style="font-size:12px; min-width:1200px;">
+            <table class="table table-hover mb-0 align-middle" style="font-size:12px; min-width:2000px;">
                 <thead class="table-light">
                     <tr>
                         <th class="ps-3" style="white-space:nowrap;">Invoice No</th>
                         <th style="white-space:nowrap;">Student Name</th>
+                        <th style="white-space:nowrap;">Roll No</th>
                         <th style="white-space:nowrap;">UIN No</th>
                         <th style="white-space:nowrap;">Father Name</th>
                         <th style="white-space:nowrap;">Mother Name</th>
@@ -166,7 +167,11 @@
                         <th style="white-space:nowrap;">Course / Stream</th>
                         <th style="white-space:nowrap;">Session</th>
                         <th style="white-space:nowrap;">Mode</th>
-                        <th class="text-end" style="white-space:nowrap;">Amount</th>
+                        <th class="text-end" style="white-space:nowrap;">Total Fee</th>
+                        <th class="text-end" style="white-space:nowrap;">Fine</th>
+                        <th class="text-end" style="white-space:nowrap;">Discount</th>
+                        <th class="text-end" style="white-space:nowrap;">Due</th>
+                        <th style="white-space:nowrap;">Collected By</th>
                         <th class="text-center" style="white-space:nowrap;">Receipt</th>
                     </tr>
                 </thead>
@@ -176,6 +181,8 @@
                         $modeColors = ['cash'=>'success','upi'=>'primary','online'=>'info','cheque'=>'warning','dd'=>'secondary','neft'=>'dark','rtgs'=>'dark'];
                         $color = $modeColors[$inv->payment_mode] ?? 'secondary';
                         $st = $inv->student;
+                        $fineTotal = $inv->items->sum('fine');
+                        $due = max(0, ($inv->total_amount + $fineTotal - $inv->discount) - $inv->paid_amount);
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">
                         <td class="ps-3">
@@ -191,6 +198,7 @@
                             </div>
                         </td>
                         <td class="fw-semibold">{{ $st?->name ?? '—' }}</td>
+                        <td class="text-muted small">{{ $st?->roll_no ?: '—' }}</td>
                         <td class="text-muted small">{{ $st?->student_uid ?? '—' }}</td>
                         <td class="small">{{ $st?->father_name ?: '—' }}</td>
                         <td class="small">{{ $st?->mother_name ?: '—' }}</td>
@@ -210,6 +218,16 @@
                             </span>
                         </td>
                         <td class="text-end fw-bold text-success">Rs {{ number_format($inv->paid_amount) }}</td>
+                        <td class="text-end small {{ $fineTotal > 0 ? 'text-danger' : 'text-muted' }}">
+                            {{ $fineTotal > 0 ? 'Rs '.number_format($fineTotal) : '—' }}
+                        </td>
+                        <td class="text-end small {{ $inv->discount > 0 ? 'text-warning' : 'text-muted' }}">
+                            {{ $inv->discount > 0 ? 'Rs '.number_format($inv->discount) : '—' }}
+                        </td>
+                        <td class="text-end small {{ $due > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
+                            {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
+                        </td>
+                        <td class="small text-muted">{{ $inv->collected_by ?: '—' }}</td>
                         <td class="text-center">
                             <a href="{{ route('center.fee.receipt', [$inv->student_id, $inv->id]) }}"
                                class="btn btn-sm btn-outline-primary" target="_blank" title="Print Receipt">
@@ -219,7 +237,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="12" class="text-center py-5 text-muted">
+                        <td colspan="17" class="text-center py-5 text-muted">
                             <i class="bi bi-receipt fs-2 d-block mb-2"></i>
                             Koi fee collection nahi mili
                         </td>
