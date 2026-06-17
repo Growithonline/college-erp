@@ -151,12 +151,12 @@
 
 {{-- Table --}}
 <style>
-    #fee-collection-table th, #fee-collection-table td { padding: 5px 8px !important; }
+    #fee-collection-table th, #fee-collection-table td { padding: 4px 5px !important; }
 </style>
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table id="fee-collection-table" class="table table-hover table-sm mb-0 align-middle" style="font-size:12px; min-width:2000px;">
+            <table id="fee-collection-table" class="table table-hover table-sm mb-0 align-middle" style="font-size:13px; min-width:2000px;">
                 <thead class="table-light">
                     <tr>
                         <th style="white-space:nowrap;">Invoice No</th>
@@ -222,17 +222,17 @@
                             </span>
                         </td>
                         <td class="text-end fw-bold text-success">Rs {{ number_format($inv->paid_amount) }}</td>
-                        <td class="text-end small {{ $fineTotal > 0 ? 'text-danger' : 'text-muted' }}">
+                        <td class="text-end fw-bold {{ $fineTotal > 0 ? 'text-danger' : 'text-muted' }}">
                             {{ $fineTotal > 0 ? 'Rs '.number_format($fineTotal) : '—' }}
                         </td>
-                        <td class="text-end small">
+                        <td class="text-end fw-bold">
                             @if($inv->discount > 0)
-                                <span class="fw-semibold" style="color:#e67e22;">- Rs {{ number_format($inv->discount) }}</span>
+                                <span style="color:#e67e22;">- Rs {{ number_format($inv->discount) }}</span>
                             @else
                                 <span class="text-muted">—</span>
                             @endif
                         </td>
-                        <td class="text-end small {{ $due > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
+                        <td class="text-end fw-bold {{ $due > 0 ? 'text-danger' : 'text-muted' }}">
                             {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
                         </td>
                         <td class="small text-muted">{{ $inv->collected_by ?: '—' }}</td>
