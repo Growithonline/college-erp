@@ -153,7 +153,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle" style="font-size:12px; min-width:2000px;">
+            <table class="table table-hover table-sm mb-0 align-middle" style="font-size:12px; min-width:2000px;">
                 <thead class="table-light">
                     <tr>
                         <th class="ps-3" style="white-space:nowrap;">Invoice No</th>
@@ -182,7 +182,8 @@
                         $color = $modeColors[$inv->payment_mode] ?? 'secondary';
                         $st = $inv->student;
                         $fineTotal = $inv->items->sum('fine');
-                        $due = max(0, ($inv->total_amount + $fineTotal - $inv->discount) - $inv->paid_amount);
+                        $studentWallet = $st?->wallets->firstWhere('academic_session_id', $inv->academic_session_id);
+                        $due = max(0, (float) ($studentWallet?->main_b ?? 0));
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">
                         <td class="ps-3">
@@ -221,8 +222,12 @@
                         <td class="text-end small {{ $fineTotal > 0 ? 'text-danger' : 'text-muted' }}">
                             {{ $fineTotal > 0 ? 'Rs '.number_format($fineTotal) : '—' }}
                         </td>
-                        <td class="text-end small {{ $inv->discount > 0 ? 'text-warning' : 'text-muted' }}">
-                            {{ $inv->discount > 0 ? 'Rs '.number_format($inv->discount) : '—' }}
+                        <td class="text-end small">
+                            @if($inv->discount > 0)
+                                <span class="fw-semibold" style="color:#e67e22;">- Rs {{ number_format($inv->discount) }}</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
                         </td>
                         <td class="text-end small {{ $due > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
                             {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
