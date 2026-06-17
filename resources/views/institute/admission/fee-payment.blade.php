@@ -590,7 +590,7 @@
                         <label class="form-label small fw-semibold">Payment Date &amp; Time <span class="text-danger">*</span> <span class="text-muted fw-normal">(Actual payment time)</span></label>
                         <input type="datetime-local" name="payment_datetime" id="paymentDatetimeInput"
                                class="form-control form-control-sm"
-                               value="{{ now()->format('Y-m-d\TH:i') }}">
+                               value="">
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-semibold">Remarks (optional)</label>
@@ -939,7 +939,7 @@ function togglePaymentFields() {
     if (isNonCash && dtInput) {
         const now     = new Date();
         const today   = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-        const timePart = dtInput.value ? dtInput.value.split('T')[1] : String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+        const timePart = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
         dtInput.value = today + 'T' + timePart;
         // Lock date to today — only allow time changes
         dtInput.min = today + 'T00:00';

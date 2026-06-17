@@ -176,7 +176,7 @@
         || auth()->guard('center')->check()
         || auth()->guard('partner')->check();
     $defaultPaymentDate = now()->toDateString();
-    $defaultPaymentDatetime = now()->format('Y-m-d\TH:i');
+    $defaultPaymentDatetime = '';
     $paymentModeLabels = [
         'cash' => 'Cash',
         'upi' => 'UPI',
@@ -1881,7 +1881,7 @@ function togglePaymentFields() {
     if (!cashDateInputEl && isNonCash && paymentDatetimeInput) {
         const _n = new Date();
         const _d = _n.getFullYear() + '-' + String(_n.getMonth()+1).padStart(2,'0') + '-' + String(_n.getDate()).padStart(2,'0');
-        const _t = paymentDatetimeInput.value ? paymentDatetimeInput.value.split('T')[1] : String(_n.getHours()).padStart(2,'0') + ':' + String(_n.getMinutes()).padStart(2,'0');
+        const _t = String(_n.getHours()).padStart(2,'0') + ':' + String(_n.getMinutes()).padStart(2,'0');
         paymentDatetimeInput.value = _d + 'T' + _t;
         paymentDatetimeInput.min   = _d + 'T00:00';
         paymentDatetimeInput.max   = _d + 'T23:59';
