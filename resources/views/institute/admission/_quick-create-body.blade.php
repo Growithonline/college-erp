@@ -2099,7 +2099,12 @@ function toggleQuickBankAccount() {
             if (!timeInput.value) {
                 timeInput.value = `${today}T${curr}`;
             }
-            timeInput.min = `${today}T00:00`;
+            // Admin: koi bhi past date select kar sakta hai; staff/center/partner: sirf aaj ka date
+            if ({{ $lockPaymentDate ? 'true' : 'false' }}) {
+                timeInput.min = `${today}T00:00`;
+            } else {
+                timeInput.removeAttribute('min');
+            }
             timeInput.max = `${today}T${curr}`;
         }
     }
