@@ -296,7 +296,7 @@ class CenterFeeController extends Controller
         $dateTo    = $request->date_to   ?? now()->toDateString();
         $format    = strtolower($request->format ?? 'csv');
 
-        $query = FeeInvoice::with(['student.stream.course', 'session'])
+        $query = FeeInvoice::with(['student.stream.course', 'student.wallets', 'session', 'items'])
             ->where('institute_id', $instituteId)
             ->where(fn($q) => $q
                 ->where('collected_by_center_id', $center->id)
@@ -337,9 +337,10 @@ class CenterFeeController extends Controller
         ];
 
         $headers = [
-            '#', 'Invoice No', 'Payment Date', 'Student Name', 'UIN No',
+            '#', 'Invoice No', 'Payment Date', 'Student Name', 'Roll No', 'UIN No',
             'Father Name', 'Mother Name', 'Enrollment No', 'Mobile',
-            'Course', 'Stream', 'Semester', 'Session', 'Payment Mode', 'Amount (Rs)',
+            'Course', 'Stream', 'Semester', 'Session', 'Payment Mode',
+            'Total Fee (Rs)', 'Fine (Rs)', 'Discount (Rs)', 'Due (Rs)', 'Collected By',
         ];
 
         $rows = $invoices->values()->map(fn($inv, $i) => [
@@ -347,6 +348,7 @@ class CenterFeeController extends Controller
             $inv->invoice_no ?? '',
             $inv->payment_date?->format('d-m-Y') ?? '',
             $inv->student?->name ?? '',
+            $inv->student?->roll_no ?? '',
             $inv->student?->student_uid ?? '',
             $inv->student?->father_name ?? '',
             $inv->student?->mother_name ?? '',
@@ -358,6 +360,13 @@ class CenterFeeController extends Controller
             $inv->session?->name ?? '',
             ucfirst($inv->payment_mode ?? ''),
             $inv->paid_amount ?? 0,
+            round($inv->items->sum('fine'), 2),
+            $inv->discount ?? 0,
+            (function () use ($inv) {
+                $w = $inv->student?->wallets->firstWhere('academic_session_id', $inv->academic_session_id);
+                return $w && $w->main_b < 0 ? abs((float) $w->main_b) : 0;
+            })(),
+            $inv->collected_by ?? '',
         ])->all();
 
         $ext = $format === 'excel' ? 'xlsx' : 'csv';

@@ -30,12 +30,12 @@
         /* Main table */
         table.data { width: 100%; border-collapse: collapse; margin-top: 6px; }
         table.data thead th {
-            background: #0f766e; color: #ffffff; font-size: 8px; font-weight: 700;
-            padding: 5px 4px; text-align: left; white-space: nowrap;
+            background: #0f766e; color: #ffffff; font-size: 7.5px; font-weight: 700;
+            padding: 4px 3px; text-align: left; white-space: nowrap;
         }
         table.data thead th.num { text-align: center; }
         table.data tbody td {
-            padding: 4px 4px; font-size: 8.5px; border-bottom: 1px solid #e5e7eb; vertical-align: top;
+            padding: 3px 3px; font-size: 7.5px; border-bottom: 1px solid #e5e7eb; vertical-align: top;
         }
         table.data tbody tr:nth-child(even) { background: #f8fafc; }
         table.data tbody tr:last-child td { border-bottom: none; }
@@ -71,8 +71,11 @@
         <tr>
             <td style="width:60px; padding-right:10px;">
                 <div class="logo-box">
-                    @if(!empty($institute->image) && file_exists(public_path($institute->image)))
-                        <img src="{{ public_path($institute->image) }}" alt="Logo">
+                    @php
+                        $logoPath = storage_path('app/public/' . $institute->image);
+                    @endphp
+                    @if(!empty($institute->image) && file_exists($logoPath))
+                        <img src="{{ $logoPath }}" alt="Logo">
                     @else
                         {{ strtoupper(substr($institute->short_name ?: $institute->name, 0, 2)) }}
                     @endif
@@ -146,28 +149,36 @@
 <table class="data" cellspacing="0" cellpadding="0">
     <thead>
         <tr>
-            <th class="num" style="width:22px;">#</th>
-            <th style="width:70px;">Invoice No</th>
-            <th style="width:52px;">Date</th>
-            <th style="width:80px;">Student Name</th>
-            <th style="width:65px;">UIN No</th>
-            <th style="width:70px;">Father Name</th>
-            <th style="width:70px;">Mother Name</th>
-            <th style="width:62px;">Enroll No</th>
-            <th style="width:55px;">Mobile</th>
-            <th style="width:70px;">Course</th>
-            <th style="width:55px;">Stream</th>
-            <th style="width:28px;">Sem</th>
-            <th style="width:38px;">Session</th>
-            <th style="width:36px;">Mode</th>
-            <th style="width:48px; text-align:right;">Amount</th>
+            <th class="num" style="width:18px;">#</th>
+            <th style="width:62px;">Invoice No</th>
+            <th style="width:42px;">Date</th>
+            <th style="width:72px;">Student Name</th>
+            <th style="width:38px;">Roll No</th>
+            <th style="width:58px;">UIN No</th>
+            <th style="width:52px;">Father Name</th>
+            <th style="width:52px;">Mother Name</th>
+            <th style="width:50px;">Enroll No</th>
+            <th style="width:48px;">Mobile</th>
+            <th style="width:58px;">Course</th>
+            <th style="width:42px;">Stream</th>
+            <th style="width:20px;">Sem</th>
+            <th style="width:30px;">Session</th>
+            <th style="width:28px;">Mode</th>
+            <th style="width:40px; text-align:right;">Total Fee</th>
+            <th style="width:30px; text-align:right;">Fine</th>
+            <th style="width:38px; text-align:right;">Discount</th>
+            <th style="width:38px; text-align:right;">Due</th>
+            <th style="width:55px;">Collected By</th>
         </tr>
     </thead>
     <tbody>
         @foreach($invoices as $i => $inv)
         @php
-            $st   = $inv->student;
-            $mode = strtolower($inv->payment_mode ?? '');
+            $st        = $inv->student;
+            $mode      = strtolower($inv->payment_mode ?? '');
+            $fineTotal = $inv->items->sum('fine');
+            $wallet    = $st?->wallets->firstWhere('academic_session_id', $inv->academic_session_id);
+            $due       = $wallet && $wallet->main_b < 0 ? abs((float) $wallet->main_b) : 0;
             $badgeClass = match($mode) {
                 'cash'   => 'badge-cash',
                 'upi'    => 'badge-upi',
@@ -178,27 +189,38 @@
         @endphp
         <tr>
             <td class="num">{{ $i + 1 }}</td>
-            <td class="fw" style="font-size:7.5px;">{{ $inv->invoice_no }}</td>
+            <td class="fw" style="font-size:7px;">{{ $inv->invoice_no }}</td>
             <td>{{ $inv->payment_date?->format('d M Y') }}</td>
             <td>
                 <div class="fw">{{ $st?->name ?? '—' }}</div>
             </td>
+            <td class="muted">{{ $st?->roll_no ?: '—' }}</td>
             <td class="muted">{{ $st?->student_uid ?? '—' }}</td>
             <td>{{ $st?->father_name ?? '—' }}</td>
             <td>{{ $st?->mother_name ?? '—' }}</td>
             <td class="muted">{{ $st?->enrollment_no ?: '—' }}</td>
             <td class="muted">{{ $st?->mobile ?? '' }}</td>
-            <td style="font-size:8px;">{{ $st?->stream?->course?->name ?? '—' }}</td>
+            <td>{{ $st?->stream?->course?->name ?? '—' }}</td>
             <td class="muted">{{ $st?->stream?->name ?? '—' }}</td>
             <td class="num muted">{{ $inv->semester ? 'S'.$inv->semester : '—' }}</td>
             <td class="muted">{{ $inv->session?->name ?? '—' }}</td>
             <td><span class="badge {{ $badgeClass }}">{{ strtoupper($mode) }}</span></td>
             <td class="amount">{{ number_format($inv->paid_amount, 0) }}</td>
+            <td style="text-align:right; color:{{ $fineTotal > 0 ? '#dc2626' : '#9ca3af' }};">
+                {{ $fineTotal > 0 ? number_format($fineTotal, 0) : '—' }}
+            </td>
+            <td style="text-align:right; color:{{ $inv->discount > 0 ? '#d97706' : '#9ca3af' }}; font-weight:{{ $inv->discount > 0 ? '700' : '400' }};">
+                {{ $inv->discount > 0 ? '-'.number_format($inv->discount, 0) : '—' }}
+            </td>
+            <td style="text-align:right; color:{{ $due > 0 ? '#dc2626' : '#9ca3af' }}; font-weight:{{ $due > 0 ? '700' : '400' }};">
+                {{ $due > 0 ? number_format($due, 0) : '—' }}
+            </td>
+            <td class="muted">{{ $inv->collected_by ?? '—' }}</td>
         </tr>
         @endforeach
     </tbody>
     <tr class="total-row">
-        <td colspan="14" style="text-align:right; padding-right:6px;">Grand Total</td>
+        <td colspan="19" style="text-align:right; padding-right:6px;">Grand Total</td>
         <td class="amount">{{ number_format($totalAmt, 0) }}</td>
     </tr>
 </table>
