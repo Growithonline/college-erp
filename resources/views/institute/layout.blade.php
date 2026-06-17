@@ -984,8 +984,8 @@
 
         {{-- Email Settings --}}
         <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('settings.email*') ? 'active' : '' }}"
-               href="{{ route('settings.email') }}">
+            <a class="nav-link {{ request()->routeIs('master.settings.email*') ? 'active' : '' }}"
+               href="{{ route('master.settings.email') }}">
                 <i class="bi bi-envelope-gear"></i> Email Settings
                 @php $inst = auth()->user()?->institute; @endphp
                 @if($inst && $inst->hasSmtp())

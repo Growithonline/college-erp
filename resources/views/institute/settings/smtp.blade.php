@@ -45,7 +45,7 @@
                 <span class="fw-semibold"><i class="bi bi-gear text-primary me-2"></i>SMTP Configuration</span>
             </div>
             <div class="card-body p-4">
-                <form method="POST" action="{{ route('settings.email.save') }}">
+                <form method="POST" action="{{ route('master.settings.email.save') }}">
                     @csrf
 
                     {{-- Host + Port --}}
@@ -146,7 +146,7 @@
                     </div>
                 </form>
 
-                <form id="form-disconnect" method="POST" action="{{ route('settings.email.disconnect') }}" class="d-none">
+                <form id="form-disconnect" method="POST" action="{{ route('master.settings.email.disconnect') }}" class="d-none">
                     @csrf
                 </form>
             </div>
@@ -166,7 +166,7 @@
                     <p class="small text-muted mb-3">
                         Send a test email to <strong>{{ Auth::user()->email }}</strong> to confirm your SMTP is working correctly.
                     </p>
-                    <form method="POST" action="{{ route('settings.email.test') }}">
+                    <form method="POST" action="{{ route('master.settings.email.test') }}">
                         @csrf
                         <button type="submit" class="btn btn-success w-100">
                             <i class="bi bi-envelope-check me-1"></i> Send Test Email
