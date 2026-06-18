@@ -121,7 +121,11 @@ class StudentDirectoryController extends Controller
                 $student->stream?->course?->name ?? '—',
                 $student->stream?->name ?? '—',
                 ($student->coursePart?->year_label ?? '—') . ($student->current_semester ? ' S' . $student->current_semester : ''),
-                $student->admittedBy?->name ?? '—',
+                $student->admittedBy?->name ?? match($student->admission_source) {
+                    'center'                     => ($centersMap[$student->admission_source_id] ?? null) ? 'Center: ' . $centersMap[$student->admission_source_id] : 'Center',
+                    'partner', 'channel_partner' => ($partnersMap[$student->admission_source_id] ?? null) ? 'Partner: ' . $partnersMap[$student->admission_source_id] : 'Partner',
+                    default                      => 'Admin / Direct',
+                },
                 $source,
                 $student->admission_date?->format('d/m/Y') ?? '—',
                 ucfirst($student->status ?? 'pending'),
