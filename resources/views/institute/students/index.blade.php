@@ -187,6 +187,13 @@
                                         : 'Partner',
                         default   => 'Direct',
                     };
+                    // Admitted By: staff name if set, else source label (center/partner/admin)
+                    $admittedByLabel = $student->admittedBy?->name
+                        ?? match($student->admission_source) {
+                            'center'                    => $source,
+                            'partner', 'channel_partner'=> $source,
+                            default                     => 'Admin / Direct',
+                        };
                     $statusColor = match($student->status) {
                         'active'    => 'bg-success-subtle text-success border-success-subtle',
                         'pending'   => 'bg-warning-subtle text-warning border-warning-subtle',
@@ -215,8 +222,8 @@
                         <div class="text-muted" style="font-size:10.5px;">{{ $student->mobile }}</div>
                     </td>
 
-                    <td style="white-space:nowrap;">{{ $student->father_name ?: '—' }}</td>
-                    <td style="white-space:nowrap;">{{ $student->mother_name ?: '—' }}</td>
+                    <td class="fw-semibold" style="white-space:nowrap;">{{ $student->father_name ?: '—' }}</td>
+                    <td class="fw-semibold" style="white-space:nowrap;">{{ $student->mother_name ?: '—' }}</td>
                     <td class="text-muted">{{ $student->roll_no ?: '—' }}</td>
                     <td class="text-muted">{{ $student->enrollment_no ?: '—' }}</td>
                     <td class="text-muted">{{ $student->uin_no ?: '—' }}</td>
@@ -241,7 +248,7 @@
                                 <i class="bi bi-person-badge me-1"></i>{{ $student->admittedBy->name }}
                             </span>
                         @else
-                            <span class="text-muted" style="font-size:11px;">Admin</span>
+                            <span class="text-muted" style="font-size:11px;">{{ $admittedByLabel }}</span>
                         @endif
                     </td>
 
