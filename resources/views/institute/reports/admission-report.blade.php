@@ -17,12 +17,28 @@
         <small class="text-muted">{{ $sessionObj?->name ?? '' }} — Course-wise, source-wise statistics</small>
     </div>
     <div class="d-flex gap-2">
-        <button onclick="printReport()" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-printer me-1"></i> Print
-        </button>
-        <a href="{{ request()->fullUrlWithQuery(['export'=>'csv']) }}" class="btn btn-outline-success btn-sm">
-            <i class="bi bi-download me-1"></i> Export CSV
-        </a>
+        <div class="dropdown">
+            <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-download me-1"></i> Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item" href="{{ request()->fullUrlWithQuery(['export' => 'pdf']) }}" target="_blank">
+                        <i class="bi bi-file-earmark-pdf me-2 text-danger"></i> PDF (Print)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ request()->fullUrlWithQuery(['export' => 'excel']) }}">
+                        <i class="bi bi-file-earmark-excel me-2 text-success"></i> Excel (.xlsx)
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ request()->fullUrlWithQuery(['export' => 'csv']) }}">
+                        <i class="bi bi-filetype-csv me-2 text-secondary"></i> CSV
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
 </div>
 
@@ -268,15 +284,19 @@
                     </thead>
                     <tbody>
                         @foreach($staffWise as $sw)
-                        @php $pct = $staffTotal > 0 ? round($sw->cnt/$staffTotal*100) : 0; @endphp
+                        @php
+                            $pct = $staffTotal > 0 ? round($sw->cnt/$staffTotal*100) : 0;
+                            [$swIcon, $swColor] = match(true) {
+                                str_starts_with($sw->staff_name, 'Center:')  => ['bi-building',      'text-info'],
+                                str_starts_with($sw->staff_name, 'Partner:') => ['bi-handshake',     'text-warning'],
+                                $sw->staff_name === 'Admin / Direct'         => ['bi-shield-check',  'text-secondary'],
+                                default                                       => ['bi-person-circle', 'text-primary'],
+                            };
+                        @endphp
                         <tr>
                             <td class="ps-3 py-2">
                                 <div class="fw-semibold" style="font-size:12px;">
-                                    @if($sw->staff_name === 'Admin / Direct')
-                                        <i class="bi bi-shield-check me-1 text-secondary" style="font-size:10px;"></i>
-                                    @else
-                                        <i class="bi bi-person-circle me-1 text-info" style="font-size:10px;"></i>
-                                    @endif
+                                    <i class="bi {{ $swIcon }} me-1 {{ $swColor }}" style="font-size:10px;"></i>
                                     {{ $sw->staff_name }}
                                 </div>
                                 <div class="progress mt-1" style="height:3px; border-radius:2px; width:90%;">

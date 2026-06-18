@@ -967,39 +967,75 @@ class ReportController extends Controller
             );
         }
 
-        // Export CSV
-        if ($request->export === 'csv') {
+        // ── Export PDF / Excel / CSV ──────────────────────────────────────
+        if (in_array($request->export, ['pdf', 'excel', 'csv'])) {
             $allStudents = $query->orderByDesc('admission_date')->get();
-            return $this->exportCsv(
-                ['Student ID', 'Name', 'Mobile', 'Course', 'Stream', 'Year/Part', 'Semester', 'Gender', 'Category', 'Source', 'Admission Date', 'Status', 'Admitted By'],
-                $allStudents->map(function ($s) use ($centersMap, $partnersMap) {
-                    $src = $s->admission_source ?? 'direct';
-                    $srcName = match($src) {
-                        'center'                     => $centersMap[$s->admission_source_id] ?? 'Center',
-                        'partner', 'channel_partner' => $partnersMap[$s->admission_source_id] ?? 'Partner',
-                        default                      => 'Direct',
-                    };
-                    $admittedBy = $s->admittedBy?->name ?? match($src) {
-                        'center'                     => $srcName,
-                        'partner', 'channel_partner' => $srcName,
-                        default                      => 'Admin / Direct',
-                    };
-                    return [
-                        $s->student_uid, $s->name, $s->mobile,
-                        $s->stream?->course?->name ?? '',
-                        $s->stream?->name ?? '',
-                        $s->resolved_year_label ?? '',
-                        $s->current_semester ? 'Sem ' . $s->current_semester : '',
-                        ucfirst($s->gender ?? ''),
-                        strtoupper($s->category ?? ''),
-                        $srcName,
-                        $s->admission_date?->format('d/m/Y') ?? '',
-                        ucfirst($s->status ?? 'pending'),
-                        $admittedBy,
-                    ];
-                })->toArray(),
-                'admission-report.csv'
-            );
+
+            foreach ($allStudents as $s) {
+                if ($s->academic_session_id) {
+                    $ctx = WalletService::resolveAcademicContext($s, (int) $s->academic_session_id);
+                    if (!empty($ctx['course_part'])) $s->setRelation('coursePart', $ctx['course_part']);
+                }
+                $s->resolved_year_label = AcademicState::yearLabel(
+                    $s->stream?->course?->structure_type,
+                    $s->current_semester,
+                    $s->coursePart?->year_number
+                );
+            }
+
+            if ($request->export === 'pdf') {
+                $institute = Institute::find($instituteId);
+                return view('institute.reports.admission-export-pdf', compact(
+                    'allStudents', 'institute', 'sessionObj', 'centersMap', 'partnersMap'
+                ));
+            }
+
+            $expHeaders = ['#', 'Session', 'Student ID', 'Student Name', 'Father Name', 'Mother Name',
+                           'Roll No', 'Enroll No', 'UIN No', 'Course', 'Stream', 'Year/Sem',
+                           'Gender', 'Category', 'Source', 'Admitted By', 'Adm. Date', 'Status'];
+            $expRows = [];
+            foreach ($allStudents as $i => $s) {
+                $src = $s->admission_source ?? 'direct';
+                $srcName = match($src) {
+                    'center'                     => ($centersMap[$s->admission_source_id]  ?? null) ? 'Center: '  . $centersMap[$s->admission_source_id]  : 'Center',
+                    'partner', 'channel_partner' => ($partnersMap[$s->admission_source_id] ?? null) ? 'Partner: ' . $partnersMap[$s->admission_source_id] : 'Partner',
+                    default                      => 'Direct',
+                };
+                $admittedBy = $s->admittedBy?->name ?? match($src) {
+                    'center'                     => $srcName,
+                    'partner', 'channel_partner' => $srcName,
+                    default                      => 'Admin / Direct',
+                };
+                $expRows[] = [
+                    $i + 1,
+                    $s->session?->name ?? '',
+                    $s->student_uid ?? '',
+                    $s->name,
+                    $s->father_name ?? '',
+                    $s->mother_name ?? '',
+                    $s->roll_no ?? '',
+                    $s->enrollment_no ?? '',
+                    $s->uin_no ?? '',
+                    $s->stream?->course?->name ?? '',
+                    $s->stream?->name ?? '',
+                    ($s->resolved_year_label ?? '') . ($s->current_semester ? ' / S' . $s->current_semester : ''),
+                    ucfirst($s->gender ?? ''),
+                    strtoupper($s->category ?? ''),
+                    $srcName,
+                    $admittedBy,
+                    $s->admission_date?->format('d/m/Y') ?? '',
+                    ucfirst($s->status ?? 'pending'),
+                ];
+            }
+
+            $filename = 'admission-report-' . now()->format('Ymd');
+            if ($request->export === 'excel') {
+                return $this->exportSimpleExcel(
+                    'Admission Report — ' . ($sessionObj?->name ?? 'All Sessions'),
+                    $expHeaders, $expRows, $filename . '.xlsx'
+                );
+            }
+            return $this->exportCsv($expHeaders, $expRows, $filename . '.csv');
         }
 
         // ── Summary stats ─────────────────────────────────────────────────
@@ -1061,11 +1097,30 @@ class ReportController extends Controller
         $this->applyStaffStudentScope($categoryWise);
         $categoryWise = $categoryWise->get();
 
-        // Staff-wise admission breakdown
+        // Admitted-by breakdown: staff name OR center/partner name OR Admin/Direct
         $staffWise = \App\Models\Student::where('students.institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('students.academic_session_id', $sessionId))
             ->leftJoin('staff_members', 'students.admitted_by_staff_id', '=', 'staff_members.id')
-            ->selectRaw('COALESCE(staff_members.name, "Admin / Direct") as staff_name, COUNT(*) as cnt')
+            ->leftJoin('centers', function ($j) {
+                $j->on('students.admission_source_id', '=', 'centers.id')
+                  ->where('students.admission_source', '=', 'center');
+            })
+            ->leftJoin('channel_partners', function ($j) {
+                $j->on('students.admission_source_id', '=', 'channel_partners.id')
+                  ->whereRaw("students.admission_source IN ('partner','channel_partner')");
+            })
+            ->selectRaw("
+                CASE
+                    WHEN staff_members.name IS NOT NULL
+                        THEN staff_members.name
+                    WHEN students.admission_source = 'center'
+                        THEN CONCAT('Center: ', COALESCE(centers.name, 'Unknown'))
+                    WHEN students.admission_source IN ('partner','channel_partner')
+                        THEN CONCAT('Partner: ', COALESCE(channel_partners.name, 'Unknown'))
+                    ELSE 'Admin / Direct'
+                END as staff_name,
+                COUNT(*) as cnt
+            ")
             ->groupBy('staff_name')
             ->orderByDesc('cnt');
         $this->applyStaffStudentScope($staffWise);
