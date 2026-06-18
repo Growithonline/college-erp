@@ -1473,7 +1473,7 @@ class FeeCollectionController extends Controller
             number_format($inv->paid_amount, 2),
             number_format($inv->items->sum('fine'), 2),
             number_format($inv->discount ?? 0, 2),
-            number_format(max(0, ($inv->total_amount ?? 0) - $inv->paid_amount - ($inv->discount ?? 0)), 2),
+            number_format(max(0, $inv->items->sum('total_fee') - $inv->paid_amount - ($inv->discount ?? 0)), 2),
             number_format($inv->paid_amount + ($inv->discount ?? 0), 2),
             $inv->is_cancelled ? 'Cancelled' : 'Active',
         ])->toArray();

@@ -150,16 +150,16 @@
     <thead>
         <tr>
             <th class="c" style="width:13px;">#</th>
-            <th style="width:48px;">Invoice No</th>
-            <th style="width:34px;">Date</th>
-            <th style="width:74px;">Student</th>
-            <th style="width:46px;">Student ID</th>
-            <th style="width:68px;">Course / Year</th>
-            <th style="width:42px;">Father Name</th>
-            <th style="width:58px;">Fee Items</th>
-            <th style="width:46px;">Txn Ref / Bank</th>
-            <th style="width:42px;">Collected By</th>
-            <th style="width:30px;">Mode</th>
+            <th style="width:46px;">Invoice No</th>
+            <th style="width:33px;">Date</th>
+            <th style="width:86px;">Student</th>
+            <th style="width:50px;">Student ID</th>
+            <th style="width:66px;">Course / Year</th>
+            <th style="width:40px;">Father Name</th>
+            <th style="width:56px;">Fee Items</th>
+            <th style="width:44px;">Txn Ref / Bank</th>
+            <th style="width:40px;">Collected By</th>
+            <th style="width:28px;">Mode</th>
             <th class="r" style="width:33px;">Collected</th>
             <th class="r" style="width:22px;">Fine</th>
             <th class="r" style="width:26px;">Discount</th>
@@ -174,7 +174,7 @@
             $fine     = $inv->items->sum('fine');
             $discount = $inv->discount ?? 0;
             $total    = $inv->paid_amount + $discount;
-            $due      = max(0, ($inv->total_amount ?? 0) - $inv->paid_amount - $discount);
+            $due      = max(0, $inv->items->sum('total_fee') - $inv->paid_amount - $discount);
             $courseLine = implode(' · ', array_filter([
                 $student?->stream?->course?->name,
                 $student?->stream?->name,
@@ -194,7 +194,7 @@
                 {{ $inv->invoice_no }}@if($inv->is_cancelled) <span style="font-size:5.5px;">[X]</span>@endif
             </td>
             <td style="color:#000;">{{ $inv->payment_date?->format('d/m/Y') }}</td>
-            <td class="fw">{{ Str::limit($student?->name ?? '—', 20) }}</td>
+            <td class="fw">{{ Str::limit($student?->name ?? '—', 24) }}</td>
             <td style="color:#000;">{{ $student?->student_uid ?? '—' }}</td>
             <td style="color:#000;">{{ Str::limit($courseLine, 25) }}</td>
             <td style="color:#000;">{{ Str::limit($student?->father_name ?? '—', 15) }}</td>
