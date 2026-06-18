@@ -881,50 +881,66 @@ class ReportController extends Controller
 
         $sessionId = $request->session_id ?? $activeSession?->id;
 
-        $sessions   = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
-        $courses    = Course::where('institute_id', $instituteId)->where('status', true)
+        $sessions    = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes = CourseType::where('institute_id', $instituteId)->orderBy('name')->get();
+        $courses     = Course::where('institute_id', $instituteId)->where('status', true)
             ->when($this->currentStaff()?->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $this->currentStaff()->allowedCourseIds() ?: [-1]))
             ->orderBy('name')->get();
-        $centers    = Center::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
-        $partners   = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
-        $sessionObj = AcademicSession::find($sessionId);
+        $streams     = CourseStream::where('status', true)
+            ->whereIn('course_id', $courses->pluck('id'))
+            ->orderBy('name')->get();
+        $centers     = Center::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $partners    = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $sessionObj  = AcademicSession::find($sessionId);
+
+        $centersMap  = $centers->pluck('name', 'id')->toArray();
+        $partnersMap = $partners->pluck('name', 'id')->toArray();
 
         // ── Base query ────────────────────────────────────────────────────
-        $query = Student::with(['stream.course', 'coursePart', 'admittedBy'])
+        $query = Student::with(['session', 'stream.course', 'coursePart', 'admittedBy'])
             ->where('institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId));
         $this->applyStaffStudentScope($query);
 
-        if ($request->course_id) {
+        if ($request->filled('course_type_id')) {
+            $query->whereHas('stream.course', fn($q) => $q->where('course_type_id', $request->course_type_id));
+        }
+        if ($request->filled('course_id')) {
             $query->whereHas('stream', fn($q) => $q->where('course_id', $request->course_id));
         }
-        if ($request->stream_id) {
+        if ($request->filled('stream_id')) {
             $query->where('course_stream_id', $request->stream_id);
         }
-        if ($request->admission_source) {
+        if ($request->filled('current_semester')) {
+            $query->where('current_semester', (int) $request->current_semester);
+        }
+        if ($request->filled('admission_source')) {
             $query->where('admission_source', $request->admission_source);
         }
-        if ($request->center_id) {
+        if ($request->filled('center_id')) {
             $query->where('admission_source', 'center')
                   ->where('admission_source_id', $request->center_id);
         }
-        if ($request->partner_id) {
+        if ($request->filled('partner_id')) {
             $query->whereIn('admission_source', ['partner', 'channel_partner'])
                   ->where('admission_source_id', $request->partner_id);
         }
-        if ($request->gender) {
+        if ($request->filled('gender')) {
             $query->where('gender', $request->gender);
         }
-        if ($request->category) {
+        if ($request->filled('category')) {
             $query->where('category', $request->category);
         }
-        if ($request->date_from) {
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('date_from')) {
             $query->whereDate('admission_date', '>=', $request->date_from);
         }
-        if ($request->date_to) {
+        if ($request->filled('date_to')) {
             $query->whereDate('admission_date', '<=', $request->date_to);
         }
-        if ($request->search) {
+        if ($request->filled('search')) {
             $s = $request->search;
             $query->where(function($q) use ($s) {
                 $q->where('name', 'like', "%{$s}%")
@@ -938,21 +954,12 @@ class ReportController extends Controller
         $students = $query->orderByDesc('admission_date')->paginate($perPage)->withQueryString();
 
         foreach ($students as $student) {
-            $yearNumber = AcademicState::yearNumber(
-                $student->stream?->course?->structure_type,
-                $student->current_semester,
-                $student->coursePart?->year_number
-            );
-
             if ($student->academic_session_id) {
                 $context = WalletService::resolveAcademicContext($student, (int) $student->academic_session_id);
                 if (!empty($context['course_part'])) {
                     $student->setRelation('coursePart', $context['course_part']);
                 }
-                $yearNumber = $context['course_part_year'] ?: $yearNumber;
             }
-
-            $student->resolved_year_number = $yearNumber;
             $student->resolved_year_label = AcademicState::yearLabel(
                 $student->stream?->course?->structure_type,
                 $student->current_semester,
@@ -964,24 +971,33 @@ class ReportController extends Controller
         if ($request->export === 'csv') {
             $allStudents = $query->orderByDesc('admission_date')->get();
             return $this->exportCsv(
-                ['Student ID', 'Name', 'Mobile', 'Course', 'Stream', 'Year/Part', 'Gender', 'Category', 'Source', 'Admission Date', 'Admitted By'],
-                $allStudents->map(fn($s) => [
-                    $s->student_uid,
-                    $s->name,
-                    $s->mobile,
-                    $s->stream->course->name ?? '',
-                    $s->stream->name ?? '',
-                    AcademicState::yearLabel(
-                        $s->stream?->course?->structure_type,
-                        $s->current_semester,
-                        $s->coursePart?->year_number
-                    ),
-                    ucfirst($s->gender ?? ''),
-                    strtoupper($s->category ?? ''),
-                    ucfirst($s->admission_source ?? ''),
-                    $s->admission_date?->format('d/m/Y') ?? '',
-                    $s->admittedBy?->name ?? 'Admin / Direct',
-                ])->toArray(),
+                ['Student ID', 'Name', 'Mobile', 'Course', 'Stream', 'Year/Part', 'Semester', 'Gender', 'Category', 'Source', 'Admission Date', 'Status', 'Admitted By'],
+                $allStudents->map(function ($s) use ($centersMap, $partnersMap) {
+                    $src = $s->admission_source ?? 'direct';
+                    $srcName = match($src) {
+                        'center'                     => $centersMap[$s->admission_source_id] ?? 'Center',
+                        'partner', 'channel_partner' => $partnersMap[$s->admission_source_id] ?? 'Partner',
+                        default                      => 'Direct',
+                    };
+                    $admittedBy = $s->admittedBy?->name ?? match($src) {
+                        'center'                     => $srcName,
+                        'partner', 'channel_partner' => $srcName,
+                        default                      => 'Admin / Direct',
+                    };
+                    return [
+                        $s->student_uid, $s->name, $s->mobile,
+                        $s->stream?->course?->name ?? '',
+                        $s->stream?->name ?? '',
+                        $s->resolved_year_label ?? '',
+                        $s->current_semester ? 'Sem ' . $s->current_semester : '',
+                        ucfirst($s->gender ?? ''),
+                        strtoupper($s->category ?? ''),
+                        $srcName,
+                        $s->admission_date?->format('d/m/Y') ?? '',
+                        ucfirst($s->status ?? 'pending'),
+                        $admittedBy,
+                    ];
+                })->toArray(),
                 'admission-report.csv'
             );
         }
@@ -996,7 +1012,7 @@ class ReportController extends Controller
         $femaleCount     = (clone $baseQ)->where('gender', 'female')->count();
         $todayCount      = (clone $baseQ)->whereDate('admission_date', today())->count();
 
-        // Course-wise breakdown with semester (LEFT JOIN to include all students)
+        // Course-wise breakdown with semester
         $courseWiseRaw = Student::where('students.institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('students.academic_session_id', $sessionId))
             ->leftJoin('course_streams', 'students.course_stream_id', '=', 'course_streams.id')
@@ -1009,8 +1025,7 @@ class ReportController extends Controller
             ->orderBy('semester');
         $this->applyStaffStudentScope($courseWiseRaw);
         $courseWiseRaw = $courseWiseRaw->get();
-        // Group by course for the view
-        $courseWise = $courseWiseRaw->groupBy('course_name');
+        $courseWise    = $courseWiseRaw->groupBy('course_name');
 
         // Source-wise breakdown
         $sourceWise = Student::where('students.institute_id', $instituteId)
@@ -1021,7 +1036,7 @@ class ReportController extends Controller
         $this->applyStaffStudentScope($sourceWise);
         $sourceWise = $sourceWise->get();
 
-        // Center-wise detail: which center → which course → count
+        // Center-wise detail
         $centerDetail = Student::where('students.institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('students.academic_session_id', $sessionId))
             ->where('admission_source', 'center')
@@ -1056,13 +1071,9 @@ class ReportController extends Controller
         $this->applyStaffStudentScope($staffWise);
         $staffWise = $staffWise->get();
 
-        // Streams for AJAX
-        $streams = $request->course_id
-            ? CourseStream::where('course_id', $request->course_id)->where('status', true)->orderBy('name')->get()
-            : collect();
-
         return view('institute.reports.admission-report', compact(
-            'students', 'sessions', 'courses', 'centers', 'partners', 'streams',
+            'students', 'sessions', 'courseTypes', 'courses', 'streams', 'centers', 'partners',
+            'centersMap', 'partnersMap',
             'sessionObj', 'sessionId', 'activeSession', 'perPage',
             'totalAdmissions', 'maleCount', 'femaleCount', 'todayCount',
             'courseWise', 'courseWiseRaw', 'sourceWise', 'categoryWise', 'centerDetail',
