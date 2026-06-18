@@ -145,7 +145,7 @@ class AdmissionController extends Controller
                 return $all;
             }
             $allowed = array_map('intval', $user->allowed_session_ids ?? []);
-            return $all->filter(fn($s) => $s->is_active || in_array($s->id, $allowed))->values();
+            return $all->filter(fn($s) => in_array($s->id, $allowed))->values();
         }
 
         // Center / ChannelPartner — use allowed_sessions JSON
@@ -160,7 +160,7 @@ class AdmissionController extends Controller
             ->map('intval')
             ->all();
 
-        return $all->filter(fn($s) => $s->is_active || in_array($s->id, $admissibleIds))->values();
+        return $all->filter(fn($s) => in_array($s->id, $admissibleIds))->values();
     }
 
     private function resolveAdmissionSession(int $instituteId, ?int $requestedId): AcademicSession

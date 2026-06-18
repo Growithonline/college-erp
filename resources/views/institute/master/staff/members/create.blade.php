@@ -280,48 +280,62 @@
                     {{-- ─── TAB 2: Access Scope ─────────────────────────────── --}}
                     <div class="tab-pane fade" id="tab-access" role="tabpanel">
 
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold small">
-                                <i class="bi bi-eye me-1 text-primary"></i>Student / Admission Data Visibility
-                            </label>
-                            <select name="student_visibility_scope"
-                                    class="form-select form-select-sm @error('student_visibility_scope') is-invalid @enderror"
-                                    style="max-width:320px;">
-                                @foreach($visibilityOptions as $scopeKey => $scopeLabel)
-                                    <option value="{{ $scopeKey }}" @selected($selectedStudentVisibility === $scopeKey)>{{ $scopeLabel }}</option>
-                                @endforeach
-                            </select>
-                            @error('student_visibility_scope')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            <small class="text-muted d-block mt-1">
-                                Own = only students admitted by this staff. All accessible = all students in allowed courses/sessions.
-                            </small>
+                        {{-- Row 1: Student Visibility + Admission Form --}}
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold small">
+                                    <i class="bi bi-eye me-1 text-primary"></i>Student Data Visibility
+                                </label>
+                                <select name="student_visibility_scope"
+                                        class="form-select form-select-sm @error('student_visibility_scope') is-invalid @enderror">
+                                    @foreach($visibilityOptions as $scopeKey => $scopeLabel)
+                                        <option value="{{ $scopeKey }}" @selected($selectedStudentVisibility === $scopeKey)>{{ $scopeLabel }}</option>
+                                    @endforeach
+                                </select>
+                                @error('student_visibility_scope')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <small class="text-muted d-block mt-1">Own = sirf apne admitted students. All = allowed course/session ke sab.</small>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold small">
+                                    <i class="bi bi-ui-checks me-1 text-info"></i>Admission Form Access
+                                </label>
+                                @php $selectedAdmForms = old('allowed_admission_forms', $staffMember->allowed_admission_forms ?? 'both'); @endphp
+                                <div class="d-flex gap-2 flex-wrap">
+                                    @foreach(['both' => 'Both (Full & Quick)', 'full' => 'Full Form Only', 'quick' => 'Quick Form Only'] as $val => $lbl)
+                                    <label class="border rounded px-2 py-2 small bg-white d-flex align-items-center gap-1 cursor-pointer">
+                                        <input type="radio" class="form-check-input" name="allowed_admission_forms"
+                                               value="{{ $val }}" {{ $selectedAdmForms === $val ? 'checked' : '' }}>
+                                        {{ $lbl }}
+                                    </label>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
 
                         <hr class="my-3">
 
+                        {{-- Academic Sessions --}}
                         <div class="mb-4">
-                            <div class="d-flex align-items-center gap-3 mb-2">
-                                <div class="form-check form-switch mb-0">
-                                    <input class="form-check-input" type="checkbox" name="restrict_session_access"
-                                           id="restrictSessionAccess" value="1"
-                                           {{ old('restrict_session_access', $staffMember->restrict_session_access ?? false) ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold small" for="restrictSessionAccess">
-                                        Restrict to selected sessions only
-                                    </label>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-semibold small text-dark"><i class="bi bi-calendar3 me-1 text-primary"></i>Academic Sessions</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-muted" id="sessionScopeLabel">{{ old('restrict_session_access', $staffMember->restrict_session_access ?? false) ? 'Selected only' : 'All sessions' }}</small>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="restrict_session_access"
+                                               id="restrictSessionAccess" value="1"
+                                               {{ old('restrict_session_access', $staffMember->restrict_session_access ?? false) ? 'checked' : '' }}>
+                                    </div>
                                 </div>
-                                <small class="text-muted">Off = all sessions accessible</small>
                             </div>
                             @if(isset($sessions) && $sessions->isNotEmpty())
-                            <div class="d-flex flex-wrap gap-2 ms-2">
+                            <div id="sessionChoices" class="{{ old('restrict_session_access', $staffMember->restrict_session_access ?? false) ? 'd-flex' : 'd-none' }} flex-wrap gap-2 ps-1">
                                 @foreach($sessions as $session)
                                 <label class="border rounded px-2 py-1 small bg-white d-flex align-items-center gap-1 cursor-pointer">
                                     <input type="checkbox" class="form-check-input" name="allowed_session_ids[]"
                                            value="{{ $session->id }}"
                                            {{ in_array((int) $session->id, $selectedSessionIds, true) ? 'checked' : '' }}>
                                     {{ $session->name }}
-                                    @if($session->is_active)
-                                        <span class="badge bg-success-subtle text-success border">Active</span>
-                                    @endif
+                                    @if($session->is_active)<span class="badge bg-success-subtle text-success border ms-1">Current</span>@endif
                                 </label>
                                 @endforeach
                             </div>
@@ -330,22 +344,21 @@
                             @endif
                         </div>
 
-                        <hr class="my-3">
-
+                        {{-- Courses --}}
                         <div class="mb-4">
-                            <div class="d-flex align-items-center gap-3 mb-2">
-                                <div class="form-check form-switch mb-0">
-                                    <input class="form-check-input" type="checkbox" name="restrict_course_access"
-                                           id="restrictCourseAccess" value="1"
-                                           {{ old('restrict_course_access', $staffMember->restrict_course_access ?? false) ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold small" for="restrictCourseAccess">
-                                        Restrict to selected courses only
-                                    </label>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-semibold small text-dark"><i class="bi bi-diagram-3 me-1 text-primary"></i>Courses</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-muted" id="courseScopeLabel">{{ old('restrict_course_access', $staffMember->restrict_course_access ?? false) ? 'Selected only' : 'All courses' }}</small>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="restrict_course_access"
+                                               id="restrictCourseAccess" value="1"
+                                               {{ old('restrict_course_access', $staffMember->restrict_course_access ?? false) ? 'checked' : '' }}>
+                                    </div>
                                 </div>
-                                <small class="text-muted">Off = all courses accessible</small>
                             </div>
                             @if(isset($courses) && $courses->isNotEmpty())
-                            <div class="d-flex flex-wrap gap-2 ms-2">
+                            <div id="courseChoices" class="{{ old('restrict_course_access', $staffMember->restrict_course_access ?? false) ? 'd-flex' : 'd-none' }} flex-wrap gap-2 ps-1">
                                 @foreach($courses as $course)
                                 <label class="border rounded px-2 py-1 small bg-white d-flex align-items-center gap-1 cursor-pointer">
                                     <input type="checkbox" class="form-check-input"
@@ -360,9 +373,10 @@
 
                         <hr class="my-3">
 
-                        <div>
+                        {{-- Attendance & Payroll --}}
+                        <div class="mb-4">
                             <label class="form-label fw-semibold small">
-                                <i class="bi bi-people me-1 text-secondary"></i>Attendance & Payroll — Allowed Staff Categories
+                                <i class="bi bi-people me-1 text-secondary"></i>Attendance & Payroll — Staff Categories
                             </label>
                             <div class="d-flex flex-wrap gap-2">
                                 @foreach(($payrollCategories ?? ['Teaching','Office','Non-Teaching','Guest']) as $cat)
@@ -374,26 +388,22 @@
                                 </label>
                                 @endforeach
                             </div>
-                            <small class="text-muted d-block mt-1">None selected = all categories remain accessible.</small>
+                            <small class="text-muted d-block mt-1">Nothing selected = all categories accessible.</small>
                         </div>
 
                         <hr class="my-3">
 
-                        <div class="mb-2">
-                            <label class="form-label fw-semibold small">
-                                <i class="bi bi-ui-checks me-1 text-info"></i>Admission Form Type
-                            </label>
-                            @php $selectedAdmForms = old('allowed_admission_forms', $staffMember->allowed_admission_forms ?? 'both'); @endphp
-                            <div class="d-flex gap-3 flex-wrap">
-                                @foreach(['both' => 'Both (Full & Quick)', 'full' => 'Full Form Only', 'quick' => 'Quick Form Only'] as $val => $label)
-                                <label class="border rounded px-3 py-2 small bg-white d-flex align-items-center gap-2 cursor-pointer">
-                                    <input type="radio" class="form-check-input" name="allowed_admission_forms"
-                                           value="{{ $val }}" {{ $selectedAdmForms === $val ? 'checked' : '' }}>
-                                    {{ $label }}
-                                </label>
-                                @endforeach
+                        {{-- Notice Management --}}
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="fw-semibold small"><i class="bi bi-megaphone me-1 text-primary"></i>Notice Management</div>
+                                <small class="text-muted">Off = sirf view kar sakta hai.</small>
                             </div>
-                            <small class="text-muted d-block mt-1">Controls which admission form(s) this staff member can access.</small>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" name="can_manage_notices"
+                                       id="canManageNotices" value="1"
+                                       {{ old('can_manage_notices', $staffMember->can_manage_notices ?? false) ? 'checked' : '' }}>
+                            </div>
                         </div>
 
                     </div>
@@ -706,23 +716,21 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
     }
 })();
 
-// Staff Course Type filter pills
+// Session + Course scope toggle — show/hide choices
 (function () {
-    var activeTypeId = '';
-    document.querySelectorAll('#staffCourseTypeFilters .staff-ct-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            activeTypeId = this.dataset.typeId;
-            document.querySelectorAll('#staffCourseTypeFilters .staff-ct-btn').forEach(function (b) {
-                b.classList.remove('btn-primary', 'active');
-                b.classList.add('btn-outline-primary');
-            });
-            this.classList.remove('btn-outline-primary');
-            this.classList.add('btn-primary', 'active');
-            document.querySelectorAll('#staffCourseTable .staff-course-row').forEach(function (row) {
-                row.style.display = (!activeTypeId || row.dataset.typeId === activeTypeId) ? '' : 'none';
-            });
+    function scopeToggle(toggleId, choicesId, labelId, onText, offText) {
+        var t = document.getElementById(toggleId);
+        var c = document.getElementById(choicesId);
+        var l = document.getElementById(labelId);
+        if (!t || !c) return;
+        t.addEventListener('change', function () {
+            c.classList.remove('d-none', 'd-flex');
+            c.classList.add(this.checked ? 'd-flex' : 'd-none');
+            if (l) l.textContent = this.checked ? onText : offText;
         });
-    });
+    }
+    scopeToggle('restrictSessionAccess', 'sessionChoices', 'sessionScopeLabel', 'Selected only', 'All sessions');
+    scopeToggle('restrictCourseAccess',  'courseChoices',  'courseScopeLabel',  'Selected only', 'All courses');
 })();
 </script>
 @endpush
