@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <title>Student List</title>
     <style>
-        @page { size: A4 landscape; margin: 8mm 7mm 8mm 7mm; }
+        @page { size: A4 landscape; margin: 14mm 12mm 12mm 12mm; }
         * { box-sizing: border-box; }
         body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: 7px;
             color: #000;
-            margin: 0; padding: 0;
+            margin: 0;
+            padding: 4mm 2mm 2mm 2mm;
             line-height: 1.25;
             font-weight: 600;
         }
