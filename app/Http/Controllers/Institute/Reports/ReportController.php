@@ -2361,13 +2361,19 @@ class ReportController extends Controller
         $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes   = CourseType::where('institute_id', $instituteId)->orderBy('name')->get();
         $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $streams       = CourseStream::where('status', true)
+                            ->whereHas('course', fn($q) => $q->where('institute_id', $instituteId))
+                            ->with('course')
+                            ->orderBy('name')
+                            ->get();
         $centers       = Center::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $partners      = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $staffList     = StaffMember::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $sessionObj    = AcademicSession::find($sessionId);
 
-        $query = Student::with(['stream.course', 'coursePart', 'admittedBy'])
+        $query = Student::with(['stream.course', 'coursePart', 'admittedBy', 'session'])
             ->where('institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId));
 
@@ -2376,7 +2382,7 @@ class ReportController extends Controller
             'online'          => $query->where('admission_source', 'online'),
             'centre'          => $query->where('admission_source', 'center')
                                        ->when($request->center_id, fn($q) => $q->where('admission_source_id', $request->center_id)),
-            'channel-partner' => $query->where('admission_source', 'channel_partner')
+            'channel-partner' => $query->whereIn('admission_source', ['partner', 'channel_partner'])
                                        ->when($request->partner_id, fn($q) => $q->where('admission_source_id', $request->partner_id)),
             'staff'           => $query->whereNotNull('admitted_by_staff_id')
                                        ->when($request->staff_id, fn($q) => $q->where('admitted_by_staff_id', $request->staff_id)),
@@ -2384,11 +2390,20 @@ class ReportController extends Controller
             default           => null,
         };
 
-        if ($request->course_id) {
+        if ($request->filled('course_type_id')) {
+            $query->whereHas('stream.course', fn($q) => $q->where('course_type_id', $request->course_type_id));
+        }
+        if ($request->filled('course_id')) {
             $query->whereHas('stream', fn($q) => $q->where('course_id', $request->course_id));
+        }
+        if ($request->filled('stream_id')) {
+            $query->where('stream_id', $request->stream_id);
         }
         if ($request->filled('semester')) {
             $query->where('current_semester', (int) $request->semester);
+        }
+        if ($request->filled('status') && $type !== 'blocked') {
+            $query->where('status', $request->status);
         }
         if ($request->date_from) {
             $query->whereDate('admission_date', '>=', $request->date_from);
@@ -2408,58 +2423,88 @@ class ReportController extends Controller
         $perPage = in_array((int) $request->per_page, [10, 20, 50, 100]) ? (int) $request->per_page : 20;
         $total   = (clone $query)->count();
 
-        // CSV export
-        if ($request->export === 'csv') {
-            $all = $query->orderByDesc('admission_date')->get();
-            $headers = ['#', 'Std ID', 'Name', 'Father Name', 'Mother Name', 'Mobile', 'Gender',
-                        'Course', 'Stream', 'Semester', 'Session', 'Adm. Date', 'Submitted Date'];
-            if ($type === 'centre')          $headers[] = 'Centre';
-            if ($type === 'channel-partner') $headers[] = 'Partner';
-            if ($type === 'staff')           $headers[] = 'Staff';
-            if ($type === 'blocked')         { $headers[] = 'Status'; $headers[] = 'Reason'; }
+        $subTitles = [
+            'full-form'       => 'Full Form Admissions',
+            'online'          => 'Online Admissions',
+            'centre'          => 'Centre Admissions',
+            'channel-partner' => 'Channel Partner Admissions',
+            'staff'           => 'Staff Admissions',
+            'blocked'         => 'Blocked Students',
+        ];
+        $pageTitle = $subTitles[$type] ?? 'Admissions';
 
-            $centerIds  = $all->where('admission_source', 'center')->pluck('admission_source_id')->filter()->unique();
-            $partnerIds = $all->whereIn('admission_source', ['partner','channel_partner'])->pluck('admission_source_id')->filter()->unique();
-            $cMap = $centerIds->isNotEmpty()  ? Center::whereIn('id', $centerIds)->pluck('name','id')  : collect();
-            $pMap = $partnerIds->isNotEmpty() ? ChannelPartner::whereIn('id', $partnerIds)->pluck('name','id') : collect();
+        // Export
+        if (in_array($request->export, ['csv', 'excel', 'pdf'])) {
+            $allStudents = $query->orderByDesc('admission_date')->get();
 
-            $rows = $all->map(function ($s, $i) use ($type, $cMap, $pMap) {
+            $allCenterIds  = $allStudents->where('admission_source', 'center')->pluck('admission_source_id')->filter()->unique();
+            $allPartnerIds = $allStudents->whereIn('admission_source', ['partner', 'channel_partner'])->pluck('admission_source_id')->filter()->unique();
+            $cMapExp = $allCenterIds->isNotEmpty()  ? Center::whereIn('id', $allCenterIds)->pluck('name', 'id')  : collect();
+            $pMapExp = $allPartnerIds->isNotEmpty() ? ChannelPartner::whereIn('id', $allPartnerIds)->pluck('name', 'id') : collect();
+
+            if ($request->export === 'pdf') {
+                $institute   = Institute::find($instituteId);
+                $centersMap  = $cMapExp;
+                $partnersMap = $pMapExp;
+                return view('institute.reports.admission-sub-report-export-pdf', compact(
+                    'allStudents', 'institute', 'sessionObj', 'centersMap', 'partnersMap', 'type', 'pageTitle'
+                ));
+            }
+
+            $expHeaders = ['#', 'Session', 'Student ID', 'Student Name', 'Father Name', 'Mother Name',
+                           'Roll No', 'Enroll No', 'UIN No', 'Course', 'Stream', 'Year/Sem',
+                           'Gender', 'Category', 'Admitted By', 'Adm. Date', 'Status'];
+            if ($type === 'blocked') $expHeaders[] = 'Reason';
+
+            $expRows = $allStudents->map(function ($s, $i) use ($type, $cMapExp, $pMapExp) {
+                $pdfSrc = $s->admission_source ?? 'direct';
+                $admittedBy = $s->admittedBy?->name ?? match($pdfSrc) {
+                    'center'                     => $cMapExp[$s->admission_source_id] ?? 'Center',
+                    'partner', 'channel_partner' => $pMapExp[$s->admission_source_id] ?? 'Partner',
+                    default                      => 'Admin / Direct',
+                };
                 $row = [
                     $i + 1,
+                    $s->session?->name ?? '',
                     $s->student_uid ?? '',
                     $s->name,
                     $s->father_name ?? '',
                     $s->mother_name ?? '',
-                    $s->mobile ?? '',
-                    ucfirst($s->gender ?? ''),
+                    $s->roll_no ?? '',
+                    $s->enrollment_no ?? '',
+                    $s->uin_no ?? '',
                     $s->stream?->course?->name ?? '',
                     $s->stream?->name ?? '',
-                    $s->current_semester ?? '',
-                    $s->session?->name ?? '',
+                    $s->coursePart?->year_label ?? '',
+                    ucfirst($s->gender ?? ''),
+                    strtoupper($s->category ?? ''),
+                    $admittedBy,
                     $s->admission_date?->format('d/m/Y') ?? '',
-                    $s->created_at?->format('d/m/Y') ?? '',
+                    ucfirst($s->status ?? ''),
                 ];
-                if ($type === 'centre')          $row[] = $cMap[$s->admission_source_id] ?? '';
-                if ($type === 'channel-partner') $row[] = $pMap[$s->admission_source_id] ?? '';
-                if ($type === 'staff')           $row[] = $s->admittedBy?->name ?? '';
-                if ($type === 'blocked')         { $row[] = ucfirst($s->status ?? ''); $row[] = $s->status_reason ?? ''; }
+                if ($type === 'blocked') $row[] = $s->status_reason ?? '';
                 return $row;
             })->toArray();
 
-            return $this->exportCsv($headers, $rows, $type . '-admissions.csv');
+            $fileName = $type . '-admissions';
+            if ($request->export === 'excel') {
+                return $this->exportSimpleExcel($pageTitle . ' — ' . ($sessionObj?->name ?? ''), $expHeaders, $expRows, $fileName . '.xlsx');
+            }
+            return $this->exportCsv($expHeaders, $expRows, $fileName . '.csv');
         }
 
         $students = $query->orderByDesc('admission_date')->paginate($perPage)->withQueryString();
 
         // N+1-safe center/partner name maps for current page
         $centerIds  = $students->where('admission_source', 'center')->pluck('admission_source_id')->filter()->unique();
-        $partnerIds = $students->whereIn('admission_source', ['partner','channel_partner'])->pluck('admission_source_id')->filter()->unique();
-        $centersMap  = $centerIds->isNotEmpty()  ? Center::whereIn('id', $centerIds)->pluck('name','id')  : collect();
-        $partnersMap = $partnerIds->isNotEmpty() ? ChannelPartner::whereIn('id', $partnerIds)->pluck('name','id') : collect();
+        $partnerIds = $students->whereIn('admission_source', ['partner', 'channel_partner'])->pluck('admission_source_id')->filter()->unique();
+        $centersMap  = $centerIds->isNotEmpty()  ? Center::whereIn('id', $centerIds)->pluck('name', 'id')  : collect();
+        $partnersMap = $partnerIds->isNotEmpty() ? ChannelPartner::whereIn('id', $partnerIds)->pluck('name', 'id') : collect();
 
         return view('institute.reports.admission-sub-report', compact(
-            'students', 'type', 'total', 'sessions', 'courses', 'centers', 'partners',
-            'staffList', 'sessionId', 'sessionObj', 'perPage', 'centersMap', 'partnersMap'
+            'students', 'type', 'total', 'sessions', 'courseTypes', 'courses', 'streams',
+            'centers', 'partners', 'staffList', 'sessionId', 'sessionObj', 'perPage',
+            'centersMap', 'partnersMap', 'pageTitle'
         ));
     }
 
