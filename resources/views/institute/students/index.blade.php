@@ -178,7 +178,9 @@
             <tbody>
                 @forelse($students as $i => $student)
                 @php
-                    $source = match($student->admission_source) {
+                    $src = $student->admission_source ?? 'direct';
+
+                    $sourceName = match($src) {
                         'center'  => ($centersMap[$student->admission_source_id] ?? null)
                                         ? 'Center: ' . $centersMap[$student->admission_source_id]
                                         : 'Center',
@@ -187,13 +189,46 @@
                                         : 'Partner',
                         default   => 'Direct',
                     };
-                    // Admitted By: staff name if set, else source label (center/partner/admin)
+
                     $admittedByLabel = $student->admittedBy?->name
-                        ?? match($student->admission_source) {
-                            'center'                    => $source,
-                            'partner', 'channel_partner'=> $source,
-                            default                     => 'Admin / Direct',
+                        ?? match($src) {
+                            'center'                     => $sourceName,
+                            'partner', 'channel_partner' => $sourceName,
+                            default                      => 'Admin / Direct',
                         };
+
+                    // Badge classes for Admitted By
+                    $admittedByBadge = match(true) {
+                        $student->admittedBy !== null          => 'bg-info bg-opacity-10 text-info border-info-subtle',
+                        $src === 'center'                      => 'bg-info bg-opacity-10 text-info border-info-subtle',
+                        in_array($src, ['partner','channel_partner']) => 'bg-warning bg-opacity-10 text-warning border-warning-subtle',
+                        default                                => 'bg-secondary bg-opacity-10 text-secondary border-secondary-subtle',
+                    };
+                    $admittedByIcon = match(true) {
+                        $student->admittedBy !== null          => 'bi-person-badge',
+                        $src === 'center'                      => 'bi-building',
+                        in_array($src, ['partner','channel_partner']) => 'bi-people',
+                        default                                => 'bi-shield-check',
+                    };
+
+                    // Badge classes for Source
+                    $sourceBadge = match($src) {
+                        'center'                      => 'bg-info bg-opacity-10 text-info border-info-subtle',
+                        'partner', 'channel_partner'  => 'bg-warning bg-opacity-10 text-warning border-warning-subtle',
+                        default                       => 'bg-success bg-opacity-10 text-success border-success-subtle',
+                    };
+                    $sourceIcon = match($src) {
+                        'center'                      => 'bi-building',
+                        'partner', 'channel_partner'  => 'bi-people',
+                        default                       => 'bi-arrow-right-circle',
+                    };
+                    $sourceShort = match($src) {
+                        'center'           => 'Center',
+                        'partner',
+                        'channel_partner'  => 'Partner',
+                        default            => 'Direct',
+                    };
+
                     $statusColor = match($student->status) {
                         'active'    => 'bg-success-subtle text-success border-success-subtle',
                         'pending'   => 'bg-warning-subtle text-warning border-warning-subtle',
@@ -204,12 +239,17 @@
                     };
                 @endphp
                 <tr>
-                    <td class="ps-2 text-muted">{{ $students->firstItem() + $i }}</td>
+                    <td class="ps-2 text-muted fw-semibold">{{ $students->firstItem() + $i }}</td>
 
-                    <td class="text-muted" style="white-space:nowrap;">
-                        {{ $student->session?->name ?? '—' }}
+                    {{-- Session --}}
+                    <td>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"
+                              style="font-size:10px; font-weight:600; white-space:nowrap;">
+                            <i class="bi bi-calendar3 me-1"></i>{{ $student->session?->name ?? '—' }}
+                        </span>
                     </td>
 
+                    {{-- Student ID --}}
                     <td>
                         <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle"
                               style="font-size:10px; font-weight:600;">
@@ -217,6 +257,7 @@
                         </span>
                     </td>
 
+                    {{-- Student Name --}}
                     <td>
                         <div class="fw-semibold" style="font-size:12px; line-height:1.3;">{{ $student->name }}</div>
                         <div class="text-muted" style="font-size:10.5px;">{{ $student->mobile }}</div>
@@ -224,16 +265,18 @@
 
                     <td class="fw-semibold" style="white-space:nowrap;">{{ $student->father_name ?: '—' }}</td>
                     <td class="fw-semibold" style="white-space:nowrap;">{{ $student->mother_name ?: '—' }}</td>
-                    <td class="text-muted">{{ $student->roll_no ?: '—' }}</td>
-                    <td class="text-muted">{{ $student->enrollment_no ?: '—' }}</td>
-                    <td class="text-muted">{{ $student->uin_no ?: '—' }}</td>
+                    <td class="fw-semibold text-muted">{{ $student->roll_no ?: '—' }}</td>
+                    <td class="fw-semibold text-muted">{{ $student->enrollment_no ?: '—' }}</td>
+                    <td class="fw-semibold text-muted">{{ $student->uin_no ?: '—' }}</td>
 
+                    {{-- Course --}}
                     <td>
                         <div class="fw-semibold" style="font-size:12px; line-height:1.3;">{{ $student->stream?->course?->name ?? '—' }}</div>
                         <div class="text-muted" style="font-size:10.5px;">{{ $student->stream?->name ?? '—' }}</div>
                     </td>
 
-                    <td style="white-space:nowrap;">
+                    {{-- Year/Sem --}}
+                    <td class="fw-semibold" style="white-space:nowrap;">
                         {{ $student->coursePart?->year_label ?? '—' }}
                         @if($student->current_semester)
                             <span class="badge bg-primary bg-opacity-10 text-primary border ms-1"
@@ -241,25 +284,30 @@
                         @endif
                     </td>
 
+                    {{-- Admitted By --}}
                     <td>
-                        @if($student->admittedBy)
-                            <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle"
-                                  style="font-size:10px;">
-                                <i class="bi bi-person-badge me-1"></i>{{ $student->admittedBy->name }}
-                            </span>
-                        @else
-                            <span class="text-muted" style="font-size:11px;">{{ $admittedByLabel }}</span>
-                        @endif
+                        <span class="badge {{ $admittedByBadge }} border"
+                              style="font-size:10px; font-weight:600; white-space:normal; max-width:120px; display:inline-block; text-align:left;">
+                            <i class="bi {{ $admittedByIcon }} me-1"></i>{{ $admittedByLabel }}
+                        </span>
                     </td>
 
-                    <td class="text-muted">{{ $source }}</td>
+                    {{-- Source --}}
+                    <td>
+                        <span class="badge {{ $sourceBadge }} border"
+                              style="font-size:10px; font-weight:600; white-space:nowrap;">
+                            <i class="bi {{ $sourceIcon }} me-1"></i>{{ $sourceShort }}
+                        </span>
+                    </td>
 
-                    <td class="text-muted" style="white-space:nowrap;">
+                    {{-- Adm. Date --}}
+                    <td class="fw-semibold text-muted" style="white-space:nowrap;">
                         {{ $student->admission_date?->format('d M Y') ?? '—' }}
                     </td>
 
+                    {{-- Status --}}
                     <td>
-                        <span class="badge border {{ $statusColor }}" style="font-size:10px;">
+                        <span class="badge border {{ $statusColor }}" style="font-size:10px; font-weight:600;">
                             {{ ucfirst($student->status ?? 'pending') }}
                         </span>
                     </td>

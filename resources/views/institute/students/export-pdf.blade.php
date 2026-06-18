@@ -12,7 +12,7 @@
             color: #000;
             margin: 0; padding: 0;
             line-height: 1.25;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         /* ── Header ── */
@@ -21,14 +21,15 @@
         .hdr-l { width:44px; padding-right:7px; }
         .logo-box {
             width:38px; height:38px; border:1.5px solid #000; border-radius:4px;
-            text-align:center; line-height:38px; font-size:15px; font-weight:900;
+            text-align:center; line-height:38px; font-size:15px; font-weight:800;
             color:#000; overflow:hidden; background:#e8e8e8;
         }
         .logo-box img { width:38px; height:38px; object-fit:cover; border-radius:4px; display:block; }
-        .inst-name  { font-size:15px; font-weight:900; color:#000; letter-spacing:0.2px; }
-        .inst-sub   { font-size:7.5px; color:#000; font-weight:800; margin-top:1px; }
-        .hdr-r { text-align:right; font-size:6.5px; color:#000; font-weight:800; white-space:nowrap; }
+        .inst-name  { font-size:15px; font-weight:800; color:#000; letter-spacing:0.2px; }
+        .inst-sub   { font-size:7.5px; color:#000; font-weight:600; margin-top:1px; }
+        .hdr-r { text-align:right; font-size:6.5px; color:#000; font-weight:600; white-space:nowrap; }
         .hdr-r div  { margin-bottom:2px; }
+        .hdr-r strong { font-weight:800; color:#000; }
 
         /* ── Table ── */
         table.t { width:100%; border-collapse:collapse; table-layout:fixed; }
@@ -37,7 +38,7 @@
             background:#1e3a5f;
             color:#fff;
             font-size:6.5px;
-            font-weight:900;
+            font-weight:800;
             padding:3px 2px;
             text-align:left;
             white-space:nowrap;
@@ -47,9 +48,9 @@
         table.t thead th.c { text-align:center; }
 
         table.t tbody td {
-            padding:2px 2px;
+            padding:2px 3px;
             font-size:6.5px;
-            font-weight:800;
+            font-weight:600;
             color:#000;
             border-bottom:0.5px solid #bbb;
             border-right:0.5px solid #ddd;
@@ -57,9 +58,10 @@
             overflow:hidden;
             white-space:nowrap;
         }
-        table.t tbody tr:nth-child(even) td { background:#f2f2f2; }
+        table.t tbody tr:nth-child(even) td { background:#efefef; }
         table.t tbody td.c { text-align:center; }
         table.t tbody td.wrap { white-space:normal; }
+        .sub { font-size:5.5px; font-weight:600; color:#000; display:block; margin-top:1px; }
 
         /* ── Footer ── */
         .ftr {
@@ -69,7 +71,7 @@
             display:table;
             width:100%;
         }
-        .ftr-l, .ftr-r { display:table-cell; font-size:6px; color:#000; font-weight:800; }
+        .ftr-l, .ftr-r { display:table-cell; font-size:6px; color:#000; font-weight:600; }
         .ftr-r { text-align:right; }
 
         @media print {
@@ -114,20 +116,6 @@
 </div>
 
 {{-- ── TABLE ───────────────────────────────────────────────── --}}
-@php
-    $sourceLabel = function ($student) use ($centersMap, $partnersMap) {
-        return match($student->admission_source) {
-            'center'  => ($centersMap[$student->admission_source_id] ?? null)
-                            ? 'Ctr: ' . \Illuminate\Support\Str::limit($centersMap[$student->admission_source_id], 14)
-                            : 'Center',
-            'partner', 'channel_partner' => ($partnersMap[$student->admission_source_id] ?? null)
-                            ? 'Prt: ' . \Illuminate\Support\Str::limit($partnersMap[$student->admission_source_id], 14)
-                            : 'Partner',
-            default   => 'Direct',
-        };
-    };
-@endphp
-
 <table class="t" cellspacing="0" cellpadding="0">
     <colgroup>
         <col style="width:12px;">   {{-- # --}}
@@ -167,14 +155,32 @@
     </thead>
     <tbody>
         @forelse($students as $i => $student)
+        @php
+            $pdfSrc = $student->admission_source ?? 'direct';
+            $pdfSourceName = match($pdfSrc) {
+                'center'  => ($centersMap[$student->admission_source_id] ?? null)
+                                ? 'Ctr: ' . \Illuminate\Support\Str::limit($centersMap[$student->admission_source_id], 14)
+                                : 'Center',
+                'partner', 'channel_partner' => ($partnersMap[$student->admission_source_id] ?? null)
+                                ? 'Prt: ' . \Illuminate\Support\Str::limit($partnersMap[$student->admission_source_id], 14)
+                                : 'Partner',
+                default   => 'Direct',
+            };
+            $pdfAdmittedBy = $student->admittedBy?->name
+                ?? match($pdfSrc) {
+                    'center'                     => $pdfSourceName,
+                    'partner', 'channel_partner' => $pdfSourceName,
+                    default                      => 'Admin / Direct',
+                };
+        @endphp
         <tr>
             <td class="c">{{ $i + 1 }}</td>
             <td>{{ $student->session?->name ?? '—' }}</td>
-            <td style="font-weight:900;">{{ $student->student_uid ?? '—' }}</td>
+            <td style="font-weight:700;">{{ $student->student_uid ?? '—' }}</td>
             <td class="wrap">
                 {{ \Illuminate\Support\Str::limit($student->name, 24) }}
                 @if($student->mobile)
-                    <br><span style="font-size:5.5px; font-weight:700; color:#333;">{{ $student->mobile }}</span>
+                    <span class="sub">{{ $student->mobile }}</span>
                 @endif
             </td>
             <td>{{ \Illuminate\Support\Str::limit($student->father_name ?: '—', 18) }}</td>
@@ -185,20 +191,20 @@
             <td class="wrap">
                 {{ \Illuminate\Support\Str::limit($student->stream?->course?->name ?? '—', 20) }}
                 @if($student->stream?->name)
-                    <br><span style="font-size:5.5px; font-weight:700; color:#333;">{{ \Illuminate\Support\Str::limit($student->stream->name, 18) }}</span>
+                    <span class="sub">{{ \Illuminate\Support\Str::limit($student->stream->name, 18) }}</span>
                 @endif
             </td>
             <td>
                 {{ $student->coursePart?->year_label ?? '—' }}@if($student->current_semester) / S{{ $student->current_semester }}@endif
             </td>
-            <td>{{ \Illuminate\Support\Str::limit($student->admittedBy?->name ?? '—', 18) }}</td>
-            <td>{{ $sourceLabel($student) }}</td>
+            <td class="wrap">{{ \Illuminate\Support\Str::limit($pdfAdmittedBy, 20) }}</td>
+            <td>{{ $pdfSourceName }}</td>
             <td style="white-space:nowrap;">{{ $student->admission_date?->format('d/m/Y') ?? '—' }}</td>
-            <td style="font-weight:900;">{{ ucfirst($student->status ?? 'pending') }}</td>
+            <td style="font-weight:700;">{{ ucfirst($student->status ?? 'pending') }}</td>
         </tr>
         @empty
         <tr>
-            <td colspan="15" style="text-align:center; padding:12px; font-weight:900; font-size:8px;">
+            <td colspan="15" style="text-align:center; padding:12px; font-weight:700; font-size:8px;">
                 No students found.
             </td>
         </tr>
