@@ -524,6 +524,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('students')->name('students.')->group(function () {
         Route::get('/',             [StudentDirectoryController::class, 'index'])->name('index');
         Route::get('/quick',        [StudentDirectoryController::class, 'quickAdmissions'])->name('quick');
+        Route::get('/export',       [StudentDirectoryController::class, 'export'])->name('export');
         Route::get('/search',       [StudentDirectoryController::class, 'search'])->name('search');
         Route::get('/wallet',       [StudentDirectoryController::class, 'wallet'])->name('wallet');
         Route::get('/history',      [StudentDirectoryController::class, 'feeHistory'])->name('history');

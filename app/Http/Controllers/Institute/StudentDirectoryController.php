@@ -9,12 +9,16 @@ use App\Models\ChannelPartner;
 use App\Models\Course;
 use App\Models\CourseStream;
 use App\Models\CourseType;
+use App\Models\Institute;
 use App\Models\Student;
+use App\Traits\ExportsTabularData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class StudentDirectoryController extends Controller
 {
+    use ExportsTabularData;
     private function instituteId(): int
     {
         return (int) Auth::user()->institute_id;
@@ -28,6 +32,112 @@ class StudentDirectoryController extends Controller
     public function quickAdmissions(Request $request)
     {
         return $this->listStudents($request, true);
+    }
+
+    public function export(Request $request)
+    {
+        $type = $request->input('export', 'pdf');
+        if (!in_array($type, ['pdf', 'csv', 'excel'])) {
+            abort(400, 'Invalid export type.');
+        }
+
+        $instituteId   = $this->instituteId();
+        $institute     = Institute::findOrFail($instituteId);
+        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $sessionId     = $request->filled('session_id') ? (int) $request->session_id : $activeSession?->id;
+        $sessionObj    = $sessionId ? AcademicSession::find($sessionId) : null;
+
+        $query = Student::where('institute_id', $instituteId)
+            ->with(['stream.course', 'session', 'coursePart', 'admittedBy'])
+            ->orderByDesc('id');
+
+        if ($request->boolean('quick_only')) {
+            $query->where('is_quick_admission', true);
+        }
+        if ($sessionId) {
+            $query->where('academic_session_id', $sessionId);
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($b) use ($s) {
+                $b->where('name', 'like', "%{$s}%")
+                  ->orWhere('mobile', 'like', "%{$s}%")
+                  ->orWhere('father_name', 'like', "%{$s}%")
+                  ->orWhere('mother_name', 'like', "%{$s}%")
+                  ->orWhere('student_uid', 'like', "%{$s}%");
+            });
+        }
+        if ($request->filled('course_type_id')) {
+            $query->where('course_type_id', (int) $request->course_type_id);
+        }
+        if ($request->filled('course_id')) {
+            $query->whereHas('stream', fn($q) => $q->where('course_id', (int) $request->course_id));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('from_date')) {
+            $query->whereDate('admission_date', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('admission_date', '<=', $request->to_date);
+        }
+
+        $students = $query->get();
+
+        $centerIds   = $students->where('admission_source', 'center')->pluck('admission_source_id')->filter()->unique();
+        $partnerIds  = $students->whereIn('admission_source', ['partner', 'channel_partner'])->pluck('admission_source_id')->filter()->unique();
+        $centersMap  = $centerIds->isNotEmpty()  ? Center::whereIn('id', $centerIds)->pluck('name', 'id')  : collect();
+        $partnersMap = $partnerIds->isNotEmpty() ? ChannelPartner::whereIn('id', $partnerIds)->pluck('name', 'id') : collect();
+
+        if ($type === 'pdf') {
+            return view('institute.students.export-pdf', compact(
+                'students', 'institute', 'sessionObj', 'centersMap', 'partnersMap'
+            ));
+        }
+
+        $expHeaders = ['#', 'Session', 'Student ID', 'Student Name', 'Father Name', 'Mother Name',
+                       'Roll No', 'Enroll No', 'UIN No', 'Course', 'Stream', 'Year/Sem',
+                       'Admitted By', 'Source', 'Adm. Date', 'Status'];
+
+        $expRows = $students->map(function ($student, $i) use ($centersMap, $partnersMap) {
+            $source = match($student->admission_source) {
+                'center'  => ($centersMap[$student->admission_source_id] ?? null)
+                                ? 'Center: ' . $centersMap[$student->admission_source_id] : 'Center',
+                'partner', 'channel_partner' => ($partnersMap[$student->admission_source_id] ?? null)
+                                ? 'Partner: ' . $partnersMap[$student->admission_source_id] : 'Partner',
+                default   => 'Direct',
+            };
+            return [
+                $i + 1,
+                $student->session?->name ?? '—',
+                $student->student_uid ?? '—',
+                $student->name,
+                $student->father_name ?: '—',
+                $student->mother_name ?: '—',
+                $student->roll_no ?: '—',
+                $student->enrollment_no ?: '—',
+                $student->uin_no ?: '—',
+                $student->stream?->course?->name ?? '—',
+                $student->stream?->name ?? '—',
+                ($student->coursePart?->year_label ?? '—') . ($student->current_semester ? ' S' . $student->current_semester : ''),
+                $student->admittedBy?->name ?? '—',
+                $source,
+                $student->admission_date?->format('d/m/Y') ?? '—',
+                ucfirst($student->status ?? 'pending'),
+            ];
+        })->toArray();
+
+        $sessName = $sessionObj?->name ?? 'All Sessions';
+        $title    = $institute->name . ' — Student List';
+        $subtitle = 'Session: ' . $sessName . '   |   Total: ' . count($expRows) . '   |   Generated: ' . now()->setTimezone('Asia/Kolkata')->format('d M Y h:i A');
+        $filename = 'students-' . now()->format('Ymd-His');
+
+        if ($type === 'excel') {
+            return $this->exportSimpleExcel($expHeaders, $expRows, $filename . '.xlsx', $title, $subtitle);
+        }
+
+        return $this->exportCsv($expHeaders, $expRows, $filename . '.csv');
     }
 
     private function listStudents(Request $request, bool $quickOnly)
@@ -101,7 +211,7 @@ class StudentDirectoryController extends Controller
             $query->whereDate('admission_date', '<=', $request->to_date);
         }
 
-        $students = $query->paginate(20)->withQueryString();
+        $students = $query->paginate(50)->withQueryString();
 
         // Eager-load guide (center/partner) names in one pass to avoid N+1
         $centerIds  = $students->where('admission_source', 'center')->pluck('admission_source_id')->filter()->unique();

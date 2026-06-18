@@ -271,4 +271,154 @@ trait ExportsTabularData
             . 'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
             . '<Application>College ERP</Application></Properties>';
     }
+
+    // ── Generic simple Excel export (no amount columns, no totals row) ─────────
+
+    protected function exportSimpleExcel(
+        array $headers,
+        array $rows,
+        string $filename,
+        string $title,
+        string $subtitle = ''
+    ): mixed {
+        if (!class_exists(\ZipArchive::class)) {
+            return $this->exportCsv($headers, $rows, str_replace('.xlsx', '.csv', $filename));
+        }
+        $tempPath = tempnam(sys_get_temp_dir(), 'exp-');
+        $zip = new \ZipArchive();
+        $zip->open($tempPath, \ZipArchive::OVERWRITE);
+        $zip->addFromString('[Content_Types].xml', $this->xlsxContentTypes());
+        $zip->addFromString('_rels/.rels', $this->xlsxRootRels());
+        $zip->addFromString('docProps/app.xml', $this->xlsxAppXml());
+        $zip->addFromString('docProps/core.xml', $this->xlsxCoreXml());
+        $zip->addFromString('xl/workbook.xml', $this->xlsxNamedWorkbookXml('Student List'));
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->xlsxWorkbookRels());
+        $zip->addFromString('xl/styles.xml', $this->xlsxSimpleStylesXml());
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->xlsxSimpleSheetXml($headers, $rows, $title, $subtitle));
+        $zip->close();
+        return response()->download($tempPath, $filename, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ])->deleteFileAfterSend(true);
+    }
+
+    protected function xlsxNamedWorkbookXml(string $sheetName): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets><sheet name="' . htmlspecialchars($sheetName, ENT_XML1) . '" sheetId="1" r:id="rId1"/></sheets></workbook>';
+    }
+
+    protected function xlsxSimpleStylesXml(): string
+    {
+        $fonts = '<fonts count="3">'
+            . '<font><sz val="9"/><name val="Arial"/></font>'
+            . '<font><b/><sz val="13"/><name val="Arial"/><color rgb="FF1D4ED8"/></font>'
+            . '<font><b/><sz val="9"/><name val="Arial"/><color rgb="FFFFFFFF"/></font>'
+            . '</fonts>';
+
+        $fills = '<fills count="4">'
+            . '<fill><patternFill patternType="none"/></fill>'
+            . '<fill><patternFill patternType="gray125"/></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFF0F0F0"/></patternFill></fill>'
+            . '</fills>';
+
+        $borders = '<borders count="2">'
+            . '<border><left/><right/><top/><bottom/><diagonal/></border>'
+            . '<border>'
+            . '<left style="thin"><color rgb="FFCCCCCC"/></left>'
+            . '<right style="thin"><color rgb="FFCCCCCC"/></right>'
+            . '<top style="thin"><color rgb="FFCCCCCC"/></top>'
+            . '<bottom style="thin"><color rgb="FFCCCCCC"/></bottom>'
+            . '<diagonal/>'
+            . '</border>'
+            . '</borders>';
+
+        $cellStyleXfs = '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>';
+
+        // 0=default, 1=title (large blue bold), 2=subtitle, 3=col header (white on dark), 4=data, 5=data alt (light grey bg)
+        $cellXfs = '<cellXfs count="6">'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            . '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyFont="1"><alignment vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>'
+            . '</cellXfs>';
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . $fonts . $fills . $borders . $cellStyleXfs . $cellXfs
+            . '</styleSheet>';
+    }
+
+    protected function xlsxSimpleSheetXml(array $headers, array $rows, string $title, string $subtitle): string
+    {
+        $colCount = count($headers);
+        $lastCol  = $this->xlsxColumnName($colCount);
+
+        // Per-column widths for student list (up to 16 cols); extras default to 14
+        $colWidths = [5, 10, 16, 22, 16, 16, 12, 14, 12, 22, 10, 18, 18, 12, 10, 14];
+
+        $xmlRows = [];
+
+        $xmlRows[] = '<row r="1" ht="20" customHeight="1"><c r="A1" t="inlineStr" s="1"><is><t>'
+            . $this->xlsxEscape($title) . '</t></is></c></row>';
+
+        $xmlRows[] = '<row r="2" ht="14" customHeight="1"><c r="A2" t="inlineStr" s="2"><is><t>'
+            . $this->xlsxEscape($subtitle ?: ('Generated: ' . now()->setTimezone('Asia/Kolkata')->format('d M Y h:i A')))
+            . '</t></is></c></row>';
+
+        $cells = [];
+        foreach ($headers as $ci => $h) {
+            $ref     = $this->xlsxColumnName($ci + 1) . '3';
+            $cells[] = '<c r="' . $ref . '" t="inlineStr" s="3"><is><t>' . $this->xlsxEscape($h) . '</t></is></c>';
+        }
+        $xmlRows[] = '<row r="3" ht="16" customHeight="1">' . implode('', $cells) . '</row>';
+
+        foreach ($rows as $rowIdx => $row) {
+            $ri    = $rowIdx + 4;
+            $style = ($rowIdx % 2 === 1) ? 5 : 4;
+            $cells = [];
+            foreach (array_values((array) $row) as $ci => $value) {
+                $ref     = $this->xlsxColumnName($ci + 1) . $ri;
+                $cells[] = '<c r="' . $ref . '" t="inlineStr" s="' . $style . '"><is><t>'
+                    . $this->xlsxEscape((string) $value) . '</t></is></c>';
+            }
+            $xmlRows[] = '<row r="' . $ri . '">' . implode('', $cells) . '</row>';
+        }
+
+        $colsXml = '<cols>';
+        foreach ($colWidths as $i => $w) {
+            $n = $i + 1;
+            if ($n > $colCount) {
+                break;
+            }
+            $colsXml .= '<col min="' . $n . '" max="' . $n . '" width="' . $w . '" customWidth="1"/>';
+        }
+        if (count($colWidths) < $colCount) {
+            $n        = count($colWidths) + 1;
+            $colsXml .= '<col min="' . $n . '" max="' . $colCount . '" width="14" customWidth="1"/>';
+        }
+        $colsXml .= '</cols>';
+
+        $mergeCells = '<mergeCells count="2">'
+            . '<mergeCell ref="A1:' . $lastCol . '1"/>'
+            . '<mergeCell ref="A2:' . $lastCol . '2"/>'
+            . '</mergeCells>';
+
+        $sheetViews = '<sheetViews><sheetView tabSelected="1" workbookViewId="0">'
+            . '<pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/>'
+            . '</sheetView></sheetViews>';
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . $sheetViews . $colsXml
+            . '<sheetData>' . implode('', $xmlRows) . '</sheetData>'
+            . $mergeCells
+            . '</worksheet>';
+    }
 }
