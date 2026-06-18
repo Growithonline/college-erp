@@ -27,62 +27,77 @@
 </div>
 
 {{-- Summary Cards --}}
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-3">
     <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 bg-primary bg-opacity-10 p-2">
-                        <i class="bi bi-people text-primary fs-5"></i>
-                    </div>
+        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #0d6efd!important; border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="small text-muted">Total Admissions</div>
-                        <div class="fw-bold fs-6">{{ number_format($totalAdmissions) }}</div>
+                        <div class="text-muted mb-1" style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Total Admissions</div>
+                        <div class="fw-bold" style="font-size:28px; color:#0d6efd; line-height:1;">{{ number_format($totalAdmissions) }}</div>
+                        <div class="text-muted mt-1" style="font-size:10.5px;">Session: {{ $sessionObj?->name ?? 'All' }}</div>
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:46px;height:46px;background:rgba(13,110,253,.1);">
+                        <i class="bi bi-people-fill text-primary" style="font-size:20px;"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 bg-info bg-opacity-10 p-2">
-                        <i class="bi bi-person text-info fs-5"></i>
-                    </div>
+        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #0dcaf0!important; border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="small text-muted">Male / Female</div>
-                        <div class="fw-bold fs-6">{{ $maleCount }} / {{ $femaleCount }}</div>
+                        <div class="text-muted mb-1" style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Male / Female</div>
+                        <div class="fw-bold" style="font-size:24px; color:#0dcaf0; line-height:1;">{{ $maleCount }} / {{ $femaleCount }}</div>
+                        @php $totalGender = $maleCount + $femaleCount; @endphp
+                        @if($totalGender > 0)
+                        <div class="progress mt-2" style="height:4px; border-radius:2px;">
+                            <div class="progress-bar bg-info" style="width:{{ round($maleCount/$totalGender*100) }}%"></div>
+                            <div class="progress-bar bg-warning" style="width:{{ round($femaleCount/$totalGender*100) }}%"></div>
+                        </div>
+                        <div class="text-muted mt-1" style="font-size:10px;">
+                            <span class="text-info fw-semibold">M {{ $totalGender > 0 ? round($maleCount/$totalGender*100) : 0 }}%</span>
+                            &nbsp;
+                            <span class="text-warning fw-semibold">F {{ $totalGender > 0 ? round($femaleCount/$totalGender*100) : 0 }}%</span>
+                        </div>
+                        @endif
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:46px;height:46px;background:rgba(13,202,240,.1);">
+                        <i class="bi bi-gender-ambiguous text-info" style="font-size:20px;"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 bg-success bg-opacity-10 p-2">
-                        <i class="bi bi-calendar-check text-success fs-5"></i>
-                    </div>
+        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #198754!important; border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="small text-muted">Today</div>
-                        <div class="fw-bold fs-6 text-success">{{ $todayCount }}</div>
+                        <div class="text-muted mb-1" style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Today's Admissions</div>
+                        <div class="fw-bold" style="font-size:28px; color:#198754; line-height:1;">{{ $todayCount }}</div>
+                        <div class="text-muted mt-1" style="font-size:10.5px;">{{ now()->format('d M Y') }}</div>
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:46px;height:46px;background:rgba(25,135,84,.1);">
+                        <i class="bi bi-calendar-check-fill text-success" style="font-size:20px;"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 bg-warning bg-opacity-10 p-2">
-                        <i class="bi bi-bar-chart text-warning fs-5"></i>
-                    </div>
+        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #ffc107!important; border-radius:10px;">
+            <div class="card-body py-3 px-3">
+                <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="small text-muted">Courses</div>
-                        <div class="fw-bold fs-6">{{ $courseWise->count() }}</div>
+                        <div class="text-muted mb-1" style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Courses Active</div>
+                        <div class="fw-bold" style="font-size:28px; color:#ffc107; line-height:1;">{{ $courseWise->count() }}</div>
+                        <div class="text-muted mt-1" style="font-size:10.5px;">{{ $sourceWise->count() }} source{{ $sourceWise->count() != 1 ? 's' : '' }} of admission</div>
+                    </div>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:46px;height:46px;background:rgba(255,193,7,.1);">
+                        <i class="bi bi-mortarboard-fill text-warning" style="font-size:20px;"></i>
                     </div>
                 </div>
             </div>
@@ -91,53 +106,57 @@
 </div>
 
 {{-- Breakdowns --}}
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-3">
     {{-- Course-wise with semester --}}
     @if($courseWise->isNotEmpty())
+    @php $grandTotal = $courseWiseRaw->sum('cnt'); @endphp
     <div class="col-md-5">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header py-2 bg-white border-bottom">
-                <span class="fw-semibold small"><i class="bi bi-book me-1 text-primary"></i> Course-wise</span>
+        <div class="card border-0 shadow-sm h-100" style="border-radius:10px; overflow:hidden;">
+            <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between" style="background:#1e3a5f; color:#fff;">
+                <span class="fw-semibold" style="font-size:13px;"><i class="bi bi-book me-1"></i> Course-wise</span>
+                <span class="badge bg-white text-primary fw-bold" style="font-size:11px;">{{ $grandTotal }} total</span>
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm mb-0" style="font-size:12px;">
-                    <thead class="table-light">
+                <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                    <thead style="background:#f0f4f8;">
                         <tr>
-                            <th class="ps-3">Course</th>
-                            <th class="text-center">Sem / Year</th>
-                            <th class="text-end pe-3">Count</th>
+                            <th class="ps-3 py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Course</th>
+                            <th class="text-center py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Sem</th>
+                            <th class="text-end pe-3 py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Count</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($courseWise as $courseName => $semRows)
-                        @php $courseTotal = $semRows->sum('cnt'); @endphp
-                        <tr class="table-light">
-                            <td class="ps-3 fw-semibold" colspan="2">{{ $courseName }}</td>
-                            <td class="text-end pe-3 fw-bold text-primary">{{ $courseTotal }}</td>
+                        @php $courseTotal = $semRows->sum('cnt'); $pct = $grandTotal > 0 ? round($courseTotal/$grandTotal*100) : 0; @endphp
+                        <tr style="background:#f8fafc;">
+                            <td class="ps-3 fw-semibold" colspan="2" style="font-size:12px;">
+                                {{ $courseName }}
+                                <div class="progress mt-1" style="height:3px; border-radius:2px; width:80%;">
+                                    <div class="progress-bar bg-primary" style="width:{{ $pct }}%"></div>
+                                </div>
+                            </td>
+                            <td class="text-end pe-3 fw-bold text-primary" style="font-size:13px; vertical-align:middle;">{{ $courseTotal }}</td>
                         </tr>
                         @foreach($semRows as $row)
                         <tr>
-                            <td class="ps-3 text-muted" style="padding-left:1.5rem!important;font-size:11px;">
-                                ↳
-                            </td>
-                            <td class="text-center">
+                            <td class="ps-4 text-muted" style="font-size:11px; border-left:3px solid #e0e8f4;">
+                                <i class="bi bi-arrow-return-right me-1" style="font-size:9px;"></i>
                                 @if($row->semester > 0)
-                                    <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:10px;">
-                                        Sem {{ $row->semester }}
-                                    </span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:9.5px;">Sem {{ $row->semester }}</span>
                                 @else
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary" style="font-size:10px;">Untagged</span>
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary" style="font-size:9.5px;">Untagged</span>
                                 @endif
                             </td>
-                            <td class="text-end pe-3 text-muted">{{ $row->cnt }}</td>
+                            <td></td>
+                            <td class="text-end pe-3 text-muted fw-semibold" style="font-size:11px;">{{ $row->cnt }}</td>
                         </tr>
                         @endforeach
                         @endforeach
                     </tbody>
-                    <tfoot class="table-dark fw-semibold">
+                    <tfoot style="background:#1e3a5f; color:#fff;">
                         <tr>
-                            <td class="ps-3" colspan="2">Total</td>
-                            <td class="text-end pe-3">{{ $courseWiseRaw->sum('cnt') }}</td>
+                            <td class="ps-3 py-2 fw-semibold" colspan="2">Total</td>
+                            <td class="text-end pe-3 py-2 fw-bold">{{ $grandTotal }}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -147,63 +166,79 @@
     @endif
 
     {{-- Source-wise with center drill-down --}}
+    @php $sourceTotal = $sourceWise->sum('cnt'); @endphp
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header py-2 bg-white border-bottom d-flex justify-content-between align-items-center">
-                <span class="fw-semibold small"><i class="bi bi-signpost me-1 text-success"></i> Source-wise</span>
+        <div class="card border-0 shadow-sm h-100" style="border-radius:10px; overflow:hidden;">
+            <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between" style="background:#1e3a5f; color:#fff;">
+                <span class="fw-semibold" style="font-size:13px;"><i class="bi bi-signpost me-1"></i> Source-wise</span>
                 @if($centerDetail->isNotEmpty())
-                    <span class="text-muted" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Click Center for detail</span>
+                    <span class="text-white-50" style="font-size:10px; cursor:help;" title="Click Center row for detail">
+                        <i class="bi bi-info-circle me-1"></i>Click Center
+                    </span>
                 @endif
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm mb-0" style="font-size:12px;">
-                    <thead class="table-light">
+                <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                    <thead style="background:#f0f4f8;">
                         <tr>
-                            <th class="ps-3">Source</th>
-                            <th class="text-end pe-3">Count</th>
+                            <th class="ps-3 py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Source</th>
+                            <th class="text-center py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">%</th>
+                            <th class="text-end pe-3 py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Count</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($sourceWise as $s)
-                        @php $src = $s->admission_source ?? 'direct'; @endphp
+                        @foreach($sourceWise as $sw)
+                        @php
+                            $src = $sw->admission_source ?? 'direct';
+                            $pct = $sourceTotal > 0 ? round($sw->cnt / $sourceTotal * 100) : 0;
+                            [$srcLabel, $srcBg, $srcBar] = match($src) {
+                                'center'          => ['Center',          'bg-info bg-opacity-10 text-info border border-info-subtle',       'bg-info'],
+                                'channel_partner' => ['Channel Partner', 'bg-warning bg-opacity-10 text-warning border border-warning-subtle','bg-warning'],
+                                default           => ['Direct',          'bg-success bg-opacity-10 text-success border border-success-subtle','bg-success'],
+                            };
+                        @endphp
                         <tr @if($src === 'center' && $centerDetail->isNotEmpty()) style="cursor:pointer;" onclick="showCenterDetail()" @endif>
-                            <td class="ps-3 small">
-                                <span class="badge
-                                    {{ $src === 'direct' ? 'bg-success bg-opacity-10 text-success' : '' }}
-                                    {{ $src === 'center' ? 'bg-info bg-opacity-10 text-info' : '' }}
-                                    {{ $src === 'channel_partner' ? 'bg-warning bg-opacity-10 text-warning' : '' }}
-                                    fw-normal">
-                                    {{ ucwords(str_replace('_',' ', $src)) }}
-                                </span>
+                            <td class="ps-3 py-2">
+                                <span class="badge {{ $srcBg }} fw-semibold" style="font-size:10.5px;">{{ $srcLabel }}</span>
                                 @if($src === 'center' && $centerDetail->isNotEmpty())
-                                    <i class="bi bi-chevron-right ms-1 text-muted" style="font-size:9px;"></i>
+                                    <i class="bi bi-chevron-down ms-1 text-info" style="font-size:9px;" id="centerChevron"></i>
                                 @endif
+                                <div class="progress mt-1" style="height:3px; border-radius:2px; width:90%;">
+                                    <div class="progress-bar {{ $srcBar }}" style="width:{{ $pct }}%"></div>
+                                </div>
                             </td>
-                            <td class="text-end pe-3 fw-semibold">{{ $s->cnt }}</td>
+                            <td class="text-center text-muted" style="font-size:11px; vertical-align:middle;">{{ $pct }}%</td>
+                            <td class="text-end pe-3 fw-bold" style="font-size:13px; vertical-align:middle;">{{ $sw->cnt }}</td>
                         </tr>
                         @endforeach
                     </tbody>
-                    <tfoot class="table-light fw-semibold">
-                        <tr><td class="ps-3">Total</td><td class="text-end pe-3">{{ $sourceWise->sum('cnt') }}</td></tr>
+                    <tfoot style="background:#1e3a5f; color:#fff;">
+                        <tr>
+                            <td class="ps-3 py-2 fw-semibold" colspan="2">Total</td>
+                            <td class="text-end pe-3 py-2 fw-bold">{{ $sourceTotal }}</td>
+                        </tr>
                     </tfoot>
                 </table>
 
                 {{-- Center inline detail --}}
                 @if($centerDetail->isNotEmpty())
                 <div id="centerDetailPanel" class="border-top" style="display:none;">
-                    <div class="px-3 py-2 bg-info bg-opacity-10">
-                        <span class="small fw-semibold text-info">Center-wise Admission Detail</span>
+                    <div class="px-3 py-2 d-flex align-items-center gap-2" style="background:rgba(13,202,240,.08);">
+                        <i class="bi bi-building text-info"></i>
+                        <span class="fw-semibold text-info" style="font-size:12px;">Center-wise Breakdown</span>
                     </div>
                     @foreach($centerDetail as $centerName => $courseRows)
-                    <div class="border-bottom px-3 py-2">
-                        <div class="fw-semibold small text-dark mb-1">
-                            <i class="bi bi-building me-1 text-info"></i>{{ $centerName }}
-                            <span class="badge bg-info text-dark ms-1">{{ $courseRows->sum('cnt') }}</span>
+                    <div class="px-3 py-2 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-semibold" style="font-size:12px; color:#1e3a5f;">
+                                <i class="bi bi-geo-alt me-1 text-info"></i>{{ $centerName }}
+                            </span>
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle fw-bold" style="font-size:10.5px;">{{ $courseRows->sum('cnt') }}</span>
                         </div>
                         @foreach($courseRows as $cr)
                         <div class="d-flex justify-content-between ps-3" style="font-size:11px;">
-                            <span class="text-muted">↳ {{ $cr->course_name }}</span>
-                            <span class="fw-semibold">{{ $cr->cnt }}</span>
+                            <span class="text-muted"><i class="bi bi-arrow-return-right me-1" style="font-size:9px;"></i>{{ $cr->course_name }}</span>
+                            <span class="fw-semibold text-dark">{{ $cr->cnt }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -216,26 +251,47 @@
 
     {{-- Staff-wise admissions --}}
     @if(!$isStaff && isset($staffWise) && $staffWise->isNotEmpty())
+    @php $staffTotal = $staffWise->sum('cnt'); @endphp
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header py-2 bg-white border-bottom">
-                <span class="fw-semibold small"><i class="bi bi-person-badge me-1 text-primary"></i> Staff-wise</span>
+        <div class="card border-0 shadow-sm h-100" style="border-radius:10px; overflow:hidden;">
+            <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between" style="background:#1e3a5f; color:#fff;">
+                <span class="fw-semibold" style="font-size:13px;"><i class="bi bi-person-badge me-1"></i> Admitted By</span>
+                <span class="badge bg-white text-primary fw-bold" style="font-size:11px;">{{ $staffTotal }}</span>
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm mb-0" style="font-size:12px;">
-                    <thead class="table-light">
-                        <tr><th class="ps-3">Staff</th><th class="text-end pe-3">Count</th></tr>
+                <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                    <thead style="background:#f0f4f8;">
+                        <tr>
+                            <th class="ps-3 py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Staff / Admin</th>
+                            <th class="text-end pe-3 py-2 text-muted" style="font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Count</th>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach($staffWise as $sw)
+                        @php $pct = $staffTotal > 0 ? round($sw->cnt/$staffTotal*100) : 0; @endphp
                         <tr>
-                            <td class="ps-3 small">{{ $sw->staff_name }}</td>
-                            <td class="text-end pe-3 fw-semibold">{{ $sw->cnt }}</td>
+                            <td class="ps-3 py-2">
+                                <div class="fw-semibold" style="font-size:12px;">
+                                    @if($sw->staff_name === 'Admin / Direct')
+                                        <i class="bi bi-shield-check me-1 text-secondary" style="font-size:10px;"></i>
+                                    @else
+                                        <i class="bi bi-person-circle me-1 text-info" style="font-size:10px;"></i>
+                                    @endif
+                                    {{ $sw->staff_name }}
+                                </div>
+                                <div class="progress mt-1" style="height:3px; border-radius:2px; width:90%;">
+                                    <div class="progress-bar bg-primary bg-opacity-50" style="width:{{ $pct }}%"></div>
+                                </div>
+                            </td>
+                            <td class="text-end pe-3 fw-bold" style="font-size:13px; vertical-align:middle;">{{ $sw->cnt }}</td>
                         </tr>
                         @endforeach
                     </tbody>
-                    <tfoot class="table-light fw-semibold">
-                        <tr><td class="ps-3">Total</td><td class="text-end pe-3">{{ $staffWise->sum('cnt') }}</td></tr>
+                    <tfoot style="background:#1e3a5f; color:#fff;">
+                        <tr>
+                            <td class="ps-3 py-2 fw-semibold">Total</td>
+                            <td class="text-end pe-3 py-2 fw-bold">{{ $staffTotal }}</td>
+                        </tr>
                     </tfoot>
                 </table>
             </div>
@@ -247,28 +303,52 @@
     @if($categoryWise->isNotEmpty())
     <div class="col-md-3">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header py-2 bg-white border-bottom">
+            <div class="card-header py-2 bg-white border-bottom d-flex justify-content-between align-items-center">
                 <span class="fw-semibold small"><i class="bi bi-people-fill me-1 text-warning"></i> Category-wise</span>
+                <span class="text-muted" style="font-size:10px;">Reservation categories</span>
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm mb-0">
-                    <thead class="table-light"><tr><th class="ps-3">Category</th><th class="text-end pe-3">Count</th></tr></thead>
+                <table class="table table-sm mb-0" style="font-size:12px;">
+                    <thead class="table-light">
+                        <tr><th class="ps-3">Category</th><th class="text-end pe-3">Count</th></tr>
+                    </thead>
                     <tbody>
                         @foreach($categoryWise as $c)
+                        @php
+                            $catKey = strtolower($c->category ?? '');
+                            [$catLabel, $catBadge] = match($catKey) {
+                                'gen'   => ['GEN — General',          'bg-primary bg-opacity-10 text-primary'],
+                                'obc'   => ['OBC — Other Backward',   'bg-success bg-opacity-10 text-success'],
+                                'sc'    => ['SC — Scheduled Caste',   'bg-info bg-opacity-10 text-info'],
+                                'st'    => ['ST — Scheduled Tribe',   'bg-warning bg-opacity-10 text-warning'],
+                                'ews'   => ['EWS — Eco. Weaker Sec.', 'bg-purple bg-opacity-10 text-purple'],
+                                ''      => ['Not Set',                 'bg-secondary bg-opacity-10 text-secondary'],
+                                default => [strtoupper($c->category),  'bg-secondary bg-opacity-10 text-secondary'],
+                            };
+                        @endphp
                         <tr>
-                            <td class="ps-3 small">
-                                <span class="badge bg-primary bg-opacity-10 text-primary fw-normal">
-                                    {{ strtoupper($c->category ?? 'Unknown') }}
+                            <td class="ps-3">
+                                <span class="badge {{ $catBadge }} fw-normal" style="font-size:10.5px;">
+                                    {{ $catKey ? strtoupper($catKey) : '—' }}
                                 </span>
+                                <span class="text-muted ms-1" style="font-size:10px;">{{ Str::after($catLabel, ' — ') }}</span>
                             </td>
                             <td class="text-end pe-3 fw-semibold">{{ $c->cnt }}</td>
                         </tr>
                         @endforeach
                     </tbody>
-                    <tfoot class="table-light fw-semibold">
+                    <tfoot class="table-dark fw-semibold" style="font-size:12px;">
                         <tr><td class="ps-3">Total</td><td class="text-end pe-3">{{ $categoryWise->sum('cnt') }}</td></tr>
                     </tfoot>
                 </table>
+                @php $notSetCount = $categoryWise->whereIn('category', [null, ''])->sum('cnt'); @endphp
+                @if($notSetCount > 0)
+                <div class="px-3 py-2 border-top bg-warning bg-opacity-10" style="font-size:10.5px;">
+                    <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+                    <span class="text-warning fw-semibold">{{ $notSetCount }} student{{ $notSetCount > 1 ? 's' : '' }}</span>
+                    <span class="text-muted"> — category not filled in admission form</span>
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -500,11 +580,16 @@
                             'partner', 'channel_partner' => 'bg-warning bg-opacity-10 text-warning border border-warning-subtle',
                             default                      => 'bg-success bg-opacity-10 text-success border border-success-subtle',
                         };
-                        $srcShort  = match($rSrc) {
+                        $srcShort = match($rSrc) {
                             'center'                     => 'Center',
                             'partner', 'channel_partner' => 'Partner',
                             default                      => 'Direct',
                         };
+                        $srcName = ($rSrc === 'center' && ($centersMap[$s->admission_source_id] ?? null))
+                            ? 'Center: ' . $centersMap[$s->admission_source_id]
+                            : ((in_array($rSrc, ['partner','channel_partner']) && ($partnersMap[$s->admission_source_id] ?? null))
+                                ? 'Partner: ' . $partnersMap[$s->admission_source_id]
+                                : $srcShort);
                         $statusColor = match($s->status ?? 'pending') {
                             'active'    => 'bg-success bg-opacity-10 text-success',
                             'inactive'  => 'bg-secondary bg-opacity-10 text-secondary',
@@ -531,9 +616,9 @@
                         </td>
                         <td class="fw-semibold" style="color:#444;">{{ $s->father_name ?: '—' }}</td>
                         <td class="fw-semibold" style="color:#444;">{{ $s->mother_name ?: '—' }}</td>
-                        <td class="fw-semibold">{{ $s->roll_no ?: '—' }}</td>
-                        <td class="fw-semibold">{{ $s->enrollment_no ?: '—' }}</td>
-                        <td class="fw-semibold">{{ $s->uin_no ?: '—' }}</td>
+                        <td class="fw-semibold" style="white-space:nowrap;">{{ $s->roll_no ?: '—' }}</td>
+                        <td class="fw-semibold" style="white-space:nowrap;">{{ $s->enrollment_no ?: '—' }}</td>
+                        <td class="fw-semibold" style="white-space:nowrap;">{{ $s->uin_no ?: '—' }}</td>
                         <td>
                             <div class="fw-semibold" style="white-space:nowrap;">{{ $s->stream?->course?->name ?? '—' }}</div>
                             <div class="text-muted" style="font-size:0.72rem;">{{ $s->stream?->name ?? '' }}</div>
@@ -544,14 +629,14 @@
                                 <span class="badge bg-primary bg-opacity-10 text-primary ms-1" style="font-size:9px;">S{{ $s->current_semester }}</span>
                             @endif
                         </td>
-                        <td>
-                            <span class="badge {{ $admittedByBadge }} fw-semibold" style="font-size:10px; white-space:normal; max-width:130px; word-break:break-word;">
+                        <td style="white-space:nowrap;">
+                            <span class="badge {{ $admittedByBadge }} fw-semibold" style="font-size:10px; white-space:normal; max-width:150px; word-break:break-word; display:inline-block; text-align:left;">
                                 {{ $admittedByLabel }}
                             </span>
                         </td>
                         <td>
-                            <span class="badge {{ $srcBadge }} fw-semibold" style="font-size:10px; white-space:normal; max-width:120px; word-break:break-word;">
-                                {{ $srcName }}
+                            <span class="badge {{ $srcBadge }} fw-semibold" style="font-size:10px; white-space:nowrap;">
+                                {{ $srcShort }}
                             </span>
                         </td>
                         <td class="fw-semibold" style="white-space:nowrap; color:#444;">
@@ -629,7 +714,11 @@
     // Center detail panel toggle
     window.showCenterDetail = function () {
         const panel = getEl('centerDetailPanel');
-        if (panel) panel.style.display = panel.style.display === 'none' ? '' : 'none';
+        const chev  = getEl('centerChevron');
+        if (!panel) return;
+        const open = panel.style.display === 'none';
+        panel.style.display = open ? '' : 'none';
+        if (chev) { chev.className = open ? 'bi bi-chevron-up ms-1 text-info' : 'bi bi-chevron-down ms-1 text-info'; }
     };
 
     // On page load: restore dropdown visibility
