@@ -203,6 +203,10 @@ class StudentDirectoryController extends Controller
             $query->where('course_stream_id', (int) $request->course_stream_id);
         }
 
+        if ($request->filled('current_semester')) {
+            $query->where('current_semester', (int) $request->current_semester);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }

@@ -65,7 +65,8 @@
         <form method="GET" id="filterForm">
             <div class="row g-2 align-items-end">
 
-                <div class="col-md-3">
+                {{-- Search --}}
+                <div class="col-12 col-md-3">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Search</label>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
@@ -75,7 +76,8 @@
                     </div>
                 </div>
 
-                <div class="col-md-1" style="min-width:110px;">
+                {{-- Session --}}
+                <div class="col-auto" style="min-width:110px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Session</label>
                     <select name="session_id" class="form-select form-select-sm">
                         <option value="">All</option>
@@ -87,10 +89,12 @@
                     </select>
                 </div>
 
+                {{-- Course Type → drives Course dropdown --}}
                 @if($courseTypes->isNotEmpty())
-                <div class="col-md-2">
+                <div class="col-auto" style="min-width:120px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Course Type</label>
-                    <select name="course_type_id" class="form-select form-select-sm">
+                    <select name="course_type_id" id="filterCourseType" class="form-select form-select-sm"
+                            onchange="stdFilterCourses(this.value); stdFilterStreams('');">
                         <option value="">All Types</option>
                         @foreach($courseTypes as $ct)
                             <option value="{{ $ct->id }}" {{ request('course_type_id') == $ct->id ? 'selected' : '' }}>
@@ -101,19 +105,52 @@
                 </div>
                 @endif
 
-                <div class="col-md-2">
+                {{-- Course → drives Stream dropdown --}}
+                <div class="col-auto" style="min-width:150px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Course</label>
-                    <select name="course_id" class="form-select form-select-sm">
+                    <select name="course_id" id="filterCourse" class="form-select form-select-sm"
+                            onchange="stdFilterStreams(this.value);">
                         <option value="">All Courses</option>
                         @foreach($courses as $course)
-                            <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
+                            <option value="{{ $course->id }}"
+                                    data-type="{{ $course->course_type_id }}"
+                                    {{ request('course_id') == $course->id ? 'selected' : '' }}>
                                 {{ $course->name }}
                             </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="col-md-1" style="min-width:105px;">
+                {{-- Stream → linked to Course --}}
+                <div class="col-auto" style="min-width:140px;">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Stream</label>
+                    <select name="course_stream_id" id="filterStream" class="form-select form-select-sm">
+                        <option value="">All Streams</option>
+                        @foreach($streams as $stream)
+                            <option value="{{ $stream->id }}"
+                                    data-course="{{ $stream->course_id }}"
+                                    {{ request('course_stream_id') == $stream->id ? 'selected' : '' }}>
+                                {{ $stream->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Semester --}}
+                <div class="col-auto" style="min-width:95px;">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Semester</label>
+                    <select name="current_semester" class="form-select form-select-sm">
+                        <option value="">All Sem</option>
+                        @for($s = 1; $s <= 10; $s++)
+                            <option value="{{ $s }}" {{ request('current_semester') == $s ? 'selected' : '' }}>
+                                Sem {{ $s }}
+                            </option>
+                        @endfor
+                    </select>
+                </div>
+
+                {{-- Status --}}
+                <div class="col-auto" style="min-width:105px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Status</label>
                     <select name="status" class="form-select form-select-sm">
                         <option value="">All Status</option>
@@ -125,17 +162,19 @@
                     </select>
                 </div>
 
+                {{-- Date Range --}}
                 <div class="col-auto">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">From Date</label>
                     <input type="date" name="from_date" class="form-control form-control-sm"
-                           value="{{ request('from_date') }}" style="width:130px;">
+                           value="{{ request('from_date') }}" style="width:128px;">
                 </div>
                 <div class="col-auto">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">To Date</label>
                     <input type="date" name="to_date" class="form-control form-control-sm"
-                           value="{{ request('to_date') }}" style="width:130px;">
+                           value="{{ request('to_date') }}" style="width:128px;">
                 </div>
 
+                {{-- Buttons --}}
                 <div class="col-auto d-flex align-items-end gap-1">
                     <button type="submit" class="btn btn-primary btn-sm px-3">
                         <i class="bi bi-funnel me-1"></i> Filter
@@ -356,3 +395,54 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    // ── helpers ──────────────────────────────────────────────
+    function getEl(id) { return document.getElementById(id); }
+
+    // Hide/show <option> elements based on a data-attribute match.
+    // When val is '' show all options.
+    function filterOptions(selectId, dataAttr, val) {
+        const sel = getEl(selectId);
+        if (!sel) return;
+
+        // Reset to "All" if the current selected option no longer matches
+        let selectedStillVisible = false;
+
+        Array.from(sel.options).forEach(function (opt) {
+            if (opt.value === '') { return; } // keep "All" always
+            const match = !val || opt.dataset[dataAttr] === val;
+            opt.hidden   = !match;
+            opt.disabled = !match;
+            if (match && opt.selected) selectedStillVisible = true;
+        });
+
+        if (!selectedStillVisible) sel.value = '';
+    }
+
+    // ── Course Type → Course ──────────────────────────────────
+    window.stdFilterCourses = function (courseTypeId) {
+        filterOptions('filterCourse', 'type', String(courseTypeId));
+        // Also cascade to streams based on the now-selected course
+        const courseVal = getEl('filterCourse') ? getEl('filterCourse').value : '';
+        stdFilterStreams(courseVal);
+    };
+
+    // ── Course → Stream ───────────────────────────────────────
+    window.stdFilterStreams = function (courseId) {
+        filterOptions('filterStream', 'course', String(courseId));
+    };
+
+    // ── On page load: apply saved filter values ───────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctVal = getEl('filterCourseType') ? getEl('filterCourseType').value : '';
+        const cVal  = getEl('filterCourse')     ? getEl('filterCourse').value     : '';
+
+        if (ctVal) filterOptions('filterCourse', 'type', ctVal);
+        if (cVal)  filterOptions('filterStream', 'course', cVal);
+    });
+}());
+</script>
+@endpush
