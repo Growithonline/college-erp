@@ -54,9 +54,7 @@
         <small class="text-muted">{{ $pageDesc }} — {{ $sessionObj?->name ?? '' }}</small>
     </div>
     <div class="d-flex gap-2">
-        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-printer me-1"></i> Print
-        </button>
+        
         <div class="dropdown">
             <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                 <i class="bi bi-download me-1"></i> Export
