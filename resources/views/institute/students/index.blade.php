@@ -79,7 +79,7 @@
                 {{-- Session --}}
                 <div class="col-auto" style="min-width:110px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Session</label>
-                    <select name="session_id" class="form-select form-select-sm">
+                    <select name="session_id" class="form-select form-select-sm" onchange="stdAutoSubmit()">
                         <option value="">All</option>
                         @foreach($sessions as $sess)
                             <option value="{{ $sess->id }}" {{ request('session_id') == $sess->id ? 'selected' : '' }}>
@@ -124,7 +124,7 @@
                 {{-- Stream → linked to Course --}}
                 <div class="col-auto" style="min-width:140px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Stream</label>
-                    <select name="course_stream_id" id="filterStream" class="form-select form-select-sm">
+                    <select name="course_stream_id" id="filterStream" class="form-select form-select-sm" onchange="stdAutoSubmit()">
                         <option value="">All Streams</option>
                         @foreach($streams as $stream)
                             <option value="{{ $stream->id }}"
@@ -139,7 +139,7 @@
                 {{-- Semester --}}
                 <div class="col-auto" style="min-width:95px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Semester</label>
-                    <select name="current_semester" class="form-select form-select-sm">
+                    <select name="current_semester" class="form-select form-select-sm" onchange="stdAutoSubmit()">
                         <option value="">All Sem</option>
                         @for($s = 1; $s <= 10; $s++)
                             <option value="{{ $s }}" {{ request('current_semester') == $s ? 'selected' : '' }}>
@@ -152,7 +152,7 @@
                 {{-- Status --}}
                 <div class="col-auto" style="min-width:105px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Status</label>
-                    <select name="status" class="form-select form-select-sm">
+                    <select name="status" class="form-select form-select-sm" onchange="stdAutoSubmit()">
                         <option value="">All Status</option>
                         <option value="pending"   {{ request('status') === 'pending'   ? 'selected' : '' }}>Pending</option>
                         <option value="active"    {{ request('status') === 'active'    ? 'selected' : '' }}>Active</option>
@@ -399,47 +399,51 @@
 @push('scripts')
 <script>
 (function () {
-    // ── helpers ──────────────────────────────────────────────
     function getEl(id) { return document.getElementById(id); }
 
-    // Hide/show <option> elements based on a data-attribute match.
-    // When val is '' show all options.
+    // Hide/disable options by data-attribute. Resets selection if no longer visible.
     function filterOptions(selectId, dataAttr, val) {
         const sel = getEl(selectId);
         if (!sel) return;
-
-        // Reset to "All" if the current selected option no longer matches
         let selectedStillVisible = false;
-
         Array.from(sel.options).forEach(function (opt) {
-            if (opt.value === '') { return; } // keep "All" always
-            const match = !val || opt.dataset[dataAttr] === val;
+            if (opt.value === '') return;
+            const match = !val || opt.dataset[dataAttr] === String(val);
             opt.hidden   = !match;
             opt.disabled = !match;
             if (match && opt.selected) selectedStillVisible = true;
         });
-
         if (!selectedStillVisible) sel.value = '';
     }
 
-    // ── Course Type → Course ──────────────────────────────────
+    // Course Type → filter Course options → cascade to Stream → auto-submit
     window.stdFilterCourses = function (courseTypeId) {
-        filterOptions('filterCourse', 'type', String(courseTypeId));
-        // Also cascade to streams based on the now-selected course
-        const courseVal = getEl('filterCourse') ? getEl('filterCourse').value : '';
-        stdFilterStreams(courseVal);
+        filterOptions('filterCourse', 'type', courseTypeId);
+        const cVal = getEl('filterCourse') ? getEl('filterCourse').value : '';
+        filterOptions('filterStream', 'course', cVal);
+        submitFilter();
     };
 
-    // ── Course → Stream ───────────────────────────────────────
+    // Course → filter Stream options → auto-submit
     window.stdFilterStreams = function (courseId) {
-        filterOptions('filterStream', 'course', String(courseId));
+        filterOptions('filterStream', 'course', courseId);
+        submitFilter();
     };
 
-    // ── On page load: apply saved filter values ───────────────
+    // Auto-submit for all other selects (session, stream, semester, status)
+    window.stdAutoSubmit = function () {
+        submitFilter();
+    };
+
+    function submitFilter() {
+        const form = document.getElementById('filterForm');
+        if (form) form.submit();
+    }
+
+    // On page load: restore dropdown visibility from current URL params
     document.addEventListener('DOMContentLoaded', function () {
         const ctVal = getEl('filterCourseType') ? getEl('filterCourseType').value : '';
         const cVal  = getEl('filterCourse')     ? getEl('filterCourse').value     : '';
-
         if (ctVal) filterOptions('filterCourse', 'type', ctVal);
         if (cVal)  filterOptions('filterStream', 'course', cVal);
     });
