@@ -34,6 +34,9 @@ jobs:
           npm ci
           npm run build
 
+      - name: Wait before SSH (avoid rate limiting)
+        run: sleep 5
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -41,6 +44,9 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          timeout: 60s
+          connect_timeout: 30s
+          command_timeout: 10m
           script: |
             set -e
             cd /var/www/bmc.gtsaas.in

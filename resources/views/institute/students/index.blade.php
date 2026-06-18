@@ -154,26 +154,25 @@
 {{-- Table --}}
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover table-sm align-middle mb-0"
-               style="font-size:11.5px; color:#000;">
+        <table class="table table-hover table-sm align-middle mb-0" style="font-size:12px;">
             <thead style="background:#1e3a5f; color:#fff;">
                 <tr>
-                    <th class="ps-2" style="width:30px; white-space:nowrap; font-weight:800;">#</th>
-                    <th style="min-width:60px; white-space:nowrap; font-weight:800;">Session</th>
-                    <th style="min-width:110px; white-space:nowrap; font-weight:800;">Student ID</th>
-                    <th style="min-width:145px; white-space:nowrap; font-weight:800;">Student Name</th>
-                    <th style="min-width:100px; white-space:nowrap; font-weight:800;">Father Name</th>
-                    <th style="min-width:100px; white-space:nowrap; font-weight:800;">Mother Name</th>
-                    <th style="min-width:65px; white-space:nowrap; font-weight:800;">Roll No</th>
-                    <th style="min-width:75px; white-space:nowrap; font-weight:800;">Enroll No</th>
-                    <th style="min-width:65px; white-space:nowrap; font-weight:800;">UIN No</th>
-                    <th style="min-width:120px; white-space:nowrap; font-weight:800;">Course</th>
-                    <th style="min-width:65px; white-space:nowrap; font-weight:800;">Year/Sem</th>
-                    <th style="min-width:90px; white-space:nowrap; font-weight:800;">Admitted By</th>
-                    <th style="min-width:85px; white-space:nowrap; font-weight:800;">Source</th>
-                    <th style="min-width:80px; white-space:nowrap; font-weight:800;">Adm. Date</th>
-                    <th style="min-width:68px; white-space:nowrap; font-weight:800;">Status</th>
-                    <th style="min-width:108px; white-space:nowrap; font-weight:800;">Actions</th>
+                    <th class="ps-2" style="width:30px; white-space:nowrap;">#</th>
+                    <th style="min-width:60px; white-space:nowrap;">Session</th>
+                    <th style="min-width:110px; white-space:nowrap;">Student ID</th>
+                    <th style="min-width:145px; white-space:nowrap;">Student Name</th>
+                    <th style="min-width:100px; white-space:nowrap;">Father Name</th>
+                    <th style="min-width:100px; white-space:nowrap;">Mother Name</th>
+                    <th style="min-width:65px; white-space:nowrap;">Roll No</th>
+                    <th style="min-width:75px; white-space:nowrap;">Enroll No</th>
+                    <th style="min-width:65px; white-space:nowrap;">UIN No</th>
+                    <th style="min-width:120px; white-space:nowrap;">Course</th>
+                    <th style="min-width:65px; white-space:nowrap;">Year/Sem</th>
+                    <th style="min-width:90px; white-space:nowrap;">Admitted By</th>
+                    <th style="min-width:85px; white-space:nowrap;">Source</th>
+                    <th style="min-width:80px; white-space:nowrap;">Adm. Date</th>
+                    <th style="min-width:68px; white-space:nowrap;">Status</th>
+                    <th style="min-width:108px; white-space:nowrap;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -198,55 +197,62 @@
                     };
                 @endphp
                 <tr>
-                    <td class="ps-2" style="font-weight:800; color:#000;">{{ $students->firstItem() + $i }}</td>
+                    <td class="ps-2 text-muted">{{ $students->firstItem() + $i }}</td>
 
-                    <td style="white-space:nowrap; font-weight:800; color:#000;">
+                    <td class="text-muted" style="white-space:nowrap;">
                         {{ $student->session?->name ?? '—' }}
                     </td>
 
                     <td>
                         <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle"
-                              style="font-size:10px; font-weight:800;">
+                              style="font-size:10px; font-weight:600;">
                             {{ $student->student_uid }}
                         </span>
                     </td>
 
                     <td>
-                        <div style="font-weight:800; color:#000; font-size:12px; line-height:1.3;">{{ $student->name }}</div>
-                        <div style="font-size:10px; color:#555; font-weight:700;">{{ $student->mobile }}</div>
+                        <div class="fw-semibold" style="font-size:12px; line-height:1.3;">{{ $student->name }}</div>
+                        <div class="text-muted" style="font-size:10.5px;">{{ $student->mobile }}</div>
                     </td>
 
-                    <td style="font-weight:800; color:#000; white-space:nowrap;">{{ $student->father_name ?: '—' }}</td>
-                    <td style="font-weight:800; color:#000; white-space:nowrap;">{{ $student->mother_name ?: '—' }}</td>
-                    <td style="font-weight:800; color:#000;">{{ $student->roll_no ?: '—' }}</td>
-                    <td style="font-weight:800; color:#000;">{{ $student->enrollment_no ?: '—' }}</td>
-                    <td style="font-weight:800; color:#000;">{{ $student->uin_no ?: '—' }}</td>
+                    <td style="white-space:nowrap;">{{ $student->father_name ?: '—' }}</td>
+                    <td style="white-space:nowrap;">{{ $student->mother_name ?: '—' }}</td>
+                    <td class="text-muted">{{ $student->roll_no ?: '—' }}</td>
+                    <td class="text-muted">{{ $student->enrollment_no ?: '—' }}</td>
+                    <td class="text-muted">{{ $student->uin_no ?: '—' }}</td>
 
                     <td>
-                        <div style="font-weight:800; color:#000; font-size:11.5px; line-height:1.3;">{{ $student->stream?->course?->name ?? '—' }}</div>
-                        <div style="font-size:10px; color:#555; font-weight:700;">{{ $student->stream?->name ?? '—' }}</div>
+                        <div class="fw-semibold" style="font-size:12px; line-height:1.3;">{{ $student->stream?->course?->name ?? '—' }}</div>
+                        <div class="text-muted" style="font-size:10.5px;">{{ $student->stream?->name ?? '—' }}</div>
                     </td>
 
-                    <td style="white-space:nowrap; font-weight:800; color:#000;">
+                    <td style="white-space:nowrap;">
                         {{ $student->coursePart?->year_label ?? '—' }}
                         @if($student->current_semester)
                             <span class="badge bg-primary bg-opacity-10 text-primary border ms-1"
-                                  style="font-size:9px; font-weight:800;">S{{ $student->current_semester }}</span>
+                                  style="font-size:9px;">S{{ $student->current_semester }}</span>
                         @endif
                     </td>
 
-                    <td style="font-weight:800; color:#000;">
-                        {{ $student->admittedBy?->name ?? '—' }}
+                    <td>
+                        @if($student->admittedBy)
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle"
+                                  style="font-size:10px;">
+                                <i class="bi bi-person-badge me-1"></i>{{ $student->admittedBy->name }}
+                            </span>
+                        @else
+                            <span class="text-muted" style="font-size:11px;">Admin</span>
+                        @endif
                     </td>
 
-                    <td style="font-weight:800; color:#000;">{{ $source }}</td>
+                    <td class="text-muted">{{ $source }}</td>
 
-                    <td style="white-space:nowrap; font-weight:800; color:#000;">
+                    <td class="text-muted" style="white-space:nowrap;">
                         {{ $student->admission_date?->format('d M Y') ?? '—' }}
                     </td>
 
                     <td>
-                        <span class="badge border {{ $statusColor }}" style="font-size:10px; font-weight:800;">
+                        <span class="badge border {{ $statusColor }}" style="font-size:10px;">
                             {{ ucfirst($student->status ?? 'pending') }}
                         </span>
                     </td>
