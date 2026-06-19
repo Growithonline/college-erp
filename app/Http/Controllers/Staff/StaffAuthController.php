@@ -248,6 +248,13 @@ class StaffAuthController extends Controller
         ));
     }
 
+    public function profile()
+    {
+        $staff = $this->guard()->user();
+        $staff->load('institute', 'role');
+        return view('staff.profile', compact('staff'));
+    }
+
     public function changePasswordForm()
     {
         return view('staff.change-password');

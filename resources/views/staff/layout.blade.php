@@ -19,12 +19,12 @@
         .sidebar-brand small { color:#64748b; font-size:11px; }
         .sidebar ul.nav { padding-bottom:20px; }
         /* Top-level nav links */
-        .sidebar .nav-link { color:#94a3b8; padding:8px 16px; font-size:13px; display:flex; align-items:center; gap:8px; border-left:3px solid transparent; }
+        .sidebar .nav-link { color:#94a3b8; padding:8px 16px; font-size:13px; display:flex; align-items:center; gap:8px; border-left:3px solid transparent; text-decoration:none !important; }
         .sidebar .nav-link:hover { color:#f8fafc; background:#334155; }
         .sidebar .nav-link.active { color:#38bdf8; background:#0f172a; border-left:3px solid #38bdf8; }
         .sidebar .nav-link i { font-size:14px; width:16px; flex-shrink:0; }
         /* Section parent (collapsible group header) */
-        .sidebar .group-header { color:#cbd5e1; padding:8px 16px; font-size:13px; display:flex; align-items:center; gap:8px; cursor:pointer; border-left:3px solid transparent; }
+        .sidebar .group-header { color:#cbd5e1; padding:8px 16px; font-size:13px; display:flex; align-items:center; gap:8px; cursor:pointer; border-left:3px solid transparent; text-decoration:none !important; }
         .sidebar .group-header:hover { color:#f8fafc; background:#334155; }
         .sidebar .group-header.active-group { color:#38bdf8; border-left:3px solid #38bdf8; background:#0f172a; }
         .sidebar .group-header i.group-icon { font-size:14px; width:16px; flex-shrink:0; }
@@ -476,24 +476,15 @@
         </li>
         @endif
 
-        {{-- Account --}}
+        {{-- Profile --}}
+        @if($authGuard === 'staff')
         <li class="nav-item mt-1">
-            <div class="px-3 py-1" style="color:#475569; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;">Account</div>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs($authGuard.'.change-password') ? 'active' : '' }}"
-               href="{{ route($authGuard.'.change-password') }}">
-                <i class="bi bi-key"></i> Change Password
+            <a class="nav-link {{ request()->routeIs('staff.profile') ? 'active' : '' }}"
+               href="{{ route('staff.profile') }}">
+                <i class="bi bi-person-circle"></i> My Profile
             </a>
         </li>
-        <li class="nav-item">
-            <form method="POST" action="{{ route($authGuard.'.logout') }}">
-                @csrf
-                <button class="nav-link w-100 text-start border-0 bg-transparent" style="color:#ef4444;">
-                    <i class="bi bi-box-arrow-left"></i> Logout
-                </button>
-            </form>
-        </li>
+        @endif
 
     </ul>
     </div>{{-- end sidebar-nav-wrap --}}
@@ -560,11 +551,21 @@
 
             {{-- User avatar + name + logout --}}
             <div class="d-flex align-items-center gap-2">
-                <div class="rounded-circle bg-success d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
-                     style="width:28px;height:28px;font-size:11px;">
-                    {{ strtoupper(substr($authUser->name, 0, 1)) }}
+                @if($authGuard === 'staff')
+                <a href="{{ route('staff.profile') }}" class="text-decoration-none d-flex align-items-center gap-2" title="My Profile">
+                @else
+                <div class="d-flex align-items-center gap-2">
+                @endif
+                    <div class="rounded-circle bg-success d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                         style="width:28px;height:28px;font-size:11px;">
+                        {{ strtoupper(substr($authUser->name, 0, 1)) }}
+                    </div>
+                    <small class="text-muted fw-semibold d-none d-md-inline">{{ $authUser->name }}</small>
+                @if($authGuard === 'staff')
+                </a>
+                @else
                 </div>
-                <small class="text-muted fw-semibold d-none d-md-inline">{{ $authUser->name }}</small>
+                @endif
                 <form method="POST" action="{{ route($authGuard.'.logout') }}" class="mb-0">
                     @csrf
                     <button type="submit"

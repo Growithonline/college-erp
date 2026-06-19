@@ -866,6 +866,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
     Route::middleware('role.auth:staff')->group(function () {
         Route::post('logout',          [StaffAuthController::class, 'logout'])->name('logout');
         Route::get('dashboard',        [StaffAuthController::class, 'dashboard'])->name('dashboard');
+        Route::get('profile',          [StaffAuthController::class, 'profile'])->name('profile');
         Route::get('change-password',  [StaffAuthController::class, 'changePasswordForm'])->name('change-password');
         Route::post('change-password', [StaffAuthController::class, 'changePassword'])->name('change-password.update');
 
