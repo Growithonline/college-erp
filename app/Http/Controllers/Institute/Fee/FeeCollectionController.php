@@ -701,6 +701,14 @@ class FeeCollectionController extends Controller
                 $staffCollectFeeTypeIds = $staffUser->allowedFeeCollectionTypeIds();
                 $allFeeTypes = $allFeeTypes->whereIn('id', $staffCollectFeeTypeIds)->values();
             }
+            // Build session list for session selector dropdown
+            $allSessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+            $feeSessions = !($staffUser->restrict_session_access ?? false)
+                ? $allSessions
+                : $allSessions->filter(fn($s) => $s->is_active || in_array($s->id, array_map('intval', $staffUser->allowed_session_ids ?? [])))->values();
+            $feeSessionId = $request->filled('session_id')
+                ? (int) $request->session_id
+                : ($activeSession?->id ?? 0);
         } elseif (auth()->guard('center')->check()) {
             $centerUser = auth()->guard('center')->user();
             $staffMaxDiscount = $centerUser->can_give_discount
@@ -736,6 +744,12 @@ class FeeCollectionController extends Controller
             $feeSessions = $permsMap === null
                 ? $allSessions
                 : $allSessions->filter(fn($s) => (bool) ($permsMap[$s->id]['fee'] ?? false))->values();
+            $feeSessionId = $request->filled('session_id')
+                ? (int) $request->session_id
+                : ($activeSession?->id ?? 0);
+        } else {
+            // Admin (web guard) — all sessions
+            $feeSessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
             $feeSessionId = $request->filled('session_id')
                 ? (int) $request->session_id
                 : ($activeSession?->id ?? 0);
