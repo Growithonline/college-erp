@@ -86,7 +86,15 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('input', function (e) {
         if (e.target.classList.contains('global-search-input')) {
             clearTimeout(globalSearchTimer);
-            globalSearchTimer = setTimeout(fetchSearchResults, 300);
+            // Wait 550ms after last keystroke — gives user time to finish typing
+            globalSearchTimer = setTimeout(function () {
+                // Require at least 2 chars in any field before firing
+                var hasEnough = false;
+                document.querySelectorAll('.global-search-input').forEach(function (inp) {
+                    if (inp.value.trim().length >= 2) hasEnough = true;
+                });
+                if (hasEnough) fetchSearchResults();
+            }, 550);
         }
     });
 

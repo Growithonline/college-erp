@@ -1,6 +1,6 @@
 @php
-    $filters       = $filters ?? [];
-    $isInitialLoad = $isInitialLoad ?? false;
+    $filters       ??= [];
+    $isInitialLoad ??= false;
     $activeFilters = collect($filters)->filter(fn($v) => trim((string) $v) !== '');
     $resultCount   = ($students && method_exists($students, 'total')) ? $students->total() : ($students?->count() ?? 0);
 @endphp
@@ -17,18 +17,31 @@
 
 <style>
 .gs-table { font-size: 11.5px; }
-.gs-table th { font-size: 11px; font-weight: 700; white-space: nowrap; padding: 5px 7px !important; }
+.gs-table thead tr:first-child th {
+    background: #1e3a5f !important;
+    color: #fff !important;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    padding: 6px 7px !important;
+    border-color: #0d2540 !important;
+}
+.gs-table thead tr:last-child th {
+    background: #f0f4f8 !important;
+    padding: 3px 5px !important;
+}
 .gs-table td { padding: 5px 7px !important; vertical-align: middle; }
 .gs-table .form-control-sm { font-size: 11px; padding: 2px 5px; height: 26px; }
 .gs-table .badge { font-size: 10px; }
 .gs-table .btn-xs { padding: 2px 6px; font-size: 11px; line-height: 1.4; }
+.gs-table tbody tr:hover { background: #f8f9fa !important; }
 </style>
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-bordered table-hover table-sm mb-0 gs-table">
-                <thead class="table-light">
+                <thead>
                     <tr>
                         <th class="text-center" style="width:36px;">#</th>
                         <th style="min-width:100px;">Student ID</th>
@@ -115,7 +128,7 @@
                             <td>{{ $student->enrollment_no ?? '—' }}</td>
                             <td>{{ $student->roll_no ?? '—' }}</td>
                             <td>
-                                <div style="font-size:11px;">{{ $student->stream->course->name ?? '—' }}</div>
+                                <div style="font-size:11px;">{{ $student->stream?->course?->name ?? '—' }}</div>
                                 @if($student->stream?->name)
                                     <div class="text-muted" style="font-size:10px;">{{ $student->stream->name }}</div>
                                 @endif
