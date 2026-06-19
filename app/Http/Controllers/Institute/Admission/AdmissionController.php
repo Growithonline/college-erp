@@ -2317,7 +2317,7 @@ class AdmissionController extends Controller
                 ->with('error', 'Admission could not be saved: ' . $e->getMessage());
         }
 
-        session()->forget('admission_preview');
+        session()->forget(['admission_preview', 'previewData']);
 
         // Send login credentials to student via email + SMS
         $this->sendStudentCredentials($student);
@@ -4217,7 +4217,7 @@ class AdmissionController extends Controller
             );
         });
 
-        session()->forget('quick_admission_preview');
+        session()->forget(['quick_admission_preview', 'quickPreviewData']);
 
         session(['from_admission_fee_payment' => $student->id]);
 

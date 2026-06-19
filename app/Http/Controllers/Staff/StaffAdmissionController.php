@@ -193,6 +193,7 @@ class StaffAdmissionController extends Controller
     public function quickCreate()
     {
         $this->permCheck('admission_add');
+        session()->forget(['quick_admission_preview', 'quickPreviewData']);
         $staff = $this->staff();
         abort_unless($staff->canUseQuickAdmissionForm(), 403, 'Quick admission form is not permitted for your account.');
         $instituteId   = $staff->institute_id;
@@ -266,6 +267,7 @@ class StaffAdmissionController extends Controller
     public function create()
     {
         $this->permCheck('admission_add');
+        session()->forget(['admission_preview', 'previewData']);
         $staff = $this->staff();
         abort_unless($staff->canUseFullAdmissionForm(), 403, 'Full admission form is not permitted for your account.');
         $instituteId   = $staff->institute_id;

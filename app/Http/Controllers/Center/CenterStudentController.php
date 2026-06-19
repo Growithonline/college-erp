@@ -272,6 +272,7 @@ class CenterStudentController extends Controller
     public function quickCreate()
     {
         $this->permissionCheck('admission_add');
+        session()->forget(['quick_admission_preview', 'quickPreviewData']);
         $center = $this->center();
         abort_unless($center->canUseQuickAdmissionForm(), 403, 'Quick admission form not permitted for this center.');
 
@@ -367,6 +368,7 @@ class CenterStudentController extends Controller
     public function create()
     {
         $this->permissionCheck('admission_add');
+        session()->forget(['admission_preview', 'previewData']);
         $center = $this->center();
         abort_unless($center->canUseFullAdmissionForm(), 403, 'Full admission form not permitted for this center.');
 

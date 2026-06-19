@@ -164,6 +164,7 @@ class PartnerStudentController extends Controller
     public function quickCreate()
     {
         $this->permissionCheck('admission_add');
+        session()->forget(['quick_admission_preview', 'quickPreviewData']);
         $partner = $this->partner();
         abort_unless($partner->canUseQuickAdmissionForm(), 403, 'Quick admission form not permitted for this partner.');
 
@@ -253,6 +254,7 @@ class PartnerStudentController extends Controller
     public function create()
     {
         $this->permissionCheck('admission_add');
+        session()->forget(['admission_preview', 'previewData']);
         $partner = $this->partner();
         abort_unless($partner->canUseFullAdmissionForm(), 403, 'Full admission form not permitted for this partner.');
 
