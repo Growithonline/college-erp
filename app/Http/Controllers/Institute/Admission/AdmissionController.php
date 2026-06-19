@@ -2717,6 +2717,18 @@ class AdmissionController extends Controller
             ->orderBy('name')
             ->get();
 
+        $centers = Center::where('institute_id', $instituteId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $channelPartners = ChannelPartner::where('institute_id', $instituteId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $staffMembers = \App\Models\StaffMember::where('institute_id', $instituteId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         $query = $this->approvalStudentsQuery($instituteId);
 
         if ($request->filled('session_id')) {
@@ -2753,6 +2765,27 @@ class AdmissionController extends Controller
 
         if ($request->filled('course_type_id')) {
             $query->where('course_type_id', (int) $request->course_type_id);
+        }
+
+        if ($request->filled('source')) {
+            $srcFilter = $request->source;
+            if ($srcFilter === 'direct') {
+                $query->where(function ($q) {
+                    $q->where('admission_source', 'direct')->orWhereNull('admission_source');
+                });
+                if ($request->filled('source_sub')) {
+                    if ($request->source_sub === 'admin') {
+                        $query->whereNull('admitted_by_staff_id');
+                    } else {
+                        $query->where('admitted_by_staff_id', (int) $request->source_sub);
+                    }
+                }
+            } else {
+                $query->where('admission_source', $srcFilter);
+                if (in_array($srcFilter, ['center', 'channel_partner']) && $request->filled('source_sub')) {
+                    $query->where('admission_source_id', (int) $request->source_sub);
+                }
+            }
         }
 
         $sortedQuery = fn($q) => $q->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
@@ -2826,6 +2859,9 @@ class AdmissionController extends Controller
             'sessions',
             'courses',
             'courseTypes',
+            'centers',
+            'channelPartners',
+            'staffMembers',
             'perPage',
             'totalAdmissions',
             'pendingAdmissions',

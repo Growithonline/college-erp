@@ -101,6 +101,42 @@
                     @endforeach
                 </select>
             </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Source</label>
+                <select name="source" class="form-select form-select-sm" id="sourceFilter">
+                    <option value="">All Sources</option>
+                    <option value="direct" {{ request('source') === 'direct' ? 'selected' : '' }}>Direct</option>
+                    <option value="center" {{ request('source') === 'center' ? 'selected' : '' }}>Center</option>
+                    <option value="channel_partner" {{ request('source') === 'channel_partner' ? 'selected' : '' }}>Channel Partner</option>
+                    <option value="online" {{ request('source') === 'online' ? 'selected' : '' }}>Online</option>
+                </select>
+            </div>
+            <div class="col-md-2" id="sourceSubWrap" style="{{ in_array(request('source'), ['direct','center','channel_partner']) ? '' : 'display:none' }}">
+                <label class="form-label small mb-1" id="sourceSubLabel">
+                    @if(request('source') === 'direct') Admitted By
+                    @elseif(request('source') === 'center') Center
+                    @elseif(request('source') === 'channel_partner') Channel Partner
+                    @else Sub-Source
+                    @endif
+                </label>
+                <select name="source_sub" class="form-select form-select-sm" id="sourceSubFilter">
+                    <option value="">All</option>
+                    @if(request('source') === 'direct')
+                        <option value="admin" {{ request('source_sub') === 'admin' ? 'selected' : '' }}>Admin / Direct</option>
+                        @foreach($staffMembers as $staff)
+                            <option value="{{ $staff->id }}" {{ (string)request('source_sub') === (string)$staff->id ? 'selected' : '' }}>{{ $staff->name }}</option>
+                        @endforeach
+                    @elseif(request('source') === 'center')
+                        @foreach($centers as $center)
+                            <option value="{{ $center->id }}" {{ (string)request('source_sub') === (string)$center->id ? 'selected' : '' }}>{{ $center->name }}</option>
+                        @endforeach
+                    @elseif(request('source') === 'channel_partner')
+                        @foreach($channelPartners as $partner)
+                            <option value="{{ $partner->id }}" {{ (string)request('source_sub') === (string)$partner->id ? 'selected' : '' }}>{{ $partner->name }}</option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
             <div class="col-md-1">
                 <label class="form-label small mb-1">Date From</label>
                 <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control form-control-sm">
@@ -228,4 +264,56 @@
         @include('institute.components.pagination', ['paginator' => $students, 'perPage' => $perPage])
     </div>
 </div>
+@push('scripts')
+<script>
+const sourceOptions = {
+    direct: [
+        {value: 'admin', label: 'Admin / Direct'},
+        @foreach($staffMembers as $staff)
+        {value: '{{ $staff->id }}', label: @json($staff->name)},
+        @endforeach
+    ],
+    center: [
+        @foreach($centers as $center)
+        {value: '{{ $center->id }}', label: @json($center->name)},
+        @endforeach
+    ],
+    channel_partner: [
+        @foreach($channelPartners as $partner)
+        {value: '{{ $partner->id }}', label: @json($partner->name)},
+        @endforeach
+    ],
+};
+
+const sourceLabels = {
+    direct: 'Admitted By',
+    center: 'Center',
+    channel_partner: 'Channel Partner',
+};
+
+document.getElementById('sourceFilter').addEventListener('change', function () {
+    const source = this.value;
+    const wrap = document.getElementById('sourceSubWrap');
+    const subSelect = document.getElementById('sourceSubFilter');
+    const subLabel = document.getElementById('sourceSubLabel');
+
+    subSelect.innerHTML = '<option value="">All</option>';
+
+    if (!source || source === 'online') {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    wrap.style.display = '';
+    subLabel.textContent = sourceLabels[source] || 'Sub-Source';
+
+    (sourceOptions[source] || []).forEach(function (opt) {
+        const el = document.createElement('option');
+        el.value = opt.value;
+        el.textContent = opt.label;
+        subSelect.appendChild(el);
+    });
+});
+</script>
+@endpush
 @endsection
