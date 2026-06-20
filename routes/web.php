@@ -117,7 +117,7 @@ Route::get('/session-expired', function (\Illuminate\Http\Request $request) {
         'guard'  => $request->query('guard', 'web'),
         'reason' => $request->query('reason', 'unauthenticated'),
     ]);
-})->name('session.expired');
+})->name('session.expired')->middleware('throttle:60,1');
 
 Route::get('/receipt/balance', [\App\Http\Controllers\PublicReceiptController::class, 'balance'])->name('receipt.balance')->middleware('throttle:30,1');
 Route::get('/receipt/record',  [\App\Http\Controllers\PublicReceiptController::class, 'record'])->name('receipt.record')->middleware('throttle:30,1');

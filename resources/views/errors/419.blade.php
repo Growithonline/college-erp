@@ -1,3 +1,14 @@
+@php
+    // Detect which portal's login to redirect to based on the request path
+    $path = request()->path();
+    if (str_starts_with($path, 'super-admin/'))   $loginUrl = route('super_admin.login');
+    elseif (str_starts_with($path, 'center/'))    $loginUrl = route('center.login');
+    elseif (str_starts_with($path, 'staff/'))     $loginUrl = route('staff.login');
+    elseif (str_starts_with($path, 'partner/'))   $loginUrl = route('partner.login');
+    elseif (str_starts_with($path, 'student/'))   $loginUrl = route('student.login');
+    elseif (str_starts_with($path, 'library-staff/')) $loginUrl = route('library_staff.login');
+    else                                          $loginUrl = route('login');
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -200,6 +211,8 @@
         }
 
         .btn-primary {
+            width: 100%;
+            justify-content: center;
             background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(239,68,68,0.15));
             border: 1px solid rgba(239,68,68,0.35);
             color: #f87171;
@@ -210,17 +223,6 @@
             color: #fca5a5;
             transform: translateY(-1px);
             box-shadow: 0 8px 24px rgba(239,68,68,0.22);
-        }
-
-        .btn-ghost {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.09);
-            color: rgba(255,255,255,0.45);
-        }
-        .btn-ghost:hover {
-            background: rgba(255,255,255,0.09);
-            color: rgba(255,255,255,0.75);
-            transform: translateY(-1px);
         }
 
         /* ── Footer ── */
@@ -266,19 +268,16 @@
 
             <h1>Page Expired</h1>
             <p class="sub-text">
-                Your session token has expired.<br>
-                Please go back and try submitting the form again.
+                Your session has expired.<br>
+                Click below to go back to the login page.
             </p>
 
             <div class="divider"></div>
 
             <div class="btn-row">
-                <button class="btn btn-primary" onclick="history.back()">
-                    <i class="bi bi-arrow-left"></i> Go Back
-                </button>
-                <button class="btn btn-ghost" onclick="location.reload()">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh Page
-                </button>
+                <a href="{{ $loginUrl }}" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-right"></i> Login Again
+                </a>
             </div>
 
             <div class="footer">
