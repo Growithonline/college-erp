@@ -17,7 +17,7 @@
         @keyframes floatOrb{0%,100%{transform:translateY(0);}50%{transform:translateY(-18px);}}
         .login-wrap{position:relative;z-index:10;width:100%;max-width:420px;}
         .login-card{border-radius:20px;overflow:hidden;border:none;box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.07);}
-        .card-head{background:linear-gradient(135deg,#0a3d20 0%,#0f4c81 50%,#1D9E75 100%);padding:28px 28px 22px;position:relative;overflow:hidden;}
+        .card-head{background:linear-gradient(135deg,#0a3d20 0%,#0f4c81 50%,#1D9E75 100%);padding:18px 28px 16px;position:relative;overflow:hidden;}
         .card-head::before{content:'';position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.06);}
         .card-head::after{content:'';position:absolute;left:20px;bottom:-50px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.04);}
         .portal-icon{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;margin-bottom:12px;border:1px solid rgba(255,255,255,.2);}
@@ -43,6 +43,8 @@
         .alert-box{border-radius:10px;border:none;font-size:13px;padding:10px 14px;margin-bottom:16px;}
         .alert-danger-box{background:#fef2f2;color:#dc2626;border-left:3px solid #ef4444;}
         .alert-success-box{background:#f0fdf4;color:#166534;border-left:3px solid #22c55e;}
+        .powered-by{text-align:center;padding:10px 0 8px;font-size:11.5px;color:#94a3b8;background:#f8fafc;margin:0;border-top:1px solid #f1f5f9;}
+        .powered-by strong{color:#6366f1;font-weight:600;}
     </style>
 </head>
 <body>
@@ -56,7 +58,10 @@
     <div class="login-card">
 
         <div class="card-head">
-            <span class="gt-badge"><i class="bi bi-shield-lock-fill"></i> OTP Verification</span>
+            <div style="text-align:center;margin-bottom:10px;position:relative;z-index:2;">
+                <img src="{{ asset('images/logog.png') }}" alt="Gaurangi Technologies" style="height:38px;width:auto;filter:brightness(0) invert(1);opacity:.88;">
+            </div>
+            <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:0 0 14px;position:relative;z-index:2;">
             <div class="portal-icon"><i class="bi bi-envelope-open-fill"></i></div>
             <h5>Check Your Email</h5>
             <p style="margin-bottom:6px;">A 6-digit OTP was sent to</p>
@@ -103,19 +108,14 @@
             <a href="{{ route('staff.login') }}" class="back-link">
                 <i class="bi bi-arrow-left"></i> Back to login
             </a>
-            <div class="d-flex align-items-center gap-3">
-                <form method="POST" action="{{ route('staff.otp.resend') }}" class="mb-0">
-                    @csrf
-                    <button type="submit" class="resend-btn">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Resend OTP
-                    </button>
-                </form>
-                <div class="gt-foot">
-                    <img src="{{ asset('images/logog.png') }}" alt="Gaurangi">
-                </div>
-            </div>
+            <form method="POST" action="{{ route('staff.otp.resend') }}" class="mb-0">
+                @csrf
+                <button type="submit" class="resend-btn">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Resend OTP
+                </button>
+            </form>
         </div>
-
+        <p class="powered-by">Powered by <strong>Gaurangi Technologies</strong></p>
     </div>
 </div>
 
