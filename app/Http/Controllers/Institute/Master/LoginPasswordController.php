@@ -26,7 +26,7 @@ class LoginPasswordController extends Controller
         abort_if($center->institute_id !== $this->instituteId(), 403);
 
         $request->validate([
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         $center->update(['password' => Hash::make($request->password)]);
@@ -40,7 +40,7 @@ class LoginPasswordController extends Controller
         abort_if($staff->institute_id !== $this->instituteId(), 403);
 
         $request->validate([
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         $staff->update(['password' => Hash::make($request->password)]);
@@ -54,7 +54,7 @@ class LoginPasswordController extends Controller
         abort_if($partner->institute_id !== $this->instituteId(), 403);
 
         $request->validate([
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         $partner->update(['password' => Hash::make($request->password)]);

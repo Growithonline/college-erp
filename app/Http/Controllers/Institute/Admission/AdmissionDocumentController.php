@@ -127,11 +127,27 @@ class AdmissionDocumentController extends Controller
             return back()->withErrors([$fileKey => "File size {$fileSizeKb} KB exceeds the maximum allowed {$docType->max_size_kb} KB."]);
         }
 
-        // Validate format
+        // Validate extension against document-type allowed list
         $ext = strtolower($request->file('file')->getClientOriginalExtension());
         $allowed = array_map('trim', explode(',', $docType->allowed_formats));
         if (!in_array($ext, $allowed)) {
             return back()->withErrors([$fileKey => "Format .$ext is not allowed. Allowed formats: " . $docType->allowed_formats]);
+        }
+
+        // Validate actual MIME type — prevents disguised uploads (e.g. .exe renamed to .pdf)
+        $allowedMimes = [
+            'pdf'  => 'application/pdf',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'webp' => 'image/webp',
+            'doc'  => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        $detectedMime = $request->file('file')->getMimeType();
+        $permittedMimes = array_filter(array_map(fn($e) => $allowedMimes[$e] ?? null, $allowed));
+        if (!empty($permittedMimes) && !in_array($detectedMime, $permittedMimes, true)) {
+            return back()->withErrors([$fileKey => "File content does not match the allowed formats. Upload was rejected."]);
         }
 
         // Delete old file if replacing

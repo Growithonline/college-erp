@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('super-admin')->name('super_admin.')->group(function () {
 
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
+    Route::post('/login', [LoginController::class, 'login'])->name('login.submit')->middleware('throttle:5,1');
 
     Route::middleware('auth:super_admin')->group(function () {
 

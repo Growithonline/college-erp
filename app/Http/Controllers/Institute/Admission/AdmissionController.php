@@ -1531,12 +1531,19 @@ class AdmissionController extends Controller
     {
         static $columnTypes = [];
 
+        // Whitelist: only known internal columns may be inspected
+        $allowed = ['special_category', 'nationality', 'gender', 'category', 'admission_type'];
+        if (!in_array($column, $allowed, true)) {
+            return false;
+        }
+
         if (array_key_exists($column, $columnTypes)) {
             return $columnTypes[$column];
         }
 
         try {
-            $details = DB::selectOne("SHOW COLUMNS FROM students LIKE '{$column}'");
+            // Parameterized — column name is already whitelisted above
+            $details = DB::selectOne('SHOW COLUMNS FROM students LIKE ?', [$column]);
             $type = strtolower((string) ($details->Type ?? $details->type ?? ''));
         } catch (\Throwable $e) {
             $type = '';

@@ -107,7 +107,10 @@ class LoginController extends Controller
             return back()->withErrors(['otp' => 'OTP expired']);
         }
 
-        $isTestBypass = config('app.playwright_testing') && $request->otp === '999999';
+        // Test bypass is ONLY allowed in local/testing environments — never in production
+        $isTestBypass = !app()->isProduction()
+            && config('app.playwright_testing')
+            && $request->otp === '999999';
 
         if (!$isTestBypass && !Hash::check($request->otp, $otpRecord->otp)) {
             return back()->withErrors(['otp' => 'Incorrect OTP']);
