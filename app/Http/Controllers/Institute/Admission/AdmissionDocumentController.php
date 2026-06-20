@@ -135,19 +135,30 @@ class AdmissionDocumentController extends Controller
         }
 
         // Validate actual MIME type — prevents disguised uploads (e.g. .exe renamed to .pdf)
-        $allowedMimes = [
-            'pdf'  => 'application/pdf',
-            'jpg'  => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png'  => 'image/png',
-            'webp' => 'image/webp',
-            'doc'  => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        $mimeMap = [
+            'pdf'  => ['application/pdf'],
+            'jpg'  => ['image/jpeg'],
+            'jpeg' => ['image/jpeg'],
+            'png'  => ['image/png'],
+            'webp' => ['image/webp'],
+            'gif'  => ['image/gif'],
+            'bmp'  => ['image/bmp'],
+            'tiff' => ['image/tiff'],
+            'tif'  => ['image/tiff'],
+            'txt'  => ['text/plain'],
+            'doc'  => ['application/msword'],
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
+            'xls'  => ['application/vnd.ms-excel'],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
         ];
-        $detectedMime = $request->file('file')->getMimeType();
-        $permittedMimes = array_filter(array_map(fn($e) => $allowedMimes[$e] ?? null, $allowed));
-        if (!empty($permittedMimes) && !in_array($detectedMime, $permittedMimes, true)) {
-            return back()->withErrors([$fileKey => "File content does not match the allowed formats. Upload was rejected."]);
+        // Only validate MIME if every allowed extension has a known mapping — otherwise skip (fail open)
+        $hasUnmappedExt = !empty(array_filter($allowed, fn($e) => !array_key_exists($e, $mimeMap)));
+        if (!$hasUnmappedExt) {
+            $permittedMimes = array_merge(...array_map(fn($e) => $mimeMap[$e], $allowed));
+            $detectedMime = $request->file('file')->getMimeType();
+            if (!in_array($detectedMime, $permittedMimes, true)) {
+                return back()->withErrors([$fileKey => "File content does not match the allowed formats. Upload was rejected."]);
+            }
         }
 
         // Delete old file if replacing

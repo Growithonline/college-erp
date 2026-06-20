@@ -116,8 +116,10 @@ class InstituteController extends Controller
                 'email'        => $request->owner_email,
                 'mobile'       => $request->owner_mobile,
                 'password'     => Hash::make($plainPassword),
-                'role'         => 'institute_admin',
             ]);
+            // 'role' is not mass-assignable — set directly to prevent privilege escalation
+            $user->role = 'institute_admin';
+            $user->save();
 
             \Database\Seeders\StaffRoleSeeder::createDefaultRoles($institute->id);
             AccountingSetupService::bootstrapInstitute($institute->id);
