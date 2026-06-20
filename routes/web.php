@@ -111,6 +111,14 @@ use App\Http\Controllers\Partner\PartnerReportController;
 // ── Public receipt viewer (QR code scan — no auth required) ────────
 Route::get('/', fn() => view('welcome'))->name('welcome');
 
+// ── Session expired / account disabled — shown on any portal ─────────
+Route::get('/session-expired', function (\Illuminate\Http\Request $request) {
+    return view('auth.session-expired', [
+        'guard'  => $request->query('guard', 'web'),
+        'reason' => $request->query('reason', 'unauthenticated'),
+    ]);
+})->name('session.expired');
+
 Route::get('/receipt/balance', [\App\Http\Controllers\PublicReceiptController::class, 'balance'])->name('receipt.balance')->middleware('throttle:30,1');
 Route::get('/receipt/record',  [\App\Http\Controllers\PublicReceiptController::class, 'record'])->name('receipt.record')->middleware('throttle:30,1');
 

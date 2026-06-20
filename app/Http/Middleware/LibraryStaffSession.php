@@ -40,8 +40,7 @@ class LibraryStaffSession
                 $request->ip()
             );
 
-            return redirect()->route('library_staff.login')
-                ->with('error', 'Your session was ended because the account was logged in from another location.');
+            return redirect()->route('session.expired', ['guard' => 'library_staff', 'reason' => 'kicked']);
         }
 
         // ── 2. Inactivity timeout ────────────────────────────────
@@ -52,8 +51,7 @@ class LibraryStaffSession
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('library_staff.login')
-                ->with('error', 'You were logged out due to inactivity. Please login again.');
+            return redirect()->route('session.expired', ['guard' => 'library_staff', 'reason' => 'inactivity']);
         }
 
         session(['lib_staff_last_activity' => time()]);

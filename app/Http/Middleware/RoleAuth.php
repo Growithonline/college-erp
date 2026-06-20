@@ -17,19 +17,15 @@ class RoleAuth
     public function handle(Request $request, Closure $next, string $guard): mixed
     {
         if (!Auth::guard($guard)->check()) {
-            // Store intended URL
             session(['url.intended' => $request->url()]);
-
-            return redirect()->route("{$guard}.login")
-                ->with('error', 'Please login to continue.');
+            return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'unauthenticated']);
         }
 
         // Status check — disabled users ko block karo
         $user = Auth::guard($guard)->user();
         if (isset($user->status) && !$user->status) {
             Auth::guard($guard)->logout();
-            return redirect()->route("{$guard}.login")
-                ->with('error', 'Your account has been disabled. Please contact admin.');
+            return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'disabled']);
         }
 
         // Share guard user with all views

@@ -22,12 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'channel.wallet'     => \App\Http\Middleware\CheckChannelWallet::class,
         ]);
 
-        // Redirect guests to correct login page based on route prefix
+        // Redirect guests to session-expired page (shows portal-specific message & login button)
         $middleware->redirectGuestsTo(function ($request) {
-            if ($request->is('center/*')) return route('center.login');
-            if ($request->is('staff/*'))  return route('staff.login');
-            if ($request->is('partner/*')) return route('partner.login');
-            return route('login');
+            if ($request->is('super-admin/*')) return route('session.expired', ['guard' => 'super_admin', 'reason' => 'unauthenticated']);
+            if ($request->is('center/*'))      return route('session.expired', ['guard' => 'center',      'reason' => 'unauthenticated']);
+            if ($request->is('staff/*'))       return route('session.expired', ['guard' => 'staff',       'reason' => 'unauthenticated']);
+            if ($request->is('partner/*'))     return route('session.expired', ['guard' => 'partner',     'reason' => 'unauthenticated']);
+            if ($request->is('student/*'))     return route('session.expired', ['guard' => 'student',     'reason' => 'unauthenticated']);
+            return route('session.expired', ['guard' => 'web', 'reason' => 'unauthenticated']);
         });
 
         // Keep each panel on its own dashboard when an already-authenticated user
