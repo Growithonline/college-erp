@@ -240,6 +240,13 @@ class CenterAuthController extends Controller
         ));
     }
 
+    public function profile()
+    {
+        $center = $this->guard()->user();
+        $center->load('institute');
+        return view('center.profile', compact('center'));
+    }
+
     // ── Change Password ───────────────────────────────────────────────
     public function changePasswordForm()
     {

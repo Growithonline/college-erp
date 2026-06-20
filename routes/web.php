@@ -791,6 +791,7 @@ Route::prefix('center')->name('center.')->group(function () {
     Route::middleware('role.auth:center')->group(function () {
         Route::post('logout',          [CenterAuthController::class, 'logout'])->name('logout');
         Route::get('dashboard',        [CenterAuthController::class, 'dashboard'])->name('dashboard');
+        Route::get('profile',          [CenterAuthController::class, 'profile'])->name('profile');
         Route::get('change-password',  [CenterAuthController::class, 'changePasswordForm'])->name('change-password');
         Route::post('change-password', [CenterAuthController::class, 'changePassword'])->name('change-password.update');
 
@@ -1111,6 +1112,7 @@ Route::prefix('partner')->name('partner.')->group(function () {
     Route::middleware('role.auth:partner')->group(function () {
         Route::post('logout',          [PartnerAuthController::class, 'logout'])->name('logout');
         Route::get('dashboard',        [PartnerAuthController::class, 'dashboard'])->name('dashboard');
+        Route::get('profile',          [PartnerAuthController::class, 'profile'])->name('profile');
         Route::get('change-password',  [PartnerAuthController::class, 'changePasswordForm'])->name('change-password');
         Route::post('change-password', [PartnerAuthController::class, 'changePassword'])->name('change-password.update');
 

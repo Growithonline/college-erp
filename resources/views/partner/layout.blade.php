@@ -2,172 +2,180 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') — {{ config('app.name') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        body { margin: 0; background: #f8fafc; font-size: 14px; }
-        .sidebar {
-            width: 220px; height: 100vh; background: #1e293b;
-            position: fixed; top: 0; left: 0; overflow-y: auto;
-            z-index: 100; scrollbar-width: thin; scrollbar-color: #334155 #1e293b;
+        body { background: #f1f5f9; }
+        .sidebar { width:240px; height:100vh; background:#1e293b; position:fixed; top:0; left:0; overflow:hidden; z-index:100; display:flex; flex-direction:column; }
+        .sidebar-nav-wrap { flex:1 1 auto; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:#334155 #1e293b; }
+        .sidebar-nav-wrap::-webkit-scrollbar { width:4px; }
+        .sidebar-nav-wrap::-webkit-scrollbar-track { background:#1e293b; }
+        .sidebar-nav-wrap::-webkit-scrollbar-thumb { background:#334155; border-radius:2px; }
+        .sidebar-brand { padding:14px 16px; background:#0f172a; border-bottom:1px solid #334155; flex-shrink:0; }
+        .sidebar-brand h6 { color:#f8fafc; margin:0; font-size:13px; font-weight:600; }
+        .sidebar-brand small { color:#64748b; font-size:11px; }
+        .sidebar ul.nav { padding-bottom:20px; }
+        .sidebar .nav-link { color:#94a3b8; padding:8px 16px; font-size:13px; display:flex; align-items:center; gap:8px; border-left:3px solid transparent; text-decoration:none !important; }
+        .sidebar .nav-link:hover { color:#f8fafc; background:#334155; }
+        .sidebar .nav-link.active { color:#38bdf8; background:#0f172a; border-left:3px solid #38bdf8; }
+        .sidebar .nav-link i { font-size:14px; width:16px; flex-shrink:0; }
+        .sidebar .group-header { color:#cbd5e1; padding:8px 16px; font-size:13px; display:flex; align-items:center; gap:8px; cursor:pointer; border-left:3px solid transparent; text-decoration:none !important; }
+        .sidebar .group-header:hover { color:#f8fafc; background:#334155; }
+        .sidebar .group-header.active-group { color:#38bdf8; border-left:3px solid #38bdf8; background:#0f172a; }
+        .sidebar .group-header i.group-icon { font-size:14px; width:16px; flex-shrink:0; }
+        .sub-menu { background:#0f172a; border-left:2px solid #334155; margin-left:20px; }
+        .sub-menu .nav-link { font-size:12px; padding:6px 12px; color:#64748b; border-left:none; }
+        .sub-menu .nav-link:hover { color:#f8fafc; background:transparent; }
+        .sub-menu .nav-link.active { color:#38bdf8; background:transparent; }
+        .collapse-arrow { margin-left:auto; transition:transform .2s; font-size:11px; }
+        [aria-expanded="true"] .collapse-arrow { transform:rotate(180deg); }
+        .sidebar { transition: transform .25s ease; }
+        .main-content { margin-left:240px; padding:20px; transition: margin-left .25s ease; min-height:100vh; }
+        .topbar { background:#fff; border-bottom:1px solid #e2e8f0; padding:8px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+        #sidebarToggle { background:none; border:none; padding:4px 8px; cursor:pointer; color:#64748b; border-radius:6px; line-height:1; }
+        #sidebarToggle:hover { background:#f1f5f9; color:#1e293b; }
+        #sidebarToggle i { font-size:18px; }
+        body.sidebar-collapsed .sidebar { transform: translateX(-240px); }
+        body.sidebar-collapsed .main-content { margin-left: 0; }
+        @media (max-width: 767px) {
+            .sidebar { transform: translateX(-240px); z-index: 1050; }
+            .main-content { margin-left: 0; }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            .sidebar-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1040; }
+            body.sidebar-open .sidebar-backdrop { display:block; }
         }
-        .sidebar-brand { padding: 14px 16px; background: #0f172a; border-bottom: 1px solid #334155; }
-        .sidebar-brand h6 { color: #f8fafc; margin: 0; font-size: 13px; font-weight: 600; }
-        .sidebar-brand small { font-size: 10px; }
-        .sidebar .nav-link {
-            color: #94a3b8; padding: 7px 16px; font-size: 12.5px;
-            display: flex; align-items: center; gap: 8px;
+        @media (min-width: 768px) { .sidebar-backdrop { display:none !important; } }
+        @media print {
+            .sidebar, .topbar, .no-print { display:none !important; }
+            .main-content { margin-left:0 !important; padding:8px !important; }
+            body { background:#fff !important; }
         }
-        .sidebar .nav-link:hover { color: #f8fafc; background: #334155; }
-        .sidebar .nav-link.active { color: #38bdf8; background: #0f172a; border-left: 3px solid #38bdf8; }
-        .sidebar .nav-link i { font-size: 14px; width: 16px; }
-        .nav-section { color: #475569; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 12px 16px 4px; }
-        .sidebar-badge { font-size: 9px; padding: 2px 6px; border-radius: 99px; margin-left: auto; }
-        .main-content { margin-left: 220px; min-height: 100vh; }
-        .topbar {
-            background: #fff; border-bottom: 1px solid #e2e8f0;
-            padding: 10px 24px; display: flex; align-items: center;
-            justify-content: space-between; position: sticky; top: 0; z-index: 50;
-        }
-        .role-chip {
-            display: inline-flex; align-items: center; gap: 5px;
-            font-size: 11px; padding: 3px 10px; border-radius: 99px;
-            font-weight: 500;
-        }
-        .page-content { padding: 24px; }
-        .permission-disabled { opacity: 0.4; pointer-events: none; }
+        .permission-disabled { opacity:0.4; pointer-events:none; }
     </style>
     @stack('styles')
 </head>
 <body>
 
-{{-- Sidebar --}}
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
 <div class="sidebar">
     <div class="sidebar-brand">
-        <h6>{{ $authUser->institute?->name ?? config('app.name') }}</h6>
-        <small style="color:#64748b;">
-            @if($authGuard === 'center') Center Portal
-            @elseif($authGuard === 'staff') Staff Portal
-            @else Partner Portal
+        @php $inst = $authUser->institute; @endphp
+        <div class="d-flex align-items-center gap-2">
+            @if($inst && $inst->image)
+                <img src="{{ asset('storage/' . $inst->image) }}" alt="{{ $inst->name }}"
+                     style="height:32px;width:32px;object-fit:contain;border-radius:6px;background:#1e293b;flex-shrink:0;">
+            @else
+                <i class="bi bi-mortarboard-fill text-primary" style="font-size:20px;flex-shrink:0;"></i>
             @endif
-        </small>
+            <div style="min-width:0;">
+                <h6 class="mb-0" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $inst?->name ?? config('app.name') }}</h6>
+                <small>Partner Portal</small>
+            </div>
+        </div>
     </div>
 
-    <ul class="nav flex-column mt-2">
-        {{-- Dashboard --}}
+    <div class="sidebar-nav-wrap">
+    <ul class="nav flex-column pt-1">
+
         <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs($authGuard.'.dashboard') ? 'active' : '' }}"
-               href="{{ route($authGuard.'.dashboard') }}">
+            <a class="nav-link {{ request()->routeIs('partner.dashboard') ? 'active' : '' }}"
+               href="{{ route('partner.dashboard') }}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
         </li>
 
-        {{-- Admissions --}}
+        {{-- Admissions Group --}}
         @php
-            $canAdmit = $authGuard === 'staff'
-                ? $authUser->hasPermission('admission_add')
-                : $authUser->canManageAdmissions();
+            $canAdmit = $authUser->canManageAdmissions();
+            $canView  = $authUser->canViewStudents();
+            $admGroupActive = request()->routeIs('partner.admissions.*') || request()->routeIs('partner.students.*');
         @endphp
-        @if($canAdmit)
-        <div class="nav-section">Admissions</div>
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs($authGuard.'.admissions.quick*') ? 'active' : '' }}"
-               href="{{ route($authGuard.'.admissions.quick-create') }}">
-                <i class="bi bi-lightning-fill" style="color:#f59e0b;"></i> Quick Register
+        @if($canAdmit || $canView)
+        <li class="nav-item mt-1">
+            <a class="group-header {{ $admGroupActive ? 'active-group' : '' }} d-flex"
+               data-bs-toggle="collapse" href="#partnerAdmGroup" role="button"
+               aria-expanded="{{ $admGroupActive ? 'true' : 'false' }}">
+                <i class="bi bi-person-plus group-icon"></i>
+                <span>Admissions</span>
+                <i class="bi bi-chevron-down collapse-arrow"></i>
             </a>
-        </li>
-        @if($authGuard !== 'partner' || $authUser->canUseFullAdmissionForm())
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs($authGuard.'.admissions.create') ? 'active' : '' }}"
-               href="{{ route($authGuard.'.admissions.create') }}">
-                <i class="bi bi-person-plus"></i> Full Admission
-            </a>
-        </li>
-        @endif
-        @endif
-
-        {{-- Students --}}
-        @php
-            $canView = $authGuard === 'staff'
-                ? $authUser->hasPermission('student_view')
-                : $authUser->canViewStudents();
-        @endphp
-        @if($canView)
-        @if(!$canAdmit)<div class="nav-section">Students</div>@endif
-        <li class="nav-item">
-            @php $studRoute = $authGuard === 'staff' ? $authGuard.'.admissions.index' : $authGuard.'.students.index'; @endphp
-            <a class="nav-link {{ request()->routeIs($studRoute) ? 'active' : '' }}"
-               href="{{ route($studRoute) }}">
-                <i class="bi bi-people"></i> My Students
-            </a>
-        </li>
-        @if($authGuard === 'partner')
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('partner.students.search') ? 'active' : '' }}"
-               href="{{ route('partner.students.search') }}">
-                <i class="bi bi-search"></i> Global Search
-            </a>
-        </li>
-        @endif
-        @endif
-
-        {{-- Fee --}}
-        @php
-            $canFee = $authGuard === 'staff'
-                ? $authUser->hasPermission('fee_collect')
-                : $authUser->canCollectFee();
-        @endphp
-        @if($canFee)
-        <div class="nav-section">Fee</div>
-        @if($authGuard === 'partner')
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('partner.fee.index') ? 'active' : '' }}"
-               href="{{ route('partner.fee.index') }}">
-                <i class="bi bi-list-ul"></i> My Collections
-            </a>
-        </li>
-        @endif
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs($authGuard.'.fee.create') ? 'active' : '' }}"
-               href="{{ route($authGuard.'.fee.create') }}">
-                <i class="bi bi-cash-coin"></i> Collect Fee
-            </a>
-        </li>
-        @if($authGuard === 'staff')
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('staff.fee.index') ? 'active' : '' }}"
-               href="{{ route('staff.fee.index') }}">
-                <i class="bi bi-list-ul"></i> Fee History
-            </a>
+            <div class="collapse {{ $admGroupActive ? 'show' : '' }}" id="partnerAdmGroup">
+                <ul class="nav flex-column sub-menu">
+                    @if($canAdmit)
+                    <li><a class="nav-link {{ request()->routeIs('partner.admissions.quick*') ? 'active' : '' }}"
+                           href="{{ route('partner.admissions.quick-create') }}">
+                        <i class="bi bi-lightning-fill" style="color:#f59e0b;"></i> Quick Register
+                    </a></li>
+                    @if($authUser->canUseFullAdmissionForm())
+                    <li><a class="nav-link {{ request()->routeIs('partner.admissions.create') ? 'active' : '' }}"
+                           href="{{ route('partner.admissions.create') }}">
+                        <i class="bi bi-person-plus"></i> Full Admission
+                    </a></li>
+                    @endif
+                    @endif
+                    @if($canView)
+                    <li><a class="nav-link {{ request()->routeIs('partner.students.index') ? 'active' : '' }}"
+                           href="{{ route('partner.students.index') }}">
+                        <i class="bi bi-people"></i> My Students
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('partner.students.search') ? 'active' : '' }}"
+                           href="{{ route('partner.students.search') }}">
+                        <i class="bi bi-search"></i> Global Search
+                    </a></li>
+                    @endif
+                </ul>
+            </div>
         </li>
         @endif
 
-        @if(in_array($authGuard, ['center', 'partner']) && $authUser->wallet)
+        {{-- Fee Group --}}
+        @if($authUser->canCollectFee())
         @php
+            $feeGroupActive = request()->routeIs('partner.fee.*');
             $fwWallet = $authUser->wallet;
-            $fwBadgeColor = ($fwWallet->isExpired() || (float)$fwWallet->remaining_tokens <= 0) ? 'danger' : (((float)$fwWallet->remaining_tokens < (float)$fwWallet->total_tokens * 0.15) ? 'warning' : null);
+            $fwBadgeColor = $fwWallet ? (($fwWallet->isExpired() || (float)$fwWallet->remaining_tokens <= 0) ? 'danger' : (((float)$fwWallet->remaining_tokens < (float)$fwWallet->total_tokens * 0.15) ? 'warning' : null)) : null;
         @endphp
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs($authGuard.'.fee.wallet.*') ? 'active' : '' }} d-flex justify-content-between align-items-center"
-               href="{{ route($authGuard.'.fee.wallet.status') }}">
-                <span><i class="bi bi-wallet2"></i> Fee Wallet</span>
-                @if($fwBadgeColor)
-                    <span class="badge bg-{{ $fwBadgeColor }} rounded-pill" style="font-size:9px;">
-                        {{ $fwBadgeColor === 'danger' ? '!' : 'Low' }}
-                    </span>
-                @endif
+        <li class="nav-item mt-1">
+            <a class="group-header {{ $feeGroupActive ? 'active-group' : '' }} d-flex"
+               data-bs-toggle="collapse" href="#partnerFeeGroup" role="button"
+               aria-expanded="{{ $feeGroupActive ? 'true' : 'false' }}">
+                <i class="bi bi-cash-stack group-icon"></i>
+                <span>Fee</span>
+                <i class="bi bi-chevron-down collapse-arrow"></i>
             </a>
+            <div class="collapse {{ $feeGroupActive ? 'show' : '' }}" id="partnerFeeGroup">
+                <ul class="nav flex-column sub-menu">
+                    <li><a class="nav-link {{ request()->routeIs('partner.fee.index') ? 'active' : '' }}"
+                           href="{{ route('partner.fee.index') }}">
+                        <i class="bi bi-list-ul"></i> My Collections
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('partner.fee.create') ? 'active' : '' }}"
+                           href="{{ route('partner.fee.create') }}">
+                        <i class="bi bi-cash-coin"></i> Collect Fee
+                    </a></li>
+                    @if($fwWallet)
+                    <li><a class="nav-link {{ request()->routeIs('partner.fee.wallet.*') ? 'active' : '' }} d-flex justify-content-between align-items-center"
+                           href="{{ route('partner.fee.wallet.status') }}">
+                        <span><i class="bi bi-wallet2"></i> Fee Wallet</span>
+                        @if($fwBadgeColor)
+                            <span class="badge bg-{{ $fwBadgeColor }} rounded-pill" style="font-size:9px;">
+                                {{ $fwBadgeColor === 'danger' ? '!' : 'Low' }}
+                            </span>
+                        @endif
+                    </a></li>
+                    @endif
+                </ul>
+            </div>
         </li>
-        @endif
         @endif
 
         {{-- Reports --}}
-        @if($authGuard === 'partner' && $authUser->canDownloadReports())
-        <div class="nav-section">Reports</div>
-        <li class="nav-item">
+        @if($authUser->canDownloadReports())
+        <li class="nav-item mt-1">
             <a class="nav-link {{ request()->routeIs('partner.reports.*') ? 'active' : '' }}"
                href="{{ route('partner.reports.index') }}">
                 <i class="bi bi-download"></i> Download Reports
@@ -176,90 +184,113 @@
         @endif
 
         {{-- Notices --}}
-        <div class="nav-section">Notices</div>
-        <li class="nav-item">
+        <li class="nav-item mt-1">
             <a class="nav-link {{ request()->routeIs('partner.notices.*') ? 'active' : '' }}"
                href="{{ route('partner.notices.index') }}">
                 <i class="bi bi-megaphone"></i> Notices
             </a>
         </li>
 
-        {{-- Account --}}
-        <div class="nav-section">Account</div>
+        {{-- My Profile --}}
         <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs($authGuard.'.change-password') ? 'active' : '' }}"
-               href="{{ route($authGuard.'.change-password') }}">
-                <i class="bi bi-key"></i> Change Password
+            <a class="nav-link {{ request()->routeIs('partner.profile') ? 'active' : '' }}"
+               href="{{ route('partner.profile') }}">
+                <i class="bi bi-person-circle"></i> My Profile
             </a>
         </li>
-        <li class="nav-item">
-            <form method="POST" action="{{ route($authGuard.'.logout') }}">
-                @csrf
-                <button class="nav-link w-100 text-start border-0 bg-transparent" style="color:#ef4444;">
-                    <i class="bi bi-box-arrow-left"></i> Logout
-                </button>
-            </form>
-        </li>
+
     </ul>
+    </div>
+
+    <div style="flex-shrink:0; border-top:1px solid #334155; padding:10px 14px; display:flex; align-items:center; gap:9px; background:#0f172a;">
+        <img src="{{ asset('images/logog.png') }}" alt="Gaurangi" style="height:26px; width:auto; object-fit:contain; flex-shrink:0; opacity:0.85;">
+        <span style="font-size:10px; color:#64748b; line-height:1.35;">Developed &amp; Maintained by<br><span style="color:#94a3b8; font-weight:600;">Gaurangi Technologies</span></span>
+    </div>
 </div>
 
-{{-- Main --}}
 <div class="main-content">
-    {{-- Topbar --}}
-    <div class="topbar">
-        <small class="text-muted fw-semibold">@yield('breadcrumb', 'Dashboard')</small>
-        <div class="d-flex align-items-center gap-3">
+    <div class="topbar mb-4 rounded shadow-sm">
+        <div class="d-flex align-items-center gap-2" style="min-width:0;flex:1;">
+            <button id="sidebarToggle" title="Toggle sidebar"><i class="bi bi-list"></i></button>
+            <small class="text-muted fw-semibold text-truncate">@yield('breadcrumb', 'Dashboard')</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
             @php
-                $roleColors = ['center'=>'#185FA5','staff'=>'#1D9E75','partner'=>'#854F0B'];
-                $roleLabels = ['center'=>'Center','staff'=>'Staff','partner'=>'Partner'];
-                $rc = $roleColors[$authGuard] ?? '#64748b';
-                $rl = $roleLabels[$authGuard] ?? 'User';
+                $activeSess = \App\Models\AcademicSession::where('institute_id', $authUser->institute_id)->where('is_active', true)->first();
             @endphp
-            <span class="role-chip" style="background:{{ $rc }}20;color:{{ $rc }};">
-                <i class="bi bi-shield-check" style="font-size:11px;"></i>
-                {{ $rl }}
+            @if($activeSess)
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 d-none d-sm-inline-flex align-items-center" style="font-size:11px;">
+                    <i class="bi bi-calendar-check me-1"></i>{{ $activeSess->name }}
+                </span>
+            @endif
+            <span class="d-none d-sm-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill"
+                  style="font-size:11px;font-weight:500;background:#854F0B20;color:#854F0B;">
+                <i class="bi bi-shield-check" style="font-size:11px;"></i>Partner
             </span>
-            {{-- Notices bell --}}
             @php
                 $partnerNoticeCount = \App\Models\Notice::forRole($authUser->institute_id, 'channel')
                     ->whereDoesntHave('reads', fn($q) => $q->where('reader_type','partner')->where('reader_id',$authUser->id))
                     ->count();
             @endphp
             <a href="{{ route('partner.notices.index') }}"
-               class="position-relative text-decoration-none text-muted"
-               title="Notices">
-                <i class="bi bi-bell fs-5"></i>
+               class="position-relative text-decoration-none text-muted d-flex align-items-center" title="Notices">
+                <i class="bi bi-bell" style="font-size:16px;"></i>
                 @if($partnerNoticeCount > 0)
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                          style="font-size:9px;padding:2px 5px;">
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:9px;padding:2px 5px;">
                         {{ $partnerNoticeCount > 9 ? '9+' : $partnerNoticeCount }}
                     </span>
                 @endif
             </a>
-            <small class="text-muted">{{ $authUser->name }}</small>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('partner.profile') }}" class="text-decoration-none d-flex align-items-center gap-2" title="My Profile">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                         style="width:28px;height:28px;font-size:11px;background:#854F0B;">
+                        {{ strtoupper(substr($authUser->name, 0, 1)) }}
+                    </div>
+                    <small class="text-muted fw-semibold d-none d-md-inline">{{ $authUser->name }}</small>
+                </a>
+                <form method="POST" action="{{ route('partner.logout') }}" class="mb-0">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" style="font-size:11px;padding:3px 8px;">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span class="d-none d-sm-inline">Logout</span>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
-    {{-- Alerts --}}
-    <div class="page-content">
-        @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-3">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        @endif
-        @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-3">
-            <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        @endif
+    @if(session('success'))
+    <script>window.__flashToast = { message: @json(session('success')), type: 'success' };</script>
+    @elseif(session('error'))
+    <script>window.__flashToast = { message: @json(session('error')), type: 'danger' };</script>
+    @elseif($errors->any())
+    <script>window.__flashToast = { message: @json($errors->first()), type: 'danger' };</script>
+    @endif
 
-        @yield('content')
-    </div>
+    @yield('content')
 </div>
 
+<div id="toast-container" style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;flex-direction:column;gap:10px;min-width:320px;max-width:400px;"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function(){
+    var cfg={success:{bg:'#f0fdf4',border:'#22c55e',icon:'✓',iconBg:'#22c55e',title:'Success'},danger:{bg:'#fef2f2',border:'#ef4444',icon:'✕',iconBg:'#ef4444',title:'Error'},warning:{bg:'#fffbeb',border:'#f59e0b',icon:'!',iconBg:'#f59e0b',title:'Warning'}};
+    window.showToast=function(msg,type,dur){type=type||'danger';dur=dur||4500;var c=cfg[type]||cfg.danger;var box=document.getElementById('toast-container');var t=document.createElement('div');t.setAttribute('data-toast','1');t.style.cssText='background:'+c.bg+';border:1px solid '+c.border+';border-left:4px solid '+c.border+';border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);padding:14px 16px 10px;display:flex;gap:12px;align-items:flex-start;opacity:0;transform:translateY(16px);transition:opacity 0.28s ease,transform 0.28s ease;position:relative;';t.innerHTML='<div style="width:28px;height:28px;border-radius:50%;background:'+c.iconBg+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">'+c.icon+'</div><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:2px;">'+c.title+'</div><div style="font-size:13px;color:#475569;line-height:1.45;">'+msg+'</div><div class="toast-bar" style="height:3px;border-radius:2px;background:'+c.border+';margin-top:10px;width:100%;transform-origin:left;transition:width linear '+dur+'ms;"></div></div><button onclick="dismissToast(this.closest(\'[data-toast]\'))" style="background:none;border:none;padding:0;cursor:pointer;color:#94a3b8;font-size:16px;line-height:1;flex-shrink:0;">&#x2715;</button>';box.appendChild(t);requestAnimationFrame(function(){requestAnimationFrame(function(){t.style.opacity='1';t.style.transform='translateY(0)';var b=t.querySelector('.toast-bar');if(b)b.style.width='0%';});});var timer=setTimeout(function(){dismissToast(t);},dur);t.__timer=timer;};
+    window.dismissToast=function(t){if(!t||t.__dismissed)return;t.__dismissed=true;clearTimeout(t.__timer);t.style.opacity='0';t.style.transform='translateY(8px)';setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},300);};
+    if(window.__flashToast){showToast(window.__flashToast.message,window.__flashToast.type);}
+})();
+</script>
+<script>
+(function(){
+    var body=document.body,backdrop=document.getElementById('sidebarBackdrop'),btn=document.getElementById('sidebarToggle');
+    if(window.innerWidth>=768&&localStorage.getItem('partnerSidebarCollapsed')==='1')body.classList.add('sidebar-collapsed');
+    btn.addEventListener('click',function(){if(window.innerWidth<768){body.classList.toggle('sidebar-open');}else{body.classList.toggle('sidebar-collapsed');localStorage.setItem('partnerSidebarCollapsed',body.classList.contains('sidebar-collapsed')?'1':'0');}});
+    backdrop.addEventListener('click',function(){body.classList.remove('sidebar-open');});
+    window.addEventListener('resize',function(){if(window.innerWidth>=768){body.classList.remove('sidebar-open');if(localStorage.getItem('partnerSidebarCollapsed')==='1')body.classList.add('sidebar-collapsed');else body.classList.remove('sidebar-collapsed');}else{body.classList.remove('sidebar-collapsed');}});
+})();
+</script>
 @stack('scripts')
 </body>
 </html>

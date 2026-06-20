@@ -239,6 +239,13 @@ class PartnerAuthController extends Controller
         ));
     }
 
+    public function profile()
+    {
+        $partner = $this->guard()->user();
+        $partner->load('institute');
+        return view('partner.profile', compact('partner'));
+    }
+
     // ── Change Password ───────────────────────────────────────────────
     public function changePasswordForm()
     {

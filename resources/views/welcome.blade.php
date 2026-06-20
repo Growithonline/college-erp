@@ -4,114 +4,303 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gaurangi Technologies — ERP Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; }
-        .card { transition: transform 0.2s, box-shadow 0.2s; }
-        .card:hover { transform: translateY(-4px); }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Background layers */
+        .bg-hero {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background: linear-gradient(145deg, #0a1c3d 0%, #0f3d2e 60%, #0a2515 100%);
+        }
+        .bg-mesh {
+            position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .07;
+            background-image:
+                linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+        .bg-glow1 {
+            position: fixed; z-index: 2; pointer-events: none;
+            width: 600px; height: 600px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(15,76,129,.55) 0%, transparent 70%);
+            top: -180px; left: -120px;
+        }
+        .bg-glow2 {
+            position: fixed; z-index: 2; pointer-events: none;
+            width: 500px; height: 500px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(29,158,117,.45) 0%, transparent 70%);
+            bottom: -150px; right: -100px;
+        }
+        .bg-glow3 {
+            position: fixed; z-index: 2; pointer-events: none;
+            width: 300px; height: 300px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(29,158,117,.25) 0%, transparent 70%);
+            top: 40%; left: 55%;
+        }
+
+        /* Page content wrapper */
+        .page-wrap { position: relative; z-index: 10; flex: 1; display: flex; flex-direction: column; }
+
+        /* Header */
+        .site-header {
+            padding: 18px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            backdrop-filter: blur(8px);
+            background: rgba(10,28,61,.35);
+        }
+        .brand-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .brand-logo img { height: 36px; width: auto; filter: brightness(1.15); }
+        .brand-text .name { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; }
+        .brand-text .tag  { font-size: 11px; color: rgba(255,255,255,.55); }
+        .header-badge {
+            font-size: 11px; font-weight: 600;
+            padding: 5px 14px; border-radius: 20px;
+            background: rgba(29,158,117,.18); color: #4ade80;
+            border: 1px solid rgba(29,158,117,.35);
+            letter-spacing: .4px;
+        }
+
+        /* Hero text */
+        .hero-section { padding: 52px 24px 36px; text-align: center; }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+            border-radius: 20px; padding: 5px 14px; font-size: 12px; color: rgba(255,255,255,.7);
+            margin-bottom: 20px; backdrop-filter: blur(6px);
+        }
+        .hero-title {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 800; color: #fff;
+            letter-spacing: -.5px; line-height: 1.15;
+            margin-bottom: 12px;
+        }
+        .hero-title .accent {
+            background: linear-gradient(90deg, #38bdf8, #4ade80);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .hero-sub { font-size: 15px; color: rgba(255,255,255,.6); max-width: 440px; margin: 0 auto; }
+
+        /* Cards grid */
+        .portals-section { padding: 20px 24px 48px; }
+        .portals-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); max-width: 1060px; margin: 0 auto; }
+
+        .portal-card {
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 20px;
+            padding: 28px 20px 22px;
+            text-decoration: none; color: inherit;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
+            backdrop-filter: blur(12px);
+            transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease, background .22s ease;
+            cursor: pointer;
+            position: relative; overflow: hidden;
+        }
+        .portal-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--card-gradient);
+            opacity: 0; transition: opacity .22s;
+        }
+        .portal-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 24px 48px rgba(0,0,0,.4), 0 0 0 1px var(--card-color);
+            background: rgba(255,255,255,.1);
+            border-color: var(--card-color);
+        }
+        .portal-card:hover::before { opacity: 1; }
+
+        .card-icon-wrap {
+            width: 64px; height: 64px; border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--card-bg);
+            font-size: 26px; color: var(--card-color);
+            transition: transform .22s ease, background .22s ease;
+        }
+        .portal-card:hover .card-icon-wrap {
+            background: var(--card-color);
+            color: #fff;
+            transform: scale(1.08) rotate(-4deg);
+        }
+
+        .card-name { font-size: 14px; font-weight: 700; color: #fff; text-align: center; }
+        .card-desc { font-size: 11px; color: rgba(255,255,255,.5); text-align: center; line-height: 1.4; }
+
+        .card-btn {
+            margin-top: auto;
+            width: 100%; padding: 9px 0; border-radius: 10px;
+            font-size: 13px; font-weight: 600; color: var(--card-color);
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,.08);
+            text-align: center;
+            transition: background .18s, color .18s;
+        }
+        .portal-card:hover .card-btn {
+            background: var(--card-color);
+            color: #fff;
+        }
+
+        /* Footer */
+        .site-footer {
+            text-align: center; padding: 18px 24px;
+            font-size: 12px; color: rgba(255,255,255,.35);
+            border-top: 1px solid rgba(255,255,255,.07);
+            background: rgba(0,0,0,.15);
+            position: relative; z-index: 10;
+        }
+        .site-footer a { color: rgba(255,255,255,.5); text-decoration: none; }
+        .site-footer a:hover { color: #4ade80; }
+
+        /* Floating orbs animation */
+        @keyframes floatOrb { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-20px) scale(1.05); } }
+        .bg-glow1 { animation: floatOrb 8s ease-in-out infinite; }
+        .bg-glow2 { animation: floatOrb 10s ease-in-out infinite reverse; }
+        .bg-glow3 { animation: floatOrb 6s ease-in-out infinite; }
+
+        @media (max-width: 576px) {
+            .portals-grid { grid-template-columns: repeat(2, 1fr); }
+            .site-header { padding: 14px 18px; }
+            .header-badge { display: none; }
+        }
+        @media (max-width: 360px) {
+            .portals-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+<body>
+
+{{-- Background --}}
+<div class="bg-hero"></div>
+<div class="bg-mesh"></div>
+<div class="bg-glow1"></div>
+<div class="bg-glow2"></div>
+<div class="bg-glow3"></div>
+
+<div class="page-wrap">
 
     {{-- Header --}}
-    <header class="bg-white shadow-sm py-4 px-6 flex items-center gap-3">
-        <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">B</div>
-        <div>
-            <h1 class="text-lg font-bold text-gray-800 leading-tight">Gaurangi Technologies</h1>
-            <p class="text-xs text-gray-500">College Management System</p>
-        </div>
+    <header class="site-header">
+        <a class="brand-logo" href="#">
+            <img src="{{ asset('images/logog.png') }}" alt="Gaurangi Technologies Logo">
+            <div class="brand-text">
+                <div class="name">Gaurangi Technologies</div>
+                <div class="tag">Education Management Platform</div>
+            </div>
+        </a>
+        <span class="header-badge">
+            <i class="bi bi-circle-fill" style="font-size:7px;"></i> ERP Portal
+        </span>
     </header>
 
-    {{-- Main --}}
-    <main class="flex-1 flex flex-col items-center justify-center px-4 py-12">
-
-        <div class="text-center mb-10">
-            <h2 class="text-3xl font-bold text-gray-800 mb-2">Welcome to ERP Portal</h2>
-            <p class="text-gray-500 text-sm">Select your role to continue</p>
+    {{-- Hero --}}
+    <section class="hero-section">
+        <div class="hero-badge">
+            <i class="bi bi-stars"></i> Integrated College Management System
         </div>
+        <h1 class="hero-title">
+            Welcome to <span class="accent">ERP Portal</span>
+        </h1>
+        <p class="hero-sub">Select your role below to access your personalized dashboard and tools.</p>
+    </section>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 w-full max-w-5xl">
+    {{-- Portals --}}
+    <section class="portals-section">
+        <div class="portals-grid">
 
             {{-- Institute Admin --}}
-            <a href="{{ url('/login') }}" class="card bg-white rounded-2xl shadow-md p-6 flex flex-col items-center gap-4 hover:shadow-xl">
-                <div class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                    </svg>
+            <a href="{{ url('/login') }}" class="portal-card"
+               style="--card-color:#818cf8;--card-bg:rgba(129,140,248,.12);--card-gradient:linear-gradient(90deg,#6366f1,#818cf8);">
+                <div class="card-icon-wrap">
+                    <i class="bi bi-building-fill-gear"></i>
                 </div>
-                <div class="text-center">
-                    <h3 class="font-semibold text-gray-800 text-base">Institute Admin</h3>
-                    <p class="text-xs text-gray-500 mt-1">Manage your institution</p>
+                <div>
+                    <div class="card-name">Institute Admin</div>
+                    <div class="card-desc">Manage your institution, sessions & settings</div>
                 </div>
-                <span class="mt-auto w-full text-center bg-indigo-600 text-white text-sm py-2 rounded-lg font-medium">Login</span>
+                <div class="card-btn"><i class="bi bi-box-arrow-in-right me-1"></i>Login</div>
             </a>
 
             {{-- Staff --}}
-            <a href="{{ url('/staff/login') }}" class="card bg-white rounded-2xl shadow-md p-6 flex flex-col items-center gap-4 hover:shadow-xl">
-                <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
+            <a href="{{ url('/staff/login') }}" class="portal-card"
+               style="--card-color:#34d399;--card-bg:rgba(52,211,153,.12);--card-gradient:linear-gradient(90deg,#059669,#34d399);">
+                <div class="card-icon-wrap">
+                    <i class="bi bi-person-workspace"></i>
                 </div>
-                <div class="text-center">
-                    <h3 class="font-semibold text-gray-800 text-base">Staff</h3>
-                    <p class="text-xs text-gray-500 mt-1">Teachers & admin staff</p>
+                <div>
+                    <div class="card-name">Staff</div>
+                    <div class="card-desc">Teachers, admission & administrative staff</div>
                 </div>
-                <span class="mt-auto w-full text-center bg-green-600 text-white text-sm py-2 rounded-lg font-medium">Login</span>
+                <div class="card-btn"><i class="bi bi-box-arrow-in-right me-1"></i>Login</div>
             </a>
 
             {{-- Center --}}
-            <a href="{{ url('/center/login') }}" class="card bg-white rounded-2xl shadow-md p-6 flex flex-col items-center gap-4 hover:shadow-xl">
-                <div class="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
-                    <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
+            <a href="{{ url('/center/login') }}" class="portal-card"
+               style="--card-color:#38bdf8;--card-bg:rgba(56,189,248,.12);--card-gradient:linear-gradient(90deg,#0284c7,#38bdf8);">
+                <div class="card-icon-wrap">
+                    <i class="bi bi-building-fill"></i>
                 </div>
-                <div class="text-center">
-                    <h3 class="font-semibold text-gray-800 text-base">Center</h3>
-                    <p class="text-xs text-gray-500 mt-1">Study center portal</p>
+                <div>
+                    <div class="card-name">Center</div>
+                    <div class="card-desc">Study center portal for admissions & fee</div>
                 </div>
-                <span class="mt-auto w-full text-center bg-orange-500 text-white text-sm py-2 rounded-lg font-medium">Login</span>
+                <div class="card-btn"><i class="bi bi-box-arrow-in-right me-1"></i>Login</div>
             </a>
 
             {{-- Channel Partner --}}
-            <a href="{{ url('/partner/login') }}" class="card bg-white rounded-2xl shadow-md p-6 flex flex-col items-center gap-4 hover:shadow-xl">
-                <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center">
-                    <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
+            <a href="{{ url('/partner/login') }}" class="portal-card"
+               style="--card-color:#fb923c;--card-bg:rgba(251,146,60,.12);--card-gradient:linear-gradient(90deg,#ea580c,#fb923c);">
+                <div class="card-icon-wrap">
+                    <i class="bi bi-person-badge-fill"></i>
                 </div>
-                <div class="text-center">
-                    <h3 class="font-semibold text-gray-800 text-base">Channel Partner</h3>
-                    <p class="text-xs text-gray-500 mt-1">Partner commission portal</p>
+                <div>
+                    <div class="card-name">Channel Partner</div>
+                    <div class="card-desc">Partner admissions & commission portal</div>
                 </div>
-                <span class="mt-auto w-full text-center bg-purple-600 text-white text-sm py-2 rounded-lg font-medium">Login</span>
+                <div class="card-btn"><i class="bi bi-box-arrow-in-right me-1"></i>Login</div>
             </a>
 
             {{-- Student --}}
-            <a href="{{ url('/student/login') }}" class="card bg-white rounded-2xl shadow-md p-6 flex flex-col items-center gap-4 hover:shadow-xl">
-                <div class="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
-                    <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422A12.083 12.083 0 0121 13c0 5.523-4.477 10-9 10S3 18.523 3 13c0-.538.068-1.06.196-1.562L12 14z"/>
-                    </svg>
+            <a href="{{ url('/student/login') }}" class="portal-card"
+               style="--card-color:#a78bfa;--card-bg:rgba(167,139,250,.12);--card-gradient:linear-gradient(90deg,#7c3aed,#a78bfa);">
+                <div class="card-icon-wrap">
+                    <i class="bi bi-mortarboard-fill"></i>
                 </div>
-                <div class="text-center">
-                    <h3 class="font-semibold text-gray-800 text-base">Student</h3>
-                    <p class="text-xs text-gray-500 mt-1">Student portal</p>
+                <div>
+                    <div class="card-name">Student</div>
+                    <div class="card-desc">Access your results, notices & profile</div>
                 </div>
-                <span class="mt-auto w-full text-center bg-teal-600 text-white text-sm py-2 rounded-lg font-medium">Login</span>
+                <div class="card-btn"><i class="bi bi-box-arrow-in-right me-1"></i>Login</div>
             </a>
 
         </div>
-
-    </main>
+    </section>
 
     {{-- Footer --}}
-    <footer class="text-center py-4 text-xs text-gray-400">
-        &copy; {{ date('Y') }} Gaurangi Technologies. All rights reserved.
+    <footer class="site-footer">
+        <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            <img src="{{ asset('images/logog.png') }}" alt="Gaurangi" style="height:18px;opacity:.5;filter:brightness(1.5);">
+            <span>&copy; {{ date('Y') }} <a href="#">Gaurangi Technologies</a>. All rights reserved.</span>
+            <span style="opacity:.4;">·</span>
+            <span>College ERP v1.0</span>
+        </div>
     </footer>
 
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
