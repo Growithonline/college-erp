@@ -15,17 +15,19 @@ class CourseStreamSubject extends Model
     ];
 
     protected $casts = [
-        'year_number'   => 'integer',
-        'sort_order'    => 'integer',
-        'is_chooseable' => 'boolean',
-        'is_active'     => 'boolean',
+        'course_stream_id' => 'integer',
+        'subject_id'       => 'integer',
+        'year_number'      => 'integer',
+        'sort_order'       => 'integer',
+        'is_chooseable'    => 'boolean',
+        'is_active'        => 'boolean',
     ];
 
-    const ROLE_MAJOR      = 'major';
-    const ROLE_MINOR      = 'minor';
-    const ROLE_COMPULSORY = 'compulsory';
-    const ROLE_OPTIONAL   = 'optional';
-    const ROLE_BOTH       = 'both'; // #1: ek student major le, dusra minor
+    public const ROLE_MAJOR      = 'major';
+    public const ROLE_MINOR      = 'minor';
+    public const ROLE_COMPULSORY = 'compulsory';
+    public const ROLE_OPTIONAL   = 'optional';
+    public const ROLE_BOTH       = 'both';
 
     public static function roles(): array
     {

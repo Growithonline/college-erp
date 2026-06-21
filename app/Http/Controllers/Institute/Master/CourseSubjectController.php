@@ -250,12 +250,16 @@ class CourseSubjectController extends Controller
     }
 
     // ── Destroy — remove subject from stream ─────────────────────────────
-    public function destroy(CourseStream $stream, CourseStreamSubject $mapping): RedirectResponse
+    public function destroy(Request $request, CourseStream $stream, CourseStreamSubject $mapping)
     {
         $this->authorizeStream($stream);
         abort_if($mapping->course_stream_id !== $stream->id, 403);
 
         $mapping->delete();
+
+        if ($request->ajax()) {
+            return response()->json(['success' => true]);
+        }
 
         return redirect()
             ->route('master.streams.subjects.index', $stream)

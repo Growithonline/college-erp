@@ -4,6 +4,26 @@
 
 @section('content')
 
+<style>
+.subj-row { transition: opacity .28s ease, transform .28s ease; }
+.subj-row.removing { opacity: 0; transform: translateX(-16px); pointer-events: none; }
+.subj-row.added    { animation: rowSlideIn .35s ease forwards; }
+@keyframes rowSlideIn {
+    from { opacity: 0; transform: translateX(14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+</style>
+
+{{-- Toast --}}
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1200;">
+    <div id="subjectToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive">
+        <div class="d-flex">
+            <div class="toast-body fw-semibold" id="toastMsg"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
 {{-- Header --}}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -213,7 +233,10 @@
                             </thead>
                             <tbody>
                                 @foreach($yearSubjects->sortBy('sort_order') as $mapping)
-                                <tr class="{{ !$mapping->is_active ? 'opacity-50' : '' }}">
+                                <tr class="subj-row {{ !$mapping->is_active ? 'opacity-50' : '' }}"
+                                    data-mapping-id="{{ $mapping->id }}"
+                                    data-year="{{ $mapping->year_number }}"
+                                    data-role="{{ $mapping->subject_role }}">
                                     <td class="text-muted small">{{ $mapping->sort_order }}</td>
                                     <td>
                                         <div class="fw-semibold small">
@@ -272,17 +295,14 @@
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             {{-- Delete button --}}
-                                            <form method="POST"
-                                                  action="{{ route('master.streams.subjects.destroy', [$stream, $mapping]) }}"
-                                                  onsubmit="return confirm('Remove this subject mapping?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                        class="btn btn-outline-danger btn-sm py-0 px-2"
-                                                        style="font-size:11px;">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-sm py-0 px-2"
+                                                    style="font-size:11px;"
+                                                    onclick="openDeleteModal(this)"
+                                                    data-delete-url="{{ route('master.streams.subjects.destroy', [$stream, $mapping]) }}"
+                                                    data-subject-name="{{ $mapping->subject->name ?? 'this subject' }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -344,6 +364,31 @@
     </div>
 </div>
 
+{{-- ── Delete Confirm Modal ── --}}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10"
+                          style="width:56px;height:56px;">
+                        <i class="bi bi-trash3-fill text-danger fs-4"></i>
+                    </span>
+                </div>
+                <h6 class="fw-bold mb-1">Remove Subject?</h6>
+                <p class="text-muted small mb-4" id="deleteSubjectName" style="min-height:1.2em;"></p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-4"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger btn-sm px-4" id="confirmDeleteBtn">
+                        <i class="bi bi-trash me-1"></i>Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Mapped subject+year combinations from PHP
 // Key format: "subject_id_year_number" e.g. "3_1"
@@ -395,12 +440,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function updateChooseable(select) {
     const checkbox = document.getElementById('is_chooseable');
-    if (select.value === 'compulsory') {
-        checkbox.checked = false;
-    } else {
-        // major, minor, optional, both — sab chooseable hote hain
-        checkbox.checked = true;
-    }
+    checkbox.checked = (select.value !== 'compulsory');
 }
 
 function openEditModal(mappingId, role, isChooseable, sortOrder) {
@@ -408,11 +448,126 @@ function openEditModal(mappingId, role, isChooseable, sortOrder) {
         '{{ route("master.streams.subjects.update", [$stream, "__ID__"]) }}'
         .replace('__ID__', mappingId);
 
-    document.getElementById('edit_role').value   = role;
+    document.getElementById('edit_role').value         = role;
     document.getElementById('edit_chooseable').checked = isChooseable;
-    document.getElementById('edit_sort').value   = sortOrder;
+    document.getElementById('edit_sort').value         = sortOrder;
 
     new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+// ── Delete Modal ──────────────────────────────────────────────────────────
+let _deleteUrl = null, _deleteRow = null, _deleteModal = null;
+
+function openDeleteModal(btn) {
+    _deleteUrl  = btn.dataset.deleteUrl;
+    _deleteRow  = btn.closest('tr');
+    // dataset reads HTML-decoded value safely — no XSS risk
+    document.getElementById('deleteSubjectName').textContent =
+        '"' + btn.dataset.subjectName + '" will be removed from this stream.';
+    _deleteModal = _deleteModal || new bootstrap.Modal(document.getElementById('deleteModal'));
+    _deleteModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    updateSubjectOptions();
+
+    // ── Confirm delete ────────────────────────────────────────────────────
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+        if (!_deleteUrl || !_deleteRow) return;
+
+        const btn = this;
+        btn.disabled    = true;
+        btn.innerHTML   = '<span class="spinner-border spinner-border-sm me-1"></span>Removing…';
+
+        const formData = new FormData();
+        formData.append('_token',  document.querySelector('meta[name="csrf-token"]').content);
+        formData.append('_method', 'DELETE');
+
+        fetch(_deleteUrl, {
+            method: 'POST',
+            body:   formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) throw new Error('Failed');
+
+            _deleteModal.hide();
+
+            // Animate row out
+            _deleteRow.classList.add('removing');
+            setTimeout(() => {
+                const year      = _deleteRow.dataset.year;
+                const role      = _deleteRow.dataset.role;
+                const tbody     = _deleteRow.closest('tbody');
+                _deleteRow.remove();
+
+                // Update nav pill badge
+                updateYearBadge(year, -1);
+                // Update role summary card
+                updateRoleSummary(year, role, -1);
+                // Show empty state if no rows left
+                if (tbody && tbody.querySelectorAll('tr').length === 0) {
+                    showEmptyState(year);
+                }
+                showToast('Subject removed successfully!', 'success');
+            }, 290);
+        })
+        .catch(() => showToast('Something went wrong. Please try again.', 'danger'))
+        .finally(() => {
+            btn.disabled  = false;
+            btn.innerHTML = '<i class="bi bi-trash me-1"></i>Remove';
+        });
+    });
+
+    // ── Add form loading state ────────────────────────────────────────────
+    document.querySelector('form[action*="subjects"]').addEventListener('submit', function () {
+        const btn = document.getElementById('addSubjectBtn');
+        btn.disabled  = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding…';
+    });
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function showToast(msg, type) {
+    const el = document.getElementById('subjectToast');
+    el.className = 'toast align-items-center text-white border-0 bg-' + type;
+    document.getElementById('toastMsg').textContent = msg;
+    bootstrap.Toast.getOrCreateInstance(el, { delay: 3000 }).show();
+}
+
+function updateYearBadge(year, delta) {
+    const btn = document.querySelector('#yearTabs button[data-bs-target="#year' + year + '"]');
+    if (!btn) return;
+    const badge = btn.querySelector('.badge');
+    if (badge) badge.textContent = Math.max(0, parseInt(badge.textContent || '0') + delta);
+}
+
+function updateRoleSummary(year, role, delta) {
+    const pane = document.getElementById('year' + year);
+    if (!pane) return;
+    const cards = pane.querySelectorAll('.card .fw-bold');
+    const labels = ['major', 'minor', 'compulsory', 'optional'];
+    cards.forEach((card, i) => {
+        if (labels[i] === role) {
+            card.textContent = Math.max(0, parseInt(card.textContent || '0') + delta);
+        }
+    });
+}
+
+function showEmptyState(year) {
+    const pane = document.getElementById('year' + year);
+    if (!pane) return;
+    const table = pane.querySelector('.card.border-0.shadow-sm');
+    if (table) {
+        table.outerHTML = `<div class="card border-0 shadow-sm">
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                No subjects mapped for Year ${year}.<br>
+                <small>Add subjects from the left panel.</small>
+            </div>
+        </div>`;
+    }
 }
 </script>
 

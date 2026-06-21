@@ -153,13 +153,13 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('streams/subjects/for-admission',
             [CourseSubjectController::class, 'getSubjectsForAdmission']
-        )->name('streams.subjects.for-admission');
+        )->name('streams.subjects.for-admission')->middleware('throttle:60,1');
         Route::get('streams/{stream}/subjects',        [CourseSubjectController::class, 'index'])->name('streams.subjects.index');
-        Route::post('streams/{stream}/subjects',       [CourseSubjectController::class, 'store'])->name('streams.subjects.store');
-        Route::post('streams/{stream}/subjects/bulk',  [CourseSubjectController::class, 'bulkStore'])->name('streams.subjects.bulk-store');
-        Route::patch('streams/{stream}/subjects/{mapping}/toggle', [CourseSubjectController::class, 'toggle'])->name('streams.subjects.toggle');
-        Route::patch('streams/{stream}/subjects/{mapping}',        [CourseSubjectController::class, 'update'])->name('streams.subjects.update');
-        Route::delete('streams/{stream}/subjects/{mapping}',       [CourseSubjectController::class, 'destroy'])->name('streams.subjects.destroy');
+        Route::post('streams/{stream}/subjects',       [CourseSubjectController::class, 'store'])->name('streams.subjects.store')->middleware('throttle:30,1');
+        Route::post('streams/{stream}/subjects/bulk',  [CourseSubjectController::class, 'bulkStore'])->name('streams.subjects.bulk-store')->middleware('throttle:10,1');
+        Route::patch('streams/{stream}/subjects/{mapping}/toggle', [CourseSubjectController::class, 'toggle'])->name('streams.subjects.toggle')->middleware('throttle:30,1');
+        Route::patch('streams/{stream}/subjects/{mapping}',        [CourseSubjectController::class, 'update'])->name('streams.subjects.update')->middleware('throttle:30,1');
+        Route::delete('streams/{stream}/subjects/{mapping}',       [CourseSubjectController::class, 'destroy'])->name('streams.subjects.destroy')->middleware('throttle:30,1');
 
         Route::resource('subjects', SubjectController::class);
         Route::post('subjects/{subject}/toggle-status', [SubjectController::class, 'toggleStatus'])
