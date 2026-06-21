@@ -69,24 +69,24 @@ class CourseSubjectController extends Controller
         ));
     }
 
-    // ── Store — add a single subject to stream ───────────────────────────
+    // ── Store — add a single subject (or to all years) ──────────────────
     public function store(Request $request, CourseStream $stream): RedirectResponse
     {
         $this->authorizeStream($stream);
 
-        // Strict validation — SQL injection protection via Laravel validation
+        $maxDuration = (int) ($stream->course->duration ?? 10);
+
         $validated = $request->validate([
             'subject_id'   => [
                 'required',
                 'integer',
-                // Only subjects from THIS institute allowed — prevents injection
                 Rule::exists('subjects', 'id')->where('institute_id', $this->instituteId()),
             ],
             'year_number'  => [
                 'required',
                 'integer',
-                'min:1',
-                'max:' . ($stream->course->duration ?? 10),
+                'min:0',   // 0 = all years
+                'max:' . $maxDuration,
             ],
             'subject_role' => [
                 'required',
@@ -96,10 +96,56 @@ class CourseSubjectController extends Controller
             'sort_order'    => 'nullable|integer|min:0|max:999',
         ]);
 
-        // Check duplicate — same subject+year already exists?
+        $yearNumber = (int) $validated['year_number'];
+
+        // ── All Years mode ────────────────────────────────────────────────
+        if ($yearNumber === 0) {
+            $years       = range(1, $maxDuration);
+            $addedCount  = 0;
+            $skippedCount = 0;
+
+            DB::transaction(function () use ($stream, $years, $validated, $request, &$addedCount, &$skippedCount) {
+                foreach ($years as $y) {
+                    $exists = CourseStreamSubject::where('course_stream_id', $stream->id)
+                        ->where('subject_id',  (int) $validated['subject_id'])
+                        ->where('year_number', $y)
+                        ->exists();
+
+                    if ($exists) {
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    CourseStreamSubject::create([
+                        'course_stream_id' => $stream->id,
+                        'subject_id'       => (int) $validated['subject_id'],
+                        'year_number'      => $y,
+                        'subject_role'     => $validated['subject_role'],
+                        'is_chooseable'    => $request->boolean('is_chooseable', true),
+                        'sort_order'       => $validated['sort_order'] ?? 0,
+                        'is_active'        => true,
+                    ]);
+                    $addedCount++;
+                }
+            });
+
+            $msg = $addedCount > 0
+                ? "Subject added to {$addedCount} year(s) successfully!"
+                : 'Subject was already mapped in all years — nothing added.';
+
+            if ($addedCount > 0 && $skippedCount > 0) {
+                $msg = "Subject added to {$addedCount} year(s). {$skippedCount} year(s) already had this subject (skipped).";
+            }
+
+            return redirect()
+                ->route('master.streams.subjects.index', $stream)
+                ->with('success', $msg);
+        }
+
+        // ── Single Year mode ──────────────────────────────────────────────
         $exists = CourseStreamSubject::where('course_stream_id', $stream->id)
             ->where('subject_id',  $validated['subject_id'])
-            ->where('year_number', $validated['year_number'])
+            ->where('year_number', $yearNumber)
             ->exists();
 
         if ($exists) {
@@ -111,7 +157,7 @@ class CourseSubjectController extends Controller
         CourseStreamSubject::create([
             'course_stream_id' => $stream->id,
             'subject_id'       => $validated['subject_id'],
-            'year_number'      => $validated['year_number'],
+            'year_number'      => $yearNumber,
             'subject_role'     => $validated['subject_role'],
             'is_chooseable'    => $request->boolean('is_chooseable', true),
             'sort_order'       => $validated['sort_order'] ?? 0,

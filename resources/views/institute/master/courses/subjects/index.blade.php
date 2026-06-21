@@ -53,6 +53,9 @@
                         <select name="year_number" id="year_select"
                                 class="form-select form-select-sm @error('year_number') is-invalid @enderror"
                                 onchange="updateSubjectOptions()" required>
+                            <option value="0" {{ old('year_number', 1) == 0 ? 'selected' : '' }}>
+                                All Years (add to every year)
+                            </option>
                             @foreach($years as $y)
                             <option value="{{ $y }}" {{ old('year_number', 1) == $y ? 'selected' : '' }}>
                                 Year {{ $y }}
@@ -140,7 +143,7 @@
                                min="0" max="999">
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <button type="submit" id="addSubjectBtn" class="btn btn-primary btn-sm w-100">
                         <i class="bi bi-plus-lg me-1"></i> Add Subject
                     </button>
                 </form>
@@ -345,25 +348,43 @@
 // Mapped subject+year combinations from PHP
 // Key format: "subject_id_year_number" e.g. "3_1"
 const mappedSubjectYears = @json($mappedSubjectYears);
+const allYears = @json($years);
 
 // Year change hone pe subjects ko enable/disable karo
 function updateSubjectOptions() {
-    const year      = document.getElementById('year_select').value;
-    const selectEl  = document.getElementById('subject_select');
-    const current   = selectEl.value;
+    const year     = document.getElementById('year_select').value;
+    const selectEl = document.getElementById('subject_select');
+    const btn      = document.getElementById('addSubjectBtn');
 
     Array.from(selectEl.options).forEach(opt => {
         if (!opt.value) return;
-        const key     = opt.value + '_' + year;
-        const isMapped = mappedSubjectYears[key] === true;
-        const baseName = opt.getAttribute('data-name') || opt.text.replace(' — Already Added', '');
-        opt.disabled  = isMapped;
-        opt.text      = isMapped ? baseName + ' — Already Added' : baseName;
+        const baseName = opt.getAttribute('data-name') ||
+            opt.text.replace(' — Already Added', '').replace(' — All years mapped', '');
+
+        if (year === '0') {
+            // "All Years" — disable only if subject is mapped in EVERY year
+            const mappedInAll = allYears.every(y => mappedSubjectYears[opt.value + '_' + y] === true);
+            opt.disabled = mappedInAll;
+            opt.text     = mappedInAll ? baseName + ' — All years mapped' : baseName;
+        } else {
+            const isMapped = mappedSubjectYears[opt.value + '_' + year] === true;
+            opt.disabled = isMapped;
+            opt.text     = isMapped ? baseName + ' — Already Added' : baseName;
+        }
     });
 
     // Reset selection agar selected option disable ho gayi
     if (selectEl.value && selectEl.options[selectEl.selectedIndex]?.disabled) {
         selectEl.value = '';
+    }
+
+    // Button text update
+    if (year === '0') {
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i> Add to All Years';
+        btn.classList.replace('btn-primary', 'btn-success');
+    } else {
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i> Add Subject';
+        btn.classList.replace('btn-success', 'btn-primary');
     }
 }
 
