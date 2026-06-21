@@ -71,7 +71,7 @@
                     {{-- Duration Type --}}
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Duration In <span class="text-danger">*</span></label>
-                        <select name="duration_type" class="form-select @error('duration_type') is-invalid @enderror">
+                        <select name="duration_type" id="durationType" class="form-select @error('duration_type') is-invalid @enderror" onchange="onDurationTypeChange()">
                             <option value="year"  {{ old('duration_type', $course->duration_type ?? 'year') == 'year'  ? 'selected' : '' }}>Years</option>
                             <option value="month" {{ old('duration_type', $course->duration_type ?? '')     == 'month' ? 'selected' : '' }}>Months</option>
                         </select>
@@ -81,16 +81,27 @@
                     {{-- Structure Type --}}
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Structure <span class="text-danger">*</span></label>
-                        <select name="structure_type" id="structureType" class="form-select @error('structure_type') is-invalid @enderror">
-                            <option value="semester" {{ old('structure_type', $course->structure_type ?? '') == 'semester' ? 'selected' : '' }}>Semester</option>
-                            <option value="yearly"   {{ old('structure_type', $course->structure_type ?? '') == 'yearly'   ? 'selected' : '' }}>Yearly</option>
-                            <option value="modular"  {{ old('structure_type', $course->structure_type ?? '') == 'modular'  ? 'selected' : '' }}>Modular (Monthly)</option>
+                        <select name="structure_type" id="structureType" class="form-select @error('structure_type') is-invalid @enderror" onchange="onStructureChange()">
+                            <option value="semester"  {{ old('structure_type', $course->structure_type ?? '') == 'semester'  ? 'selected' : '' }}>Semester</option>
+                            <option value="yearly"    {{ old('structure_type', $course->structure_type ?? '') == 'yearly'    ? 'selected' : '' }}>Yearly</option>
+                            <option value="trimester" {{ old('structure_type', $course->structure_type ?? '') == 'trimester' ? 'selected' : '' }}>Trimester</option>
+                            <option value="modular"   {{ old('structure_type', $course->structure_type ?? '') == 'modular'   ? 'selected' : '' }}>Modular (Monthly)</option>
                         </select>
                         @error('structure_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    {{-- Max ATKT --}}
-                    <div class="col-md-3">
+                    {{-- Semesters per Year (conditional) --}}
+                    <div class="col-md-3" id="spyWrapper">
+                        <label class="form-label fw-semibold">Parts per Year <span class="text-danger">*</span></label>
+                        <input type="number" name="semesters_per_year" id="semestersPerYear" min="1" max="12"
+                               value="{{ old('semesters_per_year', $course->semesters_per_year ?? 2) }}"
+                               class="form-control @error('semesters_per_year') is-invalid @enderror">
+                        <small class="text-muted" id="spyHint">Semesters in one academic year</small>
+                        @error('semesters_per_year') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    {{-- Max ATKT (hidden for modular) --}}
+                    <div class="col-md-3" id="atktWrapper">
                         <label class="form-label fw-semibold">Max ATKT Allowed</label>
                         <input type="number" name="max_atkt_allowed" min="0" max="10"
                                value="{{ old('max_atkt_allowed', $course->max_atkt_allowed ?? 2) }}"
@@ -99,8 +110,16 @@
                         @error('max_atkt_allowed') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    {{-- Lateral Entry --}}
-                    <div class="col-12">
+                    {{-- Short-term info banner (shown for modular) --}}
+                    <div class="col-12" id="shortTermBanner" style="display:none;">
+                        <div class="alert alert-info py-2 mb-0 small border-0">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Short-term Course:</strong> No semester promotion applies. Students complete the course at end of duration. Fee is charged one-time at admission.
+                        </div>
+                    </div>
+
+                    {{-- Lateral Entry (hidden for modular) --}}
+                    <div class="col-12" id="lateralWrapper">
                         <div class="form-check form-switch mt-2">
                             <input class="form-check-input" type="checkbox" name="lateral_entry_allowed"
                                    id="lateralEntry" value="1"
@@ -135,4 +154,65 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function onStructureChange() {
+    const structure = document.getElementById('structureType').value;
+    const spyWrapper   = document.getElementById('spyWrapper');
+    const spyInput     = document.getElementById('semestersPerYear');
+    const spyHint      = document.getElementById('spyHint');
+    const atktWrapper  = document.getElementById('atktWrapper');
+    const lateralWrap  = document.getElementById('lateralWrapper');
+    const lateralPart  = document.getElementById('lateralPart');
+    const shortTermBanner = document.getElementById('shortTermBanner');
+
+    // Reset visibility
+    spyWrapper.style.display    = 'block';
+    atktWrapper.style.display   = 'block';
+    lateralWrap.style.display   = 'block';
+    shortTermBanner.style.display = 'none';
+
+    if (structure === 'semester') {
+        spyInput.value = spyInput.value || 2;
+        spyInput.readOnly = false;
+        spyHint.textContent = 'Semesters in one academic year (e.g. 2)';
+    } else if (structure === 'trimester') {
+        spyInput.value = 3;
+        spyInput.readOnly = true;
+        spyHint.textContent = 'Trimesters per year — fixed at 3';
+    } else if (structure === 'yearly') {
+        spyWrapper.style.display = 'none';
+        spyInput.value = 1;
+    } else if (structure === 'modular') {
+        spyWrapper.style.display    = 'none';
+        atktWrapper.style.display   = 'none';
+        lateralWrap.style.display   = 'none';
+        lateralPart.style.display   = 'none';
+        shortTermBanner.style.display = 'block';
+        spyInput.value = 0;
+    }
+}
+
+function onDurationTypeChange() {
+    const durationType = document.getElementById('durationType').value;
+    const structureSelect = document.getElementById('structureType');
+
+    if (durationType === 'month') {
+        // Lock to modular for month-based courses
+        structureSelect.value = 'modular';
+        onStructureChange();
+    }
+}
+
+// Run on page load to set correct initial state
+document.addEventListener('DOMContentLoaded', function () {
+    onStructureChange();
+    // If duration type is months, also trigger that logic
+    if (document.getElementById('durationType').value === 'month') {
+        onDurationTypeChange();
+    }
+});
+</script>
+@endpush
 @endsection

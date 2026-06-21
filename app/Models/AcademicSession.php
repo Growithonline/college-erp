@@ -9,10 +9,11 @@ class AcademicSession extends Model
     protected $fillable = [
         'institute_id',
         'name',
+        'academic_year',
         'start_date',
         'end_date',
         'is_active',
-        'current_semester',   // Bug #5 Fix: fillable mein add kiya
+        'current_semester',
     ];
 
     protected $casts = [

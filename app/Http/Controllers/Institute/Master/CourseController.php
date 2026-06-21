@@ -29,13 +29,14 @@ class CourseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'course_type_id'   => ['required', Rule::exists('course_types', 'id')->where('institute_id', auth()->user()->institute_id)],
-            'name'             => 'required|string|max:100',
-            'code'             => 'required|string|max:20',
-            'duration'         => 'required|integer|min:1',
-            'duration_type'    => 'required|in:year,month',
-            'structure_type'   => 'required|in:semester,yearly,modular',
-            'max_atkt_allowed' => 'required|integer|min:0|max:10',
+            'course_type_id'     => ['required', Rule::exists('course_types', 'id')->where('institute_id', auth()->user()->institute_id)],
+            'name'               => 'required|string|max:100',
+            'code'               => 'required|string|max:20',
+            'duration'           => 'required|integer|min:1',
+            'duration_type'      => 'required|in:year,month',
+            'structure_type'     => 'required|in:semester,yearly,modular,trimester',
+            'semesters_per_year' => 'nullable|integer|min:0|max:12',
+            'max_atkt_allowed'   => 'required|integer|min:0|max:10',
         ]);
 
         $instituteId = auth()->user()->institute_id;
@@ -45,6 +46,7 @@ class CourseController extends Controller
         }
 
         DB::transaction(function () use ($request, $instituteId) {
+            $spy = self::resolveSemestersPerYear($request->structure_type, (int) $request->semesters_per_year);
 
             $course = Course::create([
                 'institute_id'             => $instituteId,
@@ -54,6 +56,7 @@ class CourseController extends Controller
                 'duration'                 => $request->duration,
                 'duration_type'            => $request->duration_type,
                 'structure_type'           => $request->structure_type,
+                'semesters_per_year'       => $spy,
                 'max_atkt_allowed'         => $request->max_atkt_allowed,
                 'lateral_entry_allowed'    => $request->boolean('lateral_entry_allowed'),
                 'lateral_entry_start_part' => $request->lateral_entry_start_part,
@@ -79,21 +82,23 @@ class CourseController extends Controller
     {
         $this->authorizeCourse($course);
         $request->validate([
-            'course_type_id'   => ['required', Rule::exists('course_types', 'id')->where('institute_id', auth()->user()->institute_id)],
-            'name'             => 'required|string|max:100',
-            'code'             => 'required|string|max:20',
-            'duration'         => 'required|integer|min:1',
-            'duration_type'    => 'required|in:year,month',
-            'structure_type'   => 'required|in:semester,yearly,modular',
-            'max_atkt_allowed' => 'required|integer|min:0|max:10',
+            'course_type_id'     => ['required', Rule::exists('course_types', 'id')->where('institute_id', auth()->user()->institute_id)],
+            'name'               => 'required|string|max:100',
+            'code'               => 'required|string|max:20',
+            'duration'           => 'required|integer|min:1',
+            'duration_type'      => 'required|in:year,month',
+            'structure_type'     => 'required|in:semester,yearly,modular,trimester',
+            'semesters_per_year' => 'nullable|integer|min:0|max:12',
+            'max_atkt_allowed'   => 'required|integer|min:0|max:10',
         ]);
 
-        $oldDuration      = $course->duration;
-        $oldStructure     = $course->structure_type;
-        $newDuration      = (int) $request->duration;
-        $newStructure     = $request->structure_type;
+        $oldDuration  = $course->duration;
+        $oldStructure = $course->structure_type;
+        $newDuration  = (int) $request->duration;
+        $newStructure = $request->structure_type;
 
         DB::transaction(function () use ($request, $course, $oldDuration, $oldStructure, $newDuration, $newStructure) {
+            $spy = self::resolveSemestersPerYear($newStructure, (int) $request->semesters_per_year);
 
             $course->update([
                 'course_type_id'           => $request->course_type_id,
@@ -102,6 +107,7 @@ class CourseController extends Controller
                 'duration'                 => $newDuration,
                 'duration_type'            => $request->duration_type,
                 'structure_type'           => $newStructure,
+                'semesters_per_year'       => $spy,
                 'max_atkt_allowed'         => $request->max_atkt_allowed,
                 'lateral_entry_allowed'    => $request->boolean('lateral_entry_allowed'),
                 'lateral_entry_start_part' => $request->lateral_entry_start_part,
@@ -138,49 +144,67 @@ class CourseController extends Controller
         return back()->with('success', 'Status updated!');
     }
 
+    // ── Resolve semesters_per_year from structure type ───────────────────
+    // yearly=1, modular=0 (no semester cycle), trimester=3, semester=user value (default 2)
+    public static function resolveSemestersPerYear(string $structureType, int $requested = 0): int
+    {
+        return match ($structureType) {
+            'yearly'    => 1,
+            'modular'   => 0,
+            'trimester' => 3,
+            default     => $requested > 0 ? $requested : 2,
+        };
+    }
+
     // ── Auto-generate CourseParts ────────────────────────────────────────
-    // Generates Year/Semester parts based on duration and structure_type.
+    // Generates parts based on duration, structure_type, and semesters_per_year.
     //
     // Examples:
-    //   BA (3 year, yearly)   → Year 1, Year 2, Year 3
-    //   BA (3 year, semester) → Sem 1, Sem 2, Sem 3, Sem 4, Sem 5, Sem 6
-    //   MA (2 year, semester) → Sem 1, Sem 2, Sem 3, Sem 4
+    //   BA  (3yr, semester, spy=2) → Semester 1 … Semester 6
+    //   BS  (4yr, trimester, spy=3) → Trimester 1 … Trimester 12
+    //   BEd (2yr, yearly, spy=1)   → Year 1, Year 2
+    //   Cert (3mo, modular)        → Month 1, Month 2, Month 3
     //
     // $onlyMissing = true  → add only parts that don't exist yet (used on update)
     // $onlyMissing = false → create all parts (used on initial creation)
     public static function generateCourseParts(Course $course, bool $onlyMissing = false): void
     {
         $duration  = (int) $course->duration;
-        $structure = $course->structure_type; // semester | yearly | modular
+        $structure = $course->structure_type;
+        $spy       = $course->effectiveSemestersPerYear();
 
         $parts = [];
 
-        if ($structure === 'semester') {
-            // month-type: 6 months = 1 semester; year-type: 1 year = 2 semesters
-            $totalSems = $course->duration_type === 'month'
-                ? max(1, (int) ceil($duration / 6))
-                : $duration * 2;
-            for ($sem = 1; $sem <= $totalSems; $sem++) {
-                $year = (int) ceil($sem / 2); // sem 1,2 = year 1; sem 3,4 = year 2; etc.
-                $parts[] = [
-                    'part_number' => $sem,
-                    'part_name'   => "Semester {$sem}",
-                    'year_number' => $year,
-                ];
+        if ($structure === 'semester' || $structure === 'trimester') {
+            // Total parts = years × semesters_per_year
+            $totalParts = $course->duration_type === 'month'
+                ? max(1, (int) ceil($duration * $spy / 12))
+                : $duration * $spy;
+
+            $label = $structure === 'trimester' ? 'Trimester' : 'Semester';
+
+            for ($i = 1; $i <= $totalParts; $i++) {
+                $year    = (int) ceil($i / $spy);
+                $parts[] = ['part_number' => $i, 'part_name' => "{$label} {$i}", 'year_number' => $year];
+            }
+        } elseif ($structure === 'modular') {
+            // One part per month for short-term courses
+            $totalMonths = $course->duration_type === 'month'
+                ? $duration
+                : $duration * 12;
+
+            for ($m = 1; $m <= $totalMonths; $m++) {
+                $parts[] = ['part_number' => $m, 'part_name' => "Month {$m}", 'year_number' => $m];
             }
         } else {
-            // yearly / modular — one part per year
-            // month-type: 12 months = 1 year part
+            // yearly — one part per year
             $totalYears = $course->duration_type === 'month'
                 ? max(1, (int) ceil($duration / 12))
                 : $duration;
+
             for ($y = 1; $y <= $totalYears; $y++) {
-                $suffix = match($y) { 1 => '1st', 2 => '2nd', 3 => '3rd', default => "{$y}th" };
-                $parts[] = [
-                    'part_number' => $y,
-                    'part_name'   => "Year {$y} ({$suffix} Year)",
-                    'year_number' => $y,
-                ];
+                $suffix  = match ($y) { 1 => '1st', 2 => '2nd', 3 => '3rd', default => "{$y}th" };
+                $parts[] = ['part_number' => $y, 'part_name' => "Year {$y} ({$suffix} Year)", 'year_number' => $y];
             }
         }
 

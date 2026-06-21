@@ -25,9 +25,10 @@ class AcademicSessionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'       => 'required|string|max:20',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after:start_date',
+            'name'          => 'required|string|max:20',
+            'academic_year' => 'nullable|string|max:10|regex:/^\d{4}-\d{2,4}$/',
+            'start_date'    => 'required|date',
+            'end_date'      => 'required|date|after:start_date',
         ]);
 
         $instituteId = auth()->user()->institute_id;
@@ -44,11 +45,12 @@ class AcademicSessionController extends Controller
         $isFirst = AcademicSession::where('institute_id', $instituteId)->count() === 0;
 
         $session = AcademicSession::create([
-            'institute_id' => $instituteId,
-            'name'         => $request->name,
-            'start_date'   => $request->start_date,
-            'end_date'     => $request->end_date,
-            'is_active'    => $isFirst, // pehli session auto-active
+            'institute_id'  => $instituteId,
+            'name'          => $request->name,
+            'academic_year' => $request->academic_year ?: null,
+            'start_date'    => $request->start_date,
+            'end_date'      => $request->end_date,
+            'is_active'     => $isFirst,
         ]);
 
         return redirect()->route('master.sessions.index')
@@ -66,15 +68,17 @@ class AcademicSessionController extends Controller
         $this->authorizeSession($session);
 
         $request->validate([
-            'name'       => 'required|string|max:20',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after:start_date',
+            'name'          => 'required|string|max:20',
+            'academic_year' => 'nullable|string|max:10|regex:/^\d{4}-\d{2,4}$/',
+            'start_date'    => 'required|date',
+            'end_date'      => 'required|date|after:start_date',
         ]);
 
         $session->update([
-            'name'       => $request->name,
-            'start_date' => $request->start_date,
-            'end_date'   => $request->end_date,
+            'name'          => $request->name,
+            'academic_year' => $request->academic_year ?: null,
+            'start_date'    => $request->start_date,
+            'end_date'      => $request->end_date,
         ]);
 
         return redirect()->route('master.sessions.index')

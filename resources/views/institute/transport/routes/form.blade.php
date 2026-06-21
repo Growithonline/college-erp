@@ -56,7 +56,7 @@
         <div class="col-md-2">
             <label class="form-label">Billing</label>
             <select name="billing_frequency" class="form-select">
-                @foreach(['one_time' => 'One Time', 'monthly' => 'Monthly', 'quarterly' => 'Quarterly', 'semester' => 'Per Semester'] as $val => $label)
+                @foreach(['one_time' => 'One Time', 'monthly' => 'Monthly', 'quarterly' => 'Quarterly', 'semester' => 'Per Semester', 'yearly' => 'Yearly (once/year)'] as $val => $label)
                     <option value="{{ $val }}" {{ old('billing_frequency', $route->billing_frequency ?? 'one_time') === $val ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>

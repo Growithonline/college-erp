@@ -29,7 +29,6 @@ use Illuminate\Support\Str;
 
 class PromotionController extends Controller
 {
-    private const SEMESTERS_PER_YEAR = 2;
     private const TERMINAL_STATUSES = ['passed_out', 'backlog', 'failed', 'dropped'];
 
     private function hasPromotionLogColumn(): bool
@@ -142,20 +141,26 @@ class PromotionController extends Controller
         return Auth::guard('staff')->check() ? 'staff' : 'institute';
     }
 
-    private function partSemesterBounds(?CoursePart $part): array
+    private function semestersPerYear(Student $student): int
     {
+        return $student->stream?->course?->effectiveSemestersPerYear() ?? 2;
+    }
+
+    private function partSemesterBounds(?CoursePart $part, Student $student): array
+    {
+        $spy        = $this->semestersPerYear($student);
         $yearNumber = max(1, (int) ($part?->year_number ?? 1));
-        $start = (($yearNumber - 1) * self::SEMESTERS_PER_YEAR) + 1;
+        $start      = (($yearNumber - 1) * $spy) + 1;
 
         return [
             'start' => $start,
-            'end'   => $yearNumber * self::SEMESTERS_PER_YEAR,
+            'end'   => $yearNumber * $spy,
         ];
     }
 
     private function currentPartBounds(Student $student): array
     {
-        return $this->partSemesterBounds($student->coursePart);
+        return $this->partSemesterBounds($student->coursePart, $student);
     }
 
     private function coursePartsForStudent(Student $student)
@@ -183,11 +188,12 @@ class PromotionController extends Controller
             return null;
         }
 
-        $targetSemester = max(1, $targetSemester);
-        $targetYearNumber = (int) ceil($targetSemester / self::SEMESTERS_PER_YEAR);
-        $structureType = strtolower((string) ($student->stream?->course?->structure_type ?? ''));
+        $targetSemester   = max(1, $targetSemester);
+        $spy              = $this->semestersPerYear($student);
+        $targetYearNumber = (int) ceil($targetSemester / max(1, $spy));
+        $structureType    = strtolower((string) ($student->stream?->course?->structure_type ?? ''));
 
-        if ($structureType === 'semester') {
+        if ($structureType === 'semester' || $structureType === 'trimester') {
             $semesterPart = $parts->first(
                 fn($part) => (int) $part->part_number === $targetSemester
             );
@@ -204,7 +210,12 @@ class PromotionController extends Controller
 
     private function canSemesterPromote(Student $student): bool
     {
-        $bounds = $this->currentPartBounds($student);
+        // Short-term (modular) courses have no semester promotion
+        if ($student->stream?->course?->isShortTerm()) {
+            return false;
+        }
+
+        $bounds          = $this->currentPartBounds($student);
         $currentSemester = (int) $student->current_semester;
 
         return $currentSemester >= $bounds['start'] && $currentSemester < $bounds['end'];
@@ -212,9 +223,20 @@ class PromotionController extends Controller
 
     private function canSessionPromote(Student $student): bool
     {
+        // Short-term (modular) courses have no session promotion either
+        if ($student->stream?->course?->isShortTerm()) {
+            return false;
+        }
+
         $bounds = $this->currentPartBounds($student);
 
         return (int) $student->current_semester === $bounds['end'];
+    }
+
+    private function canMarkComplete(Student $student): bool
+    {
+        return $student->stream?->course?->isShortTerm()
+            && $student->status === 'active';
     }
 
     private function nextSemester(Student $student): int
@@ -757,6 +779,49 @@ class PromotionController extends Controller
         return response()->json(['parts' => $parts]);
     }
 
+    // ── Short-term Course Completion ─────────────────────────────────────
+    // Used for modular/certificate courses that have no semester promotion.
+    public function markComplete(Request $request, Student $student)
+    {
+        $this->ensurePromotionAccess();
+        $this->ensureStaffCanAccessStudent($student);
+
+        abort_unless($student->institute_id === $this->instituteId(), 403);
+        abort_unless($student->stream?->course?->isShortTerm(), 422, 'Only short-term (modular) courses can be marked complete via this action.');
+        abort_unless($student->status === 'active', 422, 'Student is not active.');
+
+        $data = $request->validate([
+            'completion_status' => ['required', 'in:passed_out,failed,dropped'],
+            'remarks'           => ['nullable', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($student, $data) {
+            $student->update([
+                'status'  => $data['completion_status'],
+            ]);
+
+            PromotionLog::create([
+                'institute_id'        => $student->institute_id,
+                'student_id'          => $student->id,
+                'promotion_type'      => 'session',
+                'from_session_id'     => $student->academic_session_id,
+                'from_course_part_id' => $student->course_part_id,
+                'from_semester'       => $student->current_semester,
+                'to_session_id'       => $student->academic_session_id,
+                'to_course_part_id'   => $student->course_part_id,
+                'to_semester'         => $student->current_semester,
+                'dues_carried_forward'=> 0,
+                'status'              => $data['completion_status'],
+                'terminal_status'     => $data['completion_status'],
+                'remarks'             => $data['remarks'] ?? 'Short-term course completed.',
+                'promoted_by'         => $this->promotedBy(),
+                'promoted_by_role'    => $this->promotedByRole(),
+            ]);
+        });
+
+        return back()->with('success', "Student marked as {$data['completion_status']} successfully.");
+    }
+
     public function checkStudentStatus(Request $request)
     {
         $this->ensurePromotionAccess();
@@ -783,6 +848,7 @@ class PromotionController extends Controller
                 'current_sem'          => $student->current_semester,
                 'can_semester_promote' => $check['can_semester_promote'],
                 'can_session_promote'  => $check['can_session_promote'],
+                'can_mark_complete'    => $this->canMarkComplete($student),
                 'is_last'              => $check['is_last'],
                 'next_part'            => $check['next_part']?->part_name,
                 'next_semester'        => $check['next_semester'],

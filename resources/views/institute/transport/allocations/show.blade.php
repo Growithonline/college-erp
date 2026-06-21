@@ -8,8 +8,11 @@
         <h4 class="mb-0 fw-bold">{{ $allocation->student?->name ?? 'Student' }}</h4>
         <small class="text-muted">{{ $allocation->route?->name ?? 'Route' }} | {{ $allocation->stop?->stop_name ?? 'No stop' }}</small>
     </div>
-    @if($allocation->is_active)
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('transport.allocations.pdf', $allocation) }}" class="btn btn-outline-danger btn-sm" target="_blank">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+        </a>
+        @if($allocation->is_active)
         <a href="{{ route('transport.allocations.edit', $allocation) }}" class="btn btn-outline-primary btn-sm">Edit</a>
         <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#transferModal">Change Route</button>
         <form method="POST" action="{{ route('transport.allocations.close', $allocation) }}"
@@ -17,8 +20,8 @@
             @csrf
             <button class="btn btn-outline-secondary btn-sm">Close</button>
         </form>
+        @endif
     </div>
-    @endif
 </div>
 
 <div class="row g-4">
@@ -42,7 +45,7 @@
                     <strong>Transport fee collect karne ke liye</strong> main Fee Collection page use karein.<br>
                     Student search karein — Transport Fee automatically line item mein aayegi.
                 </div>
-                <a href="/fee/collect?student_id={{ $allocation->student_id }}" class="btn btn-primary w-100 mt-2">
+                <a href="{{ route('fee.create', ['student_id' => $allocation->student_id]) }}" class="btn btn-primary w-100 mt-2">
                     Go to Fee Collection
                 </a>
             </div>
@@ -79,6 +82,61 @@
         </div>
     </div>
 </div>
+{{-- Route Change History --}}
+@if($history->count() > 1)
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-arrow-left-right me-2 text-warning"></i>Route Change History
+        <span class="badge bg-secondary ms-2">{{ $history->count() }} allocations</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Session</th>
+                    <th>Route</th>
+                    <th>Stop</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th class="text-end">Fee</th>
+                    <th class="text-end">Paid</th>
+                    <th class="text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($history as $i => $h)
+                <tr class="{{ $h->id === $allocation->id ? 'table-primary fw-semibold' : '' }}">
+                    <td>{{ $i + 1 }}</td>
+                    <td><small>{{ $h->session?->name ?? '—' }}</small></td>
+                    <td>
+                        {{ $h->route?->name ?? '—' }}
+                        @if($h->route?->route_code)
+                            <small class="text-muted">({{ $h->route->route_code }})</small>
+                        @endif
+                    </td>
+                    <td><small>{{ $h->stop?->stop_name ?? '—' }}</small></td>
+                    <td><small>{{ $h->start_date?->format('d M Y') ?? '—' }}</small></td>
+                    <td><small>{{ $h->end_date?->format('d M Y') ?? '—' }}</small></td>
+                    <td class="text-end small">₹{{ number_format((float) $h->fee_amount, 2) }}</td>
+                    <td class="text-end small text-success">₹{{ number_format((float) $h->paid_amount, 2) }}</td>
+                    <td class="text-center">
+                        @if($h->is_active)
+                            <span class="badge bg-success">Active</span>
+                        @elseif($h->status === 'closed')
+                            <span class="badge bg-secondary">Closed</span>
+                        @else
+                            <span class="badge bg-warning text-dark">{{ ucfirst($h->status) }}</span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 {{-- Route Transfer Modal --}}
 @if($allocation->is_active)
 <div class="modal fade" id="transferModal" tabindex="-1">

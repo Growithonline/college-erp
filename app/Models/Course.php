@@ -14,6 +14,7 @@ class Course extends Model
         'duration',
         'duration_type',
         'structure_type',
+        'semesters_per_year',
         'max_atkt_allowed',
         'lateral_entry_allowed',
         'lateral_entry_start_part',
@@ -22,8 +23,30 @@ class Course extends Model
 
     protected $casts = [
         'lateral_entry_allowed' => 'boolean',
+        'semesters_per_year'    => 'integer',
         'status'                => 'boolean',
     ];
+
+    // Effective semesters per year — safe fallback for existing courses
+    public function effectiveSemestersPerYear(): int
+    {
+        $spy = (int) ($this->semesters_per_year ?? 0);
+        if ($spy > 0) {
+            return $spy;
+        }
+        return match ($this->structure_type) {
+            'yearly'   => 1,
+            'modular'  => 1,
+            'trimester'=> 3,
+            default    => 2,
+        };
+    }
+
+    // Short-term courses (certificate/modular) have no semester promotion
+    public function isShortTerm(): bool
+    {
+        return $this->structure_type === 'modular';
+    }
 
     public function institute()
     {

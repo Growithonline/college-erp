@@ -15,6 +15,7 @@ use App\Models\StudentAcademicIdentity;
 use App\Models\StudentSubject;
 use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
+use App\Models\InstituteTransportSetting;
 use App\Models\TransportAllocation;
 use App\Models\TransportPayment;
 use Illuminate\Support\Collection;
@@ -22,8 +23,6 @@ use Illuminate\Support\Facades\DB;
 
 class WalletService
 {
-    private const SEMESTERS_PER_YEAR = 2;
-
     private static function resolveCoursePartForSemester(Student $student, int $sessionId, ?int $semester, ?StudentAcademicIdentity $identity = null): ?CoursePart
     {
         $student->loadMissing(['stream.course', 'coursePart']);
@@ -33,8 +32,11 @@ class WalletService
             return $identity?->coursePart ?? $student->coursePart;
         }
 
-        $structureType = strtolower((string) ($student->stream?->course?->structure_type ?? ''));
-        if ($structureType === 'semester') {
+        $course        = $student->stream?->course;
+        $structureType = strtolower((string) ($course?->structure_type ?? ''));
+        $spy           = $course?->effectiveSemestersPerYear() ?? 2;
+
+        if ($structureType === 'semester' || $structureType === 'trimester') {
             $semesterPart = CoursePart::where('course_id', $courseId)
                 ->where('part_number', (int) $semester)
                 ->first();
@@ -44,7 +46,7 @@ class WalletService
             }
         }
 
-        $targetYear = (int) ceil(((int) $semester) / self::SEMESTERS_PER_YEAR);
+        $targetYear = (int) ceil(((int) $semester) / max(1, $spy));
 
         return CoursePart::where('course_id', $courseId)
             ->where('year_number', max(1, $targetYear))
@@ -375,14 +377,56 @@ class WalletService
         JournalService::safePostFeeCollection($invoice);
     }
 
-    public static function chargeTransportAllocation(TransportAllocation $allocation): void
+    /**
+     * @param  float|null  $overrideAmount  Pass a prorated/adjusted amount without mutating the model's fee_amount.
+     */
+    public static function chargeTransportAllocation(TransportAllocation $allocation, ?float $overrideAmount = null): void
     {
-        DB::transaction(function () use ($allocation) {
+        DB::transaction(function () use ($allocation, $overrideAmount) {
             $allocation->loadMissing(['student', 'route', 'stop', 'vehicle', 'driver']);
 
-            $amount = round((float) $allocation->fee_amount, 2);
+            $amount = round((float) ($overrideAmount ?? $allocation->fee_amount), 2);
             if ($amount <= 0) {
                 return;
+            }
+
+            // Yearly billing: skip charge if student already paid for this academic_year on this route
+            if ($allocation->route?->billing_frequency === 'yearly') {
+                $setting = InstituteTransportSetting::forInstitute((int) $allocation->institute_id);
+                if ($setting->yearly_fee_cross_session) {
+                    // CRIT-3 fix: verify session belongs to this institute
+                    $session = AcademicSession::where('id', $allocation->academic_session_id)
+                        ->where('institute_id', $allocation->institute_id)
+                        ->first();
+                    $academicYear = $session?->academic_year;
+
+                    if ($academicYear) {
+                        $yearSessionIds = AcademicSession::where('institute_id', $allocation->institute_id)
+                            ->where('academic_year', $academicYear)
+                            ->pluck('id');
+
+                        // CRIT-2 fix: lock all related allocation rows before check to prevent race condition
+                        TransportAllocation::where('student_id', $allocation->student_id)
+                            ->where('transport_route_id', $allocation->transport_route_id)
+                            ->whereIn('academic_session_id', $yearSessionIds)
+                            ->lockForUpdate()
+                            ->get();
+
+                        $alreadyCharged = TransportAllocation::where('student_id', $allocation->student_id)
+                            ->where('transport_route_id', $allocation->transport_route_id)
+                            ->whereIn('academic_session_id', $yearSessionIds)
+                            ->where('id', '!=', $allocation->id)
+                            ->where('charged_amount', '>', 0)
+                            ->exists();
+
+                        if ($alreadyCharged) {
+                            $allocation->charged_amount = 0;
+                            $allocation->status = 'active';
+                            $allocation->save();
+                            return;
+                        }
+                    }
+                }
             }
 
             $wallet = StudentWallet::firstOrCreate(

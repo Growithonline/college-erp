@@ -207,10 +207,21 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-outline-primary"
-                                    onclick="promoteSingle({{ $student->id }})">
-                                <i class="bi bi-arrow-up-circle me-1"></i>Promote
-                            </button>
+                            @if($student->stream?->course?->isShortTerm())
+                                <form method="POST" action="{{ route('admissions.promote.mark-complete', $student) }}" class="d-inline">
+                                    @csrf
+                                    <input type="hidden" name="completion_status" value="passed_out">
+                                    <button type="submit" class="btn btn-sm btn-outline-success"
+                                            onclick="return confirm('Mark this student as completed?')">
+                                        <i class="bi bi-patch-check me-1"></i>Mark Complete
+                                    </button>
+                                </form>
+                            @else
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        onclick="promoteSingle({{ $student->id }})">
+                                    <i class="bi bi-arrow-up-circle me-1"></i>Promote
+                                </button>
+                            @endif
                         </td>
                     </tr>
                     @empty

@@ -714,6 +714,18 @@
                            href="{{ route('transport.compliance.index') }}">
                         <i class="bi bi-shield-check"></i> Compliance
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('transport.billing.*') ? 'active' : '' }}"
+                           href="{{ route('transport.billing.index') }}">
+                        <i class="bi bi-receipt"></i> Monthly Billing
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('transport.reports.*') ? 'active' : '' }}"
+                           href="{{ route('transport.reports.index') }}">
+                        <i class="bi bi-bar-chart-line"></i> Reports
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('transport.settings.*') ? 'active' : '' }}"
+                           href="{{ route('transport.settings.index') }}">
+                        <i class="bi bi-gear"></i> Settings
+                    </a></li>
                 </ul>
             </div>
         </li>

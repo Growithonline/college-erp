@@ -5,7 +5,11 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="fw-bold mb-0">Transport Pending Dues</h4>
-    <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">Print</button>
+    <div class="d-flex gap-2">
+        <a href="{{ route('transport.reports.due.export', request()->query()) }}"
+           class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i>Export Excel</a>
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer me-1"></i>Print</button>
+    </div>
 </div>
 
 <form class="card border-0 shadow-sm p-3 mb-4" method="GET">

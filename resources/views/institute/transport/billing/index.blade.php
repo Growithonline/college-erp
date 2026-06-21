@@ -1,17 +1,17 @@
 @extends('institute.layout')
-@section('title', 'Monthly Billing')
-@section('breadcrumb', 'Transport / Monthly Billing')
+@section('title', 'Transport Billing')
+@section('breadcrumb', 'Transport / Billing')
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-0">Transport Monthly Billing</h4>
-        <small class="text-muted">Generate recurring transport charges for monthly/quarterly/semester routes.</small>
+        <h4 class="fw-bold mb-0">Transport Billing</h4>
+        <small class="text-muted">Generate recurring transport charges (Monthly / Quarterly / Semester).</small>
     </div>
 </div>
 
 @if(session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
+    <div class="alert alert-success border-0 shadow-sm">{{ session('success') }}</div>
 @endif
 @if($errors->any())
     <div class="alert alert-danger">{{ $errors->first() }}</div>
@@ -30,38 +30,70 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Month</label>
+                <label class="form-label">Billing Period</label>
                 <input type="month" name="charge_month" class="form-control" value="{{ $chargeMonth }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Frequency</label>
+                <select name="freq" class="form-select">
+                    <option value="all" {{ ($freqFilter ?? 'all') === 'all' ? 'selected' : '' }}>All Recurring</option>
+                    <option value="monthly" {{ ($freqFilter ?? '') === 'monthly' ? 'selected' : '' }}>Monthly Only</option>
+                    <option value="quarterly" {{ ($freqFilter ?? '') === 'quarterly' ? 'selected' : '' }}>Quarterly Only</option>
+                    <option value="semester" {{ ($freqFilter ?? '') === 'semester' ? 'selected' : '' }}>Semester Only</option>
+                </select>
             </div>
             <div class="col-md-2">
                 <button class="btn btn-outline-primary w-100">View</button>
             </div>
         </form>
 
+        @if(in_array($freqFilter ?? 'all', ['all', 'quarterly']))
+        <div class="alert alert-info mb-3 py-2 small">
+            <i class="bi bi-info-circle me-1"></i>
+            Current quarter: <strong>{{ $quarterLabel ?? '' }}</strong>.
+            Quarterly routes show <em>Pending</em> only once per quarter — remaining months in same quarter show as <em>Billed</em>.
+        </div>
+        @endif
+
         @if($pendingCount > 0)
         <form method="POST" action="{{ route('transport.billing.generate') }}"
-            onsubmit="return confirm('Generate charges for {{ $pendingCount }} students for {{ $chargeMonth }}?')">
+            onsubmit="return confirm('Generate charges for {{ (int) $pendingCount }} pending students for ' + {{ json_encode($chargeMonth) }} + '?')">
             @csrf
             <input type="hidden" name="charge_month" value="{{ $chargeMonth }}">
             <input type="hidden" name="academic_session_id" value="{{ $sessionId }}">
             <button class="btn btn-primary">
-                Generate Charges for {{ $pendingCount }} Pending Students
+                <i class="bi bi-lightning me-1"></i>Generate {{ $pendingCount }} Pending Charges
             </button>
         </form>
         @else
-            <div class="alert alert-success mb-0">All recurring allocations already billed for {{ $chargeMonth }}.</div>
+            <div class="alert alert-success mb-0">
+                <i class="bi bi-check-circle me-1"></i>All recurring allocations already billed for this period.
+            </div>
         @endif
     </div>
 </div>
 
 {{-- Allocation List --}}
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white fw-semibold">
-        Recurring Allocations — {{ $chargeMonth }}
-        <span class="badge bg-secondary ms-2">{{ $allocations->count() }} total</span>
-        @if($pendingCount > 0)
-            <span class="badge bg-danger ms-1">{{ $pendingCount }} pending</span>
-        @endif
+    <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+        <span>
+            Recurring Allocations — {{ $chargeMonth }}
+            <span class="badge bg-secondary ms-2">{{ $allocations->count() }} total</span>
+            @if($pendingCount > 0)
+                <span class="badge bg-danger ms-1">{{ $pendingCount }} pending</span>
+            @endif
+        </span>
+        <div class="d-flex gap-2 flex-wrap">
+            @foreach(['all' => 'All', 'monthly' => 'Monthly', 'quarterly' => 'Quarterly', 'semester' => 'Semester'] as $f => $lbl)
+                <a href="{{ request()->fullUrlWithQuery(['freq' => $f]) }}"
+                   class="btn btn-sm {{ ($freqFilter ?? 'all') === $f ? 'btn-primary' : 'btn-outline-secondary' }}">
+                    {{ $lbl }}
+                    <span class="badge ms-1 {{ ($freqFilter ?? 'all') === $f ? 'bg-light text-dark' : 'bg-secondary' }}">
+                        {{ $allocations->filter(fn($a) => $f === 'all' || $a->route?->billing_frequency === $f)->count() }}
+                    </span>
+                </a>
+            @endforeach
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -69,8 +101,8 @@
                 <tr>
                     <th>Student</th>
                     <th>Route</th>
-                    <th>Billing</th>
-                    <th class="text-end">Amount</th>
+                    <th>Frequency</th>
+                    <th class="text-end">Fee Amount</th>
                     <th class="text-center">Status</th>
                 </tr>
             </thead>
@@ -83,14 +115,29 @@
                     </td>
                     <td>{{ $a->route?->name ?? '—' }}</td>
                     <td>
-                        <span class="badge bg-info text-dark">{{ ucfirst($a->route?->billing_frequency ?? '') }}</span>
+                        @php
+                            $freq  = $a->route?->billing_frequency ?? '';
+                            $bgCls = match($freq) {
+                                'monthly'   => 'bg-primary',
+                                'quarterly' => 'bg-warning text-dark',
+                                'semester'  => 'bg-info text-dark',
+                                default     => 'bg-secondary',
+                            };
+                            $freqLabel = match($freq) {
+                                'monthly'   => 'Monthly',
+                                'quarterly' => 'Quarterly',
+                                'semester'  => 'Per Semester',
+                                default     => ucfirst($freq),
+                            };
+                        @endphp
+                        <span class="badge {{ $bgCls }}">{{ $freqLabel }}</span>
                     </td>
                     <td class="text-end">₹{{ number_format((float) $a->fee_amount, 2) }}</td>
                     <td class="text-center">
                         @if($a->already_billed)
-                            <span class="badge bg-success">Billed</span>
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Billed</span>
                         @else
-                            <span class="badge bg-warning text-dark">Pending</span>
+                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span>
                         @endif
                     </td>
                 </tr>
@@ -98,7 +145,7 @@
                 <tr>
                     <td colspan="5" class="text-center py-5 text-muted">
                         No recurring transport allocations found.<br>
-                        <small>Set <strong>Billing</strong> to Monthly/Quarterly/Semester on routes to use this feature.</small>
+                        <small>Assign <strong>Monthly / Quarterly / Semester</strong> billing on routes to use this feature.</small>
                     </td>
                 </tr>
                 @endforelse

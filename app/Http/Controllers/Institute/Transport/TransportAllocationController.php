@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Institute\Transport;
 
 use App\Models\AcademicSession;
+use App\Models\InstituteTransportSetting;
 use App\Models\Student;
 use App\Models\TransportAllocation;
 use App\Models\TransportDriver;
@@ -160,7 +161,31 @@ class TransportAllocationController extends TransportBaseController
         $payments = $allocation->payments()->latest('id')->get();
         $routes   = TransportRoute::where('institute_id', $this->instituteId())->where('status', true)->orderBy('name')->get();
 
-        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes'));
+        // Full route change history for this student
+        $history = TransportAllocation::with(['route:id,name,route_code', 'stop:id,transport_route_id,stop_name', 'session:id,name'])
+            ->where('student_id', $allocation->student_id)
+            ->where('institute_id', $this->instituteId())
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->get();
+
+        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes', 'history'));
+    }
+
+    public function pdf(TransportAllocation $allocation)
+    {
+        $this->assertInstituteModel($allocation);
+        $allocation->load(['student.stream.course', 'session', 'route', 'stop', 'vehicle', 'driver', 'payments']);
+
+        $institute = \App\Models\Institute::findOrFail($this->instituteId());
+        $payments  = $allocation->payments()->where('is_reversed', false)->latest('id')->get();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.transport.allocations.pdf', compact(
+            'allocation', 'payments', 'institute'
+        ))->setPaper('a5', 'portrait');
+
+        $filename = 'transport-' . ($allocation->student?->roll_no ?? $allocation->id) . '.pdf';
+        return $pdf->download($filename);
     }
 
     public function collectPayment(Request $request, TransportAllocation $allocation)
@@ -228,7 +253,9 @@ class TransportAllocationController extends TransportBaseController
         $this->assertInstituteModel($allocation);
 
         $data = $request->validate([
-            'transport_route_stop_id' => ['nullable', Rule::exists('transport_route_stops', 'id')],
+            // HIGH-3: scope stop to the allocation's current route (prevents cross-institute stop injection)
+            'transport_route_stop_id' => ['nullable', Rule::exists('transport_route_stops', 'id')
+                ->where('transport_route_id', $allocation->transport_route_id)],
             'transport_vehicle_id'    => ['nullable', Rule::exists('transport_vehicles', 'id')->where('institute_id', $this->instituteId())],
             'transport_driver_id'     => ['nullable', Rule::exists('transport_drivers', 'id')->where('institute_id', $this->instituteId())],
             'fee_amount'              => ['nullable', 'numeric', 'min:0'],
@@ -237,8 +264,9 @@ class TransportAllocationController extends TransportBaseController
 
         $allocation->update([
             'transport_route_stop_id' => $data['transport_route_stop_id'] ?? $allocation->transport_route_stop_id,
-            'transport_vehicle_id'    => $data['transport_vehicle_id'] ?? null,
-            'transport_driver_id'     => $data['transport_driver_id'] ?? null,
+            // LOW-4: preserve existing vehicle/driver if not submitted (don't silently null them)
+            'transport_vehicle_id'    => array_key_exists('transport_vehicle_id', $data) ? $data['transport_vehicle_id'] : $allocation->transport_vehicle_id,
+            'transport_driver_id'     => array_key_exists('transport_driver_id', $data) ? $data['transport_driver_id'] : $allocation->transport_driver_id,
             'fee_amount'              => isset($data['fee_amount']) ? (float) $data['fee_amount'] : $allocation->fee_amount,
             'remarks'                 => $data['remarks'] ?? null,
         ]);
@@ -266,14 +294,29 @@ class TransportAllocationController extends TransportBaseController
             $stop = TransportRouteStop::where('transport_route_id', $newRoute->id)->findOrFail($data['transport_route_stop_id']);
         }
 
-        DB::transaction(function () use ($allocation, $data, $newRoute, $stop) {
+        $setting = InstituteTransportSetting::forInstitute($this->instituteId());
+
+        DB::transaction(function () use ($allocation, $data, $newRoute, $stop, $setting) {
             $allocation->update([
                 'is_active' => false,
                 'status'    => 'closed',
                 'end_date'  => now()->toDateString(),
             ]);
 
-            $feeAmount = (float) ($data['fee_amount'] ?? ($stop?->fee_amount > 0 ? $stop->fee_amount : $newRoute->fee_amount));
+            $baseFee   = (float) ($data['fee_amount'] ?? ($stop?->fee_amount > 0 ? $stop->fee_amount : $newRoute->fee_amount));
+            $feeAmount = $baseFee;
+
+            // Apply institute transfer policy to the fee charged on the new route
+            if ($setting->noChargeOnTransfer()) {
+                $feeAmount = 0.0;
+            } elseif ($setting->proratesOnTransfer()) {
+                // Remaining days in current month × daily rate
+                $startDate  = \Carbon\Carbon::parse($data['start_date']);
+                $monthEnd   = $startDate->copy()->endOfMonth();
+                $totalDays  = $monthEnd->day;
+                $remaining  = $totalDays - $startDate->day + 1;
+                $feeAmount  = round(($remaining / $totalDays) * $baseFee, 2);
+            }
 
             $newAllocation = TransportAllocation::create([
                 'student_id'              => $allocation->student_id,
@@ -283,7 +326,7 @@ class TransportAllocationController extends TransportBaseController
                 'transport_route_stop_id' => $stop?->id,
                 'transport_vehicle_id'    => $data['transport_vehicle_id'] ?? null,
                 'transport_driver_id'     => $data['transport_driver_id'] ?? null,
-                'fee_amount'              => $feeAmount,
+                'fee_amount'              => $baseFee,   // original fee stored for future billing
                 'charged_amount'          => 0,
                 'paid_amount'             => 0,
                 'start_date'              => $data['start_date'],
@@ -291,10 +334,21 @@ class TransportAllocationController extends TransportBaseController
                 'is_active'               => true,
             ]);
 
-            WalletService::chargeTransportAllocation($newAllocation);
+            // Only charge if there's something to charge
+            if ($feeAmount > 0) {
+                // HIGH-2 fix: pass prorated amount as override instead of mutating the model's fee_amount
+                $chargeOverride = (abs($feeAmount - $baseFee) > 0.001) ? $feeAmount : null;
+                WalletService::chargeTransportAllocation($newAllocation, $chargeOverride);
+            }
         });
 
-        return redirect()->route('transport.allocations.index')->with('success', 'Route transfer complete. New allocation created.');
+        $msg = match ($setting->on_route_transfer) {
+            'no_charge'      => 'Route transfer complete. No charge applied as per institute policy.',
+            'prorated_charge'=> 'Route transfer complete. Prorated charge applied for remaining days.',
+            default          => 'Route transfer complete. New allocation created.',
+        };
+
+        return redirect()->route('transport.allocations.index')->with('success', $msg);
     }
 
     // ── BULK ALLOCATION ─────────────────────────────────────────────────────

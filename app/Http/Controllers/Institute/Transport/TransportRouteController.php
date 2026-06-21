@@ -159,7 +159,7 @@ class TransportRouteController extends TransportBaseController
             'end_point' => ['nullable', 'string', 'max:180'],
             'distance_km' => ['nullable', 'numeric', 'min:0'],
             'fee_amount'        => ['nullable', 'numeric', 'min:0'],
-            'billing_frequency' => ['nullable', 'in:one_time,monthly,quarterly,semester'],
+            'billing_frequency' => ['nullable', 'in:one_time,monthly,quarterly,semester,yearly'],
             'morning_time' => ['nullable', 'date_format:H:i'],
             'evening_time' => ['nullable', 'date_format:H:i'],
             'notes' => ['nullable', 'string'],

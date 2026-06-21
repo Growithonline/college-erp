@@ -18,8 +18,17 @@
                         <label class="form-label fw-semibold">Session Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" value="{{ old('name', $session->name) }}"
                                class="form-control @error('name') is-invalid @enderror"
-                               placeholder="e.g. 2025-26" maxlength="20">
+                               placeholder="e.g. Sem 1 - 2025-26" maxlength="20">
                         @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Academic Year</label>
+                        <input type="text" name="academic_year" value="{{ old('academic_year', $session->academic_year) }}"
+                               class="form-control @error('academic_year') is-invalid @enderror"
+                               placeholder="e.g. 2025-26" maxlength="10">
+                        @error('academic_year') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <small class="text-muted">Group sessions of the same year (used for transport yearly billing).</small>
                     </div>
 
                     <div class="row g-3 mb-4">

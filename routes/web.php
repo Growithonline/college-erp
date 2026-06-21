@@ -87,6 +87,7 @@ use App\Http\Controllers\Institute\Transport\TransportReportController;
 use App\Http\Controllers\Institute\Transport\TransportRouteController;
 use App\Http\Controllers\Institute\Transport\TransportVehicleController;
 use App\Http\Controllers\Institute\Transport\TransportVehicleTypeController;
+use App\Http\Controllers\Institute\Transport\TransportSettingController;
 
 // Library Staff
 use App\Http\Controllers\Institute\Library\LibraryStaffController;
@@ -321,6 +322,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('allocations/{allocation}/collect-payment', [TransportAllocationController::class, 'collectPayment'])->name('allocations.collect-payment');
         Route::post('allocations/{allocation}/close', [TransportAllocationController::class, 'close'])->name('allocations.close');
         Route::post('allocations/{allocation}/transfer', [TransportAllocationController::class, 'transfer'])->name('allocations.transfer');
+        Route::get('allocations/{allocation}/pdf', [TransportAllocationController::class, 'pdf'])->name('allocations.pdf');
 
         Route::get('maintenance', [TransportMaintenanceController::class, 'index'])->name('maintenance.index');
         Route::get('maintenance/create', [TransportMaintenanceController::class, 'create'])->name('maintenance.create');
@@ -339,13 +341,20 @@ Route::middleware(['auth'])->group(function () {
         // Reports
         Route::get('reports', [TransportReportController::class, 'index'])->name('reports.index');
         Route::get('reports/route-students', [TransportReportController::class, 'routeStudents'])->name('reports.route-students');
+        Route::get('reports/route-students/export', [TransportReportController::class, 'exportRouteStudents'])->name('reports.route-students.export');
         Route::get('reports/due', [TransportReportController::class, 'due'])->name('reports.due');
+        Route::get('reports/due/export', [TransportReportController::class, 'exportDue'])->name('reports.due.export');
         Route::get('reports/collection', [TransportReportController::class, 'collection'])->name('reports.collection');
+        Route::get('reports/collection/export', [TransportReportController::class, 'exportCollection'])->name('reports.collection.export');
         Route::get('reports/occupancy', [TransportReportController::class, 'occupancy'])->name('reports.occupancy');
 
         // Monthly Billing
         Route::get('billing', [TransportMonthlyBillingController::class, 'index'])->name('billing.index');
         Route::post('billing/generate', [TransportMonthlyBillingController::class, 'generate'])->name('billing.generate');
+
+        // Transport Settings
+        Route::get('settings', [TransportSettingController::class, 'index'])->name('settings.index');
+        Route::put('settings', [TransportSettingController::class, 'update'])->name('settings.update');
     });
 
     // FEE WALLETS (token-based collection control for centers & channel partners)
@@ -623,6 +632,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get ('identity/template',      [PromotionController::class, 'identityTemplate'])->name('identity.template');
         Route::post('identity/{identity}',    [PromotionController::class, 'identityUpdate'])  ->name('identity.update');
         Route::post('identity-bulk',          [PromotionController::class, 'identityBulkUpdate'])->name('identity.bulk');
+        // Short-term course completion (modular/certificate courses)
+        Route::post('mark-complete/{student}', [PromotionController::class, 'markComplete'])->name('mark-complete');
     });
 
     // {student} param routes
