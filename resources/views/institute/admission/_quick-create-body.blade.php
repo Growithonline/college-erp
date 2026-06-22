@@ -1146,6 +1146,7 @@ $courseDataRaw = $courses->map(function($c) {
         'parts'   => $parts->map(function($p) { return ['id' => $p->id, 'name' => $p->year_label, 'year' => $p->year_number]; })->values(),
     ];
 })->keyBy('id');
+@endphp
 @php
 $feePlansDataRaw = isset($feePlans) ? $feePlans->map(function($p) {
     return [
