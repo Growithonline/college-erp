@@ -1146,17 +1146,28 @@ $courseDataRaw = $courses->map(function($c) {
         'parts'   => $parts->map(function($p) { return ['id' => $p->id, 'name' => $p->year_label, 'year' => $p->year_number]; })->values(),
     ];
 })->keyBy('id');
+@php
+$feePlansDataRaw = isset($feePlans) ? $feePlans->map(function($p) {
+    return [
+        'id'           => $p->id,
+        'name'         => $p->name,
+        'course_id'    => $p->course_id,
+        'installments' => $p->installments->map(function($i) {
+            return [
+                'number'     => $i->installment_number,
+                'label'      => $i->label,
+                'percentage' => (float) $i->percentage,
+                'trigger'    => $i->due_trigger,
+            ];
+        })->values()->all(),
+    ];
+})->values()->all() : [];
 @endphp
 <script>
 const courseData = @json($courseDataRaw);
-const feePlansData = @json(isset($feePlans) ? $feePlans->map(fn($p) => [
-    'id'          => $p->id,
-    'name'        => $p->name,
-    'course_id'   => $p->course_id,
-    'installments'=> $p->installments->map(fn($i) => ['number'=>$i->installment_number,'label'=>$i->label,'percentage'=>(float)$i->percentage,'trigger'=>$i->due_trigger])->values()->all(),
-])->values() : []);
+const feePlansData = @json($feePlansDataRaw);
 
-// Dynamic URLs — staff/center/partner ke liye alag routes
+// Dynamic URLs — different routes for staff/center/partner portals
 const SEATS_URL    = "{{ isset($seatsUrl)    ? $seatsUrl    : route('admissions.stream-seats') }}";
 const SUBJECTS_URL = "{{ isset($subjectsUrl) ? $subjectsUrl : route('admissions.stream-subjects') }}";
 const FEE_PREVIEW_URL = "{{ isset($feePreviewUrl) ? $feePreviewUrl : route('admissions.fee-preview') }}";
