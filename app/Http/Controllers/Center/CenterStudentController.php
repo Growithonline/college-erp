@@ -8,6 +8,7 @@ use App\Http\Controllers\Institute\Master\StudentTypeController;
 use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CourseStream;
+use App\Models\CourseType;
 use App\Models\FeePlan;
 use App\Models\Institute;
 use App\Models\Student;
@@ -284,7 +285,7 @@ class CenterStudentController extends Controller
         $allSessions = AcademicSession::where('institute_id', $instituteId)
             ->orderByDesc('is_active')->orderByDesc('id')->get();
         $admissibleSessions = $allSessions->filter(
-            fn($s) => $s->is_active || $center->canAdmitInSession($s->id)
+            fn($s) => $center->canAdmitInSession($s->id)
         )->values();
 
         abort_unless($admissibleSessions->isNotEmpty(), 403, 'No admissible sessions found for this center.');
@@ -300,7 +301,8 @@ class CenterStudentController extends Controller
             $courses = $courses->whereIn('id', $center->allowed_courses)->values();
         }
 
-        $courseTypes  = $courses->pluck('type')->filter()->unique('id')->sortBy('sort_order')->values();
+        $courseTypeIds = $courses->pluck('course_type_id')->filter()->unique()->values();
+        $courseTypes   = CourseType::whereIn('id', $courseTypeIds)->orderBy('sort_order')->orderBy('name')->get();
 
         $centers = collect([$center]);
         $partners = collect();
@@ -383,7 +385,7 @@ class CenterStudentController extends Controller
         $allSessions = AcademicSession::where('institute_id', $instituteId)
             ->orderByDesc('is_active')->orderByDesc('id')->get();
         $admissibleSessions = $allSessions->filter(
-            fn($s) => $s->is_active || $center->canAdmitInSession($s->id)
+            fn($s) => $center->canAdmitInSession($s->id)
         )->values();
 
         abort_unless($admissibleSessions->isNotEmpty(), 403, 'No admissible sessions found for this center.');
@@ -399,7 +401,8 @@ class CenterStudentController extends Controller
             $courses = $courses->whereIn('id', $center->allowed_courses)->values();
         }
 
-        $courseTypes  = $courses->pluck('type')->filter()->unique('id')->sortBy('sort_order')->values();
+        $courseTypeIds = $courses->pluck('course_type_id')->filter()->unique()->values();
+        $courseTypes   = CourseType::whereIn('id', $courseTypeIds)->orderBy('sort_order')->orderBy('name')->get();
 
         $centers  = collect([$center]);
         $partners = collect();
