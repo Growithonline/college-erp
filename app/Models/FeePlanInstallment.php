@@ -32,4 +32,16 @@ class FeePlanInstallment extends Model
             default          => ucfirst($this->due_trigger),
         };
     }
+
+    public function isDue(\App\Models\Student $student): bool
+    {
+        return match ($this->due_trigger) {
+            'at_admission'   => true,
+            'semester_start' => (int) ($student->current_semester ?? 1) >= (int) ($this->due_semester ?? 1),
+            'months_after'   => $student->admission_date
+                ? now()->diffInMonths($student->admission_date) >= (int) ($this->due_months_after ?? 0)
+                : false,
+            default          => false,
+        };
+    }
 }

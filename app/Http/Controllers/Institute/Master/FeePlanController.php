@@ -135,6 +135,28 @@ class FeePlanController extends Controller
         return back()->with('success', 'Fee plan deleted.');
     }
 
+    public function report(Request $request)
+    {
+        $instituteId = $this->instituteId();
+        $courseId    = $request->input('course_id');
+
+        $plans = FeePlan::with(['installments', 'course'])
+            ->withCount(['students as student_count' => function ($q) use ($instituteId) {
+                $q->where('institute_id', $instituteId);
+            }])
+            ->where('institute_id', $instituteId)
+            ->when($courseId, fn($q) => $q->where(function ($q2) use ($courseId) {
+                $q2->where('course_id', $courseId)->orWhereNull('course_id');
+            }))
+            ->orderBy('name')
+            ->get();
+
+        $courses = Course::where('institute_id', $instituteId)
+            ->where('status', true)->orderBy('name')->get();
+
+        return view('institute.master.fee-plans.report', compact('plans', 'courses', 'courseId'));
+    }
+
     // AJAX: get active fee plans for a course (used in admission form)
     public function forCourse(Request $request)
     {

@@ -3114,9 +3114,15 @@ class AdmissionController extends Controller
         $activeSession = \App\Models\AcademicSession::find($student->academic_session_id);
         $feeSummary = WalletService::getStudentSummary($student, (int) $student->academic_session_id);
         $currentSnapshot = StudentAcademicChangeService::buildSnapshot($student);
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)
+            ->where(function ($q) use ($student) {
+                $q->whereNull('course_id')->orWhere('course_id', $student->stream?->course_id);
+            })
+            ->orderBy('name')->get();
 
         return view('institute.admission.edit', compact(
-            'student', 'formConfig', 'courses', 'courseTypes', 'studentTypes', 'centers', 'partners', 'activeSession', 'feeSummary', 'currentSnapshot'
+            'student', 'formConfig', 'courses', 'courseTypes', 'studentTypes', 'centers', 'partners', 'activeSession', 'feeSummary', 'currentSnapshot', 'feePlans'
         ));
     }
 
@@ -3208,7 +3214,8 @@ class AdmissionController extends Controller
             'scholarship_applied_date' => 'nullable|date',
             'scholarship_amount' => 'nullable|numeric|min:0',
             'scholarship_ref_no' => 'nullable|string|max:100',
-            'photo' => 'nullable|image|max:2048',
+            'photo'              => 'nullable|image|max:2048',
+            'fee_plan_id'        => ['nullable', Rule::exists('fee_plans', 'id')->where('institute_id', $this->instituteId())],
         ]);
         $this->attachAdmissionCrossFieldValidation($validator, $request->all());
         $validated = $validator->validate();
@@ -3309,6 +3316,9 @@ class AdmissionController extends Controller
                 'course_type_id'      => $request->input('course_type_id', $student->course_type_id),
                 'course_stream_id'    => $stream->id,
                 'course_part_id'      => $selectedPart->id,
+                'fee_plan_id'         => $request->exists('fee_plan_id')
+                    ? (!empty($validated['fee_plan_id']) ? (int) $validated['fee_plan_id'] : null)
+                    : $student->fee_plan_id,
             ];
 
             if ($request->hasFile('photo')) {

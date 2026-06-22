@@ -671,36 +671,76 @@
 {{-- ── Fee Plan Installment Summary ── --}}
 @if(isset($feePlanInfo) && $feePlanInfo)
 @php
-    $fp         = $feePlanInfo['plan'];
-    $instAmts   = $feePlanInfo['installmentAmounts'];
-    $totalFeeP  = $feePlanInfo['totalFee'];
-    $totalPaidP = $feePlanInfo['totalPaid'];
-    $cumulative = 0;
+    $fp            = $feePlanInfo['plan'];
+    $instAmts      = $feePlanInfo['installmentAmounts'];
+    $totalFeeP     = $feePlanInfo['totalFee'];
+    $totalPaidP    = $feePlanInfo['totalPaid'];
+    $totalDueSoFar = $feePlanInfo['totalDueSoFar'];
+    $nextDueInst   = $feePlanInfo['nextDueInst'];
+    $nextDueAmount = $feePlanInfo['nextDueAmount'];
+    $isOverdue     = $feePlanInfo['overdue'];
+    $cumulative    = 0;
 @endphp
-<div class="alert alert-info py-2 mb-3 border-start border-4 border-info">
-    <div class="d-flex align-items-center justify-content-between mb-1">
-        <span class="fw-semibold small"><i class="bi bi-layers me-1"></i>Fee Plan: {{ $fp->name }}</span>
-        <span class="small text-muted">Total: ₹ {{ number_format($totalFeeP, 0) }}</span>
+
+{{-- Next Due Installment Alert --}}
+@if($nextDueInst)
+<div class="alert {{ $isOverdue ? 'alert-danger' : 'alert-warning' }} py-2 mb-2 d-flex align-items-center justify-content-between gap-2">
+    <div>
+        <i class="bi bi-exclamation-circle me-1"></i>
+        <strong>Next Due:</strong> {{ $nextDueInst->label }}
+        &nbsp;—&nbsp;
+        <span class="fw-bold">₹ {{ number_format($nextDueAmount, 0) }}</span>
+        <span class="text-muted small ms-2">({{ $nextDueInst->dueTriggerLabel() }})</span>
+        @if($isOverdue)
+        <span class="badge bg-danger ms-2">Overdue</span>
+        @endif
     </div>
-    <div class="d-flex flex-wrap gap-2">
-        @foreach($fp->installments as $inst)
-        @php
-            $amt = $instAmts[$inst->installment_number] ?? 0;
-            $cumulative += $amt;
-            $isPaid = $totalPaidP >= $cumulative - 0.5;
-        @endphp
-        <div class="d-flex align-items-center gap-1">
-            <span class="badge {{ $isPaid ? 'bg-success' : 'bg-secondary' }}" style="font-size:11px;">
-                @if($isPaid)<i class="bi bi-check-circle me-1"></i>@endif
-                {{ $inst->label }}: ₹ {{ number_format($amt, 0) }}
-            </span>
+    <button type="button" class="btn btn-sm btn-dark fw-semibold"
+            onclick="applyInstallmentAmount({{ $nextDueAmount }})"
+            title="Pre-fill all fee fields to cover this installment">
+        <i class="bi bi-lightning-fill me-1"></i>Fill ₹ {{ number_format($nextDueAmount, 0) }}
+    </button>
+</div>
+@elseif($totalFeeP > 0 && $totalPaidP >= $totalFeeP - 0.5)
+<div class="alert alert-success py-2 mb-2">
+    <i class="bi bi-check-circle me-1"></i>
+    <strong>All installments paid.</strong> Fee is fully cleared.
+</div>
+@endif
+
+{{-- Installment Progress Bar --}}
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="fw-semibold small"><i class="bi bi-layers me-1 text-primary"></i>Fee Plan: {{ $fp->name }}</span>
+            <span class="small text-muted">Total: ₹ {{ number_format($totalFeeP, 0) }}</span>
         </div>
-        @endforeach
-    </div>
-    <div class="mt-1" style="font-size:11px;">
-        Paid so far: <strong>₹ {{ number_format($totalPaidP, 0) }}</strong>
-        &nbsp;|&nbsp;
-        Remaining: <strong class="text-danger">₹ {{ number_format(max(0, $totalFeeP - $totalPaidP), 0) }}</strong>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+            @foreach($fp->installments as $inst)
+            @php
+                $amt        = (float) ($instAmts[$inst->installment_number] ?? 0);
+                $cumulative += $amt;
+                $isPaid     = $totalPaidP >= $cumulative - 0.5;
+                $isDue      = $inst->isDue($student);
+                $isNext     = $nextDueInst && $inst->installment_number === $nextDueInst->installment_number;
+            @endphp
+            <span class="badge border
+                {{ $isPaid  ? 'bg-success text-white' : ($isNext ? 'bg-warning text-dark border-warning' : ($isDue ? 'bg-danger bg-opacity-10 text-danger border-danger' : 'bg-light text-muted border-secondary')) }}"
+                style="font-size:11px; padding:5px 8px;">
+                @if($isPaid)<i class="bi bi-check-circle me-1"></i>
+                @elseif($isNext)<i class="bi bi-clock me-1"></i>
+                @elseif(!$isDue)<i class="bi bi-lock me-1"></i>
+                @endif
+                {{ $inst->label }}: ₹ {{ number_format($amt, 0) }}
+                @if(!$isDue)<small class="opacity-75">(not due yet)</small>@endif
+            </span>
+            @endforeach
+        </div>
+        <div class="d-flex gap-3" style="font-size:11px;">
+            <span>Paid: <strong class="text-success">₹ {{ number_format($totalPaidP, 0) }}</strong></span>
+            <span>Due now: <strong class="text-warning">₹ {{ number_format(max(0, $totalDueSoFar - $totalPaidP), 0) }}</strong></span>
+            <span>Remaining total: <strong class="text-danger">₹ {{ number_format(max(0, $totalFeeP - $totalPaidP), 0) }}</strong></span>
+        </div>
     </div>
 </div>
 @endif
@@ -1515,6 +1555,15 @@ function unlockAllCollectFields() {
             el.title = '';
         }
     });
+}
+
+function applyInstallmentAmount(amount) {
+    const el = document.getElementById('oneTimePay');
+    if (!el) return;
+    el.value = amount;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    applyOneTimePay();
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function applyOneTimePay() {

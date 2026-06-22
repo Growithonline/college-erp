@@ -182,6 +182,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('fee-plans',                              [FeePlanController::class, 'index'])->name('fee-plans.index');
         Route::post('fee-plans',                             [FeePlanController::class, 'store'])->middleware('throttle:20,1')->name('fee-plans.store');
         Route::get('fee-plans/for-course',                   [FeePlanController::class, 'forCourse'])->middleware('throttle:60,1')->name('fee-plans.for-course');
+        Route::get('fee-plans/report',                        [FeePlanController::class, 'report'])->name('fee-plans.report');
         Route::patch('fee-plans/{feePlan}',                  [FeePlanController::class, 'update'])->name('fee-plans.update');
         Route::patch('fee-plans/{feePlan}/toggle',           [FeePlanController::class, 'toggleStatus'])->name('fee-plans.toggle');
         Route::delete('fee-plans/{feePlan}',                 [FeePlanController::class, 'destroy'])->name('fee-plans.destroy');

@@ -9,9 +9,14 @@
         <h4 class="mb-0 fw-bold"><i class="bi bi-layers me-2 text-primary"></i>Fee Plans</h4>
         <small class="text-muted">Define installment plans — students will select one at admission</small>
     </div>
-    <button class="btn btn-primary btn-sm" onclick="openCreateModal()">
-        <i class="bi bi-plus-circle me-1"></i> New Fee Plan
-    </button>
+    <div class="d-flex gap-2">
+        <a href="{{ route('master.fee-plans.report') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-bar-chart me-1"></i> Report
+        </a>
+        <button class="btn btn-primary btn-sm" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle me-1"></i> New Fee Plan
+        </button>
+    </div>
 </div>
 
 @if(session('success'))

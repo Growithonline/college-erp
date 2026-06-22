@@ -764,13 +764,39 @@ class FeeCollectionController extends Controller
             $student->loadMissing('feePlan.installments');
             $plan = $student->feePlan;
             if ($plan) {
-                $totalFeeForPlan = (float) ($feeBreakup['total'] ?? 0);
-                $installmentAmounts = $plan->installmentAmounts((float) $totalFeeForPlan);
+                $totalFeeForPlan    = (float) ($feeBreakup['total'] ?? 0);
+                $installmentAmounts = $plan->installmentAmounts($totalFeeForPlan);
+                $totalPaid          = (float) ($walletSummary['total_paid'] ?? $alreadyPaid ?? 0);
+
+                // Determine next due installment and total triggered amount
+                $cumulativeDue  = 0.0;
+                $cumulativePaid = 0.0;
+                $nextDueInst    = null;
+                $nextDueAmount  = 0.0;
+                $totalDueSoFar  = 0.0;
+
+                foreach ($plan->installments as $inst) {
+                    $amt = (float) ($installmentAmounts[$inst->installment_number] ?? 0);
+                    if ($inst->isDue($student)) {
+                        $totalDueSoFar  += $amt;
+                        $cumulativeDue  += $amt;
+                        // First triggered installment not yet fully covered by totalPaid
+                        if ($nextDueInst === null && $totalPaid < $cumulativeDue - 0.5) {
+                            $nextDueInst   = $inst;
+                            $nextDueAmount = $amt;
+                        }
+                    }
+                }
+
                 $feePlanInfo = [
                     'plan'               => $plan,
                     'installmentAmounts' => $installmentAmounts,
                     'totalFee'           => $totalFeeForPlan,
-                    'totalPaid'          => (float) ($walletSummary['total_paid'] ?? $alreadyPaid ?? 0),
+                    'totalPaid'          => $totalPaid,
+                    'totalDueSoFar'      => $totalDueSoFar,
+                    'nextDueInst'        => $nextDueInst,
+                    'nextDueAmount'      => $nextDueAmount,
+                    'overdue'            => $totalPaid < $totalDueSoFar - 0.5,
                 ];
             }
         }
