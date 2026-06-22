@@ -54,16 +54,24 @@
 </div>
 
 {{-- Filters --}}
+@php
+    $filteredStreams = request()->filled('course_id')
+        ? $streams->where('course_id', (int) request('course_id'))
+        : $streams;
+@endphp
 <div class="card border-0 shadow-sm mb-3">
-    <div class="card-body py-2 px-3">
+    <div class="card-body py-3 px-3">
         <form method="GET" action="{{ route($indexRoute) }}" class="row g-2 align-items-end" id="filterForm">
+
+            {{-- Row 1: Search | Session | Course Type | Course | Stream | Status --}}
             <div class="col-md-3">
-                <label class="form-label small mb-1">Search</label>
-                <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Name, UID, mobile, father name...">
+                <label class="form-label small fw-semibold mb-1">Search</label>
+                <input type="text" name="search" value="{{ request('search') }}"
+                    class="form-control form-control-sm" placeholder="Name, UID, mobile, father name...">
             </div>
             <div class="col-md-2">
-                <label class="form-label small mb-1">Session</label>
-                <select name="session_id" class="form-select form-select-sm">
+                <label class="form-label small fw-semibold mb-1">Session</label>
+                <select name="session_id" class="form-select form-select-sm auto-filter">
                     <option value="">All Sessions</option>
                     @foreach($sessions as $session)
                         <option value="{{ $session->id }}" {{ (string) request('session_id', $activeSession?->id) === (string) $session->id ? 'selected' : '' }}>
@@ -73,8 +81,35 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small mb-1">Status</label>
-                <select name="status" class="form-select form-select-sm">
+                <label class="form-label small fw-semibold mb-1">Course Type</label>
+                <select name="course_type_id" class="form-select form-select-sm auto-filter">
+                    <option value="">All Types</option>
+                    @foreach($courseTypes as $type)
+                        <option value="{{ $type->id }}" {{ request('course_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Course</label>
+                <select name="course_id" class="form-select form-select-sm" id="courseFilter">
+                    <option value="">All Courses</option>
+                    @foreach($courses as $course)
+                        <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>{{ $course->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Stream</label>
+                <select name="stream_id" class="form-select form-select-sm auto-filter" id="streamFilter">
+                    <option value="">All Streams</option>
+                    @foreach($filteredStreams as $stream)
+                        <option value="{{ $stream->id }}" {{ request('stream_id') == $stream->id ? 'selected' : '' }}>{{ $stream->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small fw-semibold mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm auto-filter">
                     <option value="">All</option>
                     @foreach(['pending', 'active', 'inactive', 'detained', 'cancelled', 'passed_out', 'transferred'] as $status)
                         <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
@@ -83,27 +118,11 @@
                     @endforeach
                 </select>
             </div>
+
+            {{-- Row 2: Source | Source Sub | Date From | Date To | Rows --}}
             <div class="col-md-2">
-                <label class="form-label small mb-1">Course</label>
-                <select name="course_id" class="form-select form-select-sm">
-                    <option value="">All Courses</option>
-                    @foreach($courses as $course)
-                        <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>{{ $course->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">Course Type</label>
-                <select name="course_type_id" class="form-select form-select-sm">
-                    <option value="">All Types</option>
-                    @foreach($courseTypes as $type)
-                        <option value="{{ $type->id }}" {{ request('course_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">Source</label>
-                <select name="source" class="form-select form-select-sm" id="sourceFilter">
+                <label class="form-label small fw-semibold mb-1">Source</label>
+                <select name="source" class="form-select form-select-sm auto-filter" id="sourceFilter">
                     <option value="">All Sources</option>
                     <option value="direct" {{ request('source') === 'direct' ? 'selected' : '' }}>Direct</option>
                     <option value="center" {{ request('source') === 'center' ? 'selected' : '' }}>Center</option>
@@ -112,14 +131,14 @@
                 </select>
             </div>
             <div class="col-md-2" id="sourceSubWrap" style="{{ in_array(request('source'), ['direct','center','channel_partner']) ? '' : 'display:none' }}">
-                <label class="form-label small mb-1" id="sourceSubLabel">
+                <label class="form-label small fw-semibold mb-1">
                     @if(request('source') === 'direct') Admitted By
                     @elseif(request('source') === 'center') Center
                     @elseif(request('source') === 'channel_partner') Channel Partner
                     @else Sub-Source
                     @endif
                 </label>
-                <select name="source_sub" class="form-select form-select-sm" id="sourceSubFilter">
+                <select name="source_sub" class="form-select form-select-sm auto-filter" id="sourceSubFilter">
                     <option value="">All</option>
                     @if(request('source') === 'direct')
                         <option value="admin" {{ request('source_sub') === 'admin' ? 'selected' : '' }}>Admin / Direct</option>
@@ -137,36 +156,45 @@
                     @endif
                 </select>
             </div>
-            <div class="col-md-1">
-                <label class="form-label small mb-1">Date From</label>
-                <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control form-control-sm">
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Date From</label>
+                <input type="date" name="date_from" value="{{ request('date_from') }}"
+                    class="form-control form-control-sm auto-filter-date">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Date To</label>
+                <input type="date" name="date_to" value="{{ request('date_to') }}"
+                    class="form-control form-control-sm auto-filter-date">
             </div>
             <div class="col-md-1">
-                <label class="form-label small mb-1">Date To</label>
-                <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control form-control-sm">
-            </div>
-            <div class="col-md-1">
-                <label class="form-label small mb-1">Rows</label>
-                <select name="per_page" class="form-select form-select-sm">
+                <label class="form-label small fw-semibold mb-1">Rows</label>
+                <select name="per_page" class="form-select form-select-sm auto-filter">
                     @foreach([10, 20, 50, 100] as $size)
                         <option value="{{ $size }}" {{ (int) request('per_page', $perPage) === $size ? 'selected' : '' }}>{{ $size }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-12 d-flex gap-2 align-items-center flex-wrap">
+
+            {{-- Action Buttons --}}
+            <div class="col-12 d-flex gap-2 align-items-center flex-wrap border-top pt-2 mt-1">
                 <button type="submit" class="btn btn-primary btn-sm px-3">
                     <i class="bi bi-funnel me-1"></i>Filter
                 </button>
-                <a href="{{ route($indexRoute) }}" class="btn btn-outline-secondary btn-sm">Reset</a>
-                <div class="ms-auto d-flex gap-1">
-                    <a href="{{ route($indexRoute, array_merge(request()->query(), ['export' => 'csv'])) }}" class="btn btn-outline-success btn-sm">
+                <a href="{{ route($indexRoute) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-circle me-1"></i>Reset
+                </a>
+                <div class="ms-auto d-flex gap-2">
+                    <a href="{{ route($indexRoute, array_merge(request()->query(), ['export' => 'csv'])) }}"
+                        class="btn btn-outline-success btn-sm">
                         <i class="bi bi-filetype-csv me-1"></i>Export CSV
                     </a>
-                    <a href="{{ route($indexRoute, array_merge(request()->query(), ['export' => 'pdf'])) }}" target="_blank" class="btn btn-outline-danger btn-sm">
+                    <a href="{{ route($indexRoute, array_merge(request()->query(), ['export' => 'pdf'])) }}"
+                        target="_blank" class="btn btn-outline-danger btn-sm">
                         <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
                     </a>
                 </div>
             </div>
+
         </form>
     </div>
 </div>
@@ -266,54 +294,34 @@
 </div>
 @push('scripts')
 <script>
-const sourceOptions = {
-    direct: [
-        {value: 'admin', label: 'Admin / Direct'},
-        @foreach($staffMembers as $staff)
-        {value: '{{ $staff->id }}', label: @json($staff->name)},
-        @endforeach
-    ],
-    center: [
-        @foreach($centers as $center)
-        {value: '{{ $center->id }}', label: @json($center->name)},
-        @endforeach
-    ],
-    channel_partner: [
-        @foreach($channelPartners as $partner)
-        {value: '{{ $partner->id }}', label: @json($partner->name)},
-        @endforeach
-    ],
-};
+(function () {
+    const form = document.getElementById('filterForm');
 
-const sourceLabels = {
-    direct: 'Admitted By',
-    center: 'Center',
-    channel_partner: 'Channel Partner',
-};
-
-document.getElementById('sourceFilter').addEventListener('change', function () {
-    const source = this.value;
-    const wrap = document.getElementById('sourceSubWrap');
-    const subSelect = document.getElementById('sourceSubFilter');
-    const subLabel = document.getElementById('sourceSubLabel');
-
-    subSelect.innerHTML = '<option value="">All</option>';
-
-    if (!source || source === 'online') {
-        wrap.style.display = 'none';
-        return;
-    }
-
-    wrap.style.display = '';
-    subLabel.textContent = sourceLabels[source] || 'Sub-Source';
-
-    (sourceOptions[source] || []).forEach(function (opt) {
-        const el = document.createElement('option');
-        el.value = opt.value;
-        el.textContent = opt.label;
-        subSelect.appendChild(el);
+    // Auto-submit all .auto-filter selects on change
+    form.querySelectorAll('select.auto-filter').forEach(function (sel) {
+        sel.addEventListener('change', function () { form.submit(); });
     });
-});
+
+    // Date inputs: auto-submit on change
+    form.querySelectorAll('input.auto-filter-date').forEach(function (inp) {
+        inp.addEventListener('change', function () { form.submit(); });
+    });
+
+    // Course change: clear stream selection, then auto-submit
+    document.getElementById('courseFilter').addEventListener('change', function () {
+        document.getElementById('streamFilter').value = '';
+        form.submit();
+    });
+
+    // Source change: show/hide sub-filter wrap, then auto-submit
+    document.getElementById('sourceFilter').addEventListener('change', function () {
+        const src = this.value;
+        const wrap = document.getElementById('sourceSubWrap');
+        // Hide sub-wrap since page will reload with updated server-rendered options
+        wrap.style.display = 'none';
+        form.submit();
+    });
+})();
 </script>
 @endpush
 @endsection

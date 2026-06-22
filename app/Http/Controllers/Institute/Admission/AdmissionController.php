@@ -2727,6 +2727,10 @@ class AdmissionController extends Controller
             ->orderBy('name')
             ->get();
 
+        $streams = \App\Models\CourseStream::where('institute_id', $instituteId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'course_id']);
+
         $courseTypes = CourseType::where('institute_id', $instituteId)
             ->orderBy('name')
             ->get();
@@ -2775,6 +2779,10 @@ class AdmissionController extends Controller
 
         if ($request->filled('course_id')) {
             $query->whereHas('stream', fn($q) => $q->where('course_id', (int) $request->course_id));
+        }
+
+        if ($request->filled('stream_id')) {
+            $query->where('course_stream_id', (int) $request->stream_id);
         }
 
         if ($request->filled('course_type_id')) {
@@ -2872,6 +2880,7 @@ class AdmissionController extends Controller
             'activeSession',
             'sessions',
             'courses',
+            'streams',
             'courseTypes',
             'centers',
             'channelPartners',
