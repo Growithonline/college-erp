@@ -261,11 +261,16 @@ class StaffAdmissionController extends Controller
     public function quickStore(Request $request)
     {
         $this->permCheck('admission_add');
-        abort_unless($this->staff()->canUseQuickAdmissionForm(), 403, 'Quick admission form is not permitted for your account.');
+        $staff = $this->staff();
+        abort_unless($staff->canUseQuickAdmissionForm(), 403, 'Quick admission form is not permitted for your account.');
         $this->ensureAccessibleCourseSelection(
             $request->filled('course_id') ? (int) $request->course_id : null,
             $request->filled('course_stream_id') ? (int) $request->course_stream_id : null
         );
+        if ($staff->restrict_session_access ?? false) {
+            $allowedIds = array_map('intval', $staff->allowed_session_ids ?? []);
+            abort_unless(in_array((int) $request->session_id, $allowedIds), 403, 'You do not have access to the selected session.');
+        }
         return app(InstituteAdmissionController::class)->quickStore($request);
     }
 
@@ -315,11 +320,16 @@ class StaffAdmissionController extends Controller
     public function store(Request $request)
     {
         $this->permCheck('admission_add');
-        abort_unless($this->staff()->canUseFullAdmissionForm(), 403, 'Full admission form is not permitted for your account.');
+        $staff = $this->staff();
+        abort_unless($staff->canUseFullAdmissionForm(), 403, 'Full admission form is not permitted for your account.');
         $this->ensureAccessibleCourseSelection(
             $request->filled('course_id') ? (int) $request->course_id : null,
             $request->filled('course_stream_id') ? (int) $request->course_stream_id : null
         );
+        if ($staff->restrict_session_access ?? false) {
+            $allowedIds = array_map('intval', $staff->allowed_session_ids ?? []);
+            abort_unless(in_array((int) $request->session_id, $allowedIds), 403, 'You do not have access to the selected session.');
+        }
         return app(InstituteAdmissionController::class)->storePreview($request);
     }
 

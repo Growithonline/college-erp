@@ -6,6 +6,10 @@
     $streamSubjectsUrl = route($admissionRoutePrefix . '.stream-subjects');
     $streamSeatsUrl = route($admissionRoutePrefix . '.stream-seats');
     $transportStopsUrl = route('transport.routes.stops', ['route' => '__ROUTE__']);
+    // When staff has access to exactly 1 session (not the active one), use that session as default
+    $defaultSession = (isset($admissibleSessions) && $admissibleSessions->count() === 1)
+        ? $admissibleSessions->first()
+        : $activeSession;
     // Preview edit se aaye hain — $pd view variable ya session se
     $pd = $pd ?? session('previewData') ?? [];
     // Helper: preview data ya old() se value lo
@@ -22,7 +26,7 @@
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-person-plus me-2 text-primary"></i>New Admission</h4>
         <small class="text-muted">
-            Session: <span class="fw-semibold text-primary">{{ $activeSession->name ?? 'No Active Session' }}</span>
+            Session: <span class="fw-semibold text-primary">{{ $defaultSession->name ?? 'No Active Session' }}</span>
         </small>
     </div>
     <a href="{{ isset($indexRoute) ? $indexRoute : route('admissions.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -71,7 +75,7 @@
         <select name="session_id" id="admissionSessionSelect" class="form-select form-select-sm" style="max-width:220px;">
             @foreach($admissibleSessions as $sess)
             <option value="{{ $sess->id }}"
-                {{ old('session_id', $activeSession?->id) == $sess->id ? 'selected' : '' }}>
+                {{ old('session_id', $defaultSession?->id) == $sess->id ? 'selected' : '' }}>
                 {{ $sess->name }}{{ $sess->is_active ? ' (Current)' : '' }}
             </option>
             @endforeach
@@ -80,7 +84,7 @@
     </div>
 </div>
 @else
-<input type="hidden" name="session_id" value="{{ $activeSession?->id }}">
+<input type="hidden" name="session_id" value="{{ $defaultSession?->id }}">
 @endif
 
 {{-- ═══════════════════════════════════════ --}}
@@ -324,7 +328,7 @@
             @if($fieldEnabled('academic_session'))
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Academic Session</label>
-                <input type="text" class="form-control form-control-sm bg-light" value="{{ $activeSession->name }}" readonly>
+                <input type="text" class="form-control form-control-sm bg-light" value="{{ $defaultSession->name ?? '' }}" readonly>
             </div>
             @endif
 
