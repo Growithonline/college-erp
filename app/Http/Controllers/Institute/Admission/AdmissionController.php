@@ -3042,6 +3042,7 @@ class AdmissionController extends Controller
             'activeTransportAllocation.stop',
             'activeTransportAllocation.vehicle',
             'activeTransportAllocation.driver',
+            'feePlan.installments',
         ]);
 
         // Har session / semester ki identity load karo

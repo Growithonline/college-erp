@@ -51,7 +51,7 @@ class WalletController extends Controller
             return redirect()->back()->with('error', "This student's admission is pending approval. Wallet access is not allowed until the admission is approved.");
         }
 
-        $student->load(['stream.course', 'coursePart']);
+        $student->load(['stream.course', 'coursePart', 'feePlan.installments']);
         $instituteId = $this->instituteId();
 
         $sessions = AcademicSession::where('institute_id', $instituteId)
@@ -73,6 +73,43 @@ class WalletController extends Controller
 
         $summary = WalletService::getStudentSummary($student, (int) $selectedSessionId);
         $pendingFees = WalletService::buildPendingRows($student, (int) $selectedSessionId);
+
+        // Fee plan installment info
+        $feePlanInfo = null;
+        $plan = $student->feePlan;
+        if ($plan && $plan->installments->count() > 0) {
+            $totalFeeForPlan    = (float) ($summary['total_charged'] ?? 0);
+            $totalPaid          = (float) ($summary['total_paid'] ?? 0);
+            $installmentAmounts = $plan->installmentAmounts($totalFeeForPlan);
+
+            $cumulativeDue  = 0.0;
+            $nextDueInst    = null;
+            $nextDueAmount  = 0.0;
+            $totalDueSoFar  = 0.0;
+
+            foreach ($plan->installments as $inst) {
+                $amt = (float) ($installmentAmounts[$inst->installment_number] ?? 0);
+                if ($inst->isDue($student)) {
+                    $totalDueSoFar += $amt;
+                    $cumulativeDue += $amt;
+                    if ($nextDueInst === null && $totalPaid < $cumulativeDue - 0.5) {
+                        $nextDueInst   = $inst;
+                        $nextDueAmount = $amt;
+                    }
+                }
+            }
+
+            $feePlanInfo = [
+                'plan'               => $plan,
+                'installmentAmounts' => $installmentAmounts,
+                'totalFee'           => $totalFeeForPlan,
+                'totalPaid'          => $totalPaid,
+                'totalDueSoFar'      => $totalDueSoFar,
+                'nextDueInst'        => $nextDueInst,
+                'nextDueAmount'      => $nextDueAmount,
+                'overdue'            => $totalPaid < $totalDueSoFar - 0.5,
+            ];
+        }
 
         $sessionBalances = $sessions->map(function ($session) use ($student) {
             $hasWallet = StudentWallet::where('student_id', $student->id)
@@ -111,7 +148,8 @@ class WalletController extends Controller
             'transactions',
             'summary',
             'pendingFees',
-            'sessionBalances'
+            'sessionBalances',
+            'feePlanInfo'
         ));
     }
 }

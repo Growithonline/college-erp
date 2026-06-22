@@ -128,6 +128,84 @@
     </div>
 </div>
 
+{{-- ── Fee Plan Installment Progress ── --}}
+@if(isset($feePlanInfo) && $feePlanInfo)
+@php
+    $fp            = $feePlanInfo['plan'];
+    $instAmts      = $feePlanInfo['installmentAmounts'];
+    $totalFeeP     = $feePlanInfo['totalFee'];
+    $totalPaidP    = $feePlanInfo['totalPaid'];
+    $totalDueSoFar = $feePlanInfo['totalDueSoFar'];
+    $nextDueInst   = $feePlanInfo['nextDueInst'];
+    $nextDueAmount = $feePlanInfo['nextDueAmount'];
+    $isOverdue     = $feePlanInfo['overdue'];
+    $cumulative    = 0;
+@endphp
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-layers me-2 text-primary"></i>
+            Fee Plan: <span class="text-primary">{{ $fp->name }}</span>
+        </h6>
+        <span class="small text-muted">Total: ₹ {{ number_format($totalFeeP, 0) }}</span>
+    </div>
+    <div class="card-body py-3">
+        {{-- Next due alert --}}
+        @if($nextDueInst)
+        <div class="alert {{ $isOverdue ? 'alert-danger' : 'alert-warning' }} py-2 mb-3 d-flex align-items-center justify-content-between gap-2">
+            <div>
+                <i class="bi bi-exclamation-circle me-1"></i>
+                <strong>Next Due:</strong> {{ $nextDueInst->label }}
+                &nbsp;—&nbsp; <span class="fw-bold">₹ {{ number_format($nextDueAmount, 0) }}</span>
+                <span class="text-muted small ms-2">({{ $nextDueInst->dueTriggerLabel() }})</span>
+                @if($isOverdue)<span class="badge bg-danger ms-2">Overdue</span>@endif
+            </div>
+            @if($canCollectFee)
+            <a href="{{ route($feeCreateRoute, ['student_id' => $student->id]) }}"
+               class="btn btn-sm btn-dark fw-semibold">
+                <i class="bi bi-lightning-fill me-1"></i>Collect ₹ {{ number_format($nextDueAmount, 0) }}
+            </a>
+            @endif
+        </div>
+        @elseif($totalFeeP > 0 && $totalPaidP >= $totalFeeP - 0.5)
+        <div class="alert alert-success py-2 mb-3">
+            <i class="bi bi-check-circle me-1"></i>
+            <strong>All installments paid.</strong> Fee fully cleared.
+        </div>
+        @endif
+
+        {{-- Installment badges --}}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach($fp->installments as $inst)
+            @php
+                $amt        = (float) ($instAmts[$inst->installment_number] ?? 0);
+                $cumulative += $amt;
+                $isPaid     = $totalPaidP >= $cumulative - 0.5;
+                $isDue      = $inst->isDue($student);
+                $isNext     = $nextDueInst && $inst->installment_number === $nextDueInst->installment_number;
+            @endphp
+            <span class="badge border {{ $isPaid ? 'bg-success text-white' : ($isNext ? 'bg-warning text-dark border-warning' : ($isDue ? 'bg-danger bg-opacity-10 text-danger border-danger' : 'bg-light text-muted border-secondary')) }}"
+                  style="font-size:12px; padding:6px 10px;">
+                @if($isPaid)<i class="bi bi-check-circle me-1"></i>
+                @elseif($isNext)<i class="bi bi-clock me-1"></i>
+                @elseif(!$isDue)<i class="bi bi-lock me-1"></i>
+                @endif
+                {{ $inst->label }}: ₹ {{ number_format($amt, 0) }}
+                @if(!$isDue)<small class="opacity-75">(not due yet)</small>@endif
+            </span>
+            @endforeach
+        </div>
+
+        {{-- Summary row --}}
+        <div class="d-flex gap-4" style="font-size:13px;">
+            <span>Paid: <strong class="text-success">₹ {{ number_format($totalPaidP, 0) }}</strong></span>
+            <span>Due now: <strong class="text-warning">₹ {{ number_format(max(0, $totalDueSoFar - $totalPaidP), 0) }}</strong></span>
+            <span>Remaining: <strong class="text-danger">₹ {{ number_format(max(0, $totalFeeP - $totalPaidP), 0) }}</strong></span>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- ── Pending Fees Breakup ── --}}
 @if($pendingFees->where('pending', '>', 0)->isNotEmpty())
 <div class="card border-0 shadow-sm mb-4">
