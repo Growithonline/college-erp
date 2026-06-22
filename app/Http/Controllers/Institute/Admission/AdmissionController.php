@@ -1973,10 +1973,12 @@ class AdmissionController extends Controller
         $transportData = $this->transportSelectionData($instituteId);
 
         $admissibleSessions = $this->admissibleSessions($instituteId);
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
 
         return view($this->admissionCreateView(), compact(
             'activeSession', 'admissibleSessions', 'formConfig', 'sections',
-            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes'
+            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes', 'feePlans'
         ) + $transportData);
     }
 
@@ -2003,13 +2005,15 @@ class AdmissionController extends Controller
                             ->when($this->currentStaff()?->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $this->currentStaff()->allowedCourseIds() ?: [-1]))
                             ->with(['streams', 'parts'])->get();
         $transportData = $this->transportSelectionData($instituteId);
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
 
         // Session mein store karo — view mein $pd se read hoga
         session()->put('previewData', $formData);
 
         return view($this->admissionCreateView(), compact(
             'activeSession', 'formConfig', 'sections',
-            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes'
+            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes', 'feePlans'
         ) + $transportData)->with('previewEdit', true)
           ->with('pd', $formData); // Direct PHP variable bhi pass karo
     }

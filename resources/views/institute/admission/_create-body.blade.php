@@ -327,6 +327,28 @@
                 <input type="text" class="form-control form-control-sm bg-light" value="{{ $activeSession->name }}" readonly>
             </div>
             @endif
+
+            @if(isset($feePlans) && $feePlans->isNotEmpty())
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">
+                    <i class="bi bi-layers me-1 text-primary"></i>Fee Plan
+                    <span class="text-muted fw-normal">(optional)</span>
+                </label>
+                <select name="fee_plan_id" id="feePlanSelect" class="form-select form-select-sm">
+                    <option value="">— No Plan (Full Payment) —</option>
+                    @foreach($feePlans as $fp)
+                    <option value="{{ $fp->id }}"
+                        data-course="{{ $fp->course_id ?? '' }}"
+                        {{ $pv('fee_plan_id') == $fp->id ? 'selected' : '' }}>
+                        {{ $fp->name }}
+                        @if($fp->course_id) ({{ $fp->course->name ?? '' }}) @else (All Courses) @endif
+                        — {{ $fp->installment_count }} installment{{ $fp->installment_count > 1 ? 's' : '' }}
+                    </option>
+                    @endforeach
+                </select>
+                <small class="text-muted">Student will pay in installments as per selected plan.</small>
+            </div>
+            @endif
         </div>
     </div>
 </div>
