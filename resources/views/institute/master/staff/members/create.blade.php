@@ -776,7 +776,13 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
             getLabels().forEach(function (lbl) {
                 var lblCtId = lbl.getAttribute('data-ct-id');
                 var show    = !ctId || lblCtId === ctId;
-                lbl.style.display = show ? '' : 'none';
+                if (show) {
+                    lbl.classList.remove('d-none');
+                    lbl.classList.add('d-flex');
+                } else {
+                    lbl.classList.remove('d-flex');
+                    lbl.classList.add('d-none');
+                }
             });
         });
     });
@@ -786,7 +792,7 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', function () {
             getLabels().forEach(function (lbl) {
-                if (lbl.style.display !== 'none') {
+                if (!lbl.classList.contains('d-none')) {
                     var cb = lbl.querySelector('input[type="checkbox"]');
                     if (cb) cb.checked = true;
                 }
@@ -796,7 +802,7 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', function () {
             getLabels().forEach(function (lbl) {
-                if (lbl.style.display !== 'none') {
+                if (!lbl.classList.contains('d-none')) {
                     var cb = lbl.querySelector('input[type="checkbox"]');
                     if (cb) cb.checked = false;
                 }
