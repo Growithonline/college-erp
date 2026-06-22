@@ -764,13 +764,16 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
 
 // Course type filter buttons
 (function () {
-    var btns   = document.querySelectorAll('.staff-ct-btn');
-    var labels = document.querySelectorAll('.staff-course-label');
+    var btns = document.querySelectorAll('.staff-ct-btn');
     if (!btns.length) return;
+
+    function getLabels() {
+        return document.querySelectorAll('#courseCheckboxList .staff-course-label');
+    }
 
     btns.forEach(function (btn) {
         btn.addEventListener('click', function () {
-            var ctId = this.dataset.ctId;
+            var ctId = this.getAttribute('data-ct-id'); // '' for All button
 
             // Toggle active state
             btns.forEach(function (b) {
@@ -781,8 +784,9 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
             this.classList.add('btn-primary');
 
             // Show / hide course labels
-            labels.forEach(function (lbl) {
-                var show = !ctId || lbl.dataset.ctId === ctId;
+            getLabels().forEach(function (lbl) {
+                var lblCtId = lbl.getAttribute('data-ct-id');
+                var show    = !ctId || lblCtId === ctId;
                 lbl.style.display = show ? '' : 'none';
             });
         });
@@ -793,7 +797,7 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
     var clearAllBtn  = document.getElementById('clearAllCourses');
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', function () {
-            labels.forEach(function (lbl) {
+            getLabels().forEach(function (lbl) {
                 if (lbl.style.display !== 'none') {
                     var cb = lbl.querySelector('input[type="checkbox"]');
                     if (cb) cb.checked = true;
@@ -803,7 +807,7 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
     }
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', function () {
-            labels.forEach(function (lbl) {
+            getLabels().forEach(function (lbl) {
                 if (lbl.style.display !== 'none') {
                     var cb = lbl.querySelector('input[type="checkbox"]');
                     if (cb) cb.checked = false;

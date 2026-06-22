@@ -358,15 +358,36 @@
                                 </div>
                             </div>
                             @if(isset($courses) && $courses->isNotEmpty())
-                            <div id="courseChoices" class="{{ old('restrict_course_access', $staffMember->restrict_course_access ?? false) ? 'd-flex' : 'd-none' }} flex-wrap gap-2 ps-1">
-                                @foreach($courses as $course)
-                                <label class="border rounded px-2 py-1 small bg-white d-flex align-items-center gap-1 cursor-pointer">
-                                    <input type="checkbox" class="form-check-input"
-                                           name="course_permissions[{{ $course->id }}]" value="1"
-                                           {{ in_array((int) $course->id, $selectedCourseIds, true) ? 'checked' : '' }}>
-                                    {{ $course->name }}
-                                </label>
-                                @endforeach
+                            <div id="courseChoices" class="{{ old('restrict_course_access', $staffMember->restrict_course_access ?? false) ? '' : 'd-none' }}">
+                                {{-- Course Type Filter Buttons --}}
+                                @if(isset($courseTypes) && $courseTypes->isNotEmpty())
+                                @php $ctMap = $courseTypes->keyBy('id'); @endphp
+                                <div class="d-flex flex-wrap gap-1 mb-2" id="staffCourseTypeFilters">
+                                    <button type="button" class="btn btn-sm btn-primary staff-ct-btn" data-ct-id="" style="font-size:11px;padding:2px 10px;">All</button>
+                                    @foreach($courseTypes as $ct)
+                                    <button type="button" class="btn btn-sm btn-outline-primary staff-ct-btn" data-ct-id="{{ $ct->id }}" style="font-size:11px;padding:2px 10px;">{{ $ct->name }}</button>
+                                    @endforeach
+                                </div>
+                                @endif
+                                <div class="d-flex flex-wrap gap-2 ps-1" id="courseCheckboxList">
+                                    @foreach($courses as $course)
+                                    @php $ctName = isset($ctMap) ? ($ctMap[$course->course_type_id]?->name ?? null) : null; @endphp
+                                    <label class="border rounded px-2 py-1 small bg-white d-flex align-items-center gap-1 cursor-pointer staff-course-label"
+                                           data-ct-id="{{ $course->course_type_id ?? '' }}">
+                                        <input type="checkbox" class="form-check-input"
+                                               name="course_permissions[{{ $course->id }}]" value="1"
+                                               {{ in_array((int) $course->id, $selectedCourseIds, true) ? 'checked' : '' }}>
+                                        {{ $course->name }}
+                                        @if($ctName)
+                                        <span class="badge bg-secondary-subtle text-secondary border ms-1" style="font-size:10px;">{{ $ctName }}</span>
+                                        @endif
+                                    </label>
+                                    @endforeach
+                                </div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" style="font-size:11px;" id="selectAllCourses">Select All</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" style="font-size:11px;" id="clearAllCourses">Clear All</button>
+                                </div>
                             </div>
                             @endif
                         </div>
@@ -724,13 +745,64 @@ document.querySelectorAll('.perm-btn').forEach(function (btn) {
         var l = document.getElementById(labelId);
         if (!t || !c) return;
         t.addEventListener('change', function () {
-            c.classList.remove('d-none', 'd-flex');
-            c.classList.add(this.checked ? 'd-flex' : 'd-none');
+            c.classList.toggle('d-none', !this.checked);
             if (l) l.textContent = this.checked ? onText : offText;
         });
     }
     scopeToggle('restrictSessionAccess', 'sessionChoices', 'sessionScopeLabel', 'Selected only', 'All sessions');
     scopeToggle('restrictCourseAccess',  'courseChoices',  'courseScopeLabel',  'Selected only', 'All courses');
+})();
+
+// Course type filter buttons
+(function () {
+    var btns = document.querySelectorAll('.staff-ct-btn');
+    if (!btns.length) return;
+
+    function getLabels() {
+        return document.querySelectorAll('#courseCheckboxList .staff-course-label');
+    }
+
+    btns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var ctId = this.getAttribute('data-ct-id');
+
+            btns.forEach(function (b) {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-outline-primary');
+            });
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('btn-primary');
+
+            getLabels().forEach(function (lbl) {
+                var lblCtId = lbl.getAttribute('data-ct-id');
+                var show    = !ctId || lblCtId === ctId;
+                lbl.style.display = show ? '' : 'none';
+            });
+        });
+    });
+
+    var selectAllBtn = document.getElementById('selectAllCourses');
+    var clearAllBtn  = document.getElementById('clearAllCourses');
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function () {
+            getLabels().forEach(function (lbl) {
+                if (lbl.style.display !== 'none') {
+                    var cb = lbl.querySelector('input[type="checkbox"]');
+                    if (cb) cb.checked = true;
+                }
+            });
+        });
+    }
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function () {
+            getLabels().forEach(function (lbl) {
+                if (lbl.style.display !== 'none') {
+                    var cb = lbl.querySelector('input[type="checkbox"]');
+                    if (cb) cb.checked = false;
+                }
+            });
+        });
+    }
 })();
 </script>
 @endpush
