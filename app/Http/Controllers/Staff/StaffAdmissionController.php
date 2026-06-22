@@ -206,7 +206,7 @@ class StaffAdmissionController extends Controller
             $admissibleSessions = $allSessions;
         } else {
             $allowed = array_map('intval', $staff->allowed_session_ids ?? []);
-            $admissibleSessions = $allSessions->filter(fn($s) => $s->is_active || in_array($s->id, $allowed))->values();
+            $admissibleSessions = $allSessions->filter(fn($s) => in_array($s->id, $allowed))->values();
         }
 
         $formConfig    = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'quick');
@@ -284,7 +284,7 @@ class StaffAdmissionController extends Controller
             $admissibleSessions = $allSessions;
         } else {
             $allowed = array_map('intval', $staff->allowed_session_ids ?? []);
-            $admissibleSessions = $allSessions->filter(fn($s) => $s->is_active || in_array($s->id, $allowed))->values();
+            $admissibleSessions = $allSessions->filter(fn($s) => in_array($s->id, $allowed))->values();
         }
 
         $formConfig    = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'admission');
