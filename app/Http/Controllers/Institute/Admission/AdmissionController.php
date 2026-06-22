@@ -3028,6 +3028,10 @@ class AdmissionController extends Controller
             'educationDetails',
             'studentSubjects.subject',
             'currentAcademicIdentity',
+            'activeTransportAllocation.route',
+            'activeTransportAllocation.stop',
+            'activeTransportAllocation.vehicle',
+            'activeTransportAllocation.driver',
         ]);
 
         // Har session / semester ki identity load karo

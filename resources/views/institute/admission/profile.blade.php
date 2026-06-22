@@ -606,7 +606,69 @@
 </div>
 @endif
 
+
+{{-- Scholarship Details --}}
+@if($student->has_scholarship)
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header py-2" style="background:#1e293b;color:white;">
+        <span class="fw-bold small"><i class="bi bi-award me-2"></i>Scholarship Details</span>
+    </div>
+    <div class="card-body p-0">
+        @foreach([
+            'Scholarship Name'      => $student->scholarship_name ?? '—',
+            'Scholarship Type'      => ucfirst($student->scholarship_type ?? '—'),
+            'Authority'             => $student->scholarship_authority ?? '—',
+            'Reference No.'         => $student->scholarship_ref_no ?? '—',
+            'Applied Date'          => $student->scholarship_applied_date?->format('d-m-Y') ?? '—',
+            'Scholarship Amount'    => $student->scholarship_amount ? '₹' . number_format($student->scholarship_amount, 2) : '—',
+        ] as $lbl => $val)
+        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+            <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>
+            <div class="fw-semibold">{{ $val }}</div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
+{{-- Transport Details --}}
+@php $transport = $student->activeTransportAllocation; @endphp
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
+        <span class="fw-bold small"><i class="bi bi-bus-front me-2"></i>Transport Details</span>
+        @if($transport)
+            <span class="badge {{ $transport->is_active ? 'bg-success' : 'bg-secondary' }}">
+                {{ $transport->is_active ? 'Active' : 'Inactive' }}
+            </span>
+        @endif
+    </div>
+    @if($transport)
+    <div class="card-body p-0">
+        @foreach([
+            'Route'          => $transport->route?->name ?? '—',
+            'Stop'           => $transport->stop?->name ?? '—',
+            'Vehicle'        => $transport->vehicle ? ($transport->vehicle->vehicle_no ?? $transport->vehicle->name ?? '—') : '—',
+            'Driver'         => $transport->driver?->name ?? '—',
+            'Fee Amount'     => $transport->fee_amount ? '₹' . number_format($transport->fee_amount, 2) : '—',
+            'Paid Amount'    => $transport->paid_amount ? '₹' . number_format($transport->paid_amount, 2) : '₹0.00',
+            'Balance Due'    => ($transport->balance > 0 ? '₹' . number_format($transport->balance, 2) : 'Clear'),
+            'Start Date'     => $transport->start_date?->format('d-m-Y') ?? '—',
+            'End Date'       => $transport->end_date?->format('d-m-Y') ?? '—',
+            'Remarks'        => $transport->remarks ?? '—',
+        ] as $lbl => $val)
+        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+            <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>
+            <div class="fw-semibold {{ $lbl === 'Balance Due' && $transport->balance > 0 ? 'text-danger' : ($lbl === 'Balance Due' ? 'text-success' : '') }}">
+                {{ $val }}
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @else
+    <div class="card-body py-3 text-center text-muted small">
+        <i class="bi bi-bus-front me-1"></i> No transport allocation for this student.
+    </div>
+    @endif
+</div>
+
 @endsection
-
-
-
