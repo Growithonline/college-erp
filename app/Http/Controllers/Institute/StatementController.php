@@ -79,7 +79,8 @@ class StatementController extends Controller
                 'part'        => AcademicState::yearLabel(
                     $s->stream?->course?->structure_type,
                     $s->current_semester,
-                    $s->coursePart?->year_number
+                    $s->coursePart?->year_number,
+                    $s->stream?->course?->effectiveSemestersPerYear() ?? 2
                 ),
                 'semester'    => $s->current_semester ? 'Sem ' . $s->current_semester : '',
                 'session'     => $s->session->name ?? '',

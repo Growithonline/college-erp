@@ -42,6 +42,31 @@ class Course extends Model
         };
     }
 
+    // Semester dropdown options for fee forms — value => label
+    public function semesterOptions(): array
+    {
+        $spy = $this->effectiveSemestersPerYear();
+
+        if ($spy <= 1) {
+            return [0 => 'Annual'];
+        }
+
+        $partLabel = $this->structure_type === 'trimester' ? 'Trimester' : 'Sem';
+        $allLabel  = $spy > 2 ? 'All' : 'Both';
+
+        $options = [0 => $allLabel];
+        for ($i = 1; $i <= $spy; $i++) {
+            $options[$i] = $partLabel . ' ' . $i;
+        }
+        return $options;
+    }
+
+    // Human-readable label for a stored semester value
+    public function semesterLabel(int $value): string
+    {
+        return $this->semesterOptions()[$value] ?? 'Sem ' . $value;
+    }
+
     // Short-term courses (certificate/modular) have no semester promotion
     public function isShortTerm(): bool
     {

@@ -24,7 +24,7 @@ class Student extends Authenticatable
         'perm_state', 'perm_pincode', 'perm_address',
         'comm_same_as_perm', 'comm_state', 'comm_district',
         'comm_post', 'comm_thana', 'comm_pincode', 'comm_city', 'comm_address',
-        'course_type_id', 'course_stream_id', 'course_part_id', 'current_semester',
+        'course_type_id', 'course_stream_id', 'course_part_id', 'fee_plan_id', 'current_semester',
         'photo', 'status',
         'password', 'portal_enabled', 'first_login',
         'has_scholarship', 'scholarship_name', 'scholarship_type',
@@ -56,6 +56,7 @@ class Student extends Authenticatable
     public function session()          { return $this->belongsTo(AcademicSession::class, 'academic_session_id'); }
     public function stream()           { return $this->belongsTo(CourseStream::class, 'course_stream_id'); }
     public function coursePart()       { return $this->belongsTo(CoursePart::class, 'course_part_id'); }
+    public function feePlan()          { return $this->belongsTo(\App\Models\FeePlan::class); }
     public function admittedBy()       { return $this->belongsTo(\App\Models\StaffMember::class, 'admitted_by_staff_id'); }
     public function approvedByStaff()  { return $this->belongsTo(\App\Models\StaffMember::class, 'approved_by_staff_id'); }
 

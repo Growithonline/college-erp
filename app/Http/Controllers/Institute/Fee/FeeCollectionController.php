@@ -758,6 +758,23 @@ class FeeCollectionController extends Controller
         $feeSessions  = $feeSessions  ?? null;
         $feeSessionId = $feeSessionId ?? 0;
 
+        // Load fee plan info for installment breakdown display
+        $feePlanInfo = null;
+        if ($student?->fee_plan_id) {
+            $student->loadMissing('feePlan.installments');
+            $plan = $student->feePlan;
+            if ($plan) {
+                $totalFeeForPlan = (float) ($feeBreakup['total'] ?? 0);
+                $installmentAmounts = $plan->installmentAmounts((float) $totalFeeForPlan);
+                $feePlanInfo = [
+                    'plan'               => $plan,
+                    'installmentAmounts' => $installmentAmounts,
+                    'totalFee'           => $totalFeeForPlan,
+                    'totalPaid'          => (float) ($walletSummary['total_paid'] ?? $alreadyPaid ?? 0),
+                ];
+            }
+        }
+
         $isAdmissionFeeFlow  = $student && session('from_admission_fee_payment') == $student->id;
 
         // If student already has a paid invoice, admission fee is done — expire the flag
@@ -792,7 +809,8 @@ class FeeCollectionController extends Controller
             'libFineShowRoute',
             'canCollectLibFine',
             'isAdmissionFeeFlow',
-            'canApproveAdmission'
+            'canApproveAdmission',
+            'feePlanInfo'
         ));
     }
 

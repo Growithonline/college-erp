@@ -4,26 +4,25 @@ namespace App\Support;
 
 class AcademicState
 {
-    private const SEMESTERS_PER_YEAR = 2;
-
-    public static function yearNumber(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null): ?int
+    public static function yearNumber(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null, int $semestersPerYear = 2): ?int
     {
-        $structureType = strtolower((string) $structureType);
+        $structureType   = strtolower((string) $structureType);
+        $spy             = max(1, $semestersPerYear);
 
-        if ($structureType === 'semester' && $semester) {
-            return max(1, (int) ceil($semester / self::SEMESTERS_PER_YEAR));
+        if (in_array($structureType, ['semester', 'trimester']) && $semester) {
+            return max(1, (int) ceil($semester / $spy));
         }
 
         if ($fallbackYearNumber !== null && $fallbackYearNumber > 0) {
             return (int) $fallbackYearNumber;
         }
 
-        return $semester ? max(1, (int) ceil($semester / self::SEMESTERS_PER_YEAR)) : null;
+        return $semester ? max(1, (int) ceil($semester / $spy)) : null;
     }
 
-    public static function yearLabel(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null): string
+    public static function yearLabel(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null, int $semestersPerYear = 2): string
     {
-        $yearNumber = self::yearNumber($structureType, $semester, $fallbackYearNumber);
+        $yearNumber = self::yearNumber($structureType, $semester, $fallbackYearNumber, $semestersPerYear);
 
         if (!$yearNumber) {
             return '—';

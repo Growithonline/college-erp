@@ -8,6 +8,7 @@ use App\Http\Controllers\Institute\Master\AdmissionFormController;
 use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\Center;
+use App\Models\FeePlan;
 use App\Models\ChannelPartner;
 use App\Models\CourseStream;
 use App\Models\CourseType;
@@ -246,10 +247,13 @@ class StaffAdmissionController extends Controller
         $perms                = $staff->feeDiscountPermissions()->pluck('fee_type_id');
         $staffFeeAllowedTypes = $perms->isNotEmpty() ? $perms->toArray() : null;
 
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
+
         return view('staff.admissions.quick-create', compact(
             'activeSession', 'admissibleSessions', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
             'centers', 'partners', 'allowedPaymentModes', 'bankAccounts',
-            'staffMaxDiscount', 'staffFeeAllowedTypes'
+            'staffMaxDiscount', 'staffFeeAllowedTypes', 'feePlans'
         ));
     }
 

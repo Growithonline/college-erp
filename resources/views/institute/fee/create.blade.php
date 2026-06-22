@@ -503,7 +503,7 @@
                 <div>
                     <div class="fw-bold" style="color:#0891b2;">Library Fine Pending</div>
                     <div class="text-muted small">
-                        {{ $libraryFineData['transactions']->count() }} {{ $libraryFineData['transactions']->count() === 1 ? 'book' : 'books' }} pe outstanding fine hai
+                        {{ $libraryFineData['transactions']->count() }} {{ $libraryFineData['transactions']->count() === 1 ? 'book' : 'books' }} with outstanding fine
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -664,6 +664,43 @@
                 </button>
             </div>
         </div>
+    </div>
+</div>
+@endif
+
+{{-- ── Fee Plan Installment Summary ── --}}
+@if(isset($feePlanInfo) && $feePlanInfo)
+@php
+    $fp         = $feePlanInfo['plan'];
+    $instAmts   = $feePlanInfo['installmentAmounts'];
+    $totalFeeP  = $feePlanInfo['totalFee'];
+    $totalPaidP = $feePlanInfo['totalPaid'];
+    $cumulative = 0;
+@endphp
+<div class="alert alert-info py-2 mb-3 border-start border-4 border-info">
+    <div class="d-flex align-items-center justify-content-between mb-1">
+        <span class="fw-semibold small"><i class="bi bi-layers me-1"></i>Fee Plan: {{ $fp->name }}</span>
+        <span class="small text-muted">Total: ₹ {{ number_format($totalFeeP, 0) }}</span>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        @foreach($fp->installments as $inst)
+        @php
+            $amt = $instAmts[$inst->installment_number] ?? 0;
+            $cumulative += $amt;
+            $isPaid = $totalPaidP >= $cumulative - 0.5;
+        @endphp
+        <div class="d-flex align-items-center gap-1">
+            <span class="badge {{ $isPaid ? 'bg-success' : 'bg-secondary' }}" style="font-size:11px;">
+                @if($isPaid)<i class="bi bi-check-circle me-1"></i>@endif
+                {{ $inst->label }}: ₹ {{ number_format($amt, 0) }}
+            </span>
+        </div>
+        @endforeach
+    </div>
+    <div class="mt-1" style="font-size:11px;">
+        Paid so far: <strong>₹ {{ number_format($totalPaidP, 0) }}</strong>
+        &nbsp;|&nbsp;
+        Remaining: <strong class="text-danger">₹ {{ number_format(max(0, $totalFeeP - $totalPaidP), 0) }}</strong>
     </div>
 </div>
 @endif
@@ -1462,7 +1499,7 @@ function lockAllCollectFields() {
             el.setAttribute('readonly', '');
             el.style.backgroundColor = '#f1f5f9';
             el.style.cursor = 'not-allowed';
-            el.title = 'One-time pay se set hua — fine/disc change karo ya oneTimePay clear karke dobara Fill karo';
+            el.title = 'Set via one-time pay — change fine/discount or clear one-time pay and refill';
         }
     });
 }
@@ -2128,11 +2165,11 @@ if (errorBanner) {
         });
 
         if (hasError) {
-            showLibAlert('danger', 'Kuch amounts invalid hain. Max pending amount se zyada nahi ho sakta.');
+            showLibAlert('danger', 'Some amounts are invalid. Amount cannot exceed the maximum pending amount.');
             return;
         }
         if (items.length === 0 || totalAmt <= 0) {
-            showLibAlert('danger', 'Kam se kam ek book ka amount enter karo.');
+            showLibAlert('danger', 'Please enter an amount for at least one book.');
             return;
         }
 
@@ -2149,15 +2186,15 @@ if (errorBanner) {
         const ref     = document.getElementById('libFineRef')?.value?.trim() || '';
 
         if (!isNonCash && !payDate) {
-            showLibAlert('danger', 'Payment date required hai.');
+            showLibAlert('danger', 'Payment date is required.');
             return;
         }
         if (isNonCash && !payDt) {
-            showLibAlert('danger', 'Payment date & time required hai.');
+            showLibAlert('danger', 'Payment date & time is required.');
             return;
         }
         if (needsRef && !ref) {
-            showLibAlert('danger', 'Transaction reference required hai.');
+            showLibAlert('danger', 'Transaction reference is required.');
             return;
         }
 
@@ -2197,9 +2234,9 @@ if (errorBanner) {
                         try {
                             const json = JSON.parse(text);
                             const msgs = Object.values(json.errors || {}).flat().join(' ');
-                            showLibAlert('danger', msgs || 'Collection fail ho gayi. Dobara try karo.');
+                            showLibAlert('danger', msgs || 'Collection failed. Please try again.');
                         } catch {
-                            showLibAlert('danger', 'Collection fail ho gayi. Dobara try karo.');
+                            showLibAlert('danger', 'Collection failed. Please try again.');
                         }
                         btn.disabled = false;
                         spinner?.classList.add('d-none');
@@ -2208,7 +2245,7 @@ if (errorBanner) {
                 }
             })
             .catch(() => {
-                showLibAlert('danger', 'Network error. Check karo aur dobara try karo.');
+                showLibAlert('danger', 'Network error. Please check your connection and try again.');
                 btn.disabled = false;
                 spinner?.classList.add('d-none');
                 icon?.classList.remove('d-none');

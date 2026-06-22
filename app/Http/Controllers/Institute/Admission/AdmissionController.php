@@ -34,6 +34,7 @@ use App\Services\FeeCalculatorService;
 use App\Services\AuditLogService;
 use App\Services\StudentAcademicChangeService;
 use App\Services\StudentIdService;
+use App\Models\FeePlan;
 use App\Services\WalletService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DomainException;
@@ -1629,6 +1630,7 @@ class AdmissionController extends Controller
             'course_id'        => ['nullable', 'exists:courses,id'],
             'course_stream_id' => ['required', 'exists:course_streams,id'],
             'course_part_id' => ['nullable', 'exists:course_parts,id'],
+            'fee_plan_id'    => ['nullable', Rule::exists('fee_plans', 'id')->where('institute_id', $this->instituteId())],
             'selected_subjects' => ['nullable', 'array'],
             'selected_subjects.*' => ['nullable','integer'],
             'selected_major_subjects' => ['nullable', 'array'],
@@ -1755,7 +1757,7 @@ class AdmissionController extends Controller
             $rules['payment_mode'] = ['required', Rule::in(array_keys($this->allPaymentModes()))];
             $rules['payment_date'] = ['required', 'date'];
             $rules['fee_items'] = ['required', 'array', 'min:1'];
-            $rules['semester'] = ['required', 'integer', 'min:1', 'max:2'];
+            $rules['semester'] = ['required', 'integer', 'min:1', 'max:12'];
             $rules['bank_account_id'] = ['nullable', 'integer', 'exists:institute_bank_accounts,id'];
             $rules['transaction_ref'] = ['nullable', 'string', 'max:100'];
             $rules['remarks'] = ['nullable', 'string', 'max:255'];
@@ -2242,6 +2244,7 @@ class AdmissionController extends Controller
                 'course_type_id'      => $formData['course_type_id']      ?? null,
                 'course_stream_id'    => $formData['course_stream_id'],
                 'course_part_id'      => $firstPart?->id ?? ($formData['course_part_id'] ?? null),
+                'fee_plan_id'         => !empty($formData['fee_plan_id']) ? (int) $formData['fee_plan_id'] : null,
                 'current_semester'    => 1,
                 'status'              => $this->initialAdmissionStatus(),
                 'admitted_by_staff_id' => auth()->guard('staff')->check() ? auth()->guard('staff')->id() : null,
@@ -3448,6 +3451,12 @@ class AdmissionController extends Controller
 
         $admissibleSessions = $this->admissibleSessions($instituteId);
 
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
         return view($this->quickCreateView(),
             compact(
                 'activeSession',
@@ -3461,7 +3470,8 @@ class AdmissionController extends Controller
                 'partners',
                 'allowedPaymentModes',
                 'bankAccounts',
-                'bankModeOverride'
+                'bankModeOverride',
+                'feePlans'
             ));
     }
 

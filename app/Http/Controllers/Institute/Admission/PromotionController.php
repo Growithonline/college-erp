@@ -344,7 +344,8 @@ class PromotionController extends Controller
             ?? \App\Support\AcademicState::yearLabel(
                 $student->stream?->course?->structure_type,
                 (int) $student->current_semester,
-                $student->coursePart?->year_number
+                $student->coursePart?->year_number,
+                $student->stream?->course?->effectiveSemestersPerYear() ?? 2
             );
 
         return [

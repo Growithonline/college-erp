@@ -9,7 +9,7 @@
         <h4 class="mb-0 fw-bold">
             <i class="bi bi-currency-rupee me-2 text-primary"></i>Course Fee Structure
         </h4>
-        <small class="text-muted">Course + Year + Student Type + Session wise fee rules set karo</small>
+        <small class="text-muted">Set fee rules by course, year, student type and session</small>
     </div>
     <a href="{{ route('master.fee-structure.subject-fees') }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-book me-1"></i> Subject Fees
@@ -103,9 +103,9 @@
                 <div class="col-md-1">
                     <label class="form-label small fw-semibold">Sem</label>
                     <select name="semester" class="form-select form-select-sm" required>
-                        <option value="0">Both</option>
-                        <option value="1" {{ old('semester')=='1'?'selected':'' }}>Sem 1</option>
-                        <option value="2" {{ old('semester')=='2'?'selected':'' }}>Sem 2</option>
+                        @foreach($selectedCourse->semesterOptions() as $val => $lbl)
+                        <option value="{{ $val }}" {{ old('semester') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -203,8 +203,10 @@
                         @endif
                     </td>
                     <td>
-                        @if($rule->semester == 0) <span class="badge bg-secondary">Both</span>
-                        @else Sem {{ $rule->semester }}
+                        @if($rule->semester == 0)
+                            <span class="badge bg-secondary">{{ $selectedCourse->semesterOptions()[0] }}</span>
+                        @else
+                            {{ $selectedCourse->semesterLabel($rule->semester) }}
                         @endif
                     </td>
                     <td><span class="badge {{ $rule->student_type=='all'?'bg-secondary':'bg-primary' }}">{{ $rule->student_type_label }}</span></td>
@@ -238,7 +240,7 @@
                 <tr>
                     <td colspan="10" class="text-center text-muted py-4">
                         <i class="bi bi-inbox fs-4 d-block mb-2"></i>
-                        Koi fee rule nahi — upar se add karo
+                        No fee rules found — add one using the form above
                     </td>
                 </tr>
                 @endforelse
@@ -250,8 +252,8 @@
 @else
 <div class="text-center text-muted py-5">
     <i class="bi bi-arrow-up-circle fs-2 d-block mb-3 text-primary"></i>
-    <h6>Course select karo</h6>
-    <p class="small">Upar filter mein course select karke Load karo</p>
+    <h6>Select a Course</h6>
+    <p class="small">Select a course from the filter above and click Load</p>
 </div>
 @endif
 

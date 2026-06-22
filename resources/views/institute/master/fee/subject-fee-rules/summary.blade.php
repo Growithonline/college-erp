@@ -80,8 +80,9 @@
                 <select name="semester" class="form-select form-select-sm">
                     <option value="">All</option>
                     <option value="0" {{ request('semester')==='0' ? 'selected' : '' }}>Annual</option>
-                    <option value="1" {{ request('semester')==='1' ? 'selected' : '' }}>Sem 1</option>
-                    <option value="2" {{ request('semester')==='2' ? 'selected' : '' }}>Sem 2</option>
+                    @for($i = 1; $i <= 6; $i++)
+                    <option value="{{ $i }}" {{ request('semester') == $i ? 'selected' : '' }}>Sem {{ $i }}</option>
+                    @endfor
                 </select>
             </div>
             <div class="col-md-2">

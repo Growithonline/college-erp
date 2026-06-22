@@ -244,7 +244,8 @@ class ReportController extends Controller
             $student->resolved_year_label = AcademicState::yearLabel(
                 $student->stream?->course?->structure_type,
                 $context['semester'] ?? $student->current_semester,
-                $context['course_part_year']
+                $context['course_part_year'],
+                $student->stream?->course?->effectiveSemestersPerYear() ?? 2
             );
 
             $summary    = WalletService::getStudentSummary($student, (int) $sessionId);
@@ -322,7 +323,8 @@ class ReportController extends Controller
                 $student->resolved_year_label = AcademicState::yearLabel(
                     $student->stream?->course?->structure_type,
                     $context['semester'] ?? $student->current_semester,
-                    $context['course_part_year'] ?? null
+                    $context['course_part_year'] ?? null,
+                    $student->stream?->course?->effectiveSemestersPerYear() ?? 2
                 );
 
                 $txn            = $txnAggMap->get($student->id);
@@ -963,7 +965,8 @@ class ReportController extends Controller
             $student->resolved_year_label = AcademicState::yearLabel(
                 $student->stream?->course?->structure_type,
                 $student->current_semester,
-                $student->coursePart?->year_number
+                $student->coursePart?->year_number,
+                $student->stream?->course?->effectiveSemestersPerYear() ?? 2
             );
         }
 
@@ -979,7 +982,8 @@ class ReportController extends Controller
                 $s->resolved_year_label = AcademicState::yearLabel(
                     $s->stream?->course?->structure_type,
                     $s->current_semester,
-                    $s->coursePart?->year_number
+                    $s->coursePart?->year_number,
+                    $s->stream?->course?->effectiveSemestersPerYear() ?? 2
                 );
             }
 
@@ -1633,7 +1637,7 @@ class ReportController extends Controller
             'academic_session' => $student->session?->name,
             'course_name' => $student->stream?->course?->name,
             'stream_name' => $student->stream?->name,
-            'year_label' => AcademicState::yearLabel($student->stream?->course?->structure_type, $student->current_semester, $student->coursePart?->year_number),
+            'year_label' => AcademicState::yearLabel($student->stream?->course?->structure_type, $student->current_semester, $student->coursePart?->year_number, $student->stream?->course?->effectiveSemestersPerYear() ?? 2),
             'subjects' => $student->studentSubjects->map(fn($row) => $row->subject?->name)->filter()->unique()->implode(', '),
             'photo' => $student->photo ? Storage::url($student->photo) : '',
             default => $student->{$key} ?? '',

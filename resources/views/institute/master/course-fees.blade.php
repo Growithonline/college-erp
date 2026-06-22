@@ -84,9 +84,9 @@
                 <div class="col-md-1">
                     <label class="form-label small fw-semibold">Semester</label>
                     <select name="semester" class="form-select form-select-sm" required>
-                        <option value="0">Both</option>
-                        <option value="1">Sem 1</option>
-                        <option value="2">Sem 2</option>
+                        @foreach($selectedCourse->semesterOptions() as $val => $lbl)
+                        <option value="{{ $val }}">{{ $lbl }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -173,8 +173,10 @@
                         @endif
                     </td>
                     <td>
-                        @if($rule->semester == 0) <span class="badge bg-secondary">Both</span>
-                        @else Sem {{ $rule->semester }}
+                        @if($rule->semester == 0)
+                            <span class="badge bg-secondary">{{ $selectedCourse->semesterOptions()[0] }}</span>
+                        @else
+                            {{ $selectedCourse->semesterLabel($rule->semester) }}
                         @endif
                     </td>
                     <td>

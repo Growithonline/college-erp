@@ -90,7 +90,7 @@
             @if($student->email) <br><strong>Email:</strong> {{ $student->email }} @endif
             @if($student->mobile) <br><strong>Mobile:</strong> {{ $student->mobile }} @endif
             @if(!$student->email && !$student->mobile && !$student->father_mobile)
-            <br><span class="text-danger">⚠️ Koi email ya mobile nahi mila — password screen pe dikhega.</span>
+            <br><span class="text-danger">⚠️ No email or mobile found — password will be shown on screen.</span>
             @endif
         </p>
         <form method="POST" action="{{ route('admissions.resend-credentials', $student) }}">
@@ -159,6 +159,19 @@
                         <div class="opacity-75 small">DOB</div>
                         <div class="fw-semibold">{{ $student->dob?->format('d M Y') ?? '—' }}</div>
                     </div>
+                    @if($student->feePlan)
+                    <div class="col-12 col-md-6">
+                        <div class="opacity-75 small">Fee Plan</div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="fw-semibold text-primary">{{ $student->feePlan->name }}</span>
+                            @foreach($student->feePlan->installments as $inst)
+                            <span class="badge bg-light text-dark border" style="font-size:11px;">
+                                {{ $inst->label }}: {{ $inst->percentage }}%
+                            </span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>

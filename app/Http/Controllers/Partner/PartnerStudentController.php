@@ -8,6 +8,7 @@ use App\Http\Controllers\Institute\Master\StudentTypeController;
 use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CourseStream;
+use App\Models\FeePlan;
 use App\Models\InstituteBankAccount;
 use App\Models\PaymentModePermission;
 use App\Models\Student;
@@ -213,9 +214,12 @@ class PartnerStudentController extends Controller
                 ->where('is_active', true)->orderBy('sort_order')->get();
         }
 
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
+
         return view('partner.admissions.quick-create', compact(
             'activeSession', 'admissibleSessions', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
-            'centers', 'partners', 'partner', 'allowedPaymentModes', 'bankAccounts'
+            'centers', 'partners', 'partner', 'allowedPaymentModes', 'bankAccounts', 'feePlans'
         ));
     }
 

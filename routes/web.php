@@ -15,6 +15,7 @@ use App\Http\Controllers\Institute\Master\StudentTypeController;
 use App\Http\Controllers\Institute\Master\CourseTypeController;
 use App\Http\Controllers\Institute\Master\CourseFeeRuleController;
 use App\Http\Controllers\Institute\Master\SubjectFeeRuleController;
+use App\Http\Controllers\Institute\Master\FeePlanController;
 use App\Http\Controllers\Institute\Master\CenterController;
 use App\Http\Controllers\Institute\Master\AdmissionFormController;
 use App\Http\Controllers\Institute\Master\ChannelPartnerController;
@@ -176,6 +177,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('fee-types/{feeType}/toggle', [FeeTypeController::class, 'toggle'])
              ->name('fee-types.toggle');
         Route::resource('fee-assignments', FeeAssignmentController::class);
+
+        // Fee Plans
+        Route::get('fee-plans',                              [FeePlanController::class, 'index'])->name('fee-plans.index');
+        Route::post('fee-plans',                             [FeePlanController::class, 'store'])->middleware('throttle:20,1')->name('fee-plans.store');
+        Route::get('fee-plans/for-course',                   [FeePlanController::class, 'forCourse'])->middleware('throttle:60,1')->name('fee-plans.for-course');
+        Route::patch('fee-plans/{feePlan}',                  [FeePlanController::class, 'update'])->name('fee-plans.update');
+        Route::patch('fee-plans/{feePlan}/toggle',           [FeePlanController::class, 'toggleStatus'])->name('fee-plans.toggle');
+        Route::delete('fee-plans/{feePlan}',                 [FeePlanController::class, 'destroy'])->name('fee-plans.destroy');
 
         Route::get('fee-structure/course-fees',                    [CourseFeeRuleController::class, 'index'])->name('fee-structure.course-fees');
         Route::post('fee-structure/course-fees',                   [CourseFeeRuleController::class, 'store'])->name('fee-structure.course-fees.store');

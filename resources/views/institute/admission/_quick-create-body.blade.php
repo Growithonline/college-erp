@@ -96,7 +96,7 @@
     </div>
     <div class="card-body p-3">
         <div id="quickFeeEmpty" class="alert alert-warning mb-3">
-            Course, stream aur subjects select karte hi fee items yahan load honge.
+            Fee items will load here once you select a course, stream and subjects.
         </div>
 
         <div id="quickFeePanel" style="display:none;">
@@ -314,6 +314,29 @@
                     <option value="">— Select Year —</option>
                 </select>
             </div>
+
+            {{-- Fee Plan --}}
+            @if(isset($feePlans) && $feePlans->isNotEmpty())
+            <div class="col-md-4" id="feePlanWrap">
+                <label class="form-label small fw-semibold mb-1">Fee Plan
+                    <i class="bi bi-info-circle text-muted" title="Number of installments for fee payment"></i>
+                </label>
+                <select name="fee_plan_id" id="feePlanSelect" class="{{ $fs }}"
+                        onchange="showFeePlanPreview(this.value)">
+                    <option value="">— No Plan (Full Payment) —</option>
+                    @foreach($feePlans as $fp)
+                    <option value="{{ $fp->id }}"
+                            data-course-id="{{ $fp->course_id ?? '' }}"
+                            {{ old('fee_plan_id') == $fp->id ? 'selected' : '' }}>
+                        {{ $fp->name }}
+                        @if($fp->course_id) ({{ $fp->course->name ?? '' }}) @endif
+                    </option>
+                    @endforeach
+                </select>
+                {{-- Installment preview --}}
+                <div id="feePlanPreview" class="mt-1" style="font-size:11px; color:#6b7280;"></div>
+            </div>
+            @endif
 
         </div>
     </div>
@@ -846,7 +869,7 @@
 @php
     $eduFields = ['q_edu_10th','q_edu_12th','q_edu_graduation','q_edu_other'];
     $eduLabels = ['q_edu_10th'=>'10TH','q_edu_12th'=>'12TH','q_edu_graduation'=>'GRADUATION','q_edu_other'=>'OTHER'];
-    // section_enabled bhi check karo — agar section OFF hai toh education hide karo
+    // also check section_enabled — if section is OFF, hide education fields
     $eduSectionEnabled = collect($eduFields)->contains(fn($k) => $formConfig[$k]['section_enabled'] ?? false);
     $showEdu = $eduSectionEnabled &&
                collect($eduFields)->contains(fn($k) => $fieldEnabled($k));
@@ -941,7 +964,7 @@
             <button type="button" class="btn btn-sm fw-semibold" style="background:#fbbf24;color:#1e293b;" onclick="applyQuickOneTimePay()">
                 <i class="bi bi-lightning-fill me-1"></i>Fill
             </button>
-            <button type="button" class="btn btn-outline-light btn-sm fw-semibold" onclick="clearAllQuickFields()" title="Sabhi fields clear karo">
+            <button type="button" class="btn btn-outline-light btn-sm fw-semibold" onclick="clearAllQuickFields()" title="Clear all fields">
                 <i class="bi bi-x-circle me-1"></i>Clear
             </button>
             <div class="text-end ms-md-2">
@@ -952,7 +975,7 @@
     </div>
     <div class="card-body {{ $cbp }}">
         <div id="quickFeeEmpty" class="alert alert-warning mb-3">
-            Course, stream aur subjects select karte hi fee items yahan load honge.
+            Fee items will load here once you select a course, stream and subjects.
         </div>
 
         <div id="quickFeePanel" style="display:none;">
@@ -1003,16 +1026,19 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Semester <span class="text-danger">*</span></label>
-                    <div class="d-flex gap-3 pt-1">
-                        @php $selectedSem = old('semester', 1); @endphp
-                        @foreach([1,2] as $sem)
+                    <div class="d-flex flex-wrap gap-3 pt-1" id="semesterRadioContainer">
+                        @php $selectedSem = (int) old('semester', 1); @endphp
+                        {{-- Populated dynamically by updateSemesterOptions() when course changes --}}
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="semester" id="quick_sem_{{ $sem }}" value="{{ $sem }}"
-                                   {{ (int) $selectedSem === $sem ? 'checked' : '' }}
-                                   onchange="refreshQuickFeePreview()">
-                            <label class="form-check-label small" for="quick_sem_{{ $sem }}">Semester {{ $sem }}</label>
+                            <input class="form-check-input" type="radio" name="semester" id="quick_sem_1" value="1"
+                                   {{ $selectedSem === 1 ? 'checked' : '' }} onchange="refreshQuickFeePreview()">
+                            <label class="form-check-label small" for="quick_sem_1">Semester 1</label>
                         </div>
-                        @endforeach
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="semester" id="quick_sem_2" value="2"
+                                   {{ $selectedSem === 2 ? 'checked' : '' }} onchange="refreshQuickFeePreview()">
+                            <label class="form-check-label small" for="quick_sem_2">Semester 2</label>
+                        </div>
                     </div>
                 </div>
 
@@ -1082,7 +1108,7 @@
 <div class="text-center mt-2 mb-3">
     <small class="text-muted">
         <i class="bi bi-info-circle me-1"></i>
-        Preview confirm karo, fir Save → Payment → Receipt
+        Confirm the preview, then Save → Payment → Receipt
     </small>
 </div>
 
@@ -1113,7 +1139,9 @@ $courseDataRaw = $courses->map(function($c) {
         ->values();
 
     return [
-        'id'      => $c->id,
+        'id'                 => $c->id,
+        'semesters_per_year' => $c->effectiveSemestersPerYear(),
+        'structure_type'     => $c->structure_type,
         'streams' => $c->streams->map(function($s) { return ['id' => $s->id, 'name' => $s->name]; })->values(),
         'parts'   => $parts->map(function($p) { return ['id' => $p->id, 'name' => $p->year_label, 'year' => $p->year_number]; })->values(),
     ];
@@ -1121,6 +1149,12 @@ $courseDataRaw = $courses->map(function($c) {
 @endphp
 <script>
 const courseData = @json($courseDataRaw);
+const feePlansData = @json(isset($feePlans) ? $feePlans->map(fn($p) => [
+    'id'          => $p->id,
+    'name'        => $p->name,
+    'course_id'   => $p->course_id,
+    'installments'=> $p->installments->map(fn($i) => ['number'=>$i->installment_number,'label'=>$i->label,'percentage'=>(float)$i->percentage,'trigger'=>$i->due_trigger])->values()->all(),
+])->values() : []);
 
 // Dynamic URLs — staff/center/partner ke liye alag routes
 const SEATS_URL    = "{{ isset($seatsUrl)    ? $seatsUrl    : route('admissions.stream-seats') }}";
@@ -1181,6 +1215,55 @@ function filterCoursesByType(typeId) {
     updateEduRows(typeId);
 }
 
+function showFeePlanPreview(planId) {
+    const preview = document.getElementById('feePlanPreview');
+    if (!preview) return;
+    if (!planId) { preview.innerHTML = ''; return; }
+
+    const plan = feePlansData.find(p => p.id == planId);
+    if (!plan || !plan.installments.length) { preview.innerHTML = ''; return; }
+
+    const parts = plan.installments.map(i =>
+        `<span class="badge bg-light text-dark border me-1">${i.label}: ${i.percentage}%</span>`
+    ).join('');
+    preview.innerHTML = parts;
+}
+
+// Filter fee plan options when course changes — hide course-specific plans of other courses
+function filterFeePlans(courseId) {
+    const sel = document.getElementById('feePlanSelect');
+    if (!sel) return;
+    Array.from(sel.options).forEach(opt => {
+        const optCourse = opt.dataset.courseId;
+        // hide if plan belongs to a different course
+        opt.hidden = optCourse && optCourse != courseId;
+    });
+    // re-trigger preview for currently selected
+    showFeePlanPreview(sel.value);
+}
+
+function updateSemesterOptions(courseId) {
+    const container = document.getElementById('semesterRadioContainer');
+    if (!container) return;
+
+    const course = courseData[courseId];
+    const spy    = course ? (course.semesters_per_year || 2) : 2;
+    const isTriSem = course && course.structure_type === 'trimester';
+    const label  = isTriSem ? 'Trimester' : 'Semester';
+
+    container.innerHTML = '';
+    const currentVal = parseInt(document.querySelector('input[name="semester"]:checked')?.value || '1');
+    for (let i = 1; i <= spy; i++) {
+        const id = 'quick_sem_' + i;
+        container.innerHTML += `<div class="form-check">
+            <input class="form-check-input" type="radio" name="semester" id="${id}" value="${i}"
+                   ${i === (currentVal <= spy ? currentVal : 1) ? 'checked' : ''}
+                   onchange="refreshQuickFeePreview()">
+            <label class="form-check-label small" for="${id}">${label} ${i}</label>
+        </div>`;
+    }
+}
+
 function loadStreams(courseId) {
     const streamSel = document.getElementById('streamSelect');
     const partSel   = document.getElementById('partSelect');
@@ -1189,6 +1272,9 @@ function loadStreams(courseId) {
     streamSel.innerHTML = '<option value="">— Select Stream —</option>';
     partSel.innerHTML   = '<option value="">— Select Year —</option>';
     partWrap.style.display = 'none';
+
+    updateSemesterOptions(courseId);
+    filterFeePlans(courseId);
 
     if (!courseId || !courseData[courseId]) return;
 
@@ -1199,7 +1285,7 @@ function loadStreams(courseId) {
         streamSel.appendChild(opt);
     });
 
-    // Auto-select agar sirf ek stream hai
+    // Auto-select if only one stream available
     if (courseData[courseId].streams.length === 1) {
         streamSel.value = courseData[courseId].streams[0].id;
         loadParts(courseId);
@@ -1239,16 +1325,16 @@ function loadParts(courseId) {
     if (streamId) loadSubjects(streamId, parts[0].year);
 }
 
-// Stream select pe bhi parts load karo + subjects
+// On stream selection, also load parts + subjects
 document.getElementById('streamSelect').addEventListener('change', function() {
     const courseId = document.getElementById('courseSelect').value;
     if (courseId) loadParts(courseId);
-    // Stream change pe subjects reset karo
+    // Reset subjects on stream change
     hideSubjectSection();
     if (courseId) loadParts(courseId);
 });
 
-// Part select hone pe subjects load karo
+// Load subjects when a part is selected
 document.getElementById('partSelect').addEventListener('change', function() {
     const streamId = document.getElementById('streamSelect').value;
     if (streamId && this.value) {
@@ -1293,7 +1379,7 @@ window.addEventListener('DOMContentLoaded', function() {
                 const partSel = document.getElementById('partSelect');
                 if (oldPart) {
                     partSel.value = oldPart;
-                    // Subjects restore karo
+                    // Restore subjects
                     const selOpt = partSel.options[partSel.selectedIndex];
                     const yr = parseInt(selOpt?.dataset?.year || 1);
                     if (oldStream) loadSubjects(oldStream, yr);
@@ -1483,11 +1569,11 @@ function renderSubjects(subjects) {
     if (window.majorTS && window.minorTS) syncMajorMinorExclusion();
 }
 
-// Major mein selected subjects Minor se disable karo
+// Disable subjects selected in Major from Minor options
 function syncMajorMinorExclusion() {
     if (!window.majorTS || !window.minorTS) return;
     const selectedMajors = window.majorTS.getValue(); // array of selected values
-    // Minor ke sabhi options check karo
+    // Check all Minor options
     Object.keys(window.minorTS.options).forEach(val => {
         if (selectedMajors.includes(val)) {
             window.minorTS.updateOption(val, { ...window.minorTS.options[val], disabled: true });
@@ -1749,7 +1835,7 @@ function refreshQuickFeePreview() {
             renderQuickFeeRows(data?.fee_data?.items || [], preservedMap);
         })
         .catch(() => {
-            // Error pe existing rows preserve karo — silently clear mat karo
+            // On error, preserve existing rows — do not silently clear them
         });
 }
 
@@ -2099,7 +2185,7 @@ function toggleQuickBankAccount() {
             if (!timeInput.value) {
                 timeInput.value = `${today}T${curr}`;
             }
-            // Admin: koi bhi past date select kar sakta hai; staff/center/partner: sirf aaj ka date
+            // Admin: any past date allowed; staff/center/partner: today's date only
             if ({{ $lockPaymentDate ? 'true' : 'false' }}) {
                 timeInput.min = `${today}T00:00`;
             } else {
@@ -2244,7 +2330,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initQuickFormDraft();
 });
 
-// ── Form draft — sessionStorage pe save karo, refresh pe restore ─────
+// ── Form draft — save to sessionStorage on change, restore on refresh ─────
 (function () {
     const DRAFT_KEY = 'adm_quick_{{ auth()->id() ?? 0 }}';
     const HAS_PHP_DATA = @json(!empty(old()) || !empty($qd ?? []));

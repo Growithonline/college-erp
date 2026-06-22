@@ -9,7 +9,7 @@
         <h4 class="mb-0 fw-bold">
             <i class="bi bi-book me-2 text-primary"></i>Subject Fee Structure
         </h4>
-        <small class="text-muted">Course + Year + Semester wise subject fees set karo</small>
+        <small class="text-muted">Set subject fees by course, year and semester</small>
     </div>
     <a href="{{ route('master.fee-structure.course-fees') }}" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-currency-rupee me-1"></i> Course Fees
@@ -81,9 +81,9 @@
                 <label class="form-label small fw-semibold mb-1">Semester</label>
                 <select name="semester" class="form-select form-select-sm">
                     <option value="">-- Select Sem --</option>
-                    <option value="0" {{ request('semester') === '0' ? 'selected' : '' }}>Both (Annual)</option>
-                    <option value="1" {{ request('semester') == '1' ? 'selected' : '' }}>Semester 1</option>
-                    <option value="2" {{ request('semester') == '2' ? 'selected' : '' }}>Semester 2</option>
+                    @foreach(($selectedCourse ? $selectedCourse->semesterOptions() : [0=>'Both',1=>'Sem 1',2=>'Sem 2']) as $val => $lbl)
+                    <option value="{{ $val }}" {{ request('semester') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                    @endforeach
                 </select>
             </div>
 
@@ -105,7 +105,7 @@
     <span>
         <strong>{{ $selectedCourse->name }}</strong> —
         Year {{ $coursePart }},
-        {{ $semester == 0 ? 'Annual (Both Semesters)' : 'Semester '.$semester }}
+        {{ $selectedCourse->semesterLabel($semester) }}
         &nbsp;|&nbsp;
         Session: <strong>{{ $sessions->find($sessionId)?->name ?? '' }}</strong>
         &nbsp;|&nbsp;
@@ -117,13 +117,12 @@
 <div class="card border-0 shadow-sm">
     <div class="card-body text-center py-5 text-muted">
         <i class="bi bi-book fs-2 d-block mb-2"></i>
-        <h6>Is course ke Year {{ $coursePart }} mein koi subject mapped nahi hai</h6>
+        <h6>No subjects mapped for Year {{ $coursePart }} of this course</h6>
         <p class="small">
-            Pehle
+            First map subjects via
             <a href="{{ route('master.courses.streams.index', $selectedCourse) }}">
                 Master → Course → Streams → Subjects
             </a>
-            mein subjects map karo.
         </p>
     </div>
 </div>
@@ -137,7 +136,7 @@
                 <i class="bi bi-table me-2"></i>
                 Subject Fees — {{ $selectedCourse->name }},
                 Year {{ $coursePart }},
-                {{ $semester == 0 ? 'Annual' : 'Sem '.$semester }}
+                {{ $selectedCourse->semesterLabel($semester) }}
             </span>
             <span class="badge bg-secondary">{{ $subjects->count() }} subjects</span>
         </div>
@@ -283,18 +282,18 @@
 @elseif($selectedCourse && $coursePart)
 <div class="alert alert-info">
     <i class="bi bi-info-circle me-2"></i>
-    Course aur Year select kiya — ab <strong>Semester</strong> bhi select karo.
+    Course and year selected — please also select a <strong>Semester</strong>.
 </div>
 @elseif($selectedCourse)
 <div class="alert alert-info">
     <i class="bi bi-info-circle me-2"></i>
-    Course select kiya — ab <strong>Year</strong> aur <strong>Semester</strong> select karo.
+    Course selected — please also select a <strong>Year</strong> and <strong>Semester</strong>.
 </div>
 @else
 <div class="text-center text-muted py-5">
     <i class="bi bi-arrow-up-circle fs-2 d-block mb-3 text-primary"></i>
-    <h6>Course + Year + Semester select karo</h6>
-    <p class="small">Upar filter mein select karo aur Load karo</p>
+    <h6>Select Course, Year and Semester</h6>
+    <p class="small">Use the filter above to select and click Load</p>
 </div>
 @endif
 

@@ -207,6 +207,10 @@
                                     <i class="bi bi-currency-rupee"></i> Fee Assignment
                                 </a></li>
                                 <li><hr class="my-1"></li>
+                                <li><a class="nav-link {{ request()->routeIs('master.fee-plans*') ? 'active' : '' }}"
+                                       href="{{ route('master.fee-plans.index') }}">
+                                    <i class="bi bi-layers"></i> Fee Plans
+                                </a></li>
                                 <li><a class="nav-link {{ request()->routeIs('master.fee-structure.course-fees*') ? 'active' : '' }}"
                                        href="{{ route('master.fee-structure.course-fees') }}">
                                     <i class="bi bi-buildings"></i> Course Fees

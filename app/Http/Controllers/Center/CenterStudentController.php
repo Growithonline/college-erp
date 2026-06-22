@@ -8,6 +8,7 @@ use App\Http\Controllers\Institute\Master\StudentTypeController;
 use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CourseStream;
+use App\Models\FeePlan;
 use App\Models\Institute;
 use App\Models\Student;
 use App\Models\TransportRoute;
@@ -325,9 +326,12 @@ class CenterStudentController extends Controller
             return empty($bankModes) || array_intersect($allowedPaymentModes, $bankModes);
         })->values();
 
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
+
         return view('center.admission.quick-create', compact(
             'activeSession', 'admissibleSessions', 'formConfig', 'courses', 'courseTypes', 'studentTypes',
-            'centers', 'partners', 'center', 'allowedPaymentModes', 'bankAccounts'
+            'centers', 'partners', 'center', 'allowedPaymentModes', 'bankAccounts', 'feePlans'
         ));
     }
 

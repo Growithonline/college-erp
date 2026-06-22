@@ -159,7 +159,7 @@ class SubjectFeeRuleController extends Controller
             'academic_session_id' => ['required', Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
             'subject_id'          => ['required', Rule::exists('subjects', 'id')->where('institute_id', $instituteId)],
             'course_part'         => 'required|integer|min:1|max:6',
-            'semester'            => 'required|integer|min:0|max:2',
+            'semester'            => 'required|integer|min:0|max:12',
             'subject_fee'         => 'required|numeric|min:0|max:999999',
             'practical_fee'       => 'nullable|numeric|min:0|max:999999',
         ]);
@@ -192,7 +192,7 @@ class SubjectFeeRuleController extends Controller
             'academic_session_id'  => ['required', Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
             'course_id'            => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
             'course_part'          => 'required|integer|min:1|max:6',
-            'semester'             => 'required|integer|min:0|max:2',
+            'semester'             => 'required|integer|min:0|max:12',
             'fees'                 => 'required|array|min:1|max:100',
             'fees.*.subject_id'    => ['required', Rule::exists('subjects', 'id')->where('institute_id', $instituteId)],
             'fees.*.subject_fee'   => 'required|numeric|min:0|max:999999',
@@ -285,7 +285,7 @@ class SubjectFeeRuleController extends Controller
             'session_id'    => ['required', Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
             'course_id'     => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
             'course_part'   => 'required|integer|min:1|max:6',
-            'semester'      => 'required|integer|min:0|max:2',
+            'semester'      => 'required|integer|min:0|max:12',
             'subject_ids'   => 'required|array',
             'subject_ids.*' => ['integer', Rule::exists('subjects', 'id')->where('institute_id', $instituteId)],
         ]);
