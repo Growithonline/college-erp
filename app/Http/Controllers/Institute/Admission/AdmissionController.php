@@ -2727,7 +2727,8 @@ class AdmissionController extends Controller
             ->orderBy('name')
             ->get();
 
-        $streams = \App\Models\CourseStream::where('institute_id', $instituteId)
+        $instituteCourseIds = $courses->pluck('id');
+        $streams = \App\Models\CourseStream::whereIn('course_id', $instituteCourseIds)
             ->orderBy('name')
             ->get(['id', 'name', 'course_id']);
 
