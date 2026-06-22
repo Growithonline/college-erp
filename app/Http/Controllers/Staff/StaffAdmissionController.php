@@ -215,7 +215,8 @@ class StaffAdmissionController extends Controller
             ->when($staff->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $staff->allowedCourseIds() ?: [-1]))
             ->with(['streams','parts','type'])
             ->get();
-        $courseTypes   = $courses->pluck('type')->filter()->unique('id')->sortBy('sort_order')->values();
+        $courseTypeIds = $courses->pluck('course_type_id')->filter()->unique()->values();
+        $courseTypes   = CourseType::whereIn('id', $courseTypeIds)->orderBy('sort_order')->orderBy('name')->get();
         $studentTypes  = StudentTypeController::getActiveTypes($instituteId);
         $centers       = Center::where('institute_id', $instituteId)->where('status', true)->get();
         $partners      = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->get();
@@ -293,7 +294,8 @@ class StaffAdmissionController extends Controller
             ->when($staff->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $staff->allowedCourseIds() ?: [-1]))
             ->with(['streams','parts','type'])
             ->get();
-        $courseTypes   = $courses->pluck('type')->filter()->unique('id')->sortBy('sort_order')->values();
+        $courseTypeIds = $courses->pluck('course_type_id')->filter()->unique()->values();
+        $courseTypes   = CourseType::whereIn('id', $courseTypeIds)->orderBy('sort_order')->orderBy('name')->get();
         $studentTypes  = StudentTypeController::getActiveTypes($instituteId);
         $centers       = Center::where('institute_id', $instituteId)->where('status', true)->get();
         $partners      = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->get();
@@ -342,7 +344,8 @@ class StaffAdmissionController extends Controller
         $courses       = Course::where('institute_id', $instituteId)->where('status', true)
                             ->when($staff->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $staff->allowedCourseIds() ?: [-1]))
                             ->with(['streams', 'parts', 'type'])->get();
-        $courseTypes   = $courses->pluck('type')->filter()->unique('id')->sortBy('sort_order')->values();
+        $courseTypeIds = $courses->pluck('course_type_id')->filter()->unique()->values();
+        $courseTypes   = CourseType::whereIn('id', $courseTypeIds)->orderBy('sort_order')->orderBy('name')->get();
         $studentTypes  = StudentTypeController::getActiveTypes($instituteId);
 
         session()->put('previewData', $formData);
