@@ -14,6 +14,15 @@
     $totalFine      = $invoices->where('is_cancelled', false)->sum(fn($i) => $i->items->sum('fine'));
     $totalDiscount  = $invoices->where('is_cancelled', false)->sum(fn($i) => (float)($i->discount ?? 0));
     $overallDue     = $sessionBalances->sum(fn($sb) => (float)$sb->main_b < 0 ? abs((float)$sb->main_b) : 0);
+
+    // Running due per receipt: total_charged = total_paid + current_due
+    $totalCharged = $totalPaid + $overallDue;
+    $runningDueMap = [];
+    $rd = $totalCharged;
+    foreach ($invoices->where('is_cancelled', false)->sortBy(fn($i) => $i->payment_date->timestamp * 1000000 + $i->id) as $_inv) {
+        $rd -= (float) $_inv->paid_amount;
+        $runningDueMap[$_inv->id] = max(0, round($rd, 2));
+    }
 @endphp
 @extends($layout)
 @section('title','Fee History')
@@ -172,22 +181,27 @@
                 </div>
 
                 {{-- Father & Mother --}}
-                <div class="mt-2 d-flex flex-wrap gap-3">
+                <div class="mt-2 d-flex flex-wrap gap-4">
                     @if($student->father_name)
-                    <span style="font-size:13px;font-weight:600;color:#111827;">
-                        <span class="text-muted fw-normal me-1" style="font-size:11px;">Father:</span>{{ $student->father_name }}
+                    <div>
+                        <div style="font-size:10px;font-weight:600;letter-spacing:.05em;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Father</div>
+                        <div style="font-size:15px;font-weight:700;color:#111827;line-height:1.3;">{{ $student->father_name }}</div>
                         @if($student->father_mobile)
-                            <span class="text-muted fw-normal ms-1" style="font-size:11px;">{{ $student->father_mobile }}</span>
+                            <div style="font-size:12px;color:#6b7280;margin-top:1px;"><i class="bi bi-phone-fill me-1" style="font-size:10px;"></i>{{ $student->father_mobile }}</div>
                         @endif
-                    </span>
+                    </div>
                     @endif
                     @if($student->mother_name)
-                    <span style="font-size:13px;font-weight:600;color:#111827;">
-                        <span class="text-muted fw-normal me-1" style="font-size:11px;">Mother:</span>{{ $student->mother_name }}
+                    @if($student->father_name)
+                        <div style="width:1px;background:#e5e7eb;align-self:stretch;"></div>
+                    @endif
+                    <div>
+                        <div style="font-size:10px;font-weight:600;letter-spacing:.05em;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Mother</div>
+                        <div style="font-size:15px;font-weight:700;color:#111827;line-height:1.3;">{{ $student->mother_name }}</div>
                         @if($student->mother_mobile)
-                            <span class="text-muted fw-normal ms-1" style="font-size:11px;">{{ $student->mother_mobile }}</span>
+                            <div style="font-size:12px;color:#6b7280;margin-top:1px;"><i class="bi bi-phone-fill me-1" style="font-size:10px;"></i>{{ $student->mother_mobile }}</div>
                         @endif
-                    </span>
+                    </div>
                     @endif
                 </div>
             </div>
@@ -282,9 +296,8 @@
                         $mc = $modeColors[$inv->payment_mode] ?? $modeColors['dd'];
                         $invFine = (float) $inv->items->sum('fine');
                         $invDisc = (float) ($inv->discount ?? 0);
-                        $invDue  = $inv->is_cancelled
-                                    ? (float) $inv->paid_amount
-                                    : max(0, (float)$inv->total_amount - (float)$inv->paid_amount - $invDisc);
+                        // Running due: outstanding balance AFTER this receipt was generated
+                        $invDue  = $inv->is_cancelled ? null : ($runningDueMap[$inv->id] ?? null);
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'cancelled-row' : '' }}">
                         {{-- Invoice No --}}
@@ -370,11 +383,13 @@
 
                         {{-- Due --}}
                         <td class="text-end">
-                            @if($invDue > 0)
+                            @if($inv->is_cancelled)
+                                <span style="font-size:10px;font-weight:600;color:#9ca3af;">—</span>
+                            @elseif($invDue > 0)
                                 <span class="mono fw-bold text-danger" style="font-size:13px;">₹ {{ number_format($invDue) }}</span>
                             @else
                                 <span style="font-size:11px;font-weight:600;color:#16a34a;">
-                                    <i class="bi bi-check-circle-fill"></i> Paid
+                                    <i class="bi bi-check-circle-fill"></i> Cleared
                                 </span>
                             @endif
                         </td>
