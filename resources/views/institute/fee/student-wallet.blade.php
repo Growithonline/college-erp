@@ -4,6 +4,7 @@
     $feeCreateRoute = $isStaff ? 'staff.fee.create' : 'fee.create';
     $showRoute = $isStaff ? 'staff.admissions.show' : 'admissions.show';
     $feeIndexRoute = $isStaff ? 'staff.fee.index' : 'fee.index';
+    $feeHistoryRoute = $isStaff ? 'staff.fee.student-history' : 'fee.student-history';
     $walletRoute = $isStaff ? 'staff.fee.wallet.student' : 'fee.wallet.student';
     $receiptRoute = $isStaff ? 'staff.fee.receipt' : 'fee.receipt';
     $canCollectFee = !$isStaff || auth()->guard('staff')->user()?->canCollectFee();
@@ -27,7 +28,7 @@
         <a href="{{ route($showRoute, $student->id) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-person me-1"></i>Profile
         </a>
-        <a href="{{ route($feeIndexRoute) }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ route($feeHistoryRoute, $student->id) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Back
         </a>
     </div>
