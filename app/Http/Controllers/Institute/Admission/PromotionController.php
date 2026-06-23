@@ -1229,8 +1229,8 @@ class PromotionController extends Controller
                     "WHEN `c`.`structure_type` = 'yearly'    THEN 1 " .
                     "WHEN `c`.`structure_type` = 'trimester' THEN 3 " .
                     'ELSE 2 END ' .
-                    'FROM `courses` `c` INNER JOIN `streams` `s` ON `s`.`course_id` = `c`.`id` ' .
-                    'WHERE `s`.`id` = `students`.`stream_id` LIMIT 1)'
+                    'FROM `courses` `c` INNER JOIN `course_streams` `s` ON `s`.`course_id` = `c`.`id` ' .
+                    'WHERE `s`.`id` = `students`.`course_stream_id` LIMIT 1)'
                 );
             });
 
