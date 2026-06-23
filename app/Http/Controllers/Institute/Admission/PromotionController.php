@@ -12,6 +12,7 @@ use App\Models\PromotionLog;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
 use App\Models\StudentEducationDetail;
+use App\Models\Subject;
 use App\Models\StudentSubject;
 use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
@@ -21,6 +22,7 @@ use App\Services\WalletService;
 use App\Support\SimpleSpreadsheet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -133,7 +135,9 @@ class PromotionController extends Controller
 
     private function promotedBy(): string
     {
-        return Auth::user()?->name ?? Auth::guard('staff')->user()?->name ?? 'System';
+        // Check staff guard first — mirrors promotedByRole() so name and role always agree.
+        // If both guards are somehow active simultaneously, they would mismatch otherwise.
+        return Auth::guard('staff')->user()?->name ?? Auth::user()?->name ?? 'System';
     }
 
     private function promotedByRole(): string
@@ -389,7 +393,7 @@ class PromotionController extends Controller
         abort_if(
             !$this->isChronologicallyAfter($fromSession, $toSession),
             422,
-            'Target session current session ke baad ki honi chahiye.'
+            'Target session must be chronologically after the current session.'
         );
 
         $staff = $this->currentStaff();
@@ -410,6 +414,58 @@ class PromotionController extends Controller
     private function promotionLogStatusForTerminal(string $terminalStatus): string
     {
         return $terminalStatus === 'passed_out' ? 'completed' : $terminalStatus;
+    }
+
+    private function resolveBacklogSubjects(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+        return Subject::whereIn('id', $ids)
+            ->where('institute_id', $this->instituteId())
+            ->get(['id', 'name', 'code'])
+            ->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'code' => $s->code ?? ''])
+            ->toArray();
+    }
+
+    // Bug 8: create a zero-amount audit ledger entry when a student exits with outstanding dues.
+    // The wallet balance is unchanged (dues remain payable); this entry proves the balance
+    // was reviewed at the time of the terminal outcome.
+    private function recordTerminalDue(
+        Student $student,
+        int $sessionId,
+        float $due,
+        PromotionLog $log,
+        string $terminalStatus
+    ): void {
+        if ($due <= 0) {
+            return;
+        }
+
+        $wallet = StudentWallet::where('student_id', $student->id)
+            ->where('institute_id', $student->institute_id)
+            ->where('academic_session_id', $sessionId)
+            ->first();
+
+        $bal = $wallet ? (float) $wallet->main_b : 0.0;
+
+        StudentTransaction::create([
+            'student_id'          => $student->id,
+            'institute_id'        => $student->institute_id,
+            'academic_session_id' => $sessionId,
+            'des'                 => sprintf(
+                'Exit balance noted — Rs %.2f outstanding. Status: %s. Dues remain payable.',
+                $due,
+                ucwords(str_replace('_', ' ', $terminalStatus))
+            ),
+            'credit'              => 0.00,
+            'debit'               => 0.00,
+            'type'                => StudentTransaction::DEBIT,
+            'date'                => now()->toDateString(),
+            'op_bal'              => $bal,
+            'cl_bal'              => $bal,
+            'by_user_id'          => $this->currentStaff()?->id ?? auth()->id(),
+        ] + ($this->hasPromotionLogColumn() ? ['promotion_log_id' => $log->id] : []));
     }
 
     private function applyStudentAccessScope($query)
@@ -797,6 +853,11 @@ class PromotionController extends Controller
         ]);
 
         DB::transaction(function () use ($student, $data) {
+            // Re-fetch with row lock — student was bound outside the transaction,
+            // so a concurrent request could have already changed status.
+            $student = Student::where('id', $student->id)->lockForUpdate()->firstOrFail();
+            abort_unless($student->status === 'active', 422, 'Student is no longer active.');
+
             $student->update([
                 'status'  => $data['completion_status'],
             ]);
@@ -821,6 +882,134 @@ class PromotionController extends Controller
         });
 
         return back()->with('success', "Student marked as {$data['completion_status']} successfully.");
+    }
+
+    // ── Re-admission ──────────────────────────────────────────────────────────
+    // Reinstates a terminal student into an active session.
+
+    public function readmitForm(Student $student)
+    {
+        $this->ensurePromotionAccess();
+        $instituteId = $this->instituteId();
+
+        abort_unless($student->institute_id === $instituteId, 403);
+        abort_unless(
+            in_array($student->status, self::TERMINAL_STATUSES, true),
+            422,
+            'Only terminal students (passed_out / backlog / failed / dropped) can be re-admitted.'
+        );
+        $this->ensureStaffCanAccessStudent($student);
+
+        $student->load(['stream.course', 'coursePart', 'session']);
+
+        $sessions    = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseParts = $student->stream?->course_id
+            ? CoursePart::where('course_id', $student->stream->course_id)
+                ->orderBy('year_number')->orderBy('part_number')->get()
+            : collect();
+
+        $isStaff = $this->currentStaff() !== null;
+
+        return view('institute.admission.promotions.readmit', compact(
+            'student', 'sessions', 'courseParts', 'isStaff'
+        ));
+    }
+
+    public function readmit(Request $request, Student $student)
+    {
+        $this->ensurePromotionAccess();
+        $instituteId = $this->instituteId();
+
+        abort_unless($student->institute_id === $instituteId, 403);
+        abort_unless(
+            in_array($student->status, self::TERMINAL_STATUSES, true),
+            422,
+            'Only terminal students can be re-admitted.'
+        );
+        $this->ensureStaffCanAccessStudent($student);
+
+        $student->load('stream');
+        $courseId = $student->stream?->course_id;
+
+        $data = $request->validate([
+            'to_session_id'   => ['required', 'integer',
+                Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
+            'course_part_id'  => array_filter([
+                'required', 'integer',
+                $courseId
+                    ? Rule::exists('course_parts', 'id')->where('course_id', $courseId)
+                    : 'exists:course_parts,id',
+            ]),
+            'current_semester'=> ['required', 'integer', 'min:1', 'max:20'],
+            'remarks'         => ['nullable', 'string', 'max:500'],
+        ]);
+
+        DB::transaction(function () use ($student, $data, $instituteId) {
+            // Re-fetch with lock to prevent concurrent re-admissions
+            $student = Student::where('id', $student->id)
+                ->where('institute_id', $instituteId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            abort_unless(
+                in_array($student->status, self::TERMINAL_STATUSES, true),
+                422,
+                'Student is no longer in a terminal state.'
+            );
+
+            $toSession  = AcademicSession::where('id', $data['to_session_id'])
+                ->where('institute_id', $instituteId)
+                ->firstOrFail();
+            $targetPart = CoursePart::findOrFail($data['course_part_id']);
+
+            // Snapshot identity before re-admission
+            $this->snapshotIdentity(
+                $student,
+                $student->academic_session_id ?? $data['to_session_id'],
+                StudentAcademicIdentity::SOURCE_PRE_SESSION_PROMOTE
+            );
+
+            $log = PromotionLog::create([
+                'institute_id'        => $instituteId,
+                'student_id'          => $student->id,
+                'promotion_type'      => 'readmission',
+                'from_session_id'     => $student->academic_session_id,
+                'from_course_part_id' => $student->course_part_id,
+                'from_semester'       => $student->current_semester,
+                'to_session_id'       => $toSession->id,
+                'to_course_part_id'   => $targetPart->id,
+                'to_semester'         => (int) $data['current_semester'],
+                'dues_carried_forward'=> 0,
+                'status'              => 'promoted',
+                'remarks'             => trim(
+                    'Re-admitted. Previous status: ' . $student->status . '. '
+                    . ($data['remarks'] ?? '')
+                ),
+                'promoted_by'         => $this->promotedBy(),
+                'promoted_by_role'    => $this->promotedByRole(),
+            ]);
+
+            $student->update([
+                'status'              => 'active',
+                'academic_session_id' => $toSession->id,
+                'course_part_id'      => $targetPart->id,
+                'current_semester'    => (int) $data['current_semester'],
+            ]);
+
+            $student->refresh();
+            $student->load(['stream.course', 'coursePart', 'session']);
+
+            $this->upsertCurrentIdentity(
+                $student,
+                $toSession->id,
+                StudentAcademicIdentity::SOURCE_PROMOTION,
+                ['remarks' => 'Re-admitted to ' . $toSession->name]
+            );
+        });
+
+        return redirect()
+            ->route($this->currentStaff() ? 'staff.admissions.promote.semester' : 'admissions.promote.semester')
+            ->with('success', "{$student->name} has been re-admitted successfully.");
     }
 
     public function checkStudentStatus(Request $request)
@@ -929,10 +1118,14 @@ class PromotionController extends Controller
         foreach ($request->student_ids as $sid) {
             try {
                 DB::transaction(function () use ($sid, $instituteId, $request, &$promoted) {
+                    // lockForUpdate prevents concurrent promotions of the same student
+                    // (double-click / two staff tabs) from both reading the same semester
+                    // and advancing it twice.
                     $student = Student::with(['stream.course', 'coursePart', 'session'])
                         ->where('id', $sid)
                         ->where('institute_id', $instituteId)
                         ->where('status', 'active')
+                        ->lockForUpdate()
                         ->first();
 
                     if (!$student) {
@@ -1023,6 +1216,24 @@ class PromotionController extends Controller
             ->where('status', 'active');
         $this->applyStudentAccessScope($query);
 
+        // Only show students eligible for session promotion:
+        // — at their year-end semester (current_semester == year_number * effective_spy)
+        // — non-modular (short-term) courses use mark-complete instead
+        $query
+            ->whereNotNull('course_part_id')
+            ->whereHas('stream.course', fn($cq) => $cq->where('structure_type', '!=', 'modular'))
+            ->whereHas('coursePart', function ($cpq) {
+                $cpq->whereRaw(
+                    '`students`.`current_semester` = `course_parts`.`year_number` * ' .
+                    '(SELECT CASE WHEN `c`.`semesters_per_year` > 0 THEN `c`.`semesters_per_year` ' .
+                    "WHEN `c`.`structure_type` = 'yearly'    THEN 1 " .
+                    "WHEN `c`.`structure_type` = 'trimester' THEN 3 " .
+                    'ELSE 2 END ' .
+                    'FROM `courses` `c` INNER JOIN `streams` `s` ON `s`.`course_id` = `c`.`id` ' .
+                    'WHERE `s`.`id` = `students`.`stream_id` LIMIT 1)'
+                );
+            });
+
         if ($fromSessionId) {
             $query->where('academic_session_id', $fromSessionId);
         }
@@ -1036,10 +1247,25 @@ class PromotionController extends Controller
                 ->orWhere('mobile', 'like', "%{$s}%"));
         }
 
-        $students       = $query->orderBy('name')->paginate(50)->withQueryString();
+        $students = $query->orderBy('name')->paginate(50)->withQueryString();
         foreach ($students as $student) {
             $student->promotion_due = WalletService::getStudentSummary($student, (int) $student->academic_session_id)['total_due'];
         }
+
+        // Preload subjects by course_part for the backlog subject picker in the view
+        $partIds = $students->pluck('course_part_id')->unique()->filter()->values()->toArray();
+        $subjectsByPart = [];
+        if ($partIds) {
+            $subjectsByPart = Subject::join('course_part_subject', 'course_part_subject.subject_id', '=', 'subjects.id')
+                ->whereIn('course_part_subject.course_part_id', $partIds)
+                ->select('subjects.id', 'subjects.name', 'subjects.code', 'course_part_subject.course_part_id')
+                ->orderBy('subjects.name')
+                ->get()
+                ->groupBy('course_part_id')
+                ->map(fn($g) => $g->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'code' => $s->code ?? ''])->values())
+                ->toArray();
+        }
+
         $fromSessionObj = AcademicSession::find($fromSessionId);
         $toSessionObj   = AcademicSession::find($toSessionId);
 
@@ -1052,22 +1278,27 @@ class PromotionController extends Controller
             'fromSessionId',
             'toSessionId',
             'activeSession',
-            'courseId'
+            'courseId',
+            'subjectsByPart'
         ));
     }
 
     public function sessionPromote(Request $request)
     {
         $this->ensurePromotionAccess();
+        $instituteId = $this->instituteId();
         $request->validate([
-            'student_ids'      => 'required|array|min:1',
-            'student_ids.*'    => 'integer|exists:students,id',
-            'to_session_id'    => 'nullable|integer|exists:academic_sessions,id',
-            'completion_status'=> 'nullable|in:passed_out,backlog,failed,dropped',
-            'remarks'          => 'nullable|string|max:500',
+            'student_ids'          => 'required|array|min:1',
+            'student_ids.*'        => 'integer|exists:students,id',
+            'to_session_id'        => ['nullable', 'integer',
+                Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
+            'completion_status'    => 'nullable|in:passed_out,backlog,failed,dropped',
+            'backlog_subject_ids'  => 'nullable|array',
+            'backlog_subject_ids.*'=> ['integer',
+                Rule::exists('subjects', 'id')->where('institute_id', $instituteId)],
+            'remarks'              => 'nullable|string|max:500',
         ]);
 
-        $instituteId = $this->instituteId();
         $promoted = 0;
         $completed = 0;
         $errors = [];
@@ -1075,10 +1306,13 @@ class PromotionController extends Controller
         foreach ($request->student_ids as $sid) {
             try {
                 $result = DB::transaction(function () use ($sid, $instituteId, $request) {
+                    // lockForUpdate prevents concurrent session-promotions of the same
+                    // student from both reading status='active' and double-promoting.
                     $student = Student::with(['stream.course', 'coursePart', 'session'])
                         ->where('id', $sid)
                         ->where('institute_id', $instituteId)
                         ->where('status', 'active')
+                        ->lockForUpdate()
                         ->first();
 
                     if (!$student) {
@@ -1105,8 +1339,9 @@ class PromotionController extends Controller
                     );
 
                     if ($check['is_last']) {
+                        // ── FINAL YEAR: apply terminal outcome ───────────────────────
                         $terminalStatus = $this->normalizeTerminalStatus($request->input('completion_status'));
-                        PromotionLog::create([
+                        $log = PromotionLog::create([
                             'institute_id'         => $instituteId,
                             'student_id'           => $student->id,
                             'promotion_type'       => 'session',
@@ -1125,6 +1360,17 @@ class PromotionController extends Controller
                             'promoted_by_role'     => $this->promotedByRole(),
                         ]);
 
+                        // Backlog subject tracking for final-year backlog outcome
+                        if ($terminalStatus === 'backlog') {
+                            $subjects = $this->resolveBacklogSubjects($request->input('backlog_subject_ids', []));
+                            if ($subjects) {
+                                $log->update(['backlog_subjects' => $subjects]);
+                            }
+                        }
+
+                        // Bug 8: audit ledger entry for outstanding dues at exit
+                        $this->recordTerminalDue($student, $student->academic_session_id, $due, $log, $terminalStatus);
+
                         $this->upsertCurrentIdentity(
                             $student,
                             $student->academic_session_id,
@@ -1137,6 +1383,81 @@ class PromotionController extends Controller
                         return 'completed';
                     }
 
+                    // ── NON-FINAL YEAR: branch on outcome ────────────────────────────
+                    $completionStatus = $request->input('completion_status');
+
+                    // DROPPED: student leaves — no session move needed
+                    if ($completionStatus === 'dropped') {
+                        $droppedLog = PromotionLog::create([
+                            'institute_id'         => $instituteId,
+                            'student_id'           => $student->id,
+                            'promotion_type'       => 'session',
+                            'from_session_id'      => $student->academic_session_id,
+                            'from_course_part_id'  => $student->course_part_id,
+                            'from_semester'        => $student->current_semester,
+                            'to_session_id'        => null,
+                            'to_course_part_id'    => null,
+                            'to_semester'          => null,
+                            'dues_carried_forward' => $due,
+                            'carry_forward_context' => $this->carryForwardContext($student, $student->session),
+                            'status'               => 'dropped',
+                            'terminal_status'      => 'dropped',
+                            'remarks'              => trim('Dropped. ' . ($request->remarks ?? '')),
+                            'promoted_by'          => $this->promotedBy(),
+                            'promoted_by_role'     => $this->promotedByRole(),
+                        ]);
+                        // Bug 8: audit ledger entry for outstanding dues at exit
+                        $this->recordTerminalDue($student, $student->academic_session_id, $due, $droppedLog, 'dropped');
+                        $student->update(['status' => 'dropped']);
+                        return 'completed';
+                    }
+
+                    // FAILED: year-back — same year/part, move to new session only
+                    if ($completionStatus === 'failed') {
+                        if (!$request->filled('to_session_id')) {
+                            throw new \RuntimeException("Select a target session for year-back of {$student->name}.");
+                        }
+                        $toSession   = $this->resolveTargetSession((int) $request->to_session_id, $student);
+                        if ((int) $student->academic_session_id === (int) $toSession->id) {
+                            throw new \RuntimeException("{$student->name} is already in the {$toSession->name} session.");
+                        }
+                        $bounds      = $this->currentPartBounds($student);
+                        $fromSession = $student->session ?: AcademicSession::find($student->academic_session_id);
+
+                        $log = PromotionLog::create([
+                            'institute_id'         => $instituteId,
+                            'student_id'           => $student->id,
+                            'promotion_type'       => 'session',
+                            'from_session_id'      => $student->academic_session_id,
+                            'from_course_part_id'  => $student->course_part_id,
+                            'from_semester'        => $student->current_semester,
+                            'to_session_id'        => $toSession->id,
+                            'to_course_part_id'    => $student->course_part_id,  // same part (year-back)
+                            'to_semester'          => $bounds['start'],           // reset to year start
+                            'dues_carried_forward' => $due,
+                            'carry_forward_context' => $this->carryForwardContext($student, $fromSession),
+                            'status'               => 'failed',
+                            'remarks'              => trim('Year-back. ' . ($request->remarks ?? '')),
+                            'promoted_by'          => $this->promotedBy(),
+                            'promoted_by_role'     => $this->promotedByRole(),
+                        ]);
+
+                        $this->carryForwardDue($student, $fromSession, $toSession, $due, $log);
+                        $student->update([
+                            'academic_session_id' => $toSession->id,
+                            'current_semester'    => $bounds['start'],
+                            // course_part_id unchanged — student repeats the same year
+                        ]);
+                        $student->refresh();
+                        $student->load(['stream.course', 'coursePart', 'session']);
+                        $this->upsertCurrentIdentity($student, $toSession->id,
+                            StudentAcademicIdentity::SOURCE_SESSION_PROMOTION,
+                            ['remarks' => 'Year-back from ' . ($fromSession?->name ?? 'Previous Session')]);
+                        $this->applyPromotionFee($student, $toSession->id, $bounds['start'], $log);
+                        return 'promoted';
+                    }
+
+                    // DEFAULT / BACKLOG: promote to next year in new session
                     if (!$request->filled('to_session_id')) {
                         throw new \RuntimeException("Please select a 'To Session' for {$student->name}.");
                     }
@@ -1147,9 +1468,10 @@ class PromotionController extends Controller
                         throw new \RuntimeException("{$student->name} is already in the {$toSession->name} session.");
                     }
 
-                    $toSemester = $this->nextSemester($student);
-                    $nextPart = $this->targetPartForStudent($student, $toSemester);
+                    $toSemester  = $this->nextSemester($student);
+                    $nextPart    = $this->targetPartForStudent($student, $toSemester);
                     $fromSession = $student->session ?: AcademicSession::find($student->academic_session_id);
+                    $isBacklog   = $completionStatus === 'backlog';
 
                     if (!$nextPart) {
                         throw new \RuntimeException("Target part for Semester {$toSemester} is missing for {$student->name}.");
@@ -1167,11 +1489,19 @@ class PromotionController extends Controller
                         'to_semester'          => $toSemester,
                         'dues_carried_forward' => $due,
                         'carry_forward_context' => $this->carryForwardContext($student, $fromSession),
-                        'status'               => 'promoted',
+                        'status'               => $isBacklog ? 'backlog' : 'promoted',
                         'remarks'              => $request->remarks,
                         'promoted_by'          => $this->promotedBy(),
                         'promoted_by_role'     => $this->promotedByRole(),
                     ]);
+
+                    // Backlog subject tracking for non-final-year backlog outcome
+                    if ($isBacklog) {
+                        $subjects = $this->resolveBacklogSubjects($request->input('backlog_subject_ids', []));
+                        if ($subjects) {
+                            $log->update(['backlog_subjects' => $subjects]);
+                        }
+                    }
 
                     $this->syncSubjectsForTargetPart($student, $toSession->id, $nextPart);
                     $this->carryForwardDue($student, $fromSession, $toSession, $due, $log);
@@ -1180,7 +1510,7 @@ class PromotionController extends Controller
                         'academic_session_id' => $toSession->id,
                         'course_part_id'      => $nextPart->id,
                         'current_semester'    => $toSemester,
-                        'status'              => 'active',
+                        'status'              => 'active', // backlog students stay active; they carry subjects to next year
                     ]);
 
                     $student->refresh();
@@ -1190,7 +1520,8 @@ class PromotionController extends Controller
                         $student,
                         $toSession->id,
                         StudentAcademicIdentity::SOURCE_SESSION_PROMOTION,
-                        ['remarks' => 'Promoted from ' . ($fromSession?->name ?? 'Previous Session')]
+                        ['remarks' => ($isBacklog ? 'Promoted with backlog from ' : 'Promoted from ')
+                            . ($fromSession?->name ?? 'Previous Session')]
                     );
 
                     $this->applyPromotionFee($student, $toSession->id, $toSemester, $log);
@@ -1263,10 +1594,16 @@ class PromotionController extends Controller
                 'admission_date'      => $previousIdentity?->admission_date_snapshot ?? $student->admission_date,
             ]);
 
-            if ($log->promotion_type === 'session' && $log->to_session_id !== $log->from_session_id) {
-                StudentSubject::where('student_id', $student->id)
-                    ->where('academic_session_id', $log->to_session_id)
-                    ->delete();
+            if (
+                in_array($log->promotion_type, ['session', 'readmission'], true)
+                && $log->to_session_id !== $log->from_session_id
+                && $log->to_session_id
+            ) {
+                if ($log->promotion_type === 'session') {
+                    StudentSubject::where('student_id', $student->id)
+                        ->where('academic_session_id', $log->to_session_id)
+                        ->delete();
+                }
 
                 StudentAcademicIdentity::where('student_id', $student->id)
                     ->where('academic_session_id', $log->to_session_id)

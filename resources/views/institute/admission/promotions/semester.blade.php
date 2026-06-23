@@ -2,6 +2,16 @@
 @section('title', 'Semester Promotion')
 @section('breadcrumb', 'Admissions / Semester Promotion')
 @section('content')
+@php
+    $isStaff      = auth()->guard('staff')->check();
+    $_rp          = $isStaff ? 'staff.admissions.promote.' : 'admissions.promote.';
+    $rSemester    = $_rp . 'semester';
+    $rSemesterDo  = $_rp . 'semester.do';
+    $rSession     = $_rp . 'session';
+    $rIdentity    = $_rp . 'identity';
+    $rReport      = $_rp . 'report';
+    $rMarkComplete = $_rp . 'mark-complete';
+@endphp
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
@@ -9,13 +19,13 @@
         <small class="text-muted">Promote students to the next semester within the same session</small>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ route('admissions.promote.session') }}" class="btn btn-outline-warning btn-sm">
+        <a href="{{ route($rSession) }}" class="btn btn-outline-warning btn-sm">
             <i class="bi bi-calendar-arrow-up me-1"></i>Session Promotion
         </a>
-        <a href="{{ route('admissions.promote.identity') }}" class="btn btn-outline-info btn-sm">
+        <a href="{{ route($rIdentity) }}" class="btn btn-outline-info btn-sm">
             <i class="bi bi-person-badge me-1"></i>Identity
         </a>
-        <a href="{{ route('admissions.promote.report') }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ route($rReport) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-text me-1"></i>Report
         </a>
     </div>
@@ -63,7 +73,7 @@
         </button>
     </div>
     <div class="card-body">
-        <form method="POST" action="{{ route('admissions.promote.semester.do') }}" id="promoteForm">
+        <form method="POST" action="{{ route($rSemesterDo) }}" id="promoteForm">
             @csrf
             <div id="selectedStudentInputs"></div>
             <div class="row g-3">
@@ -132,7 +142,7 @@
             </div>
             <div class="col-md-2 d-flex gap-1">
                 <button class="btn btn-primary btn-sm flex-fill"><i class="bi bi-search"></i> Filter</button>
-                <a href="{{ route('admissions.promote.semester') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                <a href="{{ route($rSemester) }}" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
             <div class="col-auto ms-auto">
                 <button type="button" class="btn btn-success btn-sm" onclick="openPromotePanel()" id="promoteBtn" disabled>
@@ -224,7 +234,7 @@
                         </td>
                         <td class="text-center">
                             @if($student->stream?->course?->isShortTerm())
-                                <form method="POST" action="{{ route('admissions.promote.mark-complete', $student) }}" class="d-inline">
+                                <form method="POST" action="{{ route($rMarkComplete, $student) }}" class="d-inline">
                                     @csrf
                                     <input type="hidden" name="completion_status" value="passed_out">
                                     <button type="submit" class="btn btn-sm btn-outline-success"

@@ -2,6 +2,17 @@
 @section('title', 'Session Promotion')
 @section('breadcrumb', 'Admissions / Session Promotion')
 @section('content')
+@php
+    $isStaff      = auth()->guard('staff')->check();
+    $_rp          = $isStaff ? 'staff.admissions.promote.' : 'admissions.promote.';
+    $rSemester    = $_rp . 'semester';
+    $rSessionPage = $_rp . 'session';
+    $rSessionDo   = $_rp . 'session.do';
+    $rIdentity    = $_rp . 'identity';
+    $rReport      = $_rp . 'report';
+    $rOutcomes    = $_rp . 'outcomes';
+    $rMarkComplete = $_rp . 'mark-complete';
+@endphp
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
@@ -9,16 +20,16 @@
         <small class="text-muted">Auto-promote students to the next session / next year after the final semester</small>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ route('admissions.promote.semester') }}" class="btn btn-outline-primary btn-sm">
+        <a href="{{ route($rSemester) }}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-arrow-up-circle me-1"></i>Semester Promotion
         </a>
-        <a href="{{ route('admissions.promote.identity') }}" class="btn btn-outline-info btn-sm">
+        <a href="{{ route($rIdentity) }}" class="btn btn-outline-info btn-sm">
             <i class="bi bi-person-badge me-1"></i>Identity
         </a>
-        <a href="{{ route('admissions.promote.outcomes') }}" class="btn btn-outline-dark btn-sm">
+        <a href="{{ route($rOutcomes) }}" class="btn btn-outline-dark btn-sm">
             <i class="bi bi-award me-1"></i>Outcomes
         </a>
-        <a href="{{ route('admissions.promote.report') }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ route($rReport) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-text me-1"></i>Report
         </a>
     </div>
@@ -66,7 +77,7 @@
         </button>
     </div>
     <div class="card-body">
-        <form method="POST" action="{{ route('admissions.promote.session.do') }}" id="promoteForm">
+        <form method="POST" action="{{ route($rSessionDo) }}" id="promoteForm">
             @csrf
             <div id="selectedStudentInputs"></div>
             <div class="row g-3">
@@ -83,12 +94,16 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-5">
-                    <label class="form-label small fw-semibold">Auto Rule</label>
-                    <div class="form-control form-control-sm bg-light">
-                        Non-final year students will be automatically promoted to the next session.
-                        For final year students, the selected <strong>Final Outcome</strong> will be applied (default: Passed Out).
-                    </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Outcome</label>
+                    <select name="completion_status" id="completion_status" class="form-select form-select-sm" onchange="onOutcomeChange(this.value)">
+                        <option value="">&#8594; Promote to Next Session / Year</option>
+                        <option value="backlog">Backlog (promoted, subjects pending)</option>
+                        <option value="failed">Fail (year-back — repeat year)</option>
+                        <option value="dropped">Drop (leave / withdraw)</option>
+                        <option value="passed_out">Passed Out (final year only)</option>
+                    </select>
+                    <div id="outcomeHint" class="mt-1" style="font-size:11px;color:#6b7280;"></div>
                 </div>
                 <div class="col-md-1">
                     <label class="form-label small fw-semibold">Selected</label>
@@ -96,24 +111,30 @@
                         <strong id="selectedCount">0</strong>
                     </div>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold">Final Outcome
-                        <span class="text-muted fw-normal" style="font-size:10px;">(last year only)</span>
-                    </label>
-                    <select name="completion_status" class="form-select form-select-sm">
-                        <option value="">&#8594; Promote to Next Session</option>
-                        <option value="passed_out">Passed Out</option>
-                        <option value="backlog">Backlog</option>
-                        <option value="failed">Fail</option>
-                        <option value="dropped">Drop</option>
-                    </select>
-                </div>
-                <div class="col-md-12 col-lg-2">
+                <div class="col-md-3">
                     <label class="form-label small fw-semibold">Remarks</label>
                     <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional">
                 </div>
+
+                {{-- Backlog subject picker — shown only when outcome = backlog --}}
+                <div class="col-12" id="backlogSubjectsSection" style="display:none;">
+                    <label class="form-label small fw-semibold">
+                        <i class="bi bi-journal-x me-1 text-warning"></i>Backlog Subjects
+                        <span class="text-muted fw-normal" style="font-size:10px;">(select subjects the student failed)</span>
+                    </label>
+                    <div id="backlogSubjectsContainer" class="p-2 rounded border bg-light"
+                         style="max-height:160px;overflow-y:auto;font-size:12px;">
+                        <span class="text-muted">Select students to see available subjects.</span>
+                    </div>
+                </div>
+
                 <div class="col-12 small text-muted">
-                    Outstanding dues will be carried forward to the new session wallet with the source session and semester recorded. Final-year students will not be promoted to the next session — their selected final outcome will be saved instead.
+                    <strong>Promote:</strong> advances to next year in selected session. &nbsp;
+                    <strong>Backlog:</strong> advances but backlog subjects are recorded. &nbsp;
+                    <strong>Fail:</strong> year-back — same year, new session. &nbsp;
+                    <strong>Drop:</strong> student leaves (no session move). &nbsp;
+                    <strong>Passed Out:</strong> final-year graduation.
+                    Outstanding dues are carried forward to the new session wallet.
                 </div>
                 <div class="col-12">
                     <button type="submit" class="btn btn-warning btn-sm fw-semibold">
@@ -163,7 +184,7 @@
             </div>
             <div class="col-md-2 d-flex gap-1">
                 <button class="btn btn-primary btn-sm flex-fill"><i class="bi bi-search"></i> Filter</button>
-                <a href="{{ route('admissions.promote.session') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                <a href="{{ route($rSessionPage) }}" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
             <div class="col-auto ms-auto">
                 <button type="button" class="btn btn-warning btn-sm fw-semibold" onclick="openPromotePanel()" id="promoteBtn" disabled>
@@ -218,7 +239,7 @@
                             $student->coursePart?->year_number
                         );
                     @endphp
-                    <tr>
+                    <tr data-part-id="{{ $student->course_part_id ?? '' }}">
                         <td class="ps-3">
                             <input type="checkbox" class="form-check-input student-cb"
                                    value="{{ $student->id }}" onchange="onCbChange()">
@@ -260,21 +281,10 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            @if($student->stream?->course?->isShortTerm())
-                                <form method="POST" action="{{ route('admissions.promote.mark-complete', $student) }}" class="d-inline">
-                                    @csrf
-                                    <input type="hidden" name="completion_status" value="passed_out">
-                                    <button type="submit" class="btn btn-sm btn-outline-success"
-                                            onclick="return confirm('Mark this student as completed?')">
-                                        <i class="bi bi-patch-check me-1"></i>Mark Complete
-                                    </button>
-                                </form>
-                            @else
-                                <button type="button" class="btn btn-sm btn-outline-warning"
-                                        onclick="promoteSingle({{ $student->id }})">
-                                    <i class="bi bi-calendar-arrow-up me-1"></i>Promote
-                                </button>
-                            @endif
+                            <button type="button" class="btn btn-sm btn-outline-warning"
+                                    onclick="promoteSingle({{ $student->id }})">
+                                <i class="bi bi-calendar-arrow-up me-1"></i>Promote
+                            </button>
                         </td>
                     </tr>
                     @empty
@@ -294,6 +304,61 @@
 </div>
 
 <script>
+const subjectsByPart = @json($subjectsByPart ?? []);
+
+const outcomeHints = {
+    '':          '',
+    'backlog':   'Student advances to next year. Backlog subjects are recorded and carried forward.',
+    'failed':    'Year-back: student repeats the same year in the selected session.',
+    'dropped':   'Student is marked as dropped. No session move; outstanding dues stay.',
+    'passed_out':'Final-year graduation. Student status updated to Passed Out.',
+};
+
+function onOutcomeChange(val) {
+    document.getElementById('outcomeHint').textContent = outcomeHints[val] || '';
+    const section = document.getElementById('backlogSubjectsSection');
+    if (val === 'backlog') {
+        section.style.removeProperty('display');
+        refreshBacklogSubjects();
+    } else {
+        section.style.setProperty('display', 'none', 'important');
+    }
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function refreshBacklogSubjects() {
+    const container = document.getElementById('backlogSubjectsContainer');
+    const checked   = document.querySelectorAll('.student-cb:checked');
+    const partIds   = new Set();
+    checked.forEach(cb => {
+        const row = cb.closest('tr');
+        if (row && row.dataset.partId) partIds.add(row.dataset.partId);
+    });
+
+    const subjects = {};
+    partIds.forEach(pid => {
+        (subjectsByPart[pid] || []).forEach(s => { subjects[s.id] = s; });
+    });
+
+    const list = Object.values(subjects);
+    if (list.length === 0) {
+        container.innerHTML = '<span class="text-muted">No subjects mapped for the selected students\' course parts.</span>';
+        return;
+    }
+    container.innerHTML = list.map(s =>
+        `<div class="form-check form-check-inline me-3 mb-1">
+            <input class="form-check-input" type="checkbox" name="backlog_subject_ids[]"
+                   value="${escHtml(String(s.id))}" id="bls_${escHtml(String(s.id))}">
+            <label class="form-check-label" for="bls_${escHtml(String(s.id))}">
+                ${s.code ? '<span class=\'text-muted\'>' + escHtml(s.code) + '</span> — ' : ''}${escHtml(s.name)}
+            </label>
+        </div>`
+    ).join('');
+}
+
 function toggleSelectAll(cb) {
     document.querySelectorAll('.student-cb').forEach(c => c.checked = cb.checked);
     onCbChange();
@@ -301,12 +366,15 @@ function toggleSelectAll(cb) {
 
 function onCbChange() {
     const checked = document.querySelectorAll('.student-cb:checked');
-    const count = checked.length;
+    const count   = checked.length;
     document.getElementById('selectedCount').textContent = count;
     document.getElementById('promoteBtn').disabled = count === 0;
     if (count > 0) {
         document.getElementById('promotePanel').style.removeProperty('display');
     }
+    // Refresh backlog subjects list when selection changes
+    const outcome = document.getElementById('completion_status')?.value;
+    if (outcome === 'backlog') refreshBacklogSubjects();
 }
 
 function openPromotePanel() {

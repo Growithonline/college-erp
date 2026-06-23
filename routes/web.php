@@ -644,6 +644,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('identity-bulk',          [PromotionController::class, 'identityBulkUpdate'])->name('identity.bulk');
         // Short-term course completion (modular/certificate courses)
         Route::post('mark-complete/{student}', [PromotionController::class, 'markComplete'])->name('mark-complete');
+        // Re-admission: reinstate a terminal student
+        Route::get ('readmit/{student}',       [PromotionController::class, 'readmitForm'])->name('readmit');
+        Route::post('readmit/{student}',       [PromotionController::class, 'readmit'])    ->name('readmit.do');
     });
 
     // {student} param routes
@@ -931,6 +934,24 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::post('admissions/promote/preview',  [StaffAdmissionController::class, 'promotePreview'])->name('admissions.promote.preview');
         Route::post('admissions/promote',          [StaffAdmissionController::class, 'promoteStore'])->name('admissions.promote.store');
         Route::post('admissions/promote/bulk',     [StaffAdmissionController::class, 'promoteBulk'])->name('admissions.promote.bulk');
+        // New PromotionController routes for staff — mirrors institute group
+        Route::prefix('admissions/promote')->name('admissions.promote.')->group(function () {
+            Route::get ('semester',                [PromotionController::class, 'semesterIndex'])       ->name('semester');
+            Route::post('semester',                [PromotionController::class, 'semesterPromote'])     ->name('semester.do');
+            Route::get ('session',                 [PromotionController::class, 'sessionIndex'])        ->name('session');
+            Route::post('session',                 [PromotionController::class, 'sessionPromote'])      ->name('session.do');
+            Route::get ('report',                  [PromotionController::class, 'report'])              ->name('report');
+            Route::get ('outcomes',                [PromotionController::class, 'outcomesIndex'])       ->name('outcomes');
+            Route::post('check-status',            [PromotionController::class, 'checkStudentStatus']) ->name('check-status');
+            Route::post('reverse/{log}',           [PromotionController::class, 'reversePromotion'])   ->name('reverse');
+            Route::get ('identity',                [PromotionController::class, 'identityIndex'])       ->name('identity');
+            Route::get ('identity/template',       [PromotionController::class, 'identityTemplate'])   ->name('identity.template');
+            Route::post('identity/{identity}',     [PromotionController::class, 'identityUpdate'])     ->name('identity.update');
+            Route::post('identity-bulk',           [PromotionController::class, 'identityBulkUpdate']) ->name('identity.bulk');
+            Route::post('mark-complete/{student}', [PromotionController::class, 'markComplete'])       ->name('mark-complete');
+            Route::get ('readmit/{student}',       [PromotionController::class, 'readmitForm'])      ->name('readmit');
+            Route::post('readmit/{student}',       [PromotionController::class, 'readmit'])          ->name('readmit.do');
+        });
 
         Route::get('admissions/{student}/edit', [StaffAdmissionController::class, 'edit'])->name('admissions.edit');
         Route::patch('admissions/{student}', [StaffAdmissionController::class, 'update'])->name('admissions.update');

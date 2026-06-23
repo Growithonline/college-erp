@@ -2,20 +2,28 @@
 @section('title', 'Final Outcomes')
 @section('breadcrumb', 'Admissions / Final Outcomes')
 @section('content')
+@php
+    $isStaff    = auth()->guard('staff')->check();
+    $_rp        = $isStaff ? 'staff.admissions.promote.' : 'admissions.promote.';
+    $rSession   = $_rp . 'session';
+    $rReport    = $_rp . 'report';
+    $rOutcomes  = $_rp . 'outcomes';
+    $rReadmit   = $_rp . 'readmit';
+@endphp
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-award me-2 text-dark"></i>Final Outcomes</h4>
-        <small class="text-muted">Passed out, backlog, failed aur dropped students ki consolidated list</small>
+        <small class="text-muted">Consolidated list of passed-out, backlog, failed, and dropped students</small>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ request()->fullUrlWithQuery(['export' => 'csv']) }}" class="btn btn-outline-success btn-sm">
             <i class="bi bi-download me-1"></i> Export CSV
         </a>
-        <a href="{{ route('admissions.promote.session') }}" class="btn btn-outline-warning btn-sm">
+        <a href="{{ route($rSession) }}" class="btn btn-outline-warning btn-sm">
             <i class="bi bi-calendar-arrow-up me-1"></i> Session
         </a>
-        <a href="{{ route('admissions.promote.report') }}" class="btn btn-outline-secondary btn-sm">
+        <a href="{{ route($rReport) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-text me-1"></i> Report
         </a>
     </div>
@@ -62,7 +70,7 @@
             </div>
             <div class="col-md-3 d-flex gap-2">
                 <button class="btn btn-primary btn-sm flex-fill"><i class="bi bi-search me-1"></i>Filter</button>
-                <a href="{{ route('admissions.promote.outcomes') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                <a href="{{ route($rOutcomes) }}" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
         </form>
     </div>
@@ -91,6 +99,7 @@
                         <th class="text-end">Due</th>
                         <th>Updated By</th>
                         <th>Date</th>
+                        <th class="text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -142,10 +151,17 @@
                                 <div>{{ $log?->created_at?->format('d M Y') ?? '—' }}</div>
                                 <div class="text-muted" style="font-size:11px;">{{ $log?->created_at?->format('h:i A') ?? '' }}</div>
                             </td>
+                            <td class="text-center">
+                                <a href="{{ route($rReadmit, $student) }}"
+                                   class="btn btn-xs btn-outline-success"
+                                   style="font-size:11px;padding:2px 8px;">
+                                    <i class="bi bi-person-check me-1"></i>Re-Admit
+                                </a>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="14" class="text-center py-5 text-muted">
+                            <td colspan="15" class="text-center py-5 text-muted">
                                 <i class="bi bi-inboxes fs-2 d-block mb-2"></i>No final outcome students found
                             </td>
                         </tr>

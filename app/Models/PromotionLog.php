@@ -10,7 +10,7 @@ class PromotionLog extends Model
         'institute_id', 'student_id', 'promotion_type',
         'from_session_id', 'from_course_part_id', 'from_semester',
         'to_session_id',   'to_course_part_id',   'to_semester',
-        'dues_carried_forward', 'carry_forward_context', 'status', 'terminal_status', 'remarks',
+        'dues_carried_forward', 'carry_forward_context', 'status', 'terminal_status', 'backlog_subjects', 'remarks',
         'promoted_by', 'promoted_by_role',
         'is_reversed', 'reversed_by_log_id', 'reversed_at', 'reversed_by',
     ];
@@ -18,6 +18,7 @@ class PromotionLog extends Model
     protected $casts = [
         'dues_carried_forward' => 'decimal:2',
         'carry_forward_context' => 'array',
+        'backlog_subjects'      => 'array',
         'is_reversed'          => 'boolean',
         'reversed_at'          => 'datetime',
     ];

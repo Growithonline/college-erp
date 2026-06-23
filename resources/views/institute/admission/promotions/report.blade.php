@@ -35,8 +35,9 @@
                 <label class="form-label small fw-semibold mb-1">Type</label>
                 <select name="type" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Types</option>
-                    <option value="semester" {{ request('type')=='semester' ? 'selected':'' }}>Semester</option>
-                    <option value="session"  {{ request('type')=='session'  ? 'selected':'' }}>Session</option>
+                    <option value="semester"    {{ request('type')=='semester'    ? 'selected':'' }}>Semester</option>
+                    <option value="session"     {{ request('type')=='session'     ? 'selected':'' }}>Session</option>
+                    <option value="readmission" {{ request('type')=='readmission' ? 'selected':'' }}>Re-Admission</option>
                 </select>
             </div>
             <div class="col-md-2">
