@@ -22,20 +22,36 @@
 </div>
 
 @if(session('success'))
-<div class="alert alert-success alert-dismissible fade show border-0 shadow-sm">
-    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<div class="d-flex align-items-start gap-3 mb-3 p-3 rounded-3 shadow-sm alert-dismissible fade show"
+     style="background:#f0fdf4;border:1px solid #86efac;" role="alert">
+    <div style="width:32px;height:32px;border-radius:8px;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="bi bi-check-circle-fill" style="color:#16a34a;font-size:15px;"></i>
+    </div>
+    <div class="flex-grow-1" style="font-size:13px;color:#166534;font-weight:500;padding-top:5px;">{{ session('success') }}</div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" style="font-size:11px;"></button>
 </div>
 @endif
 @if(session('warning'))
-<div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm">
-    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('warning') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<div class="d-flex align-items-start gap-3 mb-3 p-3 rounded-3 shadow-sm alert-dismissible fade show"
+     style="background:#fffbeb;border:1px solid #fcd34d;" role="alert">
+    <div style="width:32px;height:32px;border-radius:8px;background:#fef9c3;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="bi bi-exclamation-triangle-fill" style="color:#b45309;font-size:15px;"></i>
+    </div>
+    <div class="flex-grow-1" style="font-size:13px;color:#92400e;font-weight:500;padding-top:5px;">{{ session('warning') }}</div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" style="font-size:11px;"></button>
 </div>
 @endif
 @if($errors->any())
-<div class="alert alert-danger border-0 shadow-sm">
-    @foreach($errors->all() as $e)<div><i class="bi bi-x-circle me-1"></i>{{ $e }}</div>@endforeach
+<div class="d-flex align-items-start gap-3 mb-3 p-3 rounded-3 shadow-sm"
+     style="background:#fff1f0;border:1px solid #fca5a5;">
+    <div style="width:32px;height:32px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+        <i class="bi bi-x-circle-fill" style="color:#dc2626;font-size:15px;"></i>
+    </div>
+    <div style="flex-grow:1;">
+        @foreach($errors->all() as $e)
+        <div style="font-size:13px;color:#991b1b;font-weight:500;{{ !$loop->first ? 'margin-top:4px;' : '' }}">{{ $e }}</div>
+        @endforeach
+    </div>
 </div>
 @endif
 

@@ -551,7 +551,7 @@ class PromotionController extends Controller
             ->get();
 
         if ($mappings->isEmpty()) {
-            throw new \RuntimeException("{$targetPart->part_name} ke liye subjects mapped nahi hain.");
+            throw new \RuntimeException("No subjects are mapped for {$targetPart->part_name}.");
         }
 
         $subjectIds = $mappings->pluck('subject_id')->unique()->values();
@@ -678,7 +678,7 @@ class PromotionController extends Controller
         abort_if(
             $hasLaterPromotion,
             422,
-            'Is student ke baad ke promotion records maujood hain. Sabse latest promotion ko pehle reverse karein.'
+            'This student has later promotion records. Please reverse the most recent promotion first.'
         );
 
         $targetSessionId = $log->to_session_id ?? $log->from_session_id;
@@ -714,7 +714,7 @@ class PromotionController extends Controller
         abort_if(
             $hasExternalTransactions,
             422,
-            'Is promotion ke baad fee/payment entries ho chuki hain. Pehle unko reverse ya settle karein.'
+            'Fee or payment entries exist after this promotion. Please reverse or settle them first.'
         );
     }
 
@@ -942,11 +942,11 @@ class PromotionController extends Controller
                     $this->ensureStaffCanAccessStudent($student);
 
                     if (!$student->coursePart) {
-                        throw new \RuntimeException("{$student->name} ka current year/part missing hai.");
+                        throw new \RuntimeException("{$student->name}: current year/part is not set.");
                     }
 
                     if (!$this->canSemesterPromote($student)) {
-                        throw new \RuntimeException("{$student->name} year-end semester mein hai. Iske liye session promotion use karein.");
+                        throw new \RuntimeException("{$student->name} is in the year-end semester. Please use Session Promotion instead.");
                     }
 
                     $sessionId = (int) $student->academic_session_id;
@@ -994,13 +994,13 @@ class PromotionController extends Controller
 
         $msg = '';
         if ($promoted) {
-            $msg .= "{$promoted} student(s) same session mein next semester mein promote ho gaye. ";
+            $msg .= "{$promoted} student(s) promoted to the next semester within the same session. ";
         }
         if ($errors) {
             $msg .= 'Errors: ' . implode(', ', $errors);
         }
 
-        return back()->with($promoted ? 'success' : 'warning', trim($msg) ?: 'Koi student promote nahi hua.');
+        return back()->with($promoted ? 'success' : 'warning', trim($msg) ?: 'No students were promoted.');
     }
 
     public function sessionIndex(Request $request)
@@ -1088,11 +1088,11 @@ class PromotionController extends Controller
                     $this->ensureStaffCanAccessStudent($student);
 
                     if (!$student->coursePart) {
-                        throw new \RuntimeException("{$student->name} ka current year/part missing hai.");
+                        throw new \RuntimeException("{$student->name}: current year/part is not set.");
                     }
 
                     if (!$this->canSessionPromote($student)) {
-                        throw new \RuntimeException("{$student->name} abhi year-end semester mein nahi hai. Pehle semester promotion karein.");
+                        throw new \RuntimeException("{$student->name} is not yet in the year-end semester. Please complete Semester Promotion first.");
                     }
 
                     $check = $this->checkNextPart($student);
@@ -1138,13 +1138,13 @@ class PromotionController extends Controller
                     }
 
                     if (!$request->filled('to_session_id')) {
-                        throw new \RuntimeException("{$student->name} ke liye 'To Session' select karna zaroori hai.");
+                        throw new \RuntimeException("Please select a 'To Session' for {$student->name}.");
                     }
 
                     $toSession = $this->resolveTargetSession((int) $request->to_session_id, $student);
 
                     if ((int) $student->academic_session_id === (int) $toSession->id) {
-                        throw new \RuntimeException("{$student->name} already {$toSession->name} session mein hai.");
+                        throw new \RuntimeException("{$student->name} is already in the {$toSession->name} session.");
                     }
 
                     $toSemester = $this->nextSemester($student);
@@ -1152,7 +1152,7 @@ class PromotionController extends Controller
                     $fromSession = $student->session ?: AcademicSession::find($student->academic_session_id);
 
                     if (!$nextPart) {
-                        throw new \RuntimeException("{$student->name} ke liye Semester {$toSemester} ka target part missing hai.");
+                        throw new \RuntimeException("Target part for Semester {$toSemester} is missing for {$student->name}.");
                     }
 
                     $log = PromotionLog::create([
@@ -1214,16 +1214,16 @@ class PromotionController extends Controller
             ? AcademicSession::where('institute_id', $instituteId)->find($request->to_session_id)?->name
             : null;
         if ($promoted) {
-            $msg .= "{$promoted} student(s) " . ($messageTargetSession ?: 'selected session') . " mein promote ho gaye. ";
+            $msg .= "{$promoted} student(s) promoted to " . ($messageTargetSession ?: 'the selected session') . ". ";
         }
         if ($completed) {
-            $msg .= "{$completed} student(s) ka final outcome update ho gaya. ";
+            $msg .= "{$completed} student(s) final outcome updated. ";
         }
         if ($errors) {
             $msg .= 'Errors: ' . implode(', ', $errors);
         }
 
-        return back()->with(($promoted || $completed) ? 'success' : 'warning', trim($msg) ?: 'Koi update nahi hua.');
+        return back()->with(($promoted || $completed) ? 'success' : 'warning', trim($msg) ?: 'No changes were made.');
     }
 
     public function reversePromotion(Request $request, PromotionLog $log)
@@ -1231,7 +1231,7 @@ class PromotionController extends Controller
         $this->ensurePromotionAccess();
         $instituteId = $this->instituteId();
         abort_if($log->institute_id !== $instituteId, 403);
-        abort_if($log->is_reversed, 422, 'Yeh promotion already reverse ho chuka hai.');
+        abort_if($log->is_reversed, 422, 'This promotion has already been reversed.');
 
         $this->ensureReverseSafety($log);
 
@@ -1312,7 +1312,7 @@ class PromotionController extends Controller
             ]);
         });
 
-        return back()->with('success', "Promotion reverse ho gaya, {$student->name} previous state mein wapas aa gaya.");
+        return back()->with('success', "Promotion reversed successfully. {$student->name} has been restored to the previous state.");
     }
 
     public function identityIndex(Request $request)
@@ -1658,7 +1658,7 @@ class PromotionController extends Controller
 
             if ($exists) {
                 return back()->withErrors([
-                    'roll_no' => "Roll No {$request->roll_no} is semester mein already exists!",
+                    'roll_no' => "Roll No {$request->roll_no} already exists in this semester.",
                 ]);
             }
         }
@@ -1673,7 +1673,7 @@ class PromotionController extends Controller
 
             if ($exists) {
                 return back()->withErrors([
-                    'form_no' => "Form No {$request->form_no} is semester mein already exists!",
+                    'form_no' => "Form No {$request->form_no} already exists in this semester.",
                 ]);
             }
         }
