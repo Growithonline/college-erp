@@ -262,95 +262,202 @@
 @endif
 
 {{-- ── Transaction Ledger ── --}}
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between">
-        <h6 class="mb-0 fw-semibold">
-            <i class="bi bi-journal-text me-2 text-primary"></i>
-            Ledger — {{ $selectedSession->name ?? 'Session' }}
-        </h6>
-        <span class="badge bg-primary">{{ $transactions->count() }} entries</span>
+<style>
+.ledger-table th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    white-space: nowrap;
+    border-bottom: 2px solid #dee2e6;
+}
+.ledger-table td {
+    padding: 10px 14px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+}
+.ledger-table tbody tr:last-child td { border-bottom: none; }
+.ledger-table tbody tr:hover { background-color: #f8faff; }
+.ledger-table tfoot td {
+    padding: 11px 14px;
+    border-top: 2px solid #dee2e6;
+    background: #f8f9fa;
+}
+.mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; }
+.badge-debit {
+    background: #fff1f0;
+    color: #cf1322;
+    border: 1px solid #ffa39e;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+}
+.badge-credit {
+    background: #f6ffed;
+    color: #389e0d;
+    border: 1px solid #b7eb8f;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+}
+.ledger-card-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    border-radius: 10px 10px 0 0;
+}
+.ledger-receipt-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: #e8f0fe;
+    color: #2563eb;
+    font-size: 11px;
+    transition: background 0.15s;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+.ledger-receipt-link:hover { background: #bfdbfe; color: #1d4ed8; }
+.ledger-row-no {
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 600;
+    width: 36px;
+    text-align: center;
+}
+.ledger-date-col { white-space: nowrap; color: #374151; font-size: 12px; }
+.ledger-desc-col { max-width: 340px; color: #1f2937; font-size: 12.5px; }
+.ledger-amount { font-size: 12.5px; font-weight: 600; }
+.ledger-bal { font-size: 12px; font-weight: 600; }
+.ledger-null { color: #d1d5db; font-size: 13px; }
+</style>
+
+<div class="card border-0 shadow-sm" style="border-radius:12px; overflow:hidden;">
+    <div class="ledger-card-header px-4 py-3 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-journal-text text-white" style="font-size:15px;"></i>
+            </div>
+            <div>
+                <div class="text-white fw-semibold" style="font-size:14px;">Transaction Ledger</div>
+                <div class="text-white-50" style="font-size:11px;">{{ $selectedSession->name ?? 'Session' }}</div>
+            </div>
+        </div>
+        <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;letter-spacing:0.04em;">
+            {{ $transactions->count() }} ENTRIES
+        </span>
     </div>
+
     <div class="card-body p-0">
         @if($transactions->isEmpty())
-        <div class="text-center text-muted py-5">
-            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-            Is session mein koi transaction nahi
+        <div class="text-center py-5" style="color:#9ca3af;">
+            <div style="width:56px;height:56px;border-radius:50%;background:#f3f4f6;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="bi bi-inbox" style="font-size:24px;"></i>
+            </div>
+            <div style="font-size:14px;font-weight:500;">No transactions in this session</div>
+            <div style="font-size:12px;margin-top:4px;">Koi transaction nahi mili</div>
         </div>
         @else
         <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="table-dark">
+            <table class="table ledger-table mb-0">
+                <thead style="background:#f9fafb;">
                     <tr>
-                        <th>#</th>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Type</th>
-                        <th class="text-end">Debit (₹)</th>
-                        <th class="text-end">Credit (₹)</th>
-                        <th class="text-end">Op. Bal</th>
-                        <th class="text-end">Cl. Bal</th>
+                        <th class="ledger-row-no text-center" style="color:#9ca3af;">#</th>
+                        <th style="color:#6b7280;">Date</th>
+                        <th style="color:#6b7280;">Description</th>
+                        <th style="color:#6b7280;">Type</th>
+                        <th class="text-end" style="color:#dc2626;">Debit (₹)</th>
+                        <th class="text-end" style="color:#16a34a;">Credit (₹)</th>
+                        <th class="text-end" style="color:#6b7280;">Op. Bal</th>
+                        <th class="text-end" style="color:#374151;">Cl. Bal</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @php
-                        // Ledger running balance — FeeCalculatorService total se start karo
-                        // stored op_bal/cl_bal stale hain (admission ke time wrong amount debit tha)
-                        // Correct start = -(total_charged) = 0 se sabhi debits minus
-                        $runningBal = 0;
-                    @endphp
+                    @php $runningBal = 0; @endphp
                     @foreach($transactions as $i => $txn)
                     @php
                         $opBal = $runningBal;
-                        if ($txn->type == 1) { // Debit
-                            // Use FeeCalculatorService-based charged total se adjust
-                            // Individual debit transactions ke amounts trust karo EXCEPT
-                            // last debit entry me agar mismatch ho
+                        if ($txn->type == 1) {
                             $runningBal -= (float) $txn->debit;
-                        } else { // Credit
+                        } else {
                             $runningBal += (float) $txn->credit;
                         }
                         $clBal = $runningBal;
+                        $isDebit = $txn->type == 1;
                     @endphp
                     <tr>
-                        <td class="small text-muted">{{ $i + 1 }}</td>
-                        <td class="small">{{ $txn->date->format('d M Y') }}</td>
-                        <td class="small">
-                            {{ $txn->des }}
+                        <td class="ledger-row-no">{{ $i + 1 }}</td>
+                        <td class="ledger-date-col">
+                            <div style="font-weight:600;">{{ $txn->date->format('d M') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;">{{ $txn->date->format('Y') }}</div>
+                        </td>
+                        <td class="ledger-desc-col">
+                            <span>{{ $txn->des }}</span>
                             @if($txn->fee_invoice_id)
                             <a href="{{ route($receiptRoute, ['student' => $student->id, 'invoice' => $txn->fee_invoice_id]) }}"
-                               target="_blank" class="ms-1" title="Receipt">
-                                <i class="bi bi-receipt text-primary" style="font-size:11px;"></i>
+                               target="_blank" class="ledger-receipt-link" title="View Receipt">
+                                <i class="bi bi-receipt"></i>
                             </a>
                             @endif
                         </td>
                         <td>
-                            <span class="badge {{ $txn->type == 1 ? 'bg-danger' : 'bg-success' }}">
-                                {{ $txn->type == 1 ? 'Debit' : 'Credit' }}
+                            @if($isDebit)
+                                <span class="badge-debit">Debit</span>
+                            @else
+                                <span class="badge-credit">Credit</span>
+                            @endif
+                        </td>
+                        <td class="text-end">
+                            @if($txn->debit > 0)
+                                <span class="ledger-amount mono text-danger">₹ {{ number_format($txn->debit, 2) }}</span>
+                            @else
+                                <span class="ledger-null">—</span>
+                            @endif
+                        </td>
+                        <td class="text-end">
+                            @if($txn->credit > 0)
+                                <span class="ledger-amount mono text-success">₹ {{ number_format($txn->credit, 2) }}</span>
+                            @else
+                                <span class="ledger-null">—</span>
+                            @endif
+                        </td>
+                        <td class="text-end">
+                            <span class="ledger-bal mono {{ $opBal < 0 ? 'text-danger' : ($opBal > 0 ? 'text-success' : 'text-muted') }}">
+                                ₹ {{ number_format($opBal, 2) }}
                             </span>
                         </td>
-                        <td class="text-end small fw-semibold text-danger">
-                            {{ $txn->debit > 0 ? '₹ '.number_format($txn->debit,2) : '—' }}
-                        </td>
-                        <td class="text-end small fw-semibold text-success">
-                            {{ $txn->credit > 0 ? '₹ '.number_format($txn->credit,2) : '—' }}
-                        </td>
-                        <td class="text-end small {{ $opBal < 0 ? 'text-danger' : 'text-success' }}">
-                            ₹ {{ number_format($opBal, 2) }}
-                        </td>
-                        <td class="text-end small fw-bold {{ $clBal < 0 ? 'text-danger' : 'text-success' }}">
-                            ₹ {{ number_format($clBal, 2) }}
+                        <td class="text-end">
+                            <span class="ledger-bal mono fw-bold {{ $clBal < 0 ? 'text-danger' : ($clBal > 0 ? 'text-success' : 'text-muted') }}"
+                                  style="font-size:13px;">
+                                ₹ {{ number_format($clBal, 2) }}
+                            </span>
                         </td>
                     </tr>
                     @endforeach
                 </tbody>
-                <tfoot class="table-light fw-bold">
+                <tfoot>
                     <tr>
-                        <td colspan="4" class="text-end small">Total:</td>
-                        <td class="text-end small text-danger">₹ {{ number_format($summary['total_charged'],2) }}</td>
-                        <td class="text-end small text-success">₹ {{ number_format($summary['total_paid'],2) }}</td>
+                        <td colspan="4" class="text-end" style="font-size:12px;font-weight:700;color:#374151;letter-spacing:0.04em;">TOTAL</td>
+                        <td class="text-end">
+                            <span class="mono fw-bold text-danger" style="font-size:13px;">₹ {{ number_format($summary['total_charged'], 2) }}</span>
+                        </td>
+                        <td class="text-end">
+                            <span class="mono fw-bold text-success" style="font-size:13px;">₹ {{ number_format($summary['total_paid'], 2) }}</span>
+                        </td>
                         <td></td>
-                        <td class="text-end small {{ $summary['balance'] < 0 ? 'text-danger' : 'text-success' }}">
-                            ₹ {{ number_format($summary['balance'],2) }}
+                        <td class="text-end">
+                            <span class="mono fw-bold {{ $summary['balance'] < 0 ? 'text-danger' : 'text-success' }}" style="font-size:14px;">
+                                ₹ {{ number_format($summary['balance'], 2) }}
+                            </span>
+                            <div style="font-size:10px;font-weight:600;margin-top:2px;color:{{ $summary['balance'] < 0 ? '#dc2626' : '#16a34a' }};">
+                                {{ $summary['balance'] < 0 ? 'DUE' : ($summary['balance'] > 0 ? 'ADVANCE' : 'CLEAR') }}
+                            </div>
                         </td>
                     </tr>
                 </tfoot>
