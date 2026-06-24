@@ -22,8 +22,7 @@ class CourseFeeRuleController extends Controller
     public function index(Request $request)
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
 
         $sessionId = $request->integer('session_id') ?: $activeSession?->id;
 

@@ -28,8 +28,7 @@ class FeeCollectionController extends Controller
     public function index(Request $request)
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
 
         $query = FeeInvoice::with(['student.stream.course', 'session', 'items'])
             ->where('institute_id', $instituteId);

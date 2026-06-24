@@ -23,8 +23,7 @@ class SubjectFeeRuleController extends Controller
     public function index(Request $request)
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
 
         $sessionId  = $request->integer('session_id') ?: $activeSession?->id;
         $coursePart = $request->integer('course_part') ?: null;
@@ -90,8 +89,7 @@ class SubjectFeeRuleController extends Controller
     public function summary(Request $request)
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
 
         $sessionId = $request->integer('session_id') ?: $activeSession?->id;
 
