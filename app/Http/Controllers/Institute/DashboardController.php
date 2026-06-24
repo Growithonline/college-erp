@@ -26,8 +26,7 @@ class DashboardController extends Controller
     public function index()
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)
-            ->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $activeSession?->id;
 
         // ── STAT CARDS ───────────────────────────────────────────────────
