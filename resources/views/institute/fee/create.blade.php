@@ -678,6 +678,7 @@
     $totalDueSoFar = $feePlanInfo['totalDueSoFar'];
     $nextDueInst   = $feePlanInfo['nextDueInst'];
     $nextDueAmount = $feePlanInfo['nextDueAmount'];
+    $fillAmount    = $feePlanInfo['fillAmount'] ?? $nextDueAmount;
     $isOverdue     = $feePlanInfo['overdue'];
     $cumulative    = 0;
 @endphp
@@ -696,9 +697,9 @@
         @endif
     </div>
     <button type="button" class="btn btn-sm btn-dark fw-semibold"
-            onclick="applyInstallmentAmount({{ $nextDueAmount }})"
-            title="Pre-fill all fee fields to cover this installment">
-        <i class="bi bi-lightning-fill me-1"></i>Fill ₹ {{ number_format($nextDueAmount, 0) }}
+            onclick="applyInstallmentAmount({{ $fillAmount }})"
+            title="Pre-fill all fee fields to cover all currently due installments">
+        <i class="bi bi-lightning-fill me-1"></i>Fill ₹ {{ number_format($fillAmount, 0) }}
     </button>
 </div>
 @elseif($totalFeeP > 0 && $totalPaidP >= $totalFeeP - 0.5)

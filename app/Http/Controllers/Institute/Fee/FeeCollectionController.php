@@ -804,6 +804,9 @@ class FeeCollectionController extends Controller
                     'totalDueSoFar'      => $totalDueSoFar,
                     'nextDueInst'        => $nextDueInst,
                     'nextDueAmount'      => $nextDueAmount,
+                    // All triggered installments minus paid — used by the Fill button to pre-fill
+                    // the full outstanding amount across every due installment, not just the next one.
+                    'fillAmount'         => max(0.0, $totalDueSoFar - $totalPaid),
                     'overdue'            => $totalPaid < $totalDueSoFar - 0.5,
                 ];
             }

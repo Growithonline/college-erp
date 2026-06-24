@@ -139,6 +139,7 @@
     $totalDueSoFar = $feePlanInfo['totalDueSoFar'];
     $nextDueInst   = $feePlanInfo['nextDueInst'];
     $nextDueAmount = $feePlanInfo['nextDueAmount'];
+    $fillAmount    = $feePlanInfo['fillAmount'] ?? $nextDueAmount;
     $isOverdue     = $feePlanInfo['overdue'];
     $cumulative    = 0;
 @endphp
@@ -164,7 +165,7 @@
             @if($canCollectFee)
             <a href="{{ route($feeCreateRoute, ['student_id' => $student->id]) }}"
                class="btn btn-sm btn-dark fw-semibold">
-                <i class="bi bi-lightning-fill me-1"></i>Collect ₹ {{ number_format($nextDueAmount, 0) }}
+                <i class="bi bi-lightning-fill me-1"></i>Collect ₹ {{ number_format($fillAmount, 0) }}
             </a>
             @endif
         </div>
