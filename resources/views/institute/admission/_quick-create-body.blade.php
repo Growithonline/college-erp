@@ -1028,23 +1028,7 @@
             </div>
 
             <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Semester <span class="text-danger">*</span></label>
-                    <div class="d-flex flex-wrap gap-3 pt-1" id="semesterRadioContainer">
-                        @php $selectedSem = (int) old('semester', 1); @endphp
-                        {{-- Populated dynamically by updateSemesterOptions() when course changes --}}
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="semester" id="quick_sem_1" value="1"
-                                   {{ $selectedSem === 1 ? 'checked' : '' }} onchange="refreshQuickFeePreview()">
-                            <label class="form-check-label small" for="quick_sem_1">Semester 1</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="semester" id="quick_sem_2" value="2"
-                                   {{ $selectedSem === 2 ? 'checked' : '' }} onchange="refreshQuickFeePreview()">
-                            <label class="form-check-label small" for="quick_sem_2">Semester 2</label>
-                        </div>
-                    </div>
-                </div>
+                <input type="hidden" name="semester" id="semesterRadioContainer" value="1">
 
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Payment Date <span class="text-danger">*</span></label>
@@ -1259,25 +1243,7 @@ function filterFeePlans(courseId) {
 }
 
 function updateSemesterOptions(courseId) {
-    const container = document.getElementById('semesterRadioContainer');
-    if (!container) return;
-
-    const course = courseData[courseId];
-    const spy    = course ? (course.semesters_per_year || 2) : 2;
-    const isTriSem = course && course.structure_type === 'trimester';
-    const label  = isTriSem ? 'Trimester' : 'Semester';
-
-    container.innerHTML = '';
-    const currentVal = parseInt(document.querySelector('input[name="semester"]:checked')?.value || '1');
-    for (let i = 1; i <= spy; i++) {
-        const id = 'quick_sem_' + i;
-        container.innerHTML += `<div class="form-check">
-            <input class="form-check-input" type="radio" name="semester" id="${id}" value="${i}"
-                   ${i === (currentVal <= spy ? currentVal : 1) ? 'checked' : ''}
-                   onchange="refreshQuickFeePreview()">
-            <label class="form-check-label small" for="${id}">${label} ${i}</label>
-        </div>`;
-    }
+    // Semester is always 1 in quick registration — no UI needed
 }
 
 function loadStreams(courseId) {
