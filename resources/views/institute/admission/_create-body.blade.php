@@ -1805,13 +1805,21 @@ function hideJsError() {
         if (skipFields.some(s => n === s || n.endsWith('[' + s + ']'))) return;
         el.style.textTransform = 'uppercase';
         if (el.value) el.value = el.value.toUpperCase();
-        el.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+        el.addEventListener('input', function() {
+            const pos = this.selectionStart;
+            this.value = this.value.toUpperCase();
+            try { this.setSelectionRange(pos, pos); } catch(_) {}
+        });
     });
     const commAddr = form.querySelector('textarea[name="comm_address"]');
     if (commAddr) {
         commAddr.style.textTransform = 'uppercase';
         if (commAddr.value) commAddr.value = commAddr.value.toUpperCase();
-        commAddr.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+        commAddr.addEventListener('input', function() {
+            const pos = this.selectionStart;
+            this.value = this.value.toUpperCase();
+            try { this.setSelectionRange(pos, pos); } catch(_) {}
+        });
     }
 })();
 </script>
