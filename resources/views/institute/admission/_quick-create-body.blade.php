@@ -498,7 +498,7 @@
             @if($fieldEnabled('academic_session'))
             <div class="col-md-{{ $isCompact ? 2 : 4 }}">
                 <label class="form-label small fw-semibold mb-1">Academic Session</label>
-                <input type="text" class="{{ $fc }}" value="{{ $activeSession->name }}" readonly>
+                <input type="text" class="{{ $fc }}" value="{{ $defaultSession->name }}" readonly>
             </div>
             @endif
 
@@ -979,7 +979,7 @@
     </div>
     <div class="card-body {{ $cbp }}">
         <div id="quickFeeEmpty" class="alert alert-warning mb-3">
-            Fee items will load here once you select a course, stream and subjects.
+            <span id="quickFeeEmptyMsg">Fee items will load here once you select a course, stream and subjects.</span>
         </div>
 
         <div id="quickFeePanel" style="display:none;">
@@ -1785,8 +1785,10 @@ function refreshQuickFeePreview() {
 
     const selectedSemester = parseInt(document.querySelector('input[name="semester"]:checked')?.value || 1);
 
+    const sessionEl = document.getElementById('quickSessionSelect') || document.querySelector('input[name="session_id"]');
     const payload = {
         stream_id: streamId,
+        academic_session_id: sessionEl?.value || null,
         course_part_id: document.getElementById('partSelect')?.value || null,
         subject_ids: getSelectedSubjectIds(),
         semester: selectedSemester,
@@ -1814,22 +1816,33 @@ function refreshQuickFeePreview() {
         })
         .then(data => {
             if (requestId !== quickFeePreviewRequestId) return;
-            renderQuickFeeRows(data?.fee_data?.items || [], preservedMap);
+            const items = data?.fee_data?.items || [];
+            renderQuickFeeRows(items, preservedMap, items.length ? 'no_stream' : 'no_fee');
         })
         .catch(() => {
             // On error, preserve existing rows — do not silently clear them
         });
 }
 
-function renderQuickFeeRows(items, preservedMap = null) {
+function renderQuickFeeRows(items, preservedMap = null, emptyReason = 'no_stream') {
     const panel = document.getElementById('quickFeePanel');
     const empty = document.getElementById('quickFeeEmpty');
     const rows = document.getElementById('quickFeeRows');
+    const msg   = document.getElementById('quickFeeEmptyMsg');
     if (!rows || !panel || !empty) return;
 
     if (!items.length) {
         rows.innerHTML = '';
         panel.style.display = 'none';
+        if (msg) {
+            if (emptyReason === 'no_fee') {
+                empty.className = 'alert alert-danger mb-3';
+                msg.textContent = 'Fee not set for this session. Please configure fee structure before taking admission.';
+            } else {
+                empty.className = 'alert alert-warning mb-3';
+                msg.textContent = 'Fee items will load here once you select a course, stream and subjects.';
+            }
+        }
         empty.style.display = 'block';
         updateQuickGrandTotal();
         return;
