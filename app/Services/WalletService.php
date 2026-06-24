@@ -775,13 +775,16 @@ class WalletService
                 'amount'      => (float) $row->amount,
             ]);
 
+        // Controls the date filter in getAlreadyPaidByFeeName.
+        // For semester promotion with no Sem N rules we show Sem N-1 items and need ALL payments.
+        $effectivePromotionLog = $promotionLog;
+
         if ($previousDueItems->isEmpty() && $promotionLog) {
             $dueAmount = (float) $promotionLog->dues_carried_forward;
 
-            // dues_carried_forward may be 0 for records where getWalletDue returned 0
-            // (fee debits not tracked). For semester promotion with no Sem N fee rules,
-            // recalculate from the previous semester's rules vs all session payments.
-            if ($dueAmount <= 0 && $promotionLog->promotion_type === 'semester' && empty($feeData['items'])) {
+            // Semester promotion where current semester has no fee rules:
+            // show the previous semester's fee items so Total Charged / Total Paid display correctly.
+            if ($promotionLog->promotion_type === 'semester' && empty($feeData['items'])) {
                 $fromSemester = (int) $promotionLog->from_semester;
                 try {
                     $prevData = FeeCalculatorService::calculate(
@@ -803,11 +806,9 @@ class WalletService
                 }
 
                 if (($prevData['total'] ?? 0) > 0) {
-                    // Sem N has no fee rules, so all session payments are for Sem N-1 only
-                    $allPaid = self::getAlreadyPaidByFeeName($student, $sessionId, null);
-                    $paid    = $allPaid->sum('paid_total');
-                    $disc    = $allPaid->sum('discount_total');
-                    $dueAmount = max(0.0, (float) $prevData['total'] - $paid - $disc);
+                    $feeData = $prevData;          // replace empty Sem N data with Sem N-1 items
+                    $effectivePromotionLog = null; // include ALL session payments in already_paid
+                    $dueAmount = 0;                // no separate previous_due item needed
                 }
             }
 
@@ -860,7 +861,7 @@ class WalletService
             'total'         => (float) ($feeData['total'] ?? 0) + (float) $previousDueItems->sum('amount') + $transportTotal,
             'items'         => $items,
             'grouped_items' => self::groupFeeItems($items),
-            'already_paid'  => self::getAlreadyPaidByFeeName($student, $sessionId, $promotionLog),
+            'already_paid'  => self::getAlreadyPaidByFeeName($student, $sessionId, $effectivePromotionLog),
             'context'       => $context,
             'promotion_log' => $promotionLog,
         ];
