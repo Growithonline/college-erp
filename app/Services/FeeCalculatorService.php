@@ -34,6 +34,15 @@ class FeeCalculatorService
     ): array {
         $items = collect();
 
+        // Compute SPY once here so both course-fee and subject-fee queries use the same value
+        // without an extra DB round-trip inside getCourseFeeRules().
+        if ($semestersPerYear <= 0) {
+            $semestersPerYear = \App\Models\Course::find($courseId)?->effectiveSemestersPerYear() ?? 2;
+        }
+        // Relative semester = position within the year (1-based).
+        // SubjectFeeRules store relative semester; CourseFeeRule Year=All rules also use relative.
+        $relativeSemester = $semestersPerYear > 1 ? (($semester - 1) % $semestersPerYear) + 1 : 1;
+
         // ── 1. Course Fees (type-wise) ───────────────────────────────────
         $courseRules = self::getCourseFeeRules(
             $instituteId, $sessionId, $courseId, $coursePart, $semester,
@@ -76,16 +85,18 @@ class FeeCalculatorService
 
         // ── 2. Subject Fees + Practical Fees ────────────────────────────
         if (!empty($subjectIds)) {
+            // SubjectFeeRules always store RELATIVE semester (they were never migrated to absolute).
+            // They are also always year-specific (course_part > 0), so we use relativeSemester.
             $subjectRules = SubjectFeeRule::with(['subject'])
                 ->where('institute_id', $instituteId)
                 ->where('academic_session_id', $sessionId)
                 ->where('course_id', $courseId)
                 ->where('course_part', $coursePart)
-                ->where(function ($q) use ($semester, $includeYearlyFees) {
+                ->where(function ($q) use ($relativeSemester, $includeYearlyFees) {
                     if ($includeYearlyFees) {
-                        $q->where('semester', $semester)->orWhere('semester', 0);
+                        $q->where('semester', $relativeSemester)->orWhere('semester', 0);
                     } else {
-                        $q->where('semester', $semester);
+                        $q->where('semester', $relativeSemester);
                     }
                 })
                 ->whereIn('subject_id', $subjectIds)
@@ -199,14 +210,12 @@ class FeeCalculatorService
         bool $includeYearlyFees = true,
         int $semestersPerYear = 0
     ): Collection {
-        // SPY is needed to compute relative semester for Year=All rules.
-        // Callers that already know SPY pass it; otherwise we fetch from course.
+        // SPY comes from calculate() which pre-computes it; fallback to DB only if called standalone.
         if ($semestersPerYear <= 0) {
             $semestersPerYear = \App\Models\Course::find($courseId)?->effectiveSemestersPerYear() ?? 2;
         }
 
-        // Year=All rules store RELATIVE semester (1-based within year).
-        // Year=specific rules store ABSOLUTE semester (e.g. Year 2 T1 = semester 4 for trimester).
+        // Year=All rules store RELATIVE semester; Year=specific rules store ABSOLUTE semester.
         $relativeSemester = $semestersPerYear > 1
             ? (($semester - 1) % $semestersPerYear) + 1
             : 1;
