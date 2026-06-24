@@ -17,6 +17,25 @@
         .sidebar-brand { padding:14px 16px; background:#0f172a; border-bottom:1px solid #334155; }
         .sidebar-brand h6 { color:#f8fafc; margin:0; font-size:13px; font-weight:600; }
         .sidebar-brand small { color:#64748b; font-size:11px; }
+        /* Session Switcher */
+        .session-switcher { padding:10px 12px; background:#0f172a; border-bottom:1px solid #334155; position:relative; }
+        .session-label { font-size:9px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px; display:flex; align-items:center; gap:5px; }
+        .session-label .dot { width:6px; height:6px; border-radius:50%; background:#22c55e; flex-shrink:0; }
+        .session-btn { width:100%; background:#1e293b; border:1px solid #334155; border-radius:7px; padding:6px 10px; color:#e2e8f0; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:border-color .15s; }
+        .session-btn:hover { border-color:#38bdf8; }
+        .session-btn.past-view { border-color:#f59e0b; color:#fbbf24; }
+        .session-btn i { font-size:10px; color:#64748b; transition:transform .2s; }
+        .session-btn.open i { transform:rotate(180deg); }
+        .session-dropdown { position:absolute; left:12px; right:12px; top:calc(100% - 4px); background:#1e293b; border:1px solid #334155; border-radius:8px; z-index:200; box-shadow:0 8px 24px rgba(0,0,0,.4); overflow:hidden; display:none; }
+        .session-dropdown.show { display:block; }
+        .session-search { padding:8px; border-bottom:1px solid #334155; }
+        .session-search input { width:100%; background:#0f172a; border:1px solid #334155; border-radius:5px; padding:4px 8px; font-size:11px; color:#e2e8f0; outline:none; }
+        .session-search input::placeholder { color:#475569; }
+        .session-list { max-height:180px; overflow-y:auto; }
+        .session-item { padding:7px 12px; font-size:12px; color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:background .1s; }
+        .session-item:hover { background:#334155; color:#f8fafc; }
+        .session-item.active { color:#38bdf8; background:#0f172a; }
+        .session-item .active-dot { width:6px; height:6px; border-radius:50%; background:#38bdf8; flex-shrink:0; }
         .sidebar ul.nav { padding-bottom:20px; }
         /* Top-level nav links */
         .sidebar .nav-link { color:#94a3b8; padding:8px 16px; font-size:13px; display:flex; align-items:center; gap:8px; border-left:3px solid transparent; }
@@ -96,6 +115,59 @@
             </div>
         </div>
     </div>
+
+    {{-- Session Switcher --}}
+    @php
+        $instId      = auth()->user()->institute_id;
+        $allSessions = \App\Models\AcademicSession::where('institute_id', $instId)
+            ->orderByDesc('start_date')->get();
+        $dbActiveSession  = $allSessions->firstWhere('is_active', true);
+        $viewSession      = \App\Models\AcademicSession::viewSession($instId);
+        $isPastView       = \App\Models\AcademicSession::isViewingPastSession($instId);
+    @endphp
+    <div class="session-switcher">
+        <div class="session-label">
+            {{-- Dot: green = live active session, amber = viewing past --}}
+            <span class="dot" style="{{ $isPastView ? 'background:#f59e0b;' : '' }}"></span>
+            SESSION
+            @if($isPastView)
+                <span style="color:#f59e0b;font-size:9px;font-weight:700;">VIEW ONLY</span>
+            @endif
+        </div>
+        <button class="session-btn {{ $isPastView ? 'past-view' : '' }}" id="sessionSwitcherBtn" type="button">
+            <span>{{ $viewSession ? $viewSession->name : 'No Session' }}</span>
+            <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="session-dropdown" id="sessionDropdown">
+            <div class="session-search">
+                <input type="text" id="sessionSearch" placeholder="Search session..." autocomplete="off">
+            </div>
+            <div class="session-list" id="sessionList">
+                @foreach($allSessions as $sess)
+                    @php $isCurrentView = $viewSession && $viewSession->id === $sess->id; @endphp
+                    <div class="session-item {{ $isCurrentView ? 'active' : '' }}"
+                         data-name="{{ $sess->name }}"
+                         onclick="switchViewSession({{ $sess->id }})">
+                        <span>
+                            {{ $sess->name }}
+                            @if($sess->is_active)
+                                <span style="font-size:9px;color:#22c55e;font-weight:600;"> LIVE</span>
+                            @endif
+                        </span>
+                        @if($isCurrentView)
+                            <span class="active-dot"></span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    {{-- Hidden form for view-only session switch (no DB change) --}}
+    <form id="sessionViewSwitchForm" method="POST" action="{{ route('master.sessions.view-switch') }}" style="display:none;">
+        @csrf
+        <input type="hidden" name="session_id" id="sessionViewSwitchId">
+    </form>
+
     <div class="sidebar-nav-wrap">
     <ul class="nav flex-column pt-1">
 
@@ -1038,15 +1110,24 @@
             <small class="text-muted fw-semibold text-truncate">@yield('breadcrumb', 'Dashboard')</small>
         </div>
         <div class="d-flex align-items-center gap-2">
-            @php
-                $activeSession = \App\Models\AcademicSession::where('institute_id', auth()->user()->institute_id)
-                    ->where('is_active', true)->first();
-            @endphp
-            {{-- Session badge — hidden on xs, visible from sm --}}
-            @if($activeSession)
+            {{-- Session badge in topbar — shows view session, with warning if past --}}
+            @if(isset($isPastView) && $isPastView)
+                <form method="POST" action="{{ route('master.sessions.view-switch') }}" class="mb-0 d-none d-sm-inline-flex">
+                    @csrf
+                    <input type="hidden" name="session_id" value="">
+                    <button type="submit"
+                            class="badge border-0 bg-warning text-dark px-2 py-1 d-inline-flex align-items-center gap-1"
+                            style="font-size:11px;cursor:pointer;"
+                            title="View only mode — click to go back to live session">
+                        <i class="bi bi-eye me-1"></i>
+                        Viewing: {{ isset($viewSession) ? $viewSession->name : '' }}
+                        <i class="bi bi-x-circle ms-1"></i>
+                    </button>
+                </form>
+            @elseif(isset($viewSession) && $viewSession)
                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 d-none d-sm-inline-flex align-items-center"
                       style="font-size:11px;">
-                    <i class="bi bi-calendar-check me-1"></i>{{ $activeSession->name }}
+                    <i class="bi bi-calendar-check me-1"></i>{{ $viewSession->name }}
                 </span>
             @else
                 <a href="{{ route('master.sessions.create') }}"
@@ -1188,6 +1269,49 @@
 </script>
 
 @stack('scripts')
+
+<script>
+// Session switcher logic
+(function () {
+    var btn      = document.getElementById('sessionSwitcherBtn');
+    var dropdown = document.getElementById('sessionDropdown');
+    var search   = document.getElementById('sessionSearch');
+    var list     = document.getElementById('sessionList');
+
+    if (!btn) return;
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = dropdown.classList.toggle('show');
+        btn.classList.toggle('open', open);
+        if (open) { search.focus(); search.value = ''; filterSessions(''); }
+    });
+
+    document.addEventListener('click', function () {
+        dropdown.classList.remove('show');
+        btn.classList.remove('open');
+    });
+
+    dropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    search.addEventListener('input', function () { filterSessions(this.value.toLowerCase()); });
+
+    function filterSessions(q) {
+        var items = list.querySelectorAll('.session-item');
+        items.forEach(function (item) {
+            item.style.display = item.dataset.name.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+})();
+
+// View-only session switch — DB touch nahi hota, sirf PHP session mein store hota hai
+window.switchViewSession = function (sessionId) {
+    var form   = document.getElementById('sessionViewSwitchForm');
+    var input  = document.getElementById('sessionViewSwitchId');
+    input.value = sessionId;
+    form.submit();
+};
+</script>
 
 <script>
 (function () {

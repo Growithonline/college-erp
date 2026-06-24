@@ -22,7 +22,7 @@ class ManualIncomeController extends Controller
         $instituteId = $this->instituteId();
 
         $sessionId = $request->input('session_id')
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('start_date')->get();
 

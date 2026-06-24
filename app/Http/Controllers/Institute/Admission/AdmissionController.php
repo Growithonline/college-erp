@@ -2658,7 +2658,7 @@ class AdmissionController extends Controller
     public function onlineAdmissions(Request $request)
     {
         $instituteId   = (int) auth()->user()->institute_id;
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $sessionId     = $request->filled('session_id') ? (int) $request->session_id : $activeSession?->id;
 

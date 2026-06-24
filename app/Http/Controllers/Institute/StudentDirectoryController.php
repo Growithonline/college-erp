@@ -43,7 +43,7 @@ class StudentDirectoryController extends Controller
 
         $instituteId   = $this->instituteId();
         $institute     = Institute::findOrFail($instituteId);
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->filled('session_id') ? (int) $request->session_id : $activeSession?->id;
         $sessionObj    = $sessionId ? AcademicSession::find($sessionId) : null;
 

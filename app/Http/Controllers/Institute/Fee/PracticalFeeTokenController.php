@@ -68,7 +68,7 @@ class PracticalFeeTokenController extends Controller
     public function index(Request $request)
     {
         $instituteId = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $query = PracticalFeeTokenBatch::with(['session', 'course', 'subject', 'coursePart'])
             ->withSum('entries as posted_amount', 'amount')
             ->where('institute_id', $instituteId);
@@ -93,7 +93,7 @@ class PracticalFeeTokenController extends Controller
     public function create()
     {
         $instituteId = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
 
         return view('institute.fee.practical-tokens.create', [
             'sessions' => AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get(),

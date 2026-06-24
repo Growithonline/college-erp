@@ -103,8 +103,10 @@ class AcademicSessionController extends Controller
         $this->authorizeSession($session);
         $session->activate();
 
-        return redirect()->route('master.sessions.index')
-            ->with('success', "Session '{$session->name}' activated!");
+        $referer = request()->headers->get('referer');
+        $redirect = $referer ? redirect($referer) : redirect()->route('master.sessions.index');
+
+        return $redirect->with('success', "Session '{$session->name}' activated!");
     }
 
     private function authorizeSession(AcademicSession $session): void

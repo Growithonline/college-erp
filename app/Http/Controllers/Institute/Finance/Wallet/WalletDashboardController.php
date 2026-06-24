@@ -57,7 +57,7 @@ class WalletDashboardController extends Controller
             ->orderByDesc('start_date')->get();
 
         $sessionId = $request->input('session_id')
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         $activeSession = $sessions->firstWhere('id', $sessionId);
 
@@ -180,7 +180,7 @@ class WalletDashboardController extends Controller
         $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('start_date')->get();
 
         $sessionId = $request->input('session_id')
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         $today = now()->toDateString();
         // 'filtered' flag = form was submitted (even with empty dates = "All")
@@ -510,7 +510,7 @@ class WalletDashboardController extends Controller
 
         $sessions  = AcademicSession::where('institute_id', $instituteId)->orderByDesc('start_date')->get();
         $sessionId = $request->input('session_id')
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         // Phase 1: enhanced filters
         $today      = now()->toDateString();
@@ -797,7 +797,7 @@ class WalletDashboardController extends Controller
         $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('start_date')->get();
 
         $sessionId = $request->input('session_id')
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         $from   = $request->input('from');
         $to     = $request->input('to');
@@ -947,7 +947,7 @@ class WalletDashboardController extends Controller
         $l1Categories = ExpenseCategoryL1::where('institute_id', $instituteId)->active()->orderBy('name')->get();
 
         $sessionId = $request->input('session_id')
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         $l1Id = $request->input('l1_id');
         $l2Id = $request->input('l2_id');

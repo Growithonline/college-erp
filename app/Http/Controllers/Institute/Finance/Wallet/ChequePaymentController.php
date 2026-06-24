@@ -23,7 +23,7 @@ class ChequePaymentController extends Controller
 
         $sessions  = AcademicSession::where('institute_id', $instituteId)->orderByDesc('start_date')->get();
         $sessionId = $request->input('session_id')
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         $status = $request->input('status', 'pending');
         $from   = $request->input('from');

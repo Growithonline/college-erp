@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Institute\Auth\LoginController;
 use App\Http\Controllers\Institute\DashboardController;
 use App\Http\Controllers\Institute\Master\AcademicSessionController;
+use App\Http\Controllers\Institute\Master\SessionViewSwitchController;
 use App\Http\Controllers\Institute\Master\CourseController;
 use App\Http\Controllers\Institute\Master\CourseStreamController;
 use App\Http\Controllers\Institute\Master\CourseSubjectController;
@@ -141,6 +142,8 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('sessions', AcademicSessionController::class);
         Route::post('sessions/{session}/activate', [AcademicSessionController::class, 'activate'])
              ->name('sessions.activate');
+        Route::post('sessions/view-switch', [SessionViewSwitchController::class, 'switch'])
+             ->name('sessions.view-switch');
 
         Route::resource('courses', CourseController::class);
         Route::post('courses/{course}/toggle-status', [CourseController::class, 'toggleStatus'])

@@ -1053,7 +1053,7 @@ class PromotionController extends Controller
     {
         $this->ensurePromotionAccess();
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $sessionId     = $request->session_id ?? $activeSession?->id;
@@ -1200,7 +1200,7 @@ class PromotionController extends Controller
     {
         $this->ensurePromotionAccess();
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $fromSessionId = $request->from_session_id ?? $activeSession?->id;
@@ -1656,7 +1656,7 @@ class PromotionController extends Controller
     {
         $this->ensurePromotionAccess();
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $courseParts   = CoursePart::with('course')
@@ -2277,7 +2277,7 @@ class PromotionController extends Controller
     private function bulkCorrectionPageData(Request $request, array $extra = []): array
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $courseParts   = CoursePart::with('course')
@@ -2900,7 +2900,7 @@ class PromotionController extends Controller
     {
         $this->ensurePromotionAccess();
         $instituteId = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courses = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $sessionId = $request->input('session_id', $activeSession?->id);

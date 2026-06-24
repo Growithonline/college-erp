@@ -1422,7 +1422,7 @@ class FeeCollectionController extends Controller
 
         $instituteId = $this->instituteId();
         $institute   = \App\Models\Institute::find($instituteId);
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
 
         $dateFrom  = $request->date_from ?? now()->toDateString();
         $dateTo    = $request->date_to ?? now()->toDateString();

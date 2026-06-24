@@ -2362,7 +2362,7 @@ class ReportController extends Controller
     {
         $this->authorizeReportAccess('admission');
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courseTypes   = CourseType::where('institute_id', $instituteId)->orderBy('name')->get();
@@ -2526,7 +2526,7 @@ class ReportController extends Controller
     public function staffCollectionReport(Request $request): mixed
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $dateFrom      = $request->date_from ?? now()->startOfMonth()->toDateString();
@@ -2602,7 +2602,7 @@ class ReportController extends Controller
     public function centreCollectionReport(Request $request): mixed
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $centers       = Center::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
@@ -2684,7 +2684,7 @@ class ReportController extends Controller
     public function channelPartnerCollectionReport(Request $request): mixed
     {
         $instituteId   = $this->instituteId();
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $partners      = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
@@ -2767,7 +2767,7 @@ class ReportController extends Controller
         $instituteId = $this->instituteId();
         $staff       = StaffMember::where('id', $staffId)->where('institute_id', $instituteId)->firstOrFail();
 
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $dateFrom      = $request->date_from ?? now()->startOfMonth()->toDateString();
@@ -2816,7 +2816,7 @@ class ReportController extends Controller
         $instituteId = $this->instituteId();
         $centre      = Center::where('id', $centreId)->where('institute_id', $instituteId)->firstOrFail();
 
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $dateFrom      = $request->date_from ?? now()->startOfMonth()->toDateString();
@@ -2865,7 +2865,7 @@ class ReportController extends Controller
         $instituteId = $this->instituteId();
         $partner     = ChannelPartner::where('id', $partnerId)->where('institute_id', $instituteId)->firstOrFail();
 
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
         $sessionId     = $request->session_id ?? $activeSession?->id;
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $dateFrom      = $request->date_from ?? now()->startOfMonth()->toDateString();
@@ -2934,7 +2934,7 @@ class ReportController extends Controller
     {
         $instituteId   = $this->instituteId();
         $institute     = \App\Models\Institute::find($instituteId);
-        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
+        $activeSession = AcademicSession::viewSession($instituteId);
 
         // Allow null sessionId for "All Sessions"
         $sessionId = $request->has('session_id')

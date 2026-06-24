@@ -45,7 +45,7 @@ class ExpenseApprovalController extends Controller
 
         $instituteId     = $this->instituteId();
         $walletSessionId = $expense->academic_session_id
-            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+            ?? AcademicSession::viewSessionId($instituteId);
 
         // Pre-check wallet balance (non-locked, for user feedback)
         if ($walletSessionId) {
