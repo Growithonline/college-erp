@@ -236,7 +236,8 @@
                         $yearLabel = \App\Support\AcademicState::yearLabel(
                             $student->stream?->course?->structure_type,
                             $student->current_semester,
-                            $student->coursePart?->year_number
+                            $student->coursePart?->year_number,
+                            $student->stream?->course?->effectiveSemestersPerYear() ?? 0
                         );
                     @endphp
                     <tr data-part-id="{{ $student->course_part_id ?? '' }}">

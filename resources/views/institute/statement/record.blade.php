@@ -6,7 +6,8 @@
         ? \App\Support\AcademicState::yearLabel(
             $student->stream?->course?->structure_type,
             $student->current_semester,
-            $student->coursePart?->year_number
+            $student->coursePart?->year_number,
+            $student->stream?->course?->effectiveSemestersPerYear() ?? 0
         )
         : '—';
 @endphp

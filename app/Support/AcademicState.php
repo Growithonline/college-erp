@@ -4,12 +4,20 @@ namespace App\Support;
 
 class AcademicState
 {
-    public static function yearNumber(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null, int $semestersPerYear = 2): ?int
+    public static function yearNumber(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null, int $semestersPerYear = 0): ?int
     {
-        $structureType   = strtolower((string) $structureType);
-        $spy             = max(1, $semestersPerYear);
+        $structureType = strtolower((string) $structureType);
 
-        if (in_array($structureType, ['semester', 'trimester']) && $semester) {
+        // Explicit SPY from the course record takes priority (handles non-standard
+        // configurations like a semester course with 4 parts/year). When the caller
+        // does not pass a value (0), fall back to the structure-type convention.
+        $spy = $semestersPerYear ?: match ($structureType) {
+            'yearly'    => 1,
+            'trimester' => 3,
+            default     => 2,
+        };
+
+        if (in_array($structureType, ['semester', 'trimester', 'yearly']) && $semester) {
             return max(1, (int) ceil($semester / $spy));
         }
 
@@ -20,7 +28,7 @@ class AcademicState
         return $semester ? max(1, (int) ceil($semester / $spy)) : null;
     }
 
-    public static function yearLabel(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null, int $semestersPerYear = 2): string
+    public static function yearLabel(?string $structureType, ?int $semester, ?int $fallbackYearNumber = null, int $semestersPerYear = 0): string
     {
         $yearNumber = self::yearNumber($structureType, $semester, $fallbackYearNumber, $semestersPerYear);
 
