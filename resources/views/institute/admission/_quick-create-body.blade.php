@@ -13,6 +13,10 @@
     $fs  = $isCompact ? 'form-select form-select-sm'   : 'form-select';
     $gap = $isCompact ? 'g-2' : 'g-3';
     $cbp = $isCompact ? 'p-2' : 'p-3';
+    // When staff has access to exactly 1 session (not the active one), use that session as default
+    $defaultSession = (isset($admissibleSessions) && $admissibleSessions->count() === 1)
+        ? $admissibleSessions->first()
+        : $activeSession;
 @endphp
 <div class="row {{ isset($formColClass) && $formColClass === 'col-12' ? '' : 'justify-content-center' }}">
 <div class="{{ $formColClass ?? 'col-md-8' }}">
@@ -26,7 +30,7 @@
             </span>
             Quick Registration
         </h5>
-        <small class="text-muted ms-1">Session: <strong class="text-primary">{{ $activeSession?->name ?? '—' }}</strong></small>
+        <small class="text-muted ms-1">Session: <strong class="text-primary">{{ $defaultSession?->name ?? '—' }}</strong></small>
     </div>
     <div class="d-flex gap-2">
         @if(!isset($fullFormRoute) || $fullFormRoute)
@@ -227,7 +231,7 @@
         <select name="session_id" id="quickSessionSelect" class="form-select form-select-sm" style="max-width:220px;">
             @foreach($admissibleSessions as $sess)
             <option value="{{ $sess->id }}"
-                {{ old('session_id', $activeSession?->id) == $sess->id ? 'selected' : '' }}>
+                {{ old('session_id', $defaultSession?->id) == $sess->id ? 'selected' : '' }}>
                 {{ $sess->name }}{{ $sess->is_active ? ' (Current)' : '' }}
             </option>
             @endforeach
@@ -236,7 +240,7 @@
     </div>
 </div>
 @else
-<input type="hidden" name="session_id" value="{{ $activeSession?->id }}">
+<input type="hidden" name="session_id" value="{{ $defaultSession?->id }}">
 @endif
 
 {{-- ══════════════════════════════════════════════════════════ --}}
@@ -248,7 +252,7 @@
             <i class="bi bi-book me-1"></i> Course Selection
         </span>
         <span class="badge" style="background:#fbbf24; color:#1e293b; font-size:10px;">
-            Session: {{ $activeSession->name }}
+            Session: {{ $defaultSession->name }}
         </span>
     </div>
     <div class="card-body {{ $cbp }}">
