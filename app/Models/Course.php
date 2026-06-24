@@ -61,10 +61,57 @@ class Course extends Model
         return $options;
     }
 
-    // Human-readable label for a stored semester value
-    public function semesterLabel(int $value): string
+    // Semester options for a specific year — absolute values (e.g. Year 2 trimester: T4, T5, T6)
+    // Year 0 = All years → relative options (T1, T2, T3)
+    public function semesterOptionsForYear(int $yearNumber): array
     {
-        return $this->semesterOptions()[$value] ?? 'Sem ' . $value;
+        $spy = $this->effectiveSemestersPerYear();
+
+        if ($spy <= 1) {
+            return [0 => 'Annual'];
+        }
+
+        $partLabel = $this->structure_type === 'trimester' ? 'Trimester' : 'Sem';
+        $allLabel  = $spy > 2 ? 'All' : 'Both';
+
+        if ($yearNumber === 0) {
+            // Year = All → relative (T1, T2, T3) — means "this trimester of every year"
+            return $this->semesterOptions();
+        }
+
+        // Year specific → absolute semesters for that year
+        $options = [0 => $allLabel];
+        $start   = ($yearNumber - 1) * $spy + 1;
+        $end     = $yearNumber * $spy;
+        for ($i = $start; $i <= $end; $i++) {
+            $options[$i] = $partLabel . ' ' . $i;
+        }
+        return $options;
+    }
+
+    // All semester options as JS-ready array indexed by year_number
+    // Used by fee structure form to populate Sem dropdown dynamically
+    public function allSemesterOptionsByYear(): array
+    {
+        $duration = (int) ($this->duration ?? 1);
+        $data     = [0 => $this->semesterOptions()]; // Year=All → relative
+        for ($y = 1; $y <= $duration; $y++) {
+            $data[$y] = $this->semesterOptionsForYear($y);
+        }
+        return $data;
+    }
+
+    // Human-readable label for a stored semester value
+    // course_part=0 → stored value is relative; course_part>0 → stored value is absolute
+    public function semesterLabel(int $value, int $coursePart = 0): string
+    {
+        if ($value === 0) {
+            $spy = $this->effectiveSemestersPerYear();
+            return $spy > 2 ? 'All' : ($spy === 1 ? 'Annual' : 'Both');
+        }
+
+        $partLabel = $this->structure_type === 'trimester' ? 'Trimester' : 'Sem';
+        return $partLabel . ' ' . $value;
     }
 
     // Short-term courses (certificate/modular) have no semester promotion

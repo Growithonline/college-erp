@@ -173,11 +173,7 @@
                         @endif
                     </td>
                     <td>
-                        @if($rule->semester == 0)
-                            <span class="badge bg-secondary">{{ $selectedCourse->semesterOptions()[0] }}</span>
-                        @else
-                            {{ $selectedCourse->semesterLabel($rule->semester) }}
-                        @endif
+                        {{ $selectedCourse->semesterLabel($rule->semester, $rule->course_part) }}
                     </td>
                     <td>
                         <span class="badge {{ $rule->student_type == 'all' ? 'bg-secondary' : 'bg-primary' }}">

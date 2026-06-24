@@ -20,23 +20,25 @@ class FeeCalculatorService
         int    $instituteId,
         int    $sessionId,
         int    $courseId,
-        int    $coursePart,       // 1, 2, 3
-        int    $semester,         // 1 or 2
-        string $studentType,      // regular / ex_student / lateral
-        string $admissionSource,  // direct / center / channel_partner
-        string $category,         // general / obc / sc / st
-        string $gender,           // male / female / other
-        array  $subjectIds = [],  // enrolled subject IDs
+        int    $coursePart,           // 1, 2, 3
+        int    $semester,             // absolute semester number
+        string $studentType,          // regular / ex_student / lateral
+        string $admissionSource,      // direct / center / channel_partner
+        string $category,             // general / obc / sc / st
+        string $gender,               // male / female / other
+        array  $subjectIds = [],      // enrolled subject IDs
         ?int   $courseStreamId = null,
         ?int   $coursePartId = null,
-        bool   $includeYearlyFees = true  // false = semester promotion ke liye (yearly fees already charged in sem 1)
+        bool   $includeYearlyFees = true, // false = semester promotion ke liye (yearly fees already charged in sem 1)
+        int    $semestersPerYear = 0  // 0 = auto-detect from course record
     ): array {
         $items = collect();
 
         // ── 1. Course Fees (type-wise) ───────────────────────────────────
         $courseRules = self::getCourseFeeRules(
             $instituteId, $sessionId, $courseId, $coursePart, $semester,
-            $studentType, $admissionSource, $category, $gender, $includeYearlyFees
+            $studentType, $admissionSource, $category, $gender,
+            $includeYearlyFees, $semestersPerYear
         );
 
         foreach ($courseRules as $rule) {
@@ -194,22 +196,46 @@ class FeeCalculatorService
         int $coursePart, int $semester,
         string $studentType, string $admissionSource,
         string $category, string $gender,
-        bool $includeYearlyFees = true
+        bool $includeYearlyFees = true,
+        int $semestersPerYear = 0
     ): Collection {
-        // Fetch all matching rules (specific + 'all' fallbacks)
+        // SPY is needed to compute relative semester for Year=All rules.
+        // Callers that already know SPY pass it; otherwise we fetch from course.
+        if ($semestersPerYear <= 0) {
+            $semestersPerYear = \App\Models\Course::find($courseId)?->effectiveSemestersPerYear() ?? 2;
+        }
+
+        // Year=All rules store RELATIVE semester (1-based within year).
+        // Year=specific rules store ABSOLUTE semester (e.g. Year 2 T1 = semester 4 for trimester).
+        $relativeSemester = $semestersPerYear > 1
+            ? (($semester - 1) % $semestersPerYear) + 1
+            : 1;
+
         $rules = CourseFeeRule::with('feeType')
             ->where('institute_id', $instituteId)
             ->where('academic_session_id', $sessionId)
             ->where('course_id', $courseId)
             ->where('is_active', true)
-            ->where(fn($q) => $q->where('course_part', $coursePart)->orWhere('course_part', 0))
-            ->where(function ($q) use ($semester, $includeYearlyFees) {
-                // semester=0 rules tab hi include karo jab yearly fees chahiye
-                // (admission ya session promotion pe); semester promotion pe skip
-                if ($includeYearlyFees) {
-                    $q->where('semester', $semester)->orWhere('semester', 0);
-                } else {
-                    $q->where('semester', $semester);
+            ->where(function ($outerQ) use ($coursePart, $semester, $relativeSemester, $includeYearlyFees) {
+                // Year=All rules (course_part=0): match relative semester
+                $outerQ->orWhere(function ($q) use ($relativeSemester, $includeYearlyFees) {
+                    $q->where('course_part', 0);
+                    if ($includeYearlyFees) {
+                        $q->where(fn($s) => $s->where('semester', $relativeSemester)->orWhere('semester', 0));
+                    } else {
+                        $q->where('semester', $relativeSemester);
+                    }
+                });
+                // Year=specific rules (course_part>0): match absolute semester
+                if ($coursePart > 0) {
+                    $outerQ->orWhere(function ($q) use ($coursePart, $semester, $includeYearlyFees) {
+                        $q->where('course_part', $coursePart);
+                        if ($includeYearlyFees) {
+                            $q->where(fn($s) => $s->where('semester', $semester)->orWhere('semester', 0));
+                        } else {
+                            $q->where('semester', $semester);
+                        }
+                    });
                 }
             })
             ->where(fn($q) => $q->whereIn('student_type', [$studentType, 'all']))
@@ -218,21 +244,23 @@ class FeeCalculatorService
             ->where(fn($q) => $q->whereIn('gender', [$gender, 'all']))
             ->get();
 
-        // Group by fee_type_id — most specific rule jeetega
-        // Specificity score: specific field = 1 point, 'all' = 0 points
+        // Group by fee_type_id — most specific rule jeetega.
+        // Year=specific (course_part>0) beats Year=All (course_part=0).
         return $rules->groupBy('fee_type_id')->map(function ($group) use (
-            $studentType, $admissionSource, $category, $gender
+            $coursePart, $studentType, $admissionSource, $category, $gender
         ) {
             return $group->sortByDesc(function ($rule) use (
-                $studentType, $admissionSource, $category, $gender
+                $coursePart, $studentType, $admissionSource, $category, $gender
             ) {
                 $score = 0;
+                if ($rule->course_part !== 0) $score += 2; // year-specific beats Year=All
+                if ($rule->semester    !== 0) $score++;
                 if ($rule->student_type    !== 'all') $score++;
                 if ($rule->admission_source !== 'all') $score++;
                 if ($rule->category        !== 'all') $score++;
                 if ($rule->gender          !== 'all') $score++;
                 return $score;
-            })->first(); // Highest specificity rule
+            })->first();
         })->values();
     }
 

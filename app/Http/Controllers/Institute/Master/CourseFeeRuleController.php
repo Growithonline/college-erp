@@ -88,7 +88,7 @@ class CourseFeeRuleController extends Controller
             'academic_session_id' => ['required', Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
             'fee_type_id'         => ['required', Rule::exists('fee_types', 'id')->where(fn($q) => $q->where('institute_id', $instituteId)->orWhere('is_system', true))],
             'course_part'         => 'required|integer|min:0|max:20',
-            'semester'            => 'required|integer|min:0|max:6',
+            'semester'            => 'required|integer|min:0|max:60',
             'student_type'        => ['required', Rule::in($validSlugs)],
             'admission_source'    => ['required', Rule::in(['direct', 'center', 'channel_partner', 'all'])],
             'category'            => ['required', Rule::in(['general', 'obc', 'sc', 'st', 'all'])],

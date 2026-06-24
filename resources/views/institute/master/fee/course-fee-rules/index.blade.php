@@ -90,9 +90,9 @@
                 </div>
                 <div class="col-md-1">
                     <label class="form-label small fw-semibold">Year</label>
-                    <select name="course_part" class="form-select form-select-sm" required>
+                    <select name="course_part" id="feeYear" class="form-select form-select-sm" required onchange="updateSemOptions()">
                         <option value="0">All</option>
-                        @php $maxYear = $selectedCourse->duration ?? 3; @endphp
+                        @php $maxYear = (int)($selectedCourse->duration ?? 3); @endphp
                         @for($i = 1; $i <= $maxYear; $i++)
                         <option value="{{ $i }}" {{ old('course_part') == $i ? 'selected' : '' }}>
                             {{ $i }}{{ $i==1?'st':($i==2?'nd':($i==3?'rd':'th')) }}
@@ -102,7 +102,7 @@
                 </div>
                 <div class="col-md-1">
                     <label class="form-label small fw-semibold">Sem</label>
-                    <select name="semester" class="form-select form-select-sm" required>
+                    <select name="semester" id="feeSem" class="form-select form-select-sm" required>
                         @foreach($selectedCourse->semesterOptions() as $val => $lbl)
                         <option value="{{ $val }}" {{ old('semester') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
                         @endforeach
@@ -203,11 +203,7 @@
                         @endif
                     </td>
                     <td>
-                        @if($rule->semester == 0)
-                            <span class="badge bg-secondary">{{ $selectedCourse->semesterOptions()[0] }}</span>
-                        @else
-                            {{ $selectedCourse->semesterLabel($rule->semester) }}
-                        @endif
+                        {{ $selectedCourse->semesterLabel($rule->semester, $rule->course_part) }}
                     </td>
                     <td><span class="badge {{ $rule->student_type=='all'?'bg-secondary':'bg-primary' }}">{{ $rule->student_type_label }}</span></td>
                     <td><span class="badge {{ $rule->admission_source=='all'?'bg-secondary':'bg-info text-dark' }}">{{ $rule->admission_source_label }}</span></td>
@@ -300,6 +296,38 @@ function openEditModal(ruleId, amount, remarks) {
     document.getElementById('edit_remarks').value = remarks;
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }
+
+@if($selectedCourse)
+// Semester options per year — Year=0 (All) has relative values; Year>0 has absolute values
+const semesterData = @json($selectedCourse->allSemesterOptionsByYear());
+
+function updateSemOptions() {
+    const yearSel = document.getElementById('feeYear');
+    const semSel  = document.getElementById('feeSem');
+    if (!yearSel || !semSel) return;
+
+    const year    = parseInt(yearSel.value, 10);
+    const options = semesterData[year] || semesterData[0];
+    const oldVal  = parseInt(semSel.value, 10);
+
+    semSel.innerHTML = '';
+    Object.entries(options).forEach(([val, lbl]) => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = lbl;
+        if (parseInt(val, 10) === oldVal) opt.selected = true;
+        semSel.appendChild(opt);
+    });
+
+    // If old value no longer exists in new options, reset to 0 (All)
+    if (!semSel.querySelector('option[selected]')) {
+        semSel.value = '0';
+    }
+}
+
+// Init on page load (respects old() values after validation failure)
+document.addEventListener('DOMContentLoaded', updateSemOptions);
+@endif
 </script>
 
 @endsection

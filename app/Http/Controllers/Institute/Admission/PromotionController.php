@@ -661,6 +661,8 @@ class PromotionController extends Controller
         // Session promotion pe naya saal shuru hota hai, isliye yearly fees dobara lagte hain
         $includeYearlyFees = $log->promotion_type === 'session';
 
+        $spy = $this->semestersPerYear($student);
+
         $feeData = FeeCalculatorService::calculate(
             instituteId:      $student->institute_id,
             sessionId:        $sessionId,
@@ -674,7 +676,8 @@ class PromotionController extends Controller
             subjectIds:       $subjectIds,
             courseStreamId:   $student->course_stream_id,
             coursePartId:     $student->course_part_id,
-            includeYearlyFees: $includeYearlyFees
+            includeYearlyFees: $includeYearlyFees,
+            semestersPerYear: $spy
         );
 
         if (empty($feeData['items']) || ($feeData['total'] ?? 0) <= 0) {
