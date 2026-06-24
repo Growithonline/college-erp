@@ -1064,6 +1064,24 @@ class PromotionController extends Controller
             ->where('status', 'active');
         $this->applyStudentAccessScope($query);
 
+        // Only show students eligible for semester promotion:
+        // — not at their year-end semester (those belong in Session Promotion)
+        // — non-modular (short-term) courses use mark-complete instead
+        $query
+            ->whereNotNull('course_part_id')
+            ->whereHas('stream.course', fn($cq) => $cq->where('structure_type', '!=', 'modular'))
+            ->whereHas('coursePart', function ($cpq) {
+                $cpq->whereRaw(
+                    '`students`.`current_semester` < `course_parts`.`year_number` * ' .
+                    '(SELECT CASE WHEN `c`.`semesters_per_year` > 0 THEN `c`.`semesters_per_year` ' .
+                    "WHEN `c`.`structure_type` = 'yearly'    THEN 1 " .
+                    "WHEN `c`.`structure_type` = 'trimester' THEN 3 " .
+                    'ELSE 2 END ' .
+                    'FROM `courses` `c` INNER JOIN `course_streams` `s` ON `s`.`course_id` = `c`.`id` ' .
+                    'WHERE `s`.`id` = `students`.`course_stream_id` LIMIT 1)'
+                );
+            });
+
         if ($sessionId) {
             $query->where('academic_session_id', $sessionId);
         }
