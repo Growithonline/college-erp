@@ -1025,6 +1025,20 @@ class WalletService
         );
     }
 
+    /**
+     * Sum of all "Fee charged:" debit transactions for a student in a session.
+     * This reflects the original fee assigned at admission and is stable across
+     * semester promotions (unlike total_charged which can vary based on fee rules).
+     */
+    public static function getOriginalFeeCharged(int $studentId, int $sessionId): float
+    {
+        return (float) StudentTransaction::where('student_id', $studentId)
+            ->where('academic_session_id', $sessionId)
+            ->where('type', StudentTransaction::DEBIT)
+            ->where('des', 'like', 'Fee charged:%')
+            ->sum('debit');
+    }
+
     public static function onFeeCancel(FeeInvoice $invoice): void
     {
         $sessionId = $invoice->academic_session_id;

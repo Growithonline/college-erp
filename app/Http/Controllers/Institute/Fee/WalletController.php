@@ -78,8 +78,16 @@ class WalletController extends Controller
         $feePlanInfo = null;
         $plan = $student->feePlan;
         if ($plan && $plan->installments->count() > 0) {
-            $totalFeeForPlan    = (float) ($summary['total_charged'] ?? 0);
-            $totalPaid          = (float) ($summary['total_paid'] ?? 0);
+            // Use raw "Fee charged:" debits as the plan base — stable across semester promotions.
+            // After carry-forward promotions, total_charged reflects only the carried amount
+            // (e.g. ₹5,500) rather than the original plan total (e.g. ₹14,000).
+            $originalCharged    = WalletService::getOriginalFeeCharged($student->id, (int) $selectedSessionId);
+            $totalFeeForPlan    = $originalCharged > 0 ? $originalCharged : (float) ($summary['total_charged'] ?? 0);
+
+            // Use ledger_collection (raw cash received) so carry-forward sems show correct paid
+            // amount. total_paid from summary can be 0 when only previous_due items exist.
+            $totalPaid          = (float) ($summary['ledger_collection'] ?? $summary['total_paid'] ?? 0);
+
             $installmentAmounts = $plan->installmentAmounts($totalFeeForPlan);
 
             $cumulativeDue  = 0.0;
@@ -94,7 +102,8 @@ class WalletController extends Controller
                     $cumulativeDue += $amt;
                     if ($nextDueInst === null && $totalPaid < $cumulativeDue - 0.5) {
                         $nextDueInst   = $inst;
-                        $nextDueAmount = $amt;
+                        // Net amount still needed to complete this installment (not the full amt)
+                        $nextDueAmount = min($amt, $cumulativeDue - $totalPaid);
                     }
                 }
             }

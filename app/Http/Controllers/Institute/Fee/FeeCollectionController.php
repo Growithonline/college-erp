@@ -764,13 +764,20 @@ class FeeCollectionController extends Controller
             $student->loadMissing('feePlan.installments');
             $plan = $student->feePlan;
             if ($plan) {
-                $totalFeeForPlan    = (float) ($feeBreakup['total'] ?? 0);
+                // Use raw "Fee charged:" debits as the plan base — stable across semester promotions.
+                // After carry-forward promotions, feeBreakup['total'] reflects only the carried amount
+                // (e.g. ₹5,500) rather than the original plan total (e.g. ₹14,000).
+                $originalCharged    = WalletService::getOriginalFeeCharged($student->id, (int) $student->academic_session_id);
+                $totalFeeForPlan    = $originalCharged > 0 ? $originalCharged : (float) ($feeBreakup['total'] ?? 0);
+
+                // Use ledger_collection (raw cash received) so carry-forward sems show correct paid
+                // amount. total_paid can be 0 when only previous_due items exist.
+                $totalPaid          = (float) ($walletSummary['ledger_collection'] ?? $walletSummary['total_paid'] ?? 0);
+
                 $installmentAmounts = $plan->installmentAmounts($totalFeeForPlan);
-                $totalPaid          = (float) ($walletSummary['total_paid'] ?? $alreadyPaid ?? 0);
 
                 // Determine next due installment and total triggered amount
                 $cumulativeDue  = 0.0;
-                $cumulativePaid = 0.0;
                 $nextDueInst    = null;
                 $nextDueAmount  = 0.0;
                 $totalDueSoFar  = 0.0;
@@ -783,7 +790,8 @@ class FeeCollectionController extends Controller
                         // First triggered installment not yet fully covered by totalPaid
                         if ($nextDueInst === null && $totalPaid < $cumulativeDue - 0.5) {
                             $nextDueInst   = $inst;
-                            $nextDueAmount = $amt;
+                            // Net amount still needed to complete this installment (not the full amt)
+                            $nextDueAmount = min($amt, $cumulativeDue - $totalPaid);
                         }
                     }
                 }
