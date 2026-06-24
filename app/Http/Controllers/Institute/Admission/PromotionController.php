@@ -527,14 +527,10 @@ class PromotionController extends Controller
 
     private function getWalletDue(Student $student, int $sessionId): float
     {
-        $wallet = StudentWallet::where('student_id', $student->id)
-            ->where('institute_id', $student->institute_id)
-            ->where('academic_session_id', $sessionId)
-            ->first();
-
-        $balance = $wallet ? (float) $wallet->main_b : 0.0;
-
-        return $balance < 0 ? abs($balance) : 0.0;
+        // Use buildPendingRows (fee rules + actual invoices) for accurate due calculation.
+        // Raw wallet main_b can be 0 when admission fee debits weren't recorded.
+        $pendingRows = WalletService::buildPendingRows($student, $sessionId);
+        return (float) max(0, $pendingRows->sum('pending'));
     }
 
     private function createWalletTransaction(

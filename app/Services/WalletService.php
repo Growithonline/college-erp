@@ -775,15 +775,52 @@ class WalletService
                 'amount'      => (float) $row->amount,
             ]);
 
-        if ($previousDueItems->isEmpty() && $promotionLog && (float) $promotionLog->dues_carried_forward > 0) {
-            $previousDueItems = collect([[
-                'type'        => 'previous_due',
-                'fee_type_id' => null,
-                'label'       => $promotionLog->promotion_type === 'semester'
-                    ? 'Previous Due (Before Semester ' . $promotionLog->to_semester . ')'
-                    : 'Previous Due (' . ($promotionLog->fromSession?->name ?? 'Previous Session') . ')',
-                'amount'      => (float) $promotionLog->dues_carried_forward,
-            ]]);
+        if ($previousDueItems->isEmpty() && $promotionLog) {
+            $dueAmount = (float) $promotionLog->dues_carried_forward;
+
+            // dues_carried_forward may be 0 for records where getWalletDue returned 0
+            // (fee debits not tracked). For semester promotion with no Sem N fee rules,
+            // recalculate from the previous semester's rules vs all session payments.
+            if ($dueAmount <= 0 && $promotionLog->promotion_type === 'semester' && empty($feeData['items'])) {
+                $fromSemester = (int) $promotionLog->from_semester;
+                try {
+                    $prevData = FeeCalculatorService::calculate(
+                        instituteId:     $student->institute_id,
+                        sessionId:       $sessionId,
+                        courseId:        $context['course_id'],
+                        coursePart:      $context['course_part_year'],
+                        semester:        $fromSemester,
+                        studentType:     $student->student_type ?? 'regular',
+                        admissionSource: $student->admission_source ?? 'direct',
+                        category:        $student->category ?? 'general',
+                        gender:          $student->gender ?? 'other',
+                        subjectIds:      $context['subject_ids'],
+                        courseStreamId:  $student->course_stream_id,
+                        coursePartId:    $context['course_part']->id ?? $student->course_part_id
+                    );
+                } catch (\Throwable $e) {
+                    $prevData = ['total' => 0.0, 'items' => []];
+                }
+
+                if (($prevData['total'] ?? 0) > 0) {
+                    // Sem N has no fee rules, so all session payments are for Sem N-1 only
+                    $allPaid = self::getAlreadyPaidByFeeName($student, $sessionId, null);
+                    $paid    = $allPaid->sum('paid_total');
+                    $disc    = $allPaid->sum('discount_total');
+                    $dueAmount = max(0.0, (float) $prevData['total'] - $paid - $disc);
+                }
+            }
+
+            if ($dueAmount > 0) {
+                $previousDueItems = collect([[
+                    'type'        => 'previous_due',
+                    'fee_type_id' => null,
+                    'label'       => $promotionLog->promotion_type === 'semester'
+                        ? 'Previous Due (Before Semester ' . $promotionLog->to_semester . ')'
+                        : 'Previous Due (' . ($promotionLog->fromSession?->name ?? 'Previous Session') . ')',
+                    'amount'      => $dueAmount,
+                ]]);
+            }
         }
 
         $items = array_merge(
