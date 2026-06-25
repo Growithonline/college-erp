@@ -1033,6 +1033,39 @@ class FeeCollectionController extends Controller
         $paidAmount = $totalAmount;
         $totalCleared = $totalAmount + $totalDiscount;
 
+        // FeePlan installment enforcement: block collection beyond triggered installment total
+        if ($student->fee_plan_id) {
+            $student->loadMissing('feePlan.installments');
+            $plan = $student->feePlan;
+            if ($plan && $plan->installments->isNotEmpty()) {
+                $planSessionId   = (int) $student->academic_session_id;
+                $originalCharged = WalletService::getOriginalFeeCharged($student->id, $planSessionId);
+                $planSummary     = WalletService::getStudentSummary($student, $planSessionId);
+                $totalFeeForPlan = $originalCharged > 0 ? $originalCharged : (float) ($planSummary['total_charged'] ?? 0);
+                $alreadyPaid     = (float) ($planSummary['ledger_collection'] ?? 0);
+
+                $installmentAmounts = $plan->installmentAmounts($totalFeeForPlan);
+                $totalTriggered     = 0.0;
+                foreach ($plan->installments as $inst) {
+                    if ($inst->isDue($student)) {
+                        $totalTriggered += (float) ($installmentAmounts[$inst->installment_number] ?? 0);
+                    }
+                }
+
+                if ($totalFeeForPlan > 0 && ($alreadyPaid + $totalAmount) > $totalTriggered + 0.5) {
+                    $maxNow = max(0.0, round($totalTriggered - $alreadyPaid, 2));
+                    return back()->withErrors([
+                        'fee_items' => sprintf(
+                            'Installment plan limit: triggered installments total ₹%s, already paid ₹%s — maximum collectible now is ₹%s.',
+                            number_format($totalTriggered, 2),
+                            number_format($alreadyPaid, 2),
+                            number_format($maxNow, 2)
+                        ),
+                    ])->withInput();
+                }
+            }
+        }
+
         // Discount limit check for staff — per fee item allowed/blocked + global % cap
         if (auth()->guard('staff')->check() && $totalDiscount > 0) {
             $staffUser   = auth()->guard('staff')->user();
