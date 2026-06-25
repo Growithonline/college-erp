@@ -85,6 +85,11 @@ class PromotionController extends Controller
             ?? abort(403);
     }
 
+    private function escapeLike(string $s): string
+    {
+        return addcslashes($s, '%_\\');
+    }
+
     private function currentStaff(): ?\App\Models\StaffMember
     {
         return Auth::guard('staff')->user();
@@ -1095,7 +1100,7 @@ class PromotionController extends Controller
             $query->where('current_semester', $fromSem);
         }
         if ($request->search) {
-            $s = $request->search;
+            $s = $this->escapeLike($request->search);
             $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")
                 ->orWhere('student_uid', 'like', "%{$s}%")
                 ->orWhere('mobile', 'like', "%{$s}%"));
@@ -1258,7 +1263,7 @@ class PromotionController extends Controller
             $query->whereHas('stream', fn($q) => $q->where('course_id', $courseId));
         }
         if ($request->search) {
-            $s = $request->search;
+            $s = $this->escapeLike($request->search);
             $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")
                 ->orWhere('student_uid', 'like', "%{$s}%")
                 ->orWhere('mobile', 'like', "%{$s}%"));
@@ -1713,7 +1718,7 @@ class PromotionController extends Controller
             $query->whereNull('roll_no')->whereNull('form_no');
         }
         if ($request->search) {
-            $s = $request->search;
+            $s = $this->escapeLike($request->search);
             $query->whereHas('student', fn($q) => $q->where('name', 'like', "%{$s}%")
                 ->orWhere('student_uid', 'like', "%{$s}%"));
         }
@@ -2902,7 +2907,7 @@ class PromotionController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
         if ($request->search) {
-            $s = $request->search;
+            $s = $this->escapeLike($request->search);
             $query->whereHas('student', fn($q) => $q->where('name', 'like', "%{$s}%")
                 ->orWhere('student_uid', 'like', "%{$s}%"));
         }
@@ -2942,7 +2947,7 @@ class PromotionController extends Controller
             $query->where('status', $status);
         }
         if ($request->search) {
-            $search = $request->search;
+            $search = $this->escapeLike($request->search);
             $query->where(function ($inner) use ($search) {
                 $inner->where('name', 'like', "%{$search}%")
                     ->orWhere('student_uid', 'like', "%{$search}%")

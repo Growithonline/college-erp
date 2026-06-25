@@ -28,6 +28,11 @@ class StudentPromoteController extends Controller
         abort(403, 'Not authenticated');
     }
 
+    private function escapeLike(string $s): string
+    {
+        return addcslashes($s, '%_\\');
+    }
+
     public function index(Request $request)
     {
         $instituteId   = $this->instituteId();
@@ -56,10 +61,10 @@ class StudentPromoteController extends Controller
         if ($selectedCourse)  $query->whereHas('stream', fn($q) => $q->where('course_id', $selectedCourse));
 
         if ($request->search) {
-            $s = $request->search;
-            $query->where(fn($q) => $q->where('name','like',"%$s%")
-                ->orWhere('mobile','like',"%$s%")
-                ->orWhere('student_uid','like',"%$s%"));
+            $s = $this->escapeLike($request->search);
+            $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")
+                ->orWhere('mobile', 'like', "%{$s}%")
+                ->orWhere('student_uid', 'like', "%{$s}%"));
         }
 
         $students = $query->orderBy('name')->paginate($perPage)->withQueryString();

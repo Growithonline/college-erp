@@ -1573,14 +1573,15 @@ class FeeCollectionController extends Controller
             return response()->json([]);
         }
 
+        $safeQuery = addcslashes($query, '%_\\');
         $students = Student::where('institute_id', $instituteId)
             ->where('academic_session_id', $sessionId)
-            ->where(function ($builder) use ($query) {
-                $builder->where('name', 'like', "%{$query}%")
-                    ->orWhere('mobile', 'like', "%{$query}%")
-                    ->orWhere('student_uid', 'like', "%{$query}%")
-                    ->orWhere('father_name', 'like', "%{$query}%")
-                    ->orWhere('mother_name', 'like', "%{$query}%");
+            ->where(function ($builder) use ($safeQuery) {
+                $builder->where('name', 'like', "%{$safeQuery}%")
+                    ->orWhere('mobile', 'like', "%{$safeQuery}%")
+                    ->orWhere('student_uid', 'like', "%{$safeQuery}%")
+                    ->orWhere('father_name', 'like', "%{$safeQuery}%")
+                    ->orWhere('mother_name', 'like', "%{$safeQuery}%");
             })
             ->with('stream.course')
             ->limit(10);
