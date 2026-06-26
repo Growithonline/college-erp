@@ -75,9 +75,11 @@ class LibraryStaffAuthController extends Controller
 
         $staff = LibraryStaff::where('email', $email)->first();
 
-        // Always run Hash::check to prevent timing-based email enumeration.
-        $hashToCheck = $staff?->password ?? '$2y$12$invalidPlaceholderHashForTiming00000000000000000000000';
-        $passwordOk  = Hash::check($request->password, $hashToCheck);
+        // Always run bcrypt to prevent timing-based email enumeration.
+        // password_verify() is used directly — Hash::check() throws on dummy hashes in Laravel 12.
+        $dummyHash  = '$2y$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
+        $hashToCheck = ($staff && $staff->password) ? $staff->password : $dummyHash;
+        $passwordOk  = password_verify($request->password, $hashToCheck);
 
         if (!$staff || !$staff->password || !$passwordOk) {
             // Increment per-account failure counter (keyed by email hash, not staff ID)
