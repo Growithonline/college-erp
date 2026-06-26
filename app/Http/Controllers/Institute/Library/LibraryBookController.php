@@ -91,6 +91,38 @@ class LibraryBookController extends BaseLibraryController
         return view('institute.library.books.labels', compact('book'));
     }
 
+    public function generateBarcodes(LibraryBook $book)
+    {
+        $this->ensureLibraryPermission('edit');
+        abort_if($book->institute_id !== $this->instituteId(), 403);
+
+        $copies = $book->copies()->whereNull('barcode')->orWhere('barcode', '')->get();
+
+        if ($copies->isEmpty()) {
+            return redirect()->route('library.books.labels', $book)
+                ->with('info', 'All copies already have barcodes assigned.');
+        }
+
+        $generated = 0;
+        foreach ($copies as $copy) {
+            // Pad copy ID to 8 digits — globally unique, always scannable
+            $barcode = str_pad($copy->id, 8, '0', STR_PAD_LEFT);
+
+            $conflict = LibraryBookCopy::where('institute_id', $this->instituteId())
+                ->where('barcode', $barcode)
+                ->where('id', '!=', $copy->id)
+                ->exists();
+
+            if (!$conflict) {
+                $copy->update(['barcode' => $barcode]);
+                $generated++;
+            }
+        }
+
+        return redirect()->route('library.books.labels', $book)
+            ->with('success', "{$generated} barcode(s) generated and saved successfully.");
+    }
+
     public function edit(LibraryBook $book)
     {
         $this->ensureLibraryPermission('manage');

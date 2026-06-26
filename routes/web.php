@@ -775,6 +775,7 @@ Route::middleware(['lib.dual.auth'])->group(function () {
         Route::post('books', [LibraryBookController::class, 'store'])->name('books.store');
         Route::get('books/{book}', [LibraryBookController::class, 'show'])->name('books.show');
         Route::get('books/{book}/labels', [LibraryBookController::class, 'labels'])->name('books.labels');
+        Route::post('books/{book}/generate-barcodes', [LibraryBookController::class, 'generateBarcodes'])->name('books.generate-barcodes');
         Route::get('books/{book}/edit', [LibraryBookController::class, 'edit'])->name('books.edit');
         Route::put('books/{book}', [LibraryBookController::class, 'update'])->name('books.update');
         Route::post('books/{book}/toggle', [LibraryBookController::class, 'toggle'])->name('books.toggle');
@@ -1040,6 +1041,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::post('books', [LibraryBookController::class, 'store'])->name('books.store');
             Route::get('books/{book}', [LibraryBookController::class, 'show'])->name('books.show');
             Route::get('books/{book}/labels', [LibraryBookController::class, 'labels'])->name('books.labels');
+            Route::post('books/{book}/generate-barcodes', [LibraryBookController::class, 'generateBarcodes'])->name('books.generate-barcodes');
             Route::get('books/{book}/edit', [LibraryBookController::class, 'edit'])->name('books.edit');
             Route::put('books/{book}', [LibraryBookController::class, 'update'])->name('books.update');
             Route::post('books/{book}/toggle', [LibraryBookController::class, 'toggle'])->name('books.toggle');
