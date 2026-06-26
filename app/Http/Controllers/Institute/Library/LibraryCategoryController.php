@@ -18,7 +18,7 @@ class LibraryCategoryController extends BaseLibraryController
         return view('institute.library.masters.index', [
             'pageTitle' => 'Library Categories',
             'pageIcon' => 'bi-tags',
-            'pageDescription' => 'Book classification aur shelf grouping ke liye categories manage karo.',
+            'pageDescription' => 'Manage categories for book classification and shelf grouping.',
             'routePrefix' => $this->routeName('categories'),
             'records' => $records,
             'fields' => [
@@ -48,7 +48,7 @@ class LibraryCategoryController extends BaseLibraryController
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Category add ho gayi.');
+        return back()->with('success', 'Category added successfully.');
     }
 
     public function update(Request $request, LibraryCategory $category)
@@ -66,7 +66,7 @@ class LibraryCategoryController extends BaseLibraryController
             'code' => trim((string) $request->code) ?: null,
         ]);
 
-        return back()->with('success', 'Category update ho gayi.');
+        return back()->with('success', 'Category updated successfully.');
     }
 
     public function toggle(LibraryCategory $category)
@@ -75,7 +75,7 @@ class LibraryCategoryController extends BaseLibraryController
         abort_if($category->institute_id !== $this->instituteId(), 403);
         $category->update(['is_active' => !$category->is_active]);
 
-        return back()->with('success', 'Category status update ho gaya.');
+        return back()->with('success', 'Category status updated.');
     }
 
     public function destroy(LibraryCategory $category)
@@ -84,11 +84,11 @@ class LibraryCategoryController extends BaseLibraryController
         abort_if($category->institute_id !== $this->instituteId(), 403);
 
         if ($category->books()->exists()) {
-            return back()->withErrors(['delete' => 'Is category me books linked hain.']);
+            return back()->withErrors(['delete' => 'This category has books assigned to it and cannot be deleted.']);
         }
 
         $category->delete();
 
-        return back()->with('success', 'Category delete ho gayi.');
+        return back()->with('success', 'Category deleted.');
     }
 }

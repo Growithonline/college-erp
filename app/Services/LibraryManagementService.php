@@ -95,32 +95,32 @@ class LibraryManagementService
 
         if ($member->status !== 'active') {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Member active nahi hai.',
+                'library_member_id' => 'Member is not active.',
             ]);
         }
 
         $rule = $member->ruleSet;
         if (!$rule || !$rule->is_active) {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Member ke liye active rule set assign nahi hai.',
+                'library_member_id' => 'No active rule set is assigned to this member.',
             ]);
         }
 
         if (self::memberHasOverdues($member)) {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Member ke paas overdue books pending hain.',
+                'library_member_id' => 'Member has overdue books that must be returned first.',
             ]);
         }
 
         if (self::memberOutstandingFine($member) > 0) {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Member ka pending library fine clear nahi hai.',
+                'library_member_id' => 'Member has an outstanding library fine.',
             ]);
         }
 
         if ($member->activeTransactions()->count() >= $rule->max_books) {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Member issue limit cross kar chuka hai.',
+                'library_member_id' => 'Member has reached the maximum book issue limit.',
             ]);
         }
 
@@ -131,14 +131,14 @@ class LibraryManagementService
     {
         if ($copy->status !== 'available') {
             throw ValidationException::withMessages([
-                'library_book_copy_id' => 'Book copy available nahi hai.',
+                'library_book_copy_id' => 'This book copy is not available.',
             ]);
         }
 
         $reservation = self::firstActiveReservation((int) $copy->book_id, (int) $copy->institute_id);
         if ($reservation && (int) $reservation->library_member_id !== (int) $member->id) {
             throw ValidationException::withMessages([
-                'library_book_copy_id' => 'Is title par reservation queue pending hai. Pehle reserved member ko issue karo.',
+                'library_book_copy_id' => 'A reservation is pending for this title. Please issue it to the reserved member first.',
             ]);
         }
     }
@@ -147,38 +147,38 @@ class LibraryManagementService
     {
         if ($transaction->current_status !== 'issued') {
             throw ValidationException::withMessages([
-                'renew' => 'Sirf active issued transaction renew ho sakti hai.',
+                'renew' => 'Only active issued transactions can be renewed.',
             ]);
         }
 
         if ($transaction->renew_count >= $transaction->max_renewals_snapshot) {
             throw ValidationException::withMessages([
-                'renew' => 'Maximum renew limit complete ho chuki hai.',
+                'renew' => 'This transaction has reached the maximum renewal limit.',
             ]);
         }
 
         $member = $transaction->member()->with('ruleSet')->firstOrFail();
         if ($member->status !== 'active') {
             throw ValidationException::withMessages([
-                'renew' => 'Inactive member ki renewal allow nahi hai.',
+                'renew' => 'Renewals are not allowed for inactive members.',
             ]);
         }
 
         if (!$member->ruleSet?->is_active) {
             throw ValidationException::withMessages([
-                'renew' => 'Member ke liye active rule set assign nahi hai.',
+                'renew' => 'No active rule set is assigned to this member.',
             ]);
         }
 
         if (self::memberOutstandingFine($member) > 0) {
             throw ValidationException::withMessages([
-                'renew' => 'Pending fine clear karke renewal karo.',
+                'renew' => 'Please clear the outstanding fine before renewing.',
             ]);
         }
 
         if (self::memberHasOverdues($member)) {
             throw ValidationException::withMessages([
-                'renew' => 'Member ke paas overdue books hain. Pehle return karo, phir renew karo.',
+                'renew' => 'Member has overdue books. Please return them before renewing.',
             ]);
         }
 
@@ -186,7 +186,7 @@ class LibraryManagementService
             $reservation = self::firstActiveReservation((int) $transaction->copy->book_id, (int) $transaction->institute_id);
             if ($reservation && (int) $reservation->library_member_id !== (int) $member->id) {
                 throw ValidationException::withMessages([
-                    'renew' => 'Is title par dusre member ki reservation pending hai. Renew allow nahi hai.',
+                    'renew' => 'Another member has a pending reservation for this title. Renewal is not allowed.',
                 ]);
             }
         }
@@ -198,25 +198,25 @@ class LibraryManagementService
 
         if ($member->status !== 'active') {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Sirf active member reservation kar sakta hai.',
+                'library_member_id' => 'Only active members can create a reservation.',
             ]);
         }
 
         if (!$member->ruleSet?->allow_reservation) {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Is member ke rule set me reservation allowed nahi hai.',
+                'library_member_id' => 'Reservations are not permitted under this member\'s rule set.',
             ]);
         }
 
         if (self::memberHasOverdues($member)) {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Overdue books hone par reservation allow nahi hai.',
+                'library_member_id' => 'Reservations are not allowed while the member has overdue books.',
             ]);
         }
 
         if (self::memberOutstandingFine($member) > 0) {
             throw ValidationException::withMessages([
-                'library_member_id' => 'Pending fine clear karke reservation karo.',
+                'library_member_id' => 'Please clear the outstanding fine before making a reservation.',
             ]);
         }
 
@@ -227,7 +227,7 @@ class LibraryManagementService
 
         if ($alreadyIssuedSameTitle) {
             throw ValidationException::withMessages([
-                'book_id' => 'Member ke paas is title ki copy already issued hai.',
+                'book_id' => 'This member already has a copy of this title issued.',
             ]);
         }
     }
@@ -238,14 +238,14 @@ class LibraryManagementService
 
         if ($reservation->status !== 'pending') {
             throw ValidationException::withMessages([
-                'reservation' => 'Sirf pending reservation fulfill ho sakti hai.',
+                'reservation' => 'Only pending reservations can be fulfilled.',
             ]);
         }
 
         $firstPending = self::firstActiveReservation((int) $reservation->book_id, (int) $reservation->institute_id);
         if (!$firstPending || (int) $firstPending->id !== (int) $reservation->id) {
             throw ValidationException::withMessages([
-                'reservation' => 'Queue order ke hisab se ye reservation abhi fulfill nahi ho sakti.',
+                'reservation' => 'This reservation cannot be fulfilled out of queue order.',
             ]);
         }
     }

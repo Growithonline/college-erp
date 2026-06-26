@@ -12,18 +12,19 @@ class LibraryNoDueController extends BaseLibraryController
     {
         $this->ensureLibraryPermission('no_due');
 
-        $search = trim((string) $request->input('search', ''));
-        $students = collect();
+        $search     = trim((string) $request->input('search', ''));
+        $searchLike = $this->escapeLike($search);
+        $students   = collect();
 
         if ($search !== '') {
             $students = Student::where('institute_id', $this->instituteId())
                 ->with(['stream.course', 'libraryMember.activeTransactions.copy.book', 'libraryMember.transactions'])
-                ->where(function ($query) use ($search) {
-                    $query->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('student_uid', 'like', '%' . $search . '%')
-                        ->orWhere('mobile', 'like', '%' . $search . '%')
-                        ->orWhere('enrollment_no', 'like', '%' . $search . '%')
-                        ->orWhere('roll_no', 'like', '%' . $search . '%');
+                ->where(function ($query) use ($searchLike) {
+                    $query->where('name', 'like', '%' . $searchLike . '%')
+                        ->orWhere('student_uid', 'like', '%' . $searchLike . '%')
+                        ->orWhere('mobile', 'like', '%' . $searchLike . '%')
+                        ->orWhere('enrollment_no', 'like', '%' . $searchLike . '%')
+                        ->orWhere('roll_no', 'like', '%' . $searchLike . '%');
                 })
                 ->orderBy('name')
                 ->limit(25)

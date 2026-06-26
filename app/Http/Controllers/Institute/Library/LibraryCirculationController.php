@@ -20,14 +20,16 @@ class LibraryCirculationController extends BaseLibraryController
         LibraryManagementService::expireReservations($instituteId);
         $memberSearch = trim((string) $request->input('member_search', ''));
         $copySearch = trim((string) $request->input('copy_search', ''));
+        $memberLike = $this->escapeLike($memberSearch);
+        $copyLike   = $this->escapeLike($copySearch);
 
         $members = LibraryMember::forInstitute($instituteId)
             ->with(['ruleSet', 'activeTransactions.copy.book', 'transactions'])
-            ->when($memberSearch !== '', function ($query) use ($memberSearch) {
-                $query->where(function ($builder) use ($memberSearch) {
-                    $builder->where('member_code', 'like', '%' . $memberSearch . '%')
-                        ->orWhere('name', 'like', '%' . $memberSearch . '%')
-                        ->orWhere('mobile', 'like', '%' . $memberSearch . '%');
+            ->when($memberSearch !== '', function ($query) use ($memberLike) {
+                $query->where(function ($builder) use ($memberLike) {
+                    $builder->where('member_code', 'like', '%' . $memberLike . '%')
+                        ->orWhere('name', 'like', '%' . $memberLike . '%')
+                        ->orWhere('mobile', 'like', '%' . $memberLike . '%');
                 });
             })
             ->orderBy('name')
@@ -36,11 +38,11 @@ class LibraryCirculationController extends BaseLibraryController
 
         $copies = LibraryBookCopy::forInstitute($instituteId)
             ->with(['book', 'rack', 'vendor'])
-            ->when($copySearch !== '', function ($query) use ($copySearch) {
-                $query->where(function ($builder) use ($copySearch) {
-                    $builder->where('accession_no', 'like', '%' . $copySearch . '%')
-                        ->orWhere('barcode', 'like', '%' . $copySearch . '%')
-                        ->orWhereHas('book', fn($bookQuery) => $bookQuery->where('title', 'like', '%' . $copySearch . '%'));
+            ->when($copySearch !== '', function ($query) use ($copyLike) {
+                $query->where(function ($builder) use ($copyLike) {
+                    $builder->where('accession_no', 'like', '%' . $copyLike . '%')
+                        ->orWhere('barcode', 'like', '%' . $copyLike . '%')
+                        ->orWhereHas('book', fn($bookQuery) => $bookQuery->where('title', 'like', '%' . $copyLike . '%'));
                 });
             })
             ->orderBy('accession_no')
@@ -77,7 +79,7 @@ class LibraryCirculationController extends BaseLibraryController
         $data = $request->validate([
             'library_member_id' => 'required|integer',
             'library_book_copy_id' => 'required|integer',
-            'issued_on' => 'required|date',
+            'issued_on' => 'required|date|before_or_equal:today',
             'remarks' => 'nullable|string|max:255',
         ]);
 
@@ -126,7 +128,7 @@ class LibraryCirculationController extends BaseLibraryController
             }
         });
 
-        return back()->with('success', 'Book issue ho gayi.');
+        return back()->with('success', 'Book issued successfully.');
     }
 
     public function renew(Request $request, LibraryTransaction $transaction)
@@ -143,7 +145,7 @@ class LibraryCirculationController extends BaseLibraryController
             'due_on' => $renewBase->addDays((int) $transaction->loan_days_snapshot)->toDateString(),
         ]);
 
-        return back()->with('success', 'Book renew ho gayi.');
+        return back()->with('success', 'Book renewed successfully.');
     }
 
     public function return(Request $request, LibraryTransaction $transaction)
@@ -151,15 +153,17 @@ class LibraryCirculationController extends BaseLibraryController
         $this->ensureLibraryPermission('issue');
         abort_if($transaction->institute_id !== $this->instituteId(), 403);
 
+        $issuedOnDate = Carbon::parse($transaction->issued_on)->toDateString();
+
         $data = $request->validate([
-            'returned_on' => 'required|date',
-            'return_mode' => 'nullable|in:returned,lost,damaged',
+            'returned_on'   => ['required', 'date', 'before_or_equal:today', "after_or_equal:{$issuedOnDate}"],
+            'return_mode'   => 'nullable|in:returned,lost,damaged',
             'penalty_amount' => 'nullable|numeric|min:0',
-            'remarks' => 'nullable|string|max:255',
+            'remarks'       => 'nullable|string|max:255',
         ]);
 
         if ($transaction->current_status !== 'issued') {
-            return back()->withErrors(['return' => 'Transaction already close ho chuki hai.']);
+            return back()->withErrors(['return' => 'This transaction is already closed.']);
         }
 
         DB::transaction(function () use ($transaction, $data) {
@@ -174,7 +178,7 @@ class LibraryCirculationController extends BaseLibraryController
             );
         });
 
-        return back()->with('success', 'Transaction close ho gayi.');
+        return back()->with('success', 'Book returned successfully.');
     }
 
     public function payFine(Request $request, LibraryTransaction $transaction)
@@ -185,8 +189,8 @@ class LibraryCirculationController extends BaseLibraryController
         $data = $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'payment_mode' => 'required|string|max:30',
-            'payment_date' => 'required|date',
-            'receipt_no' => 'nullable|string|max:80',
+            'payment_date' => 'required|date|before_or_equal:today',
+            'receipt_no'   => 'nullable|string|max:80',
             'remarks' => 'nullable|string|max:255',
         ]);
 
@@ -196,11 +200,11 @@ class LibraryCirculationController extends BaseLibraryController
             $pendingFine = max(0, (float) $tx->fine_amount - (float) $tx->fine_paid);
 
             if ($pendingFine <= 0) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Is transaction me pending fine nahi hai.']);
+                throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'This transaction has no pending fine.']);
             }
 
             if ((float) $data['amount'] > $pendingFine) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Payment pending fine se zyada nahi ho sakta.']);
+                throw \Illuminate\Validation\ValidationException::withMessages(['amount' => 'Payment amount cannot exceed the pending fine.']);
             }
 
             LibraryFinePayment::create([
@@ -222,7 +226,7 @@ class LibraryCirculationController extends BaseLibraryController
             LibraryManagementService::postFinePaymentToWallet($tx->loadMissing(['member.student', 'copy.book']), (float) $data['amount'], $data['payment_date']);
         });
 
-        return back()->with('success', 'Fine payment save ho gaya.');
+        return back()->with('success', 'Fine payment recorded successfully.');
     }
 
     public function receipt(LibraryTransaction $transaction)

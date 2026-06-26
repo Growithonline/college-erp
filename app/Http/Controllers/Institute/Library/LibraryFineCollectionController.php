@@ -21,13 +21,14 @@ class LibraryFineCollectionController extends BaseLibraryController
         $this->ensureLibraryPermission('issue');
         $instituteId = $this->instituteId();
         $search      = trim((string) $request->input('search', ''));
+        $searchLike  = $this->escapeLike($search);
 
         $stats = LibraryTransaction::forInstitute($instituteId)
             ->selectRaw("COUNT(DISTINCT library_member_id) as members_with_fines, COALESCE(SUM(fine_amount - fine_paid), 0) as total_pending")
             ->whereRaw('fine_amount > fine_paid')
             ->first();
 
-        $collectedToday = (float) LibraryFinePayment::where('institute_id', $instituteId)
+        $collectedToday = (float) LibraryFinePayment::forInstitute($instituteId)
             ->whereDate('payment_date', now()->toDateString())
             ->sum('amount');
 
@@ -35,9 +36,9 @@ class LibraryFineCollectionController extends BaseLibraryController
             ->with(['student', 'staffMember.role'])
             ->whereHas('transactions', fn($q) => $q->whereRaw('fine_amount > fine_paid'))
             ->when($search !== '', fn($q) => $q->where(fn($b) =>
-                $b->where('member_code', 'like', '%' . $search . '%')
-                  ->orWhere('name', 'like', '%' . $search . '%')
-                  ->orWhere('mobile', 'like', '%' . $search . '%')
+                $b->where('member_code', 'like', '%' . $searchLike . '%')
+                  ->orWhere('name', 'like', '%' . $searchLike . '%')
+                  ->orWhere('mobile', 'like', '%' . $searchLike . '%')
             ))
             ->orderBy('name')
             ->paginate(20)
@@ -91,8 +92,8 @@ class LibraryFineCollectionController extends BaseLibraryController
             'items.*.transaction_id' => 'required|integer',
             'items.*.amount'         => 'required|numeric|min:0',
             'payment_mode'           => 'required|string|max:30',
-            'payment_date'           => 'required_if:payment_mode,cash|nullable|date',
-            'payment_datetime'       => 'required_unless:payment_mode,cash|nullable|date_format:Y-m-d\TH:i',
+            'payment_date'           => 'required_if:payment_mode,cash|nullable|date|before_or_equal:today',
+            'payment_datetime'       => 'required_unless:payment_mode,cash|nullable|date_format:Y-m-d\TH:i|before_or_equal:now',
             'bank_account_id'        => 'nullable|integer|exists:institute_bank_accounts,id',
             'transaction_ref'        => 'required_if:payment_mode,upi,online,neft,rtgs,cheque,dd|nullable|string|max:100',
             'bank_name'              => 'nullable|string|max:100',
@@ -111,7 +112,7 @@ class LibraryFineCollectionController extends BaseLibraryController
         $totalAmount = collect($data['items'])->sum(fn($i) => (float) $i['amount']);
 
         if ($totalAmount <= 0) {
-            return back()->withErrors(['items' => 'Kam se kam ek item ka amount enter karo.']);
+            return back()->withErrors(['items' => 'Please enter an amount for at least one item.']);
         }
 
         $receiptNo = trim((string) ($data['receipt_no'] ?? ''))
@@ -134,7 +135,7 @@ class LibraryFineCollectionController extends BaseLibraryController
 
                 $pending = max(0, (float) $tx->fine_amount - (float) $tx->fine_paid);
                 if ($amount > $pending + 0.001) {
-                    throw ValidationException::withMessages(['items' => 'Ek book ka amount pending fine se zyada hai.']);
+                    throw ValidationException::withMessages(['items' => 'Amount for one or more items exceeds the pending fine.']);
                 }
 
                 LibraryFinePayment::create([
@@ -177,7 +178,7 @@ class LibraryFineCollectionController extends BaseLibraryController
         );
 
         return redirect()->route($this->routeName('fines.receipt'), [$member->id, urlencode($receiptNo)])
-            ->with('success', 'Fine collect ho gayi. Receipt ready hai.');
+            ->with('success', 'Fine collected successfully. Receipt is ready.');
     }
 
     public function receipt(LibraryMember $member, string $receiptNo)
@@ -187,7 +188,7 @@ class LibraryFineCollectionController extends BaseLibraryController
 
         $member->load(['student.session', 'staffMember.role']);
 
-        $payments = LibraryFinePayment::where('institute_id', $this->instituteId())
+        $payments = LibraryFinePayment::forInstitute($this->instituteId())
             ->where('library_member_id', $member->id)
             ->where('receipt_no', urldecode($receiptNo))
             ->with(['transaction.copy.book'])

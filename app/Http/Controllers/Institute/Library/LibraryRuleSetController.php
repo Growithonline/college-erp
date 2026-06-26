@@ -19,7 +19,7 @@ class LibraryRuleSetController extends BaseLibraryController
         return view('institute.library.masters.index', [
             'pageTitle' => 'Library Rule Sets',
             'pageIcon' => 'bi-shield-check',
-            'pageDescription' => 'Student, staff, faculty ke issue limits aur fine rules yahin define honge.',
+            'pageDescription' => 'Define issue limits and fine rules for student, staff, and faculty members.',
             'routePrefix' => $this->routeName('rules'),
             'records' => $records,
             'fields' => [
@@ -50,7 +50,7 @@ class LibraryRuleSetController extends BaseLibraryController
 
         LibraryRuleSet::create($data);
 
-        return back()->with('success', 'Rule set add ho gaya.');
+        return back()->with('success', 'Rule set added successfully.');
     }
 
     public function update(Request $request, LibraryRuleSet $rule)
@@ -59,7 +59,7 @@ class LibraryRuleSetController extends BaseLibraryController
         abort_if($rule->institute_id !== $this->instituteId(), 403);
         $rule->update($this->validatedData($request));
 
-        return back()->with('success', 'Rule set update ho gaya.');
+        return back()->with('success', 'Rule set updated successfully.');
     }
 
     public function toggle(LibraryRuleSet $rule)
@@ -68,7 +68,7 @@ class LibraryRuleSetController extends BaseLibraryController
         abort_if($rule->institute_id !== $this->instituteId(), 403);
         $rule->update(['is_active' => !$rule->is_active]);
 
-        return back()->with('success', 'Rule set status update ho gaya.');
+        return back()->with('success', 'Rule set status updated.');
     }
 
     public function destroy(LibraryRuleSet $rule)
@@ -77,12 +77,12 @@ class LibraryRuleSetController extends BaseLibraryController
         abort_if($rule->institute_id !== $this->instituteId(), 403);
 
         if ($rule->members()->exists()) {
-            return back()->withErrors(['delete' => 'Is rule set se members linked hain.']);
+            return back()->withErrors(['delete' => 'This rule set has members assigned to it and cannot be deleted.']);
         }
 
         $rule->delete();
 
-        return back()->with('success', 'Rule set delete ho gaya.');
+        return back()->with('success', 'Rule set deleted.');
     }
 
     private function validatedData(Request $request): array

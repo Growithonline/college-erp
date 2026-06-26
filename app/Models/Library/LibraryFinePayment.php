@@ -28,6 +28,11 @@ class LibraryFinePayment extends Model
         'payment_datetime' => 'datetime',
     ];
 
+    public function scopeForInstitute($query, int $instituteId)
+    {
+        return $query->where('institute_id', $instituteId);
+    }
+
     public function member()
     {
         return $this->belongsTo(LibraryMember::class, 'library_member_id');

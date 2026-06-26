@@ -18,7 +18,7 @@ class LibrarySubjectController extends BaseLibraryController
         return view('institute.library.masters.index', [
             'pageTitle' => 'Library Subjects',
             'pageIcon' => 'bi-journal-text',
-            'pageDescription' => 'Subject-wise cataloging aur OPAC discovery ke liye subject master maintain karo.',
+            'pageDescription' => 'Manage the subject master list for cataloging and OPAC discovery.',
             'routePrefix' => $this->routeName('subjects'),
             'records' => $records,
             'fields' => [
@@ -48,7 +48,7 @@ class LibrarySubjectController extends BaseLibraryController
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Subject add ho gaya.');
+        return back()->with('success', 'Subject added successfully.');
     }
 
     public function update(Request $request, LibrarySubject $subject)
@@ -66,7 +66,7 @@ class LibrarySubjectController extends BaseLibraryController
             'code' => trim((string) $request->code) ?: null,
         ]);
 
-        return back()->with('success', 'Subject update ho gaya.');
+        return back()->with('success', 'Subject updated successfully.');
     }
 
     public function toggle(LibrarySubject $subject)
@@ -75,7 +75,7 @@ class LibrarySubjectController extends BaseLibraryController
         abort_if($subject->institute_id !== $this->instituteId(), 403);
         $subject->update(['is_active' => !$subject->is_active]);
 
-        return back()->with('success', 'Subject status update ho gaya.');
+        return back()->with('success', 'Subject status updated.');
     }
 
     public function destroy(LibrarySubject $subject)
@@ -84,11 +84,11 @@ class LibrarySubjectController extends BaseLibraryController
         abort_if($subject->institute_id !== $this->instituteId(), 403);
 
         if ($subject->books()->exists()) {
-            return back()->withErrors(['delete' => 'Is subject se books linked hain.']);
+            return back()->withErrors(['delete' => 'This subject is linked to one or more books and cannot be deleted.']);
         }
 
         $subject->delete();
 
-        return back()->with('success', 'Subject delete ho gaya.');
+        return back()->with('success', 'Subject deleted.');
     }
 }

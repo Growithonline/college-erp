@@ -18,7 +18,7 @@ class LibraryAuthorController extends BaseLibraryController
         return view('institute.library.masters.index', [
             'pageTitle' => 'Library Authors',
             'pageIcon' => 'bi-pen',
-            'pageDescription' => 'Book authors ki master list maintain karo.',
+            'pageDescription' => 'Manage the master list of book authors.',
             'routePrefix' => $this->routeName('authors'),
             'records' => $records,
             'fields' => [
@@ -42,7 +42,7 @@ class LibraryAuthorController extends BaseLibraryController
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Author add ho gaye.');
+        return back()->with('success', 'Author added successfully.');
     }
 
     public function update(Request $request, LibraryAuthor $author)
@@ -52,7 +52,7 @@ class LibraryAuthorController extends BaseLibraryController
         $request->validate(['name' => 'required|string|max:150']);
         $author->update(['name' => trim($request->name)]);
 
-        return back()->with('success', 'Author update ho gaye.');
+        return back()->with('success', 'Author updated successfully.');
     }
 
     public function toggle(LibraryAuthor $author)
@@ -61,7 +61,7 @@ class LibraryAuthorController extends BaseLibraryController
         abort_if($author->institute_id !== $this->instituteId(), 403);
         $author->update(['is_active' => !$author->is_active]);
 
-        return back()->with('success', 'Author status update ho gaya.');
+        return back()->with('success', 'Author status updated.');
     }
 
     public function destroy(LibraryAuthor $author)
@@ -70,11 +70,11 @@ class LibraryAuthorController extends BaseLibraryController
         abort_if($author->institute_id !== $this->instituteId(), 403);
 
         if ($author->books()->exists()) {
-            return back()->withErrors(['delete' => 'Is author se books linked hain.']);
+            return back()->withErrors(['delete' => 'This author is linked to one or more books and cannot be deleted.']);
         }
 
         $author->delete();
 
-        return back()->with('success', 'Author delete ho gaye.');
+        return back()->with('success', 'Author deleted.');
     }
 }

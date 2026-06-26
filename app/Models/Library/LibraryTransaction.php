@@ -32,13 +32,16 @@ class LibraryTransaction extends Model
     ];
 
     protected $casts = [
-        'issued_on' => 'date',
-        'due_on' => 'date',
-        'returned_on' => 'date',
-        'loan_days_snapshot' => 'integer',
-        'fine_per_day_snapshot' => 'decimal:2',
-        'fine_amount' => 'decimal:2',
-        'fine_paid' => 'decimal:2',
+        'issued_on'              => 'date',
+        'due_on'                 => 'date',
+        'returned_on'            => 'date',
+        'loan_days_snapshot'     => 'integer',
+        'fine_per_day_snapshot'  => 'decimal:2',
+        'grace_days_snapshot'    => 'integer',
+        'max_renewals_snapshot'  => 'integer',
+        'renew_count'            => 'integer',
+        'fine_amount'            => 'decimal:2',
+        'fine_paid'              => 'decimal:2',
     ];
 
     public function scopeForInstitute($query, int $instituteId)

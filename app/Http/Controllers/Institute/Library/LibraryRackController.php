@@ -19,7 +19,7 @@ class LibraryRackController extends BaseLibraryController
         return view('institute.library.masters.index', [
             'pageTitle' => 'Library Racks & Shelves',
             'pageIcon' => 'bi-grid-3x3-gap',
-            'pageDescription' => 'Physical shelf map maintain karo taaki copies trace ho sakein.',
+            'pageDescription' => 'Maintain the physical shelf map to track copy locations.',
             'routePrefix' => $this->routeName('racks'),
             'records' => $records,
             'fields' => [
@@ -55,7 +55,7 @@ class LibraryRackController extends BaseLibraryController
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Rack add ho gaya.');
+        return back()->with('success', 'Rack added successfully.');
     }
 
     public function update(Request $request, LibraryRack $rack)
@@ -77,7 +77,7 @@ class LibraryRackController extends BaseLibraryController
             'remarks' => trim((string) $request->remarks) ?: null,
         ]);
 
-        return back()->with('success', 'Rack update ho gaya.');
+        return back()->with('success', 'Rack updated successfully.');
     }
 
     public function toggle(LibraryRack $rack)
@@ -86,7 +86,7 @@ class LibraryRackController extends BaseLibraryController
         abort_if($rack->institute_id !== $this->instituteId(), 403);
         $rack->update(['is_active' => !$rack->is_active]);
 
-        return back()->with('success', 'Rack status update ho gaya.');
+        return back()->with('success', 'Rack status updated.');
     }
 
     public function destroy(LibraryRack $rack)
@@ -95,11 +95,11 @@ class LibraryRackController extends BaseLibraryController
         abort_if($rack->institute_id !== $this->instituteId(), 403);
 
         if ($rack->copies()->exists()) {
-            return back()->withErrors(['delete' => 'Is rack me copies mapped hain.']);
+            return back()->withErrors(['delete' => 'This rack has copies assigned to it and cannot be deleted.']);
         }
 
         $rack->delete();
 
-        return back()->with('success', 'Rack delete ho gaya.');
+        return back()->with('success', 'Rack deleted.');
     }
 }

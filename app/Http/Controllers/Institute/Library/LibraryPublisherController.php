@@ -18,7 +18,7 @@ class LibraryPublisherController extends BaseLibraryController
         return view('institute.library.masters.index', [
             'pageTitle' => 'Library Publishers',
             'pageIcon' => 'bi-buildings',
-            'pageDescription' => 'Publisher aur vendor contact details yahin maintain karo.',
+            'pageDescription' => 'Manage publisher contact details for book records.',
             'routePrefix' => $this->routeName('publishers'),
             'records' => $records,
             'fields' => [
@@ -54,7 +54,7 @@ class LibraryPublisherController extends BaseLibraryController
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Publisher add ho gaya.');
+        return back()->with('success', 'Publisher added successfully.');
     }
 
     public function update(Request $request, LibraryPublisher $publisher)
@@ -76,7 +76,7 @@ class LibraryPublisherController extends BaseLibraryController
             'address' => trim((string) $request->address) ?: null,
         ]);
 
-        return back()->with('success', 'Publisher update ho gaya.');
+        return back()->with('success', 'Publisher updated successfully.');
     }
 
     public function toggle(LibraryPublisher $publisher)
@@ -85,7 +85,7 @@ class LibraryPublisherController extends BaseLibraryController
         abort_if($publisher->institute_id !== $this->instituteId(), 403);
         $publisher->update(['is_active' => !$publisher->is_active]);
 
-        return back()->with('success', 'Publisher status update ho gaya.');
+        return back()->with('success', 'Publisher status updated.');
     }
 
     public function destroy(LibraryPublisher $publisher)
@@ -94,11 +94,11 @@ class LibraryPublisherController extends BaseLibraryController
         abort_if($publisher->institute_id !== $this->instituteId(), 403);
 
         if ($publisher->books()->exists()) {
-            return back()->withErrors(['delete' => 'Is publisher se books linked hain.']);
+            return back()->withErrors(['delete' => 'This publisher is linked to one or more books and cannot be deleted.']);
         }
 
         $publisher->delete();
 
-        return back()->with('success', 'Publisher delete ho gaya.');
+        return back()->with('success', 'Publisher deleted.');
     }
 }

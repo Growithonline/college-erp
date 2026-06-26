@@ -69,8 +69,8 @@ class LibraryMember extends Model
 
     public function getPendingFineAttribute(): float
     {
-        return (float) $this->transactions->sum(function (LibraryTransaction $transaction) {
-            return max(0, (float) $transaction->fine_amount - (float) $transaction->fine_paid);
-        });
+        return (float) $this->transactions()
+            ->selectRaw('COALESCE(SUM(fine_amount - fine_paid), 0) as amount')
+            ->value('amount');
     }
 }

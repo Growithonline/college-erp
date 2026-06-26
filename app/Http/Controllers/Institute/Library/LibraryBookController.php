@@ -21,16 +21,17 @@ class LibraryBookController extends BaseLibraryController
     {
         $this->ensureLibraryPermission('view');
         $instituteId = $this->instituteId();
-        $search = trim((string) $request->input('search', ''));
+        $search     = trim((string) $request->input('search', ''));
+        $searchLike = $this->escapeLike($search);
 
         $books = LibraryBook::forInstitute($instituteId)
             ->with(['category', 'publisher', 'subject', 'authors', 'copies'])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($builder) use ($search) {
-                    $builder->where('title', 'like', '%' . $search . '%')
-                        ->orWhere('isbn', 'like', '%' . $search . '%')
-                        ->orWhere('subject_name', 'like', '%' . $search . '%')
-                        ->orWhere('author_text', 'like', '%' . $search . '%');
+            ->when($search !== '', function ($query) use ($searchLike) {
+                $query->where(function ($builder) use ($searchLike) {
+                    $builder->where('title', 'like', '%' . $searchLike . '%')
+                        ->orWhere('isbn', 'like', '%' . $searchLike . '%')
+                        ->orWhere('subject_name', 'like', '%' . $searchLike . '%')
+                        ->orWhere('author_text', 'like', '%' . $searchLike . '%');
                 });
             })
             ->orderBy('title')
@@ -56,7 +57,7 @@ class LibraryBookController extends BaseLibraryController
         $book = LibraryBook::create($data);
         $book->authors()->sync($request->input('author_ids', []));
 
-        return $this->redirectRoute('books.show', $book)->with('success', 'Book title save ho gaya. Ab copies add karo.');
+        return $this->redirectRoute('books.show', $book)->with('success', 'Book saved. You can now add copies.');
     }
 
     public function show(LibraryBook $book)
@@ -106,7 +107,7 @@ class LibraryBookController extends BaseLibraryController
         $book->update($this->validatedBookData($request));
         $book->authors()->sync($request->input('author_ids', []));
 
-        return $this->redirectRoute('books.show', $book)->with('success', 'Book update ho gaya.');
+        return $this->redirectRoute('books.show', $book)->with('success', 'Book updated successfully.');
     }
 
     public function toggle(LibraryBook $book)
@@ -115,7 +116,7 @@ class LibraryBookController extends BaseLibraryController
         abort_if($book->institute_id !== $this->instituteId(), 403);
         $book->update(['is_active' => !$book->is_active]);
 
-        return back()->with('success', 'Book status update ho gaya.');
+        return back()->with('success', 'Book status updated.');
     }
 
     public function storeCopy(Request $request, LibraryBook $book)
@@ -132,11 +133,11 @@ class LibraryBookController extends BaseLibraryController
         ]);
 
         $common = $request->validate([
-            'rack_id'        => 'nullable|integer',
-            'vendor_id'      => 'nullable|integer',
+            'rack_id'        => ['nullable', 'integer', Rule::exists('library_racks', 'id')->where('institute_id', $instituteId)],
+            'vendor_id'      => ['nullable', 'integer', Rule::exists('library_vendors', 'id')->where('institute_id', $instituteId)],
             'purchase_date'  => 'nullable|date',
             'price'          => 'nullable|numeric|min:0',
-            'status'         => 'required|in:available,issued,reserved,lost,damaged,withdrawn',
+            'status'         => 'required|in:available,lost,damaged,withdrawn',
             'condition_note' => 'nullable|string|max:255',
         ]);
 
@@ -157,7 +158,7 @@ class LibraryBookController extends BaseLibraryController
             ->toArray();
 
         if (!empty($existing)) {
-            return back()->withErrors(['accession_prefix' => 'Ye accession numbers already exist hain: ' . implode(', ', $existing)]);
+            return back()->withErrors(['accession_prefix' => 'The following accession numbers already exist: ' . implode(', ', $existing)]);
         }
 
         DB::transaction(function () use ($accessionNos, $common, $book, $instituteId) {
@@ -171,7 +172,7 @@ class LibraryBookController extends BaseLibraryController
         });
 
         $count = count($accessionNos);
-        return back()->with('success', $count . ' ' . ($count === 1 ? 'copy' : 'copies') . ' add ho gayi: ' . implode(', ', $accessionNos));
+        return back()->with('success', $count . ' ' . ($count === 1 ? 'copy' : 'copies') . ' added: ' . implode(', ', $accessionNos));
     }
 
     public function updateCopy(Request $request, LibraryBook $book, LibraryBookCopy $copy)
@@ -185,12 +186,12 @@ class LibraryBookController extends BaseLibraryController
         );
 
         if ($copy->status === 'issued') {
-            return back()->withErrors(['copy' => 'Ye copy abhi issued hai. Pehle return karo, phir update karo.']);
+            return back()->withErrors(['copy' => 'This copy is currently issued and cannot be updated. Please return it first.']);
         }
 
         $copy->update($this->validatedCopyData($request, $copy));
 
-        return back()->with('success', 'Book copy update ho gayi.');
+        return back()->with('success', 'Book copy updated successfully.');
     }
 
     private function formData(LibraryBook $book, string $mode): array
@@ -207,10 +208,12 @@ class LibraryBookController extends BaseLibraryController
 
     private function validatedBookData(Request $request): array
     {
+        $instituteId = $this->instituteId();
+
         return $request->validate([
-            'category_id' => 'nullable|integer',
-            'publisher_id' => 'nullable|integer',
-            'subject_id' => 'nullable|integer',
+            'category_id' => ['nullable', 'integer', Rule::exists('library_categories', 'id')->where('institute_id', $instituteId)],
+            'publisher_id' => ['nullable', 'integer', Rule::exists('library_publishers', 'id')->where('institute_id', $instituteId)],
+            'subject_id'   => ['nullable', 'integer', Rule::exists('library_subjects', 'id')->where('institute_id', $instituteId)],
             'title' => 'required|string|max:255',
             'subtitle' => 'nullable|string|max:255',
             'isbn' => 'nullable|string|max:50',
@@ -219,8 +222,8 @@ class LibraryBookController extends BaseLibraryController
             'subject_name' => 'nullable|string|max:150',
             'author_text' => 'nullable|string',
             'description' => 'nullable|string',
-            'author_ids' => 'nullable|array',
-            'author_ids.*' => 'integer',
+            'author_ids'   => 'nullable|array',
+            'author_ids.*' => ['integer', Rule::exists('library_authors', 'id')->where('institute_id', $instituteId)],
         ]);
     }
 
@@ -229,8 +232,8 @@ class LibraryBookController extends BaseLibraryController
         $instituteId = $this->instituteId();
 
         return $request->validate([
-            'rack_id' => 'nullable|integer',
-            'vendor_id' => 'nullable|integer',
+            'rack_id'   => ['nullable', 'integer', Rule::exists('library_racks', 'id')->where('institute_id', $instituteId)],
+            'vendor_id' => ['nullable', 'integer', Rule::exists('library_vendors', 'id')->where('institute_id', $instituteId)],
             'accession_no' => [
                 'required', 'string', 'max:80',
                 Rule::unique('library_book_copies', 'accession_no')

@@ -18,7 +18,7 @@ class LibraryVendorController extends BaseLibraryController
         return view('institute.library.masters.index', [
             'pageTitle' => 'Library Vendors',
             'pageIcon' => 'bi-truck',
-            'pageDescription' => 'Book procurement aur stock source tracking ke liye vendor master manage karo.',
+            'pageDescription' => 'Manage vendors for book procurement and stock source tracking.',
             'routePrefix' => $this->routeName('vendors'),
             'records' => $records,
             'fields' => [
@@ -54,7 +54,7 @@ class LibraryVendorController extends BaseLibraryController
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Vendor add ho gaya.');
+        return back()->with('success', 'Vendor added successfully.');
     }
 
     public function update(Request $request, LibraryVendor $vendor)
@@ -76,7 +76,7 @@ class LibraryVendorController extends BaseLibraryController
             'address' => trim((string) $request->address) ?: null,
         ]);
 
-        return back()->with('success', 'Vendor update ho gaya.');
+        return back()->with('success', 'Vendor updated successfully.');
     }
 
     public function toggle(LibraryVendor $vendor)
@@ -85,7 +85,7 @@ class LibraryVendorController extends BaseLibraryController
         abort_if($vendor->institute_id !== $this->instituteId(), 403);
         $vendor->update(['is_active' => !$vendor->is_active]);
 
-        return back()->with('success', 'Vendor status update ho gaya.');
+        return back()->with('success', 'Vendor status updated.');
     }
 
     public function destroy(LibraryVendor $vendor)
@@ -94,11 +94,11 @@ class LibraryVendorController extends BaseLibraryController
         abort_if($vendor->institute_id !== $this->instituteId(), 403);
 
         if ($vendor->copies()->exists()) {
-            return back()->withErrors(['delete' => 'Is vendor se copies linked hain.']);
+            return back()->withErrors(['delete' => 'This vendor is linked to one or more book copies and cannot be deleted.']);
         }
 
         $vendor->delete();
 
-        return back()->with('success', 'Vendor delete ho gaya.');
+        return back()->with('success', 'Vendor deleted.');
     }
 }

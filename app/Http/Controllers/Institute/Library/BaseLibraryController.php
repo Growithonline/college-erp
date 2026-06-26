@@ -89,6 +89,11 @@ abstract class BaseLibraryController extends Controller
         return redirect()->route($this->routeName($suffix), ...$parameters);
     }
 
+    protected function escapeLike(string $s): string
+    {
+        return addcslashes($s, '%_\\');
+    }
+
     protected function ensureLibraryPermission(string $ability = 'view'): void
     {
         $guard = $this->guardName();

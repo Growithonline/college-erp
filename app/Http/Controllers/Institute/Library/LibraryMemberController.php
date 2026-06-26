@@ -8,6 +8,7 @@ use App\Models\StaffMember;
 use App\Models\Student;
 use App\Services\LibraryManagementService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class LibraryMemberController extends BaseLibraryController
@@ -16,16 +17,17 @@ class LibraryMemberController extends BaseLibraryController
     {
         $this->ensureLibraryPermission('members');
         $instituteId = $this->instituteId();
-        $search = trim((string) $request->input('search', ''));
+        $search     = trim((string) $request->input('search', ''));
+        $searchLike = $this->escapeLike($search);
 
         $members = LibraryMember::forInstitute($instituteId)
             ->with(['student.stream.course', 'staffMember.role', 'ruleSet', 'activeTransactions.copy.book', 'transactions'])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($builder) use ($search) {
-                    $builder->where('member_code', 'like', '%' . $search . '%')
-                        ->orWhere('name', 'like', '%' . $search . '%')
-                        ->orWhere('mobile', 'like', '%' . $search . '%')
-                        ->orWhere('email', 'like', '%' . $search . '%');
+            ->when($search !== '', function ($query) use ($searchLike) {
+                $query->where(function ($builder) use ($searchLike) {
+                    $builder->where('member_code', 'like', '%' . $searchLike . '%')
+                        ->orWhere('name', 'like', '%' . $searchLike . '%')
+                        ->orWhere('mobile', 'like', '%' . $searchLike . '%')
+                        ->orWhere('email', 'like', '%' . $searchLike . '%');
                 });
             })
             ->orderBy('name')
@@ -48,27 +50,37 @@ class LibraryMemberController extends BaseLibraryController
     {
         $this->ensureLibraryPermission('members');
         $instituteId = $this->instituteId();
-        $ruleSetId = $this->defaultRuleSetId('student');
-        $created = 0;
-        $updated = 0;
 
-        Student::where('institute_id', $instituteId)
-            ->where('status', '!=', 'pending')
-            ->chunkById(200, function ($students) use (&$created, &$updated, $ruleSetId) {
-                foreach ($students as $student) {
-                    $member = LibraryManagementService::syncStudentMember($student);
-                    if ($member) {
-                        if ($member->wasRecentlyCreated) {
-                            $created++;
-                        } else {
-                            $updated++;
-                        }
-                        if (!$member->rule_set_id && $ruleSetId) {
-                            $member->update(['rule_set_id' => $ruleSetId]);
+        $lock = Cache::lock("library_sync_students_{$instituteId}", 120);
+        if (!$lock->get()) {
+            return back()->withErrors(['sync' => 'Student sync is already in progress. Please try again shortly.']);
+        }
+
+        try {
+            $ruleSetId = $this->defaultRuleSetId('student');
+            $created = 0;
+            $updated = 0;
+
+            Student::where('institute_id', $instituteId)
+                ->where('status', '!=', 'pending')
+                ->chunkById(200, function ($students) use (&$created, &$updated, $ruleSetId) {
+                    foreach ($students as $student) {
+                        $member = LibraryManagementService::syncStudentMember($student);
+                        if ($member) {
+                            if ($member->wasRecentlyCreated) {
+                                $created++;
+                            } else {
+                                $updated++;
+                            }
+                            if (!$member->rule_set_id && $ruleSetId) {
+                                $member->update(['rule_set_id' => $ruleSetId]);
+                            }
                         }
                     }
-                }
-            });
+                });
+        } finally {
+            $lock->release();
+        }
 
         return back()->with('success', $created . ' new + ' . $updated . ' updated — student members synced successfully.');
     }
@@ -77,18 +89,28 @@ class LibraryMemberController extends BaseLibraryController
     {
         $this->ensureLibraryPermission('members');
         $instituteId = $this->instituteId();
-        $created = 0;
 
-        StaffMember::where('institute_id', $instituteId)
-            ->with('role')
-            ->chunkById(100, function ($staffMembers) use (&$created, $instituteId) {
-                foreach ($staffMembers as $staffMember) {
-                    LibraryManagementService::syncStaffMember($staffMember);
-                    $created++;
-                }
-            });
+        $lock = Cache::lock("library_sync_staff_{$instituteId}", 60);
+        if (!$lock->get()) {
+            return back()->withErrors(['sync' => 'Staff sync is already in progress. Please try again shortly.']);
+        }
 
-        return back()->with('success', $created . ' staff members sync ho gaye.');
+        try {
+            $created = 0;
+
+            StaffMember::where('institute_id', $instituteId)
+                ->with('role')
+                ->chunkById(100, function ($staffMembers) use (&$created) {
+                    foreach ($staffMembers as $staffMember) {
+                        LibraryManagementService::syncStaffMember($staffMember);
+                        $created++;
+                    }
+                });
+        } finally {
+            $lock->release();
+        }
+
+        return back()->with('success', $created . ' staff members synced successfully.');
     }
 
     public function update(Request $request, LibraryMember $member)
@@ -114,6 +136,6 @@ class LibraryMemberController extends BaseLibraryController
 
         $member->update($data);
 
-        return back()->with('success', 'Member status update ho gaya.');
+        return back()->with('success', 'Member status updated.');
     }
 }

@@ -22,6 +22,7 @@ class LibraryReportController extends BaseLibraryController
             ->where('current_status', 'issued')
             ->whereDate('due_on', '<', now()->toDateString())
             ->orderBy('due_on')
+            ->limit(200)
             ->get();
 
         $issuedToday = LibraryTransaction::forInstitute($instituteId)
@@ -38,7 +39,7 @@ class LibraryReportController extends BaseLibraryController
             ->limit(25)
             ->get();
 
-        $fineCollections = LibraryFinePayment::where('institute_id', $instituteId)
+        $fineCollections = LibraryFinePayment::forInstitute($instituteId)
             ->with(['member', 'transaction.copy.book'])
             ->whereDate('payment_date', '>=', $dateFrom)
             ->whereDate('payment_date', '<=', $dateTo)

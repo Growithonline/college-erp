@@ -28,15 +28,17 @@ class LibraryReservationController extends BaseLibraryController
         }
 
         $memberSearch = trim((string) $request->input('member_search', ''));
-        $bookSearch = trim((string) $request->input('book_search', ''));
+        $bookSearch   = trim((string) $request->input('book_search', ''));
+        $memberLike   = $this->escapeLike($memberSearch);
+        $bookLike     = $this->escapeLike($bookSearch);
 
         $members = LibraryMember::forInstitute($instituteId)
             ->with('ruleSet')
-            ->when($memberSearch !== '', function ($query) use ($memberSearch) {
-                $query->where(function ($builder) use ($memberSearch) {
-                    $builder->where('member_code', 'like', '%' . $memberSearch . '%')
-                        ->orWhere('name', 'like', '%' . $memberSearch . '%')
-                        ->orWhere('mobile', 'like', '%' . $memberSearch . '%');
+            ->when($memberSearch !== '', function ($query) use ($memberLike) {
+                $query->where(function ($builder) use ($memberLike) {
+                    $builder->where('member_code', 'like', '%' . $memberLike . '%')
+                        ->orWhere('name', 'like', '%' . $memberLike . '%')
+                        ->orWhere('mobile', 'like', '%' . $memberLike . '%');
                 });
             })
             ->orderBy('name')
@@ -45,11 +47,11 @@ class LibraryReservationController extends BaseLibraryController
 
         $books = LibraryBook::forInstitute($instituteId)
             ->with('copies')
-            ->when($bookSearch !== '', function ($query) use ($bookSearch) {
-                $query->where(function ($builder) use ($bookSearch) {
-                    $builder->where('title', 'like', '%' . $bookSearch . '%')
-                        ->orWhere('isbn', 'like', '%' . $bookSearch . '%')
-                        ->orWhere('subject_name', 'like', '%' . $bookSearch . '%');
+            ->when($bookSearch !== '', function ($query) use ($bookLike) {
+                $query->where(function ($builder) use ($bookLike) {
+                    $builder->where('title', 'like', '%' . $bookLike . '%')
+                        ->orWhere('isbn', 'like', '%' . $bookLike . '%')
+                        ->orWhere('subject_name', 'like', '%' . $bookLike . '%');
                 });
             })
             ->orderBy('title')
@@ -79,7 +81,7 @@ class LibraryReservationController extends BaseLibraryController
         $this->ensureLibraryPermission('reservations');
 
         if (!LibraryManagementService::hasReservationsTable()) {
-            return back()->withErrors(['reservation' => 'Reservation feature tabhi chalega jab `library_reservations` table migrate ho jayegi.']);
+            return back()->withErrors(['reservation' => 'Reservation feature requires the `library_reservations` table. Please run database migrations.']);
         }
 
         $data = $request->validate([
@@ -95,7 +97,7 @@ class LibraryReservationController extends BaseLibraryController
         LibraryManagementService::ensureReservationCanBeCreated($member, (int) $book->id, $this->instituteId());
 
         if ($book->copies->where('status', 'available')->count() > 0) {
-            throw ValidationException::withMessages(['book_id' => 'Is title ki copy available hai. Direct issue workflow use karo.']);
+            throw ValidationException::withMessages(['book_id' => 'An available copy exists for this title. Please use the issue workflow directly.']);
         }
 
         $alreadyPending = LibraryReservation::forInstitute($this->instituteId())
@@ -105,7 +107,7 @@ class LibraryReservationController extends BaseLibraryController
             ->exists();
 
         if ($alreadyPending) {
-            throw ValidationException::withMessages(['book_id' => 'Is member ke naam se ye reservation already pending hai.']);
+            throw ValidationException::withMessages(['book_id' => 'This member already has a pending reservation for this title.']);
         }
 
         LibraryReservation::create([
@@ -118,7 +120,7 @@ class LibraryReservationController extends BaseLibraryController
             'remarks' => trim((string) ($data['remarks'] ?? '')) ?: null,
         ]);
 
-        return back()->with('success', 'Reservation save ho gayi.');
+        return back()->with('success', 'Reservation created successfully.');
     }
 
     public function fulfill(Request $request, LibraryReservation $reservation)
@@ -126,7 +128,7 @@ class LibraryReservationController extends BaseLibraryController
         $this->ensureLibraryPermission('reservations');
 
         if (!LibraryManagementService::hasReservationsTable()) {
-            return back()->withErrors(['reservation' => 'Reservation feature abhi database me setup nahi hai.']);
+            return back()->withErrors(['reservation' => 'Reservation feature is not set up in the database yet.']);
         }
 
         abort_if($reservation->institute_id !== $this->instituteId(), 403);
@@ -149,7 +151,7 @@ class LibraryReservationController extends BaseLibraryController
             }
 
             if (!$copy || $copy->status !== 'available') {
-                throw ValidationException::withMessages(['copy_id' => 'Fulfill karne ke liye available copy nahi mili.']);
+                throw ValidationException::withMessages(['copy_id' => 'No available copy found to fulfill this reservation.']);
             }
 
             $member = $reservation->member()->with(['ruleSet', 'activeTransactions'])->firstOrFail();
@@ -183,7 +185,7 @@ class LibraryReservationController extends BaseLibraryController
             ]);
         });
 
-        return back()->with('success', 'Reservation fulfill karke book issue kar di gayi.');
+        return back()->with('success', 'Reservation fulfilled and book issued successfully.');
     }
 
     public function cancel(LibraryReservation $reservation)
@@ -191,17 +193,17 @@ class LibraryReservationController extends BaseLibraryController
         $this->ensureLibraryPermission('reservations');
 
         if (!LibraryManagementService::hasReservationsTable()) {
-            return back()->withErrors(['reservation' => 'Reservation feature abhi database me setup nahi hai.']);
+            return back()->withErrors(['reservation' => 'Reservation feature is not set up in the database yet.']);
         }
 
         abort_if($reservation->institute_id !== $this->instituteId(), 403);
 
         if ($reservation->status !== 'pending') {
-            return back()->withErrors(['reservation' => 'Sirf pending reservation cancel ho sakti hai. Current status: ' . $reservation->status]);
+            return back()->withErrors(['reservation' => 'Only pending reservations can be cancelled. Current status: ' . $reservation->status]);
         }
 
         $reservation->update(['status' => 'cancelled']);
 
-        return back()->with('success', 'Reservation cancel ho gayi.');
+        return back()->with('success', 'Reservation cancelled.');
     }
 }
