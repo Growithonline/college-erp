@@ -151,9 +151,14 @@
 
 {{-- Toolbar (hidden on print) --}}
 <div class="toolbar no-print">
-    <div>
-        <strong>Book Copy Labels</strong>
-        <span class="text-muted ms-2" style="font-size:13px;">{{ $book->title }} &mdash; {{ $book->copies->count() }} copies</span>
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ route('library.books.show', $book) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+        <div>
+            <strong>Book Copy Labels</strong>
+            <span class="text-muted ms-2" style="font-size:13px;">{{ $book->title }} &mdash; {{ $book->copies->count() }} copies</span>
+        </div>
     </div>
     <div class="d-flex gap-2 align-items-center">
         @php $noBarcodeCount = $book->copies->filter(fn($c) => !$c->barcode)->count(); @endphp
