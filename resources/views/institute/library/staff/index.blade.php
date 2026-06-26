@@ -134,6 +134,13 @@
                                         <i class="bi bi-{{ $member->status ? 'pause-circle' : 'play-circle' }}"></i>
                                     </button>
                                 </form>
+                                <form method="POST" action="{{ route('library.staff.resend-credentials', $member) }}"
+                                      onsubmit="return confirm('Send new login credentials to {{ addslashes($member->email) }}?')">
+                                    @csrf
+                                    <button class="btn btn-outline-info btn-sm" title="Resend Credentials">
+                                        <i class="bi bi-envelope-arrow-up"></i>
+                                    </button>
+                                </form>
                                 <form method="POST" action="{{ route('library.staff.destroy', $member) }}"
                                       onsubmit="return confirmDelete('{{ addslashes($member->name) }}')">
                                     @csrf @method('DELETE')

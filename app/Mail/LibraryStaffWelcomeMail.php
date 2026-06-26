@@ -16,6 +16,7 @@ class LibraryStaffWelcomeMail extends Mailable
     public function __construct(
         public readonly LibraryStaff $libraryStaff,
         public readonly string $loginUrl,
+        public readonly ?string $plainPassword = null,
     ) {}
 
     public function envelope(): Envelope

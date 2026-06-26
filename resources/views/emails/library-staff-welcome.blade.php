@@ -17,14 +17,14 @@
                 Hello <strong>{{ $libraryStaff->name }}</strong>,
             </p>
             <p style="color:#374151;">
-                Your Library Staff Portal account has been created. You can now log in using your registered
-                mobile number and an OTP sent to this email.
+                Your Library Staff Portal account has been created. Use the login credentials below to access the portal.
+                An OTP will be sent to your email each time you log in.
             </p>
 
             {{-- Credentials box --}}
             <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:18px 20px;margin:20px 0;">
                 <div style="font-weight:700;color:#0c4a6e;margin-bottom:12px;font-size:14px;">
-                    Your Account Details
+                    Your Login Credentials
                 </div>
                 <table style="width:100%;font-size:13px;border-collapse:collapse;">
                     <tr style="border-bottom:1px solid #e0f2fe;">
@@ -40,13 +40,21 @@
                         </td>
                     </tr>
                     <tr style="border-bottom:1px solid #e0f2fe;">
-                        <td style="padding:7px 0;color:#64748b;">Login Mobile</td>
-                        <td style="padding:7px 0;font-weight:600;">{{ $libraryStaff->phone }}</td>
+                        <td style="padding:7px 0;color:#64748b;">Login Email</td>
+                        <td style="padding:7px 0;font-weight:600;">{{ $libraryStaff->email }}</td>
                     </tr>
+                    @if($plainPassword)
                     <tr>
-                        <td style="padding:7px 0;color:#64748b;">OTP sent to</td>
-                        <td style="padding:7px 0;">{{ $libraryStaff->email }}</td>
+                        <td style="padding:7px 0;color:#64748b;">Password</td>
+                        <td style="padding:7px 0;">
+                            <span style="font-family:monospace;font-size:15px;font-weight:700;
+                                         background:#fef9c3;padding:3px 10px;border-radius:6px;
+                                         border:1px solid #fde047;color:#713f12;letter-spacing:.05em;">
+                                {{ $plainPassword }}
+                            </span>
+                        </td>
                     </tr>
+                    @endif
                 </table>
             </div>
 
@@ -59,7 +67,8 @@
             </div>
 
             <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:13px;color:#92400e;margin-bottom:20px;">
-                <strong>How to login:</strong> Go to the portal → enter your mobile number → receive OTP on this email → enter OTP → done.
+                <strong>How to login:</strong> Go to the portal → enter your email &amp; password → an OTP will be sent to this email → enter OTP → done.<br>
+                <strong>Please change your password after first login.</strong>
             </div>
 
             <p style="margin-bottom:0;font-size:12px;color:#94a3b8;">

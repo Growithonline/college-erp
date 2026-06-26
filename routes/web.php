@@ -289,6 +289,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{libraryStaff}/edit',        [LibraryStaffController::class, 'edit'])->name('edit');
         Route::put('/{libraryStaff}',             [LibraryStaffController::class, 'update'])->name('update');
         Route::post('/{libraryStaff}/toggle',     [LibraryStaffController::class, 'toggle'])->name('toggle');
+        Route::post('/{libraryStaff}/resend-credentials', [LibraryStaffController::class, 'resendCredentials'])->name('resend-credentials');
         Route::post('/{libraryStaff}/reset-lock', [LibraryStaffController::class, 'resetLock'])->name('reset-lock');
         Route::delete('/{libraryStaff}',          [LibraryStaffController::class, 'destroy'])->name('destroy');
     });

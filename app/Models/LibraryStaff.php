@@ -12,7 +12,7 @@ class LibraryStaff extends Authenticatable
     protected $table = 'library_staff';
 
     protected $fillable = [
-        'institute_id', 'employee_id', 'name', 'email', 'phone',
+        'institute_id', 'employee_id', 'name', 'email', 'password', 'phone',
         'photo', 'gender', 'date_of_birth', 'address',
         'designation', 'joining_date', 'shift', 'assigned_section',
         'qualification', 'status', 'staff_member_id',
@@ -27,7 +27,7 @@ class LibraryStaff extends Authenticatable
         'last_login_at'  => 'datetime',
     ];
 
-    protected $hidden = ['remember_token'];
+    protected $hidden = ['password', 'remember_token'];
 
     const DESIGNATION_LABELS = [
         'librarian'            => 'Librarian',

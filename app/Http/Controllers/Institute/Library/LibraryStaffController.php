@@ -11,9 +11,11 @@ use App\Models\LibraryStaffPermission;
 use App\Models\StaffMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use App\Services\InstituteMailer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -73,14 +75,16 @@ class LibraryStaffController extends Controller
                 ->store("library-staff/photos/{$instituteId}", 'public');
         }
 
+        $plainPassword = strtoupper(Str::random(3)) . random_int(10, 99) . Str::random(3);
         $staff = null;
 
-        DB::transaction(function () use ($data, $instituteId, $photoPath, &$staff) {
+        DB::transaction(function () use ($data, $instituteId, $photoPath, $plainPassword, &$staff) {
             $staff = LibraryStaff::create([
                 'institute_id'     => $instituteId,
                 'employee_id'      => LibraryStaff::generateEmployeeId($instituteId),
                 'name'             => $data['name'],
                 'email'            => $data['email'],
+                'password'         => Hash::make($plainPassword),
                 'phone'            => $data['phone'],
                 'photo'            => $photoPath,
                 'gender'           => $data['gender'] ?? null,
@@ -107,13 +111,13 @@ class LibraryStaffController extends Controller
             ]);
         });
 
-        // Welcome email — non-fatal if it fails
+        // Welcome email with credentials — non-fatal if it fails
         if ($staff) {
             try {
                 InstituteMailer::send(
                     auth()->user()->institute_id,
                     $staff->email,
-                    new LibraryStaffWelcomeMail($staff, route('library_staff.login'))
+                    new LibraryStaffWelcomeMail($staff, route('library_staff.login'), $plainPassword)
                 );
             } catch (Throwable $e) {
                 report($e);
@@ -229,6 +233,27 @@ class LibraryStaffController extends Controller
 
         return redirect()->route('library.staff.index')
             ->with('success', 'Library staff member deleted.');
+    }
+
+    public function resendCredentials(LibraryStaff $libraryStaff)
+    {
+        $this->authorizeStaff($libraryStaff);
+
+        $plainPassword = strtoupper(Str::random(3)) . random_int(10, 99) . Str::random(3);
+        $libraryStaff->update(['password' => Hash::make($plainPassword)]);
+
+        try {
+            InstituteMailer::send(
+                auth()->user()->institute_id,
+                $libraryStaff->email,
+                new LibraryStaffWelcomeMail($libraryStaff, route('library_staff.login'), $plainPassword)
+            );
+        } catch (Throwable $e) {
+            report($e);
+            return back()->withErrors(['resend' => 'Failed to send credentials email. Please try again.']);
+        }
+
+        return back()->with('success', "New credentials sent to {$libraryStaff->email}.");
     }
 
     public function resetLock(LibraryStaff $libraryStaff)

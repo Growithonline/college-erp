@@ -49,6 +49,13 @@
         }
         .btn-submit:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(14,165,233,.45); }
         .btn-submit:active { transform:translateY(0); box-shadow:0 2px 8px rgba(14,165,233,.25); }
+        .pw-wrap { position:relative; }
+        .pw-wrap .form-control { padding-right:44px; }
+        .pw-toggle {
+            position:absolute; right:13px; top:50%; transform:translateY(-50%);
+            background:none; border:none; color:#94a3b8; cursor:pointer; padding:0; line-height:1;
+        }
+        .pw-toggle:hover { color:var(--lib-color); }
 
         /* ── Toast notification system ── */
         .toast-wrap {
@@ -76,8 +83,6 @@
         @keyframes progress { from{width:100%} to{width:0} }
 
         .invalid-feedback { font-size:12px; display:flex; align-items:center; gap:4px; }
-        .phone-prefix { background:#f8fafc; border:1.5px solid #e2e8f0; border-right:none; border-radius:10px 0 0 10px; padding:0 12px; display:flex; align-items:center; color:#64748b; font-size:14px; }
-        .phone-prefix + .form-control { border-radius:0 10px 10px 0; }
     </style>
 </head>
 <body>
@@ -93,23 +98,38 @@
             <div class="brand-icon"><i class="bi bi-journals"></i></div>
             <h5 class="fw-bold mb-1" style="color:#0c4a6e;">Library Staff Portal</h5>
             <p class="text-muted mb-0" style="font-size:13px;">
-                Enter your registered mobile number to receive a login OTP.
+                Enter your email and password to receive a login OTP.
             </p>
         </div>
 
         <form method="POST" action="{{ route('library_staff.login.submit') }}" id="loginForm" novalidate>
             @csrf
 
+            <div class="mb-3">
+                <label class="form-label" for="email">Email Address</label>
+                <input type="email" name="email" id="email"
+                       class="form-control @error('email') is-invalid @enderror"
+                       value="{{ old('email') }}"
+                       placeholder="Enter your registered email"
+                       autocomplete="email" autofocus>
+                @error('email')
+                    <div class="invalid-feedback d-block">
+                        <i class="bi bi-exclamation-circle"></i> {{ $message }}
+                    </div>
+                @enderror
+            </div>
+
             <div class="mb-4">
-                <label class="form-label">Mobile Number</label>
-                <div class="input-group">
-                    <span class="phone-prefix"><i class="bi bi-phone me-1"></i></span>
-                    <input type="text" name="phone" id="phone"
-                           class="form-control @error('phone') is-invalid @enderror"
-                           value="{{ old('phone') }}"
-                           placeholder="Enter your registered mobile number"
-                           autocomplete="tel" autofocus>
-                    @error('phone')
+                <label class="form-label" for="password">Password</label>
+                <div class="pw-wrap">
+                    <input type="password" name="password" id="password"
+                           class="form-control @error('password') is-invalid @enderror"
+                           placeholder="Enter your password"
+                           autocomplete="current-password">
+                    <button type="button" class="pw-toggle" id="pwToggle" tabindex="-1" aria-label="Toggle password visibility">
+                        <i class="bi bi-eye" id="pwIcon"></i>
+                    </button>
+                    @error('password')
                         <div class="invalid-feedback d-block">
                             <i class="bi bi-exclamation-circle"></i> {{ $message }}
                         </div>
@@ -118,7 +138,7 @@
             </div>
 
             <button type="submit" class="btn btn-submit text-white w-100" id="submitBtn">
-                <i class="bi bi-send me-2"></i>Send OTP
+                <i class="bi bi-send me-2"></i>Continue
             </button>
         </form>
 
@@ -140,7 +160,7 @@
     @if(session('success'))
         showToast('success', '{{ addslashes(session('success')) }}');
     @endif
-    @if($errors->any() && !$errors->has('phone'))
+    @if($errors->any() && !$errors->has('email') && !$errors->has('password'))
         showToast('error', '{{ addslashes($errors->first()) }}');
     @endif
 })();
@@ -160,10 +180,23 @@ function showToast(type, message) {
     setTimeout(() => el.remove(), 5100);
 }
 
+// Password show/hide toggle
+document.getElementById('pwToggle').addEventListener('click', function() {
+    const pw = document.getElementById('password');
+    const icon = document.getElementById('pwIcon');
+    if (pw.type === 'password') {
+        pw.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        pw.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+});
+
 // Submit button loading state
 document.getElementById('loginForm').addEventListener('submit', function() {
     const btn = document.getElementById('submitBtn');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending OTP...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
     btn.disabled = true;
 });
 </script>
