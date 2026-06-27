@@ -229,6 +229,18 @@
                   style="font-size:11px;font-weight:500;background:#185FA520;color:#185FA5;">
                 <i class="bi bi-shield-check" style="font-size:11px;"></i>Center
             </span>
+            @if($fwWallet)
+                @php
+                    $topbarWalletBg    = $fwBadgeColor === 'danger' ? '#fef2f2' : ($fwBadgeColor === 'warning' ? '#fffbeb' : '#f0fdf4');
+                    $topbarWalletColor = $fwBadgeColor === 'danger' ? '#dc2626' : ($fwBadgeColor === 'warning' ? '#d97706' : '#16a34a');
+                @endphp
+                <span class="d-none d-sm-inline-flex align-items-center gap-1 px-2 py-1 rounded-pill"
+                      title="Wallet Balance{{ $fwWallet->expires_at ? ' · Expires ' . $fwWallet->expires_at->format('d M Y') : '' }}"
+                      style="font-size:11px;font-weight:500;background:{{ $topbarWalletBg }};color:{{ $topbarWalletColor }};">
+                    <i class="bi bi-wallet2" style="font-size:11px;"></i>
+                    ₹{{ number_format((float)$fwWallet->remaining_tokens) }}
+                </span>
+            @endif
             @php
                 $centerNoticeCount = \App\Models\Notice::forRole($authUser->institute_id, 'center')
                     ->whereDoesntHave('reads', fn($q) => $q->where('reader_type','center')->where('reader_id',$authUser->id))
