@@ -1137,23 +1137,99 @@
                 </a>
             @endif
 
-            {{-- Notice bell badge --}}
+            {{-- Notification bell with dropdown (notices + wallet extension requests) --}}
             @php
                 $instituteNoticeCount = \App\Models\Notice::forRole(auth()->user()->institute_id, 'staff')
                     ->whereDoesntHave('reads', fn($q) => $q->where('reader_type','institute')->where('reader_id', auth()->id()))
                     ->count();
+                $walletPendingRequests = \App\Models\WalletExtensionRequest::where('institute_id', auth()->user()->institute_id)
+                    ->where('status', 'pending')
+                    ->latest()
+                    ->limit(5)
+                    ->get();
+                $walletPendingCount = $walletPendingRequests->count();
+                $totalBellCount = $instituteNoticeCount + $walletPendingCount;
             @endphp
-            <a href="{{ route('notices.index') }}"
-               class="position-relative text-decoration-none text-muted d-flex align-items-center"
-               title="Notices">
-                <i class="bi bi-bell" style="font-size:16px;"></i>
-                @if($instituteNoticeCount > 0)
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                          style="font-size:9px;padding:2px 5px;">
-                        {{ $instituteNoticeCount > 9 ? '9+' : $instituteNoticeCount }}
-                    </span>
-                @endif
-            </a>
+            <div class="dropdown">
+                <button class="btn p-0 border-0 bg-transparent position-relative text-muted d-flex align-items-center"
+                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notifications">
+                    <i class="bi bi-bell" style="font-size:16px;"></i>
+                    @if($totalBellCount > 0)
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              style="font-size:9px;padding:2px 5px;">
+                            {{ $totalBellCount > 9 ? '9+' : $totalBellCount }}
+                        </span>
+                    @endif
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow p-0 overflow-hidden"
+                    style="min-width:300px;max-width:340px;border-radius:10px;">
+                    <li class="px-3 py-2 border-bottom" style="background:#f8fafc;">
+                        <span class="fw-semibold text-dark" style="font-size:13px;">Notifications</span>
+                    </li>
+
+                    @if($walletPendingCount > 0)
+                        <li class="px-3 pt-2 pb-1">
+                            <small class="text-uppercase text-muted fw-semibold" style="font-size:10px;letter-spacing:.5px;">
+                                <i class="bi bi-wallet2 me-1"></i>Wallet Requests
+                            </small>
+                        </li>
+                        @foreach($walletPendingRequests as $wr)
+                            <li>
+                                <a href="{{ route('fee-wallets.extension-requests') }}"
+                                   class="dropdown-item d-flex align-items-start gap-2 py-2 px-3"
+                                   style="white-space:normal;">
+                                    <span class="flex-shrink-0 mt-1" style="color:#f59e0b;">
+                                        <i class="bi bi-wallet2" style="font-size:13px;"></i>
+                                    </span>
+                                    <div>
+                                        <div style="font-size:12px;font-weight:600;color:#1e293b;">{{ $wr->entity_name }}</div>
+                                        <div style="font-size:11px;color:#64748b;">
+                                            {{ $wr->request_type === 'token_topup' ? 'Token Top-up' : 'Expiry Extension' }}
+                                            @if($wr->request_type === 'token_topup' && $wr->requested_amount)
+                                                &mdash; ₹{{ number_format($wr->requested_amount) }}
+                                            @elseif($wr->request_type === 'expiry_extension' && $wr->requested_days)
+                                                &mdash; {{ $wr->requested_days }} days
+                                            @endif
+                                            &middot; {{ $wr->created_at->diffForHumans() }}
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                        @endforeach
+                        <li>
+                            <a href="{{ route('fee-wallets.extension-requests') }}"
+                               class="dropdown-item text-center border-top py-2"
+                               style="font-size:12px;color:#3b82f6;">
+                                View all wallet requests →
+                            </a>
+                        </li>
+                    @endif
+
+                    @if($instituteNoticeCount > 0)
+                        @if($walletPendingCount > 0)<li><hr class="dropdown-divider my-0"></li>@endif
+                        <li class="px-3 pt-2 pb-1">
+                            <small class="text-uppercase text-muted fw-semibold" style="font-size:10px;letter-spacing:.5px;">
+                                <i class="bi bi-bell me-1"></i>Notices
+                            </small>
+                        </li>
+                        <li>
+                            <a href="{{ route('notices.index') }}"
+                               class="dropdown-item d-flex align-items-center gap-2 py-2 px-3">
+                                <i class="bi bi-bell-fill text-primary" style="font-size:13px;"></i>
+                                <span style="font-size:12px;">
+                                    {{ $instituteNoticeCount }} unread {{ $instituteNoticeCount === 1 ? 'notice' : 'notices' }}
+                                </span>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if($totalBellCount === 0)
+                        <li class="px-3 py-3 text-center text-muted" style="font-size:12px;">
+                            <i class="bi bi-check-circle me-1 text-success"></i>No new notifications
+                        </li>
+                    @endif
+                </ul>
+            </div>
 
             {{-- User + Logout --}}
             <div class="d-flex align-items-center gap-2">
