@@ -296,8 +296,8 @@
                         $mc = $modeColors[$inv->payment_mode] ?? $modeColors['dd'];
                         $invFine = (float) $inv->items->sum('fine');
                         $invDisc = (float) ($inv->discount ?? 0);
-                        // Running due: outstanding balance AFTER this receipt was generated
-                        $invDue  = $inv->is_cancelled ? null : ($runningDueMap[$inv->id] ?? null);
+                        // remaining_due: exact snapshot saved at collection time; fallback to running calculation
+                        $invDue = $inv->is_cancelled ? null : ($inv->remaining_due !== null ? (float) $inv->remaining_due : ($runningDueMap[$inv->id] ?? null));
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'cancelled-row' : '' }}">
                         {{-- Invoice No --}}

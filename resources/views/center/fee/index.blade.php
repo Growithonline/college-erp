@@ -185,8 +185,13 @@
                         $color = $modeColors[$inv->payment_mode] ?? 'secondary';
                         $st = $inv->student;
                         $fineTotal = $inv->items->sum('fine');
-                        $studentWallet = $st?->wallets->firstWhere('academic_session_id', $inv->academic_session_id);
-                        $due = $studentWallet && $studentWallet->main_b < 0 ? abs((float) $studentWallet->main_b) : 0;
+                        if ($inv->is_cancelled) {
+                            $due = 0;
+                        } elseif ($inv->remaining_due !== null) {
+                            $due = (float) $inv->remaining_due;
+                        } else {
+                            $due = (float) ($st?->wallets->sum(fn($w) => (float)$w->main_b < 0 ? abs((float)$w->main_b) : 0) ?? 0);
+                        }
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">
                         <td>

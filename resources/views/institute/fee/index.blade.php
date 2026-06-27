@@ -272,8 +272,15 @@
                         $color = $modeColors[$inv->payment_mode] ?? 'secondary';
                         $student = $inv->student;
                         $fineTotal = $inv->items->sum('fine');
-                        $studentWallet = $student?->wallets->firstWhere('academic_session_id', $inv->academic_session_id);
-                        $due = $studentWallet && $studentWallet->main_b < 0 ? abs((float) $studentWallet->main_b) : 0;
+                        // Cancelled invoices: payment reversed, so due is not meaningful
+                        if ($inv->is_cancelled) {
+                            $due = 0;
+                        } elseif ($inv->remaining_due !== null) {
+                            $due = (float) $inv->remaining_due;
+                        } else {
+                            // Fallback for old invoices: sum all session wallets
+                            $due = (float) ($student?->wallets->sum(fn($w) => (float)$w->main_b < 0 ? abs((float)$w->main_b) : 0) ?? 0);
+                        }
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">
                         <td class="ps-3 col_invoice">

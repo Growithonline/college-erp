@@ -13,12 +13,14 @@ class FeeInvoice extends Model
         'payment_date', 'payment_datetime', 'remarks',
         'collected_by', 'collected_by_staff_id', 'collected_by_center_id', 'collected_by_partner_id',
         'is_cancelled', 'cancel_reason', 'cancelled_at', 'cancelled_by',
+        'remaining_due',
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2',
-        'discount'     => 'decimal:2',
-        'paid_amount'  => 'decimal:2',
+        'total_amount'  => 'decimal:2',
+        'discount'      => 'decimal:2',
+        'paid_amount'   => 'decimal:2',
+        'remaining_due' => 'decimal:2',
         'payment_date'     => 'date',
         'payment_datetime' => 'datetime',
         'is_cancelled'   => 'boolean',

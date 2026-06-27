@@ -1240,6 +1240,10 @@ class FeeCollectionController extends Controller
                 WalletService::chargeFineItems($invoice, $validItems);
                 WalletService::onFeeCollection($invoice);
 
+                // Snapshot remaining due at time of collection for accurate audit display
+                $remainingDueSnapshot = WalletService::buildPendingRows($student, (int) $student->academic_session_id)->sum('pending');
+                $invoice->update(['remaining_due' => max(0, (float) $remainingDueSnapshot)]);
+
                 // Settle transport allocations collected via this invoice
                 foreach ($validItems as $tItem) {
                     if (($tItem['item_type'] ?? '') === 'transport' && !empty($tItem['transport_allocation_id'])) {
@@ -1574,7 +1578,7 @@ class FeeCollectionController extends Controller
             number_format($inv->paid_amount, 2),
             number_format($inv->items->sum('fine'), 2),
             number_format($inv->discount ?? 0, 2),
-            number_format(max(0, $inv->items->sum('total_fee') - $inv->paid_amount - ($inv->discount ?? 0)), 2),
+            $inv->remaining_due !== null ? number_format((float) $inv->remaining_due, 2) : number_format(max(0, $inv->items->sum('total_fee') - $inv->paid_amount - ($inv->discount ?? 0)), 2),
             number_format($inv->paid_amount + ($inv->discount ?? 0), 2),
             $inv->is_cancelled ? 'Cancelled' : 'Active',
         ])->toArray();
