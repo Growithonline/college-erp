@@ -40,7 +40,12 @@ class PartnerFeeController extends Controller
 
         $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'student.wallets', 'session', 'items'])
             ->where('institute_id', $instituteId)
-            ->where('collected_by_partner_id', $partner->id);
+            ->where(fn($q) => $q
+                ->where('collected_by_partner_id', $partner->id)
+                ->orWhereHas('student', fn($sq) => $sq
+                    ->where('admission_source', 'channel_partner')
+                    ->where('admission_source_id', $partner->id))
+            );
 
         if ($sessionId) {
             $query->where('academic_session_id', $sessionId);
@@ -70,6 +75,7 @@ class PartnerFeeController extends Controller
 
         $pageStudentIds = $invoices->getCollection()->pluck('student_id')->unique()->filter()->values()->all();
         $totalPaidByStudent = FeeInvoice::whereIn('student_id', $pageStudentIds)
+            ->where('institute_id', $instituteId)
             ->where('is_cancelled', false)
             ->groupBy('student_id')
             ->selectRaw('student_id, SUM(paid_amount) as total_paid')
@@ -253,9 +259,12 @@ class PartnerFeeController extends Controller
         $partner = $this->partner();
         abort_unless($partner->canCollectFee(), 403, 'Fee collection not permitted for this partner.');
 
+        $isOwnCollection = (int) ($invoice->collected_by_partner_id ?? 0) === (int) $partner->id;
+        $isOwnStudent = $student->admission_source === 'channel_partner'
+            && (int) $student->admission_source_id === (int) $partner->id;
+
         abort_if(
-            $invoice->institute_id !== $partner->institute_id ||
-            (int) ($invoice->collected_by_partner_id ?? 0) !== (int) $partner->id,
+            $invoice->institute_id !== $partner->institute_id || (!$isOwnCollection && !$isOwnStudent),
             403, 'This receipt is not accessible to your account.'
         );
 

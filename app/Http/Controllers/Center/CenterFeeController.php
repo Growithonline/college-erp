@@ -49,8 +49,10 @@ class CenterFeeController extends Controller
             ->where('institute_id', $instituteId)
             ->where(fn($q) => $q
                 ->where('collected_by_center_id', $center->id)
-                ->orWhere(fn($sq) => $sq->whereNull('collected_by_center_id')
-                    ->where('collected_by', $center->name))
+                ->orWhere(fn($sq) => $sq->whereNull('collected_by_center_id')->where('collected_by', $center->name))
+                ->orWhereHas('student', fn($sq) => $sq
+                    ->where('admission_source', 'center')
+                    ->where('admission_source_id', $center->id))
             );
 
         if ($sessionId) {
@@ -81,6 +83,7 @@ class CenterFeeController extends Controller
 
         $pageStudentIds = $invoices->getCollection()->pluck('student_id')->unique()->filter()->values()->all();
         $totalPaidByStudent = FeeInvoice::whereIn('student_id', $pageStudentIds)
+            ->where('institute_id', $instituteId)
             ->where('is_cancelled', false)
             ->groupBy('student_id')
             ->selectRaw('student_id, SUM(paid_amount) as total_paid')
@@ -113,7 +116,7 @@ class CenterFeeController extends Controller
             'totalPaid', 'totalInvoices',
             'cashAmt', 'upiAmt', 'onlineAmt', 'chequeAmt',
             'cashCount', 'upiCount', 'onlineCount',
-            'totalPaidByStudent'
+            'totalPaidByStudent', 'center'
         ));
     }
 
@@ -281,10 +284,13 @@ class CenterFeeController extends Controller
         $center = $this->center();
         abort_unless($center->canCollectFee(), 403, 'Fee collection not permitted for this center.');
 
+        $isOwnCollection = (int) ($invoice->collected_by_center_id ?? 0) === (int) $center->id
+            || $invoice->collected_by === $center->name;
+        $isOwnStudent = $student->admission_source === 'center'
+            && (int) $student->admission_source_id === (int) $center->id;
+
         abort_if(
-            $invoice->institute_id !== $center->institute_id
-            || ((int) ($invoice->collected_by_center_id ?? 0) !== (int) $center->id
-                && $invoice->collected_by !== $center->name),
+            $invoice->institute_id !== $center->institute_id || (!$isOwnCollection && !$isOwnStudent),
             403,
             'This receipt is not accessible to your center.'
         );

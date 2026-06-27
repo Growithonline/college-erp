@@ -254,7 +254,13 @@
                         <td class="text-end fw-bold {{ $due > 0 ? 'text-danger' : 'text-muted' }}">
                             {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
                         </td>
-                        <td class="small text-muted">{{ $inv->collected_by ?: '—' }}</td>
+                        <td class="small">
+                            @if($inv->collected_by_center_id && (int)$inv->collected_by_center_id === (int)$center->id)
+                                <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">You</span>
+                            @else
+                                <span class="text-muted">{{ $inv->collected_by ?: 'Institute' }}</span>
+                            @endif
+                        </td>
                         <td class="text-center">
                             <a href="{{ route('center.fee.receipt', [$inv->student_id, $inv->id]) }}"
                                class="btn btn-sm btn-outline-primary" target="_blank" title="Print Receipt">

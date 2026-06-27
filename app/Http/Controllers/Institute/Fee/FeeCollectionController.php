@@ -484,6 +484,7 @@ class FeeCollectionController extends Controller
         // Total paid per student (all-time) for per-invoice running due fallback in view
         $pageStudentIds = $invoices->getCollection()->pluck('student_id')->unique()->filter()->values()->all();
         $totalPaidByStudent = FeeInvoice::whereIn('student_id', $pageStudentIds)
+            ->where('institute_id', $instituteId)
             ->where('is_cancelled', false)
             ->groupBy('student_id')
             ->selectRaw('student_id, SUM(paid_amount) as total_paid')

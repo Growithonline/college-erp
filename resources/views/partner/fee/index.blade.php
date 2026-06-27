@@ -140,6 +140,7 @@
                         <th style="white-space:nowrap;">Mode</th>
                         <th class="text-end" style="white-space:nowrap;">Amount</th>
                         <th class="text-end" style="white-space:nowrap;">Due</th>
+                        <th style="white-space:nowrap;">Collected By</th>
                         <th class="text-center" style="white-space:nowrap;">Receipt</th>
                     </tr>
                 </thead>
@@ -202,6 +203,13 @@
                         <td class="text-end fw-bold {{ $due > 0 ? 'text-danger' : 'text-muted' }}">
                             {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
                         </td>
+                        <td class="small">
+                            @if($inv->collected_by_partner_id)
+                                <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">You</span>
+                            @else
+                                <span class="text-muted">{{ $inv->collected_by ?: 'Institute' }}</span>
+                            @endif
+                        </td>
                         <td class="text-center">
                             <a href="{{ route('partner.fee.receipt', [$inv->student_id, $inv->id]) }}"
                                class="btn btn-sm btn-outline-primary" target="_blank" title="Print Receipt">
@@ -211,7 +219,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="text-center py-5 text-muted">
+                        <td colspan="11" class="text-center py-5 text-muted">
                             <i class="bi bi-receipt fs-2 d-block mb-2"></i>
                             No fee collections found
                         </td>
