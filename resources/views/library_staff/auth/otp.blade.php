@@ -176,7 +176,7 @@ digits[0].focus();
 function checkAutoSubmit() {
     if (digits.every(d => d.value.match(/\d/))) {
         syncHidden();
-        setTimeout(function() { form.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true})); }, 200);
+        setTimeout(function() { form.requestSubmit(); }, 200);
     }
 }
 digits.forEach(d => d.addEventListener('input', checkAutoSubmit));
