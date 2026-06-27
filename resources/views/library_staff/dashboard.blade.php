@@ -46,7 +46,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5" style="color:#0c4a6e;">
-                        {{ \App\Models\Library\LibraryTransaction::whereHas('bookCopy.book', fn($q) => $q->where('institute_id', $institute->id))->whereDate('issued_at', today())->count() }}
+                        {{ \App\Models\Library\LibraryTransaction::where('institute_id', $institute->id)->whereDate('issued_on', today())->count() }}
                     </div>
                     <div class="text-muted small">Today's Issues</div>
                 </div>
@@ -61,7 +61,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5" style="color:#c2410c;">
-                        {{ \App\Models\Library\LibraryTransaction::whereHas('bookCopy.book', fn($q) => $q->where('institute_id', $institute->id))->whereNull('returned_at')->where('due_date', '<', today())->count() }}
+                        {{ \App\Models\Library\LibraryTransaction::where('institute_id', $institute->id)->whereNull('returned_on')->where('due_on', '<', today())->count() }}
                     </div>
                     <div class="text-muted small">Overdue</div>
                 </div>
@@ -97,7 +97,7 @@
                 </div>
                 <div>
                     <div class="fw-bold fs-5" style="color:#991b1b;">
-                        ₹{{ number_format(\App\Models\Library\LibraryFinePayment::whereHas('transaction.bookCopy.book', fn($q) => $q->where('institute_id', $institute->id))->whereDate('paid_at', today())->sum('amount'), 0) }}
+                        ₹{{ number_format(\App\Models\Library\LibraryFinePayment::where('institute_id', $institute->id)->whereDate('payment_date', today())->sum('amount'), 0) }}
                     </div>
                     <div class="text-muted small">Fines Today</div>
                 </div>
