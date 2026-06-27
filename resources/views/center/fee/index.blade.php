@@ -178,6 +178,20 @@
                         <th class="text-center" style="white-space:nowrap;">Receipt</th>
                     </tr>
                 </thead>
+                @php
+                    $pageRunningDue = [];
+                    $byStudent = $invoices->getCollection()->groupBy('student_id');
+                    foreach ($byStudent as $_sid => $_stuInvs) {
+                        $_st = $_stuInvs->first()->student;
+                        $_currentDue = (float) ($_st?->wallets->sum(fn($w) => (float)$w->main_b < 0 ? abs((float)$w->main_b) : 0) ?? 0);
+                        $_allPaid = (float) ($totalPaidByStudent[$_sid] ?? 0);
+                        $_rd = $_allPaid + $_currentDue;
+                        foreach ($_stuInvs->where('is_cancelled', false)->sortBy(fn($i) => $i->payment_date->timestamp * 1000000 + $i->id) as $_inv) {
+                            $_rd -= (float) $_inv->paid_amount;
+                            $pageRunningDue[$_inv->id] = max(0, round($_rd, 2));
+                        }
+                    }
+                @endphp
                 <tbody>
                     @forelse($invoices as $inv)
                     @php
@@ -190,7 +204,7 @@
                         } elseif ($inv->remaining_due !== null) {
                             $due = (float) $inv->remaining_due;
                         } else {
-                            $due = (float) ($st?->wallets->sum(fn($w) => (float)$w->main_b < 0 ? abs((float)$w->main_b) : 0) ?? 0);
+                            $due = $pageRunningDue[$inv->id] ?? 0;
                         }
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">

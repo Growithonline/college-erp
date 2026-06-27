@@ -79,6 +79,13 @@ class CenterFeeController extends Controller
         $invoices = $query->orderByDesc('payment_date')->orderByDesc('id')
             ->paginate($perPage)->withQueryString();
 
+        $pageStudentIds = $invoices->getCollection()->pluck('student_id')->unique()->filter()->values()->all();
+        $totalPaidByStudent = FeeInvoice::whereIn('student_id', $pageStudentIds)
+            ->where('is_cancelled', false)
+            ->groupBy('student_id')
+            ->selectRaw('student_id, SUM(paid_amount) as total_paid')
+            ->pluck('total_paid', 'student_id');
+
         // Stats for the filtered result set
         $statsBase = FeeInvoice::where('institute_id', $instituteId)
             ->where(fn($q) => $q
@@ -105,7 +112,8 @@ class CenterFeeController extends Controller
             'dateFrom', 'dateTo', 'perPage',
             'totalPaid', 'totalInvoices',
             'cashAmt', 'upiAmt', 'onlineAmt', 'chequeAmt',
-            'cashCount', 'upiCount', 'onlineCount'
+            'cashCount', 'upiCount', 'onlineCount',
+            'totalPaidByStudent'
         ));
     }
 

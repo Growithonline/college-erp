@@ -481,6 +481,14 @@ class FeeCollectionController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        // Total paid per student (all-time) for per-invoice running due fallback in view
+        $pageStudentIds = $invoices->getCollection()->pluck('student_id')->unique()->filter()->values()->all();
+        $totalPaidByStudent = FeeInvoice::whereIn('student_id', $pageStudentIds)
+            ->where('is_cancelled', false)
+            ->groupBy('student_id')
+            ->selectRaw('student_id, SUM(paid_amount) as total_paid')
+            ->pluck('total_paid', 'student_id');
+
         $statsBase = FeeInvoice::where('institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
             ->whereDate('payment_date', '>=', $dateFrom)
@@ -586,6 +594,7 @@ class FeeCollectionController extends Controller
             , 'libFineTotal'
             , 'libFineCount'
             , 'libFineReceiptRoute'
+            , 'totalPaidByStudent'
         ));
     }
 
@@ -1240,10 +1249,6 @@ class FeeCollectionController extends Controller
                 WalletService::chargeFineItems($invoice, $validItems);
                 WalletService::onFeeCollection($invoice);
 
-                // Snapshot remaining due at time of collection for accurate audit display
-                $remainingDueSnapshot = WalletService::buildPendingRows($student, (int) $student->academic_session_id)->sum('pending');
-                $invoice->update(['remaining_due' => max(0, (float) $remainingDueSnapshot)]);
-
                 // Settle transport allocations collected via this invoice
                 foreach ($validItems as $tItem) {
                     if (($tItem['item_type'] ?? '') === 'transport' && !empty($tItem['transport_allocation_id'])) {
@@ -1279,6 +1284,17 @@ class FeeCollectionController extends Controller
                 ->withErrors(['wallet_error' => $e->getMessage()])
                 ->with('wallet_blocked', $walletStatus)
                 ->withInput();
+        }
+
+        // Save remaining_due AFTER transaction commits so buildPendingRows reads accurate state
+        try {
+            $freshStudent = Student::find($student->id);
+            if ($freshStudent && $invoiceId) {
+                $remainingDueSnapshot = WalletService::buildPendingRows($freshStudent, (int) $freshStudent->academic_session_id)->sum('pending');
+                FeeInvoice::where('id', $invoiceId)->update(['remaining_due' => max(0, (float) $remainingDueSnapshot)]);
+            }
+        } catch (\Throwable $e) {
+            // Non-critical — invoice is already saved, just snapshot failed
         }
 
         if (session('from_admission_fee_payment') == $student->id) {

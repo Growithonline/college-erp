@@ -38,7 +38,7 @@ class PartnerFeeController extends Controller
         $dateFrom = $request->date_from ?? now()->toDateString();
         $dateTo   = $request->date_to   ?? now()->toDateString();
 
-        $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'session'])
+        $query = FeeInvoice::with(['student.stream.course', 'student.coursePart', 'student.wallets', 'session', 'items'])
             ->where('institute_id', $instituteId)
             ->where('collected_by_partner_id', $partner->id);
 
@@ -68,6 +68,13 @@ class PartnerFeeController extends Controller
         $invoices = $query->orderByDesc('payment_date')->orderByDesc('id')
             ->paginate($perPage)->withQueryString();
 
+        $pageStudentIds = $invoices->getCollection()->pluck('student_id')->unique()->filter()->values()->all();
+        $totalPaidByStudent = FeeInvoice::whereIn('student_id', $pageStudentIds)
+            ->where('is_cancelled', false)
+            ->groupBy('student_id')
+            ->selectRaw('student_id, SUM(paid_amount) as total_paid')
+            ->pluck('total_paid', 'student_id');
+
         $statsBase = FeeInvoice::where('institute_id', $instituteId)
             ->where('collected_by_partner_id', $partner->id)
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
@@ -89,7 +96,8 @@ class PartnerFeeController extends Controller
             'dateFrom', 'dateTo', 'perPage',
             'totalPaid', 'totalInvoices',
             'cashAmt', 'upiAmt', 'onlineAmt', 'chequeAmt',
-            'cashCount', 'upiCount', 'onlineCount'
+            'cashCount', 'upiCount', 'onlineCount',
+            'totalPaidByStudent'
         ));
     }
 

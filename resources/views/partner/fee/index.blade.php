@@ -139,15 +139,38 @@
                         <th style="white-space:nowrap;">Session</th>
                         <th style="white-space:nowrap;">Mode</th>
                         <th class="text-end" style="white-space:nowrap;">Amount</th>
+                        <th class="text-end" style="white-space:nowrap;">Due</th>
                         <th class="text-center" style="white-space:nowrap;">Receipt</th>
                     </tr>
                 </thead>
+                @php
+                    $pageRunningDue = [];
+                    $byStudent = $invoices->getCollection()->groupBy('student_id');
+                    foreach ($byStudent as $_sid => $_stuInvs) {
+                        $_st = $_stuInvs->first()->student;
+                        $_currentDue = (float) ($_st?->wallets->sum(fn($w) => (float)$w->main_b < 0 ? abs((float)$w->main_b) : 0) ?? 0);
+                        $_allPaid = (float) ($totalPaidByStudent[$_sid] ?? 0);
+                        $_rd = $_allPaid + $_currentDue;
+                        foreach ($_stuInvs->where('is_cancelled', false)->sortBy(fn($i) => $i->payment_date->timestamp * 1000000 + $i->id) as $_inv) {
+                            $_rd -= (float) $_inv->paid_amount;
+                            $pageRunningDue[$_inv->id] = max(0, round($_rd, 2));
+                        }
+                    }
+                @endphp
                 <tbody>
                     @forelse($invoices as $inv)
                     @php
                         $modeColors = ['cash'=>'success','upi'=>'primary','online'=>'info','cheque'=>'warning','dd'=>'secondary','neft'=>'dark','rtgs'=>'dark'];
                         $color = $modeColors[$inv->payment_mode] ?? 'secondary';
                         $st = $inv->student;
+                        $fineTotal = $inv->items->sum('fine');
+                        if ($inv->is_cancelled) {
+                            $due = 0;
+                        } elseif ($inv->remaining_due !== null) {
+                            $due = (float) $inv->remaining_due;
+                        } else {
+                            $due = $pageRunningDue[$inv->id] ?? 0;
+                        }
                     @endphp
                     <tr class="{{ $inv->is_cancelled ? 'table-danger opacity-75' : '' }}">
                         <td class="ps-3">
@@ -176,6 +199,9 @@
                             @endif
                         </td>
                         <td class="text-end fw-bold text-success">Rs {{ number_format($inv->paid_amount) }}</td>
+                        <td class="text-end fw-bold {{ $due > 0 ? 'text-danger' : 'text-muted' }}">
+                            {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
+                        </td>
                         <td class="text-center">
                             <a href="{{ route('partner.fee.receipt', [$inv->student_id, $inv->id]) }}"
                                class="btn btn-sm btn-outline-primary" target="_blank" title="Print Receipt">
@@ -185,7 +211,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center py-5 text-muted">
+                        <td colspan="10" class="text-center py-5 text-muted">
                             <i class="bi bi-receipt fs-2 d-block mb-2"></i>
                             No fee collections found
                         </td>
