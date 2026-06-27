@@ -20,7 +20,9 @@
 
 {{-- Wallet blocked popup --}}
 @if($walletBlocked)
-<div class="modal fade" id="walletBlockedModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+@php $wbInsufficient = $walletBlocked['type'] === 'insufficient'; @endphp
+<div class="modal fade" id="walletBlockedModal" tabindex="-1"
+    @if(!$wbInsufficient) data-bs-backdrop="static" data-bs-keyboard="false" @endif>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-{{ $walletBlocked['type'] === 'expired' ? 'danger' : 'warning' }} text-{{ $walletBlocked['type'] === 'expired' ? 'white' : 'dark' }} py-2">
@@ -33,6 +35,10 @@
                     @else Suspended
                     @endif
                 </h6>
+                @if($wbInsufficient)
+                <button type="button" class="btn-close {{ $walletBlocked['type'] === 'expired' ? 'btn-close-white' : '' }}"
+                    data-bs-dismiss="modal" aria-label="Close"></button>
+                @endif
             </div>
             <div class="modal-body">
                 <p class="mb-3">{{ $walletBlocked['reason'] }}</p>
@@ -69,9 +75,20 @@
                             placeholder="Briefly explain your request..." required></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="bi bi-send me-1"></i> Send Request to Admin
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-send me-1"></i> Send Request to Admin
+                        </button>
+                        @if($wbInsufficient)
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        @else
+                        <a href="{{ url()->previous() }}" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-arrow-left me-1"></i> Go Back
+                        </a>
+                        @endif
+                    </div>
                 </form>
                 @elseif(session('extension_request_sent'))
                     <div class="alert alert-success py-2 small mb-0">
@@ -79,6 +96,13 @@
                     </div>
                 @endif
             </div>
+            @if(!$wbInsufficient)
+            <div class="modal-footer py-2">
+                <a href="{{ url()->previous() }}" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Go Back
+                </a>
+            </div>
+            @endif
         </div>
     </div>
 </div>
