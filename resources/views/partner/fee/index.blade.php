@@ -204,8 +204,12 @@
                             {{ $due > 0 ? 'Rs '.number_format($due) : '—' }}
                         </td>
                         <td class="small">
-                            @if($inv->collected_by_partner_id)
+                            @if($inv->collected_by_partner_id && (int)$inv->collected_by_partner_id === (int)$partner->id)
                                 <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">You</span>
+                            @elseif($inv->collected_by_staff_id)
+                                <span class="text-muted">Staff: {{ $inv->collected_by ?: '—' }}</span>
+                            @elseif($inv->collected_by_center_id)
+                                <span class="text-muted">Center: {{ $inv->collected_by ?: '—' }}</span>
                             @else
                                 <span class="text-muted">{{ $inv->collected_by ?: 'Institute' }}</span>
                             @endif

@@ -103,7 +103,7 @@ class PartnerFeeController extends Controller
             'totalPaid', 'totalInvoices',
             'cashAmt', 'upiAmt', 'onlineAmt', 'chequeAmt',
             'cashCount', 'upiCount', 'onlineCount',
-            'totalPaidByStudent'
+            'totalPaidByStudent', 'partner'
         ));
     }
 
