@@ -7,6 +7,7 @@ use App\Http\Controllers\Institute\Admission\AdmissionController as InstituteAdm
 use App\Http\Controllers\Institute\Master\StudentTypeController;
 use App\Models\AcademicSession;
 use App\Models\Course;
+use App\Models\FeeInvoice;
 use App\Models\CourseStream;
 use App\Models\CourseType;
 use App\Models\FeePlan;
@@ -156,9 +157,30 @@ class PartnerStudentController extends Controller
             );
         }
 
-        $student->load(['stream.course', 'coursePart', 'educationDetails']);
+        $student->load(['stream.course', 'coursePart', 'educationDetails', 'session', 'feePlan']);
 
-        return view('partner.students.show', compact('student', 'partner'));
+        $instituteId = $partner->institute_id;
+
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('id')->get();
+
+        $permsMap        = $partner->sessionPermsMap();
+        $allowedSessions = $permsMap === null
+            ? $allSessions
+            : $allSessions->filter(fn($s) => (bool) ($permsMap[$s->id]['view'] ?? false))->values();
+
+        $feeInvoices = \App\Models\FeeInvoice::where('student_id', $student->id)
+            ->where('is_cancelled', false)
+            ->orderByDesc('payment_date')
+            ->get();
+
+        $feeBySession = $feeInvoices->groupBy('academic_session_id');
+
+        $authUser = $partner;
+
+        return view('partner.students.show', compact(
+            'student', 'partner', 'authUser', 'allowedSessions', 'feeBySession'
+        ));
     }
 
     // ── Quick Admission ────────────────────────────────────────────────────
