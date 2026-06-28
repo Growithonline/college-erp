@@ -212,7 +212,42 @@
     <div class="topbar mb-4 rounded shadow-sm">
         <div class="d-flex align-items-center gap-2" style="min-width:0;flex:1;">
             <button id="sidebarToggle" title="Toggle sidebar"><i class="bi bi-list"></i></button>
-            <small class="text-muted fw-semibold text-truncate">@yield('breadcrumb', 'Dashboard')</small>
+            <small class="text-muted fw-semibold text-truncate d-none d-md-inline">@yield('breadcrumb', 'Dashboard')</small>
+        </div>
+        {{-- Quick Action Buttons --}}
+        <div class="d-flex align-items-center gap-1 mx-2">
+            @if($canAdmit && $authUser->canUseFullAdmissionForm())
+            <a href="{{ route('partner.admissions.create') }}"
+               class="btn btn-sm d-flex align-items-center gap-1 {{ request()->routeIs('partner.admissions.create') ? 'btn-primary' : 'btn-outline-primary' }}"
+               title="Full Admission" style="font-size:11px;padding:4px 9px;white-space:nowrap;">
+                <i class="bi bi-person-plus-fill"></i>
+                <span class="d-none d-lg-inline">Full Admission</span>
+            </a>
+            @endif
+            @if($canAdmit)
+            <a href="{{ route('partner.admissions.quick-create') }}"
+               class="btn btn-sm d-flex align-items-center gap-1 {{ request()->routeIs('partner.admissions.quick*') ? 'btn-warning' : 'btn-outline-warning' }}"
+               title="Quick Register" style="font-size:11px;padding:4px 9px;white-space:nowrap;">
+                <i class="bi bi-lightning-fill"></i>
+                <span class="d-none d-lg-inline">Quick Reg.</span>
+            </a>
+            @endif
+            @if($authUser->canCollectFee())
+            <a href="{{ route('partner.fee.create') }}"
+               class="btn btn-sm d-flex align-items-center gap-1 {{ request()->routeIs('partner.fee.create') ? 'btn-success' : 'btn-outline-success' }}"
+               title="Collect Fee" style="font-size:11px;padding:4px 9px;white-space:nowrap;">
+                <i class="bi bi-cash-coin"></i>
+                <span class="d-none d-lg-inline">Collect Fee</span>
+            </a>
+            @endif
+            @if($canView)
+            <a href="{{ route('partner.students.search') }}"
+               class="btn btn-sm d-flex align-items-center gap-1 {{ request()->routeIs('partner.students.search') ? 'btn-info' : 'btn-outline-secondary' }}"
+               title="Search Admission" style="font-size:11px;padding:4px 9px;white-space:nowrap;">
+                <i class="bi bi-search"></i>
+                <span class="d-none d-lg-inline">Search</span>
+            </a>
+            @endif
         </div>
         <div class="d-flex align-items-center gap-2">
             @php
