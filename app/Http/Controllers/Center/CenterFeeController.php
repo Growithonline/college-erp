@@ -9,7 +9,10 @@ use App\Models\Course;
 use App\Models\FeeInvoice;
 use App\Models\Institute;
 use App\Models\Student;
+use App\Models\StudentTransaction;
+use App\Models\StudentWallet;
 use App\Models\WalletExtensionRequest;
+use App\Services\WalletService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -444,5 +447,111 @@ class CenterFeeController extends Controller
             'course'      => $s->stream->course->name ?? '',
             'stream'      => $s->stream->name ?? '',
         ]));
+    }
+
+    public function studentHistory(Student $student)
+    {
+        $center = $this->center();
+        abort_unless($center->canCollectFee(), 403);
+        abort_if((int) $student->institute_id !== (int) $center->institute_id, 403, 'Student not found.');
+
+        $student->load(['stream.course', 'session']);
+
+        $invoices = FeeInvoice::with('items')
+            ->where('student_id', $student->id)
+            ->orderBy('payment_date', 'desc')
+            ->get();
+
+        $sessionBalances = StudentWallet::where('student_id', $student->id)
+            ->with('session')
+            ->orderBy('academic_session_id')
+            ->get();
+
+        $totalPaid = $invoices->where('is_cancelled', false)->sum('paid_amount');
+
+        return view('institute.fee.student-history', compact(
+            'student', 'invoices', 'totalPaid', 'sessionBalances'
+        ));
+    }
+
+    public function studentWallet(Student $student, Request $request)
+    {
+        $center = $this->center();
+        abort_unless($center->canCollectFee(), 403);
+        abort_if((int) $student->institute_id !== (int) $center->institute_id, 403, 'Student not found.');
+
+        if ($student->status === 'pending') {
+            return redirect()->back()->with('error', 'This student\'s admission is pending approval.');
+        }
+
+        $student->load(['stream.course', 'coursePart', 'feePlan.installments']);
+        $instituteId = $center->institute_id;
+
+        $sessions = AcademicSession::where('institute_id', $instituteId)->orderBy('name')->get();
+
+        $selectedSessionId = $request->session_id
+            ?? $student->academic_session_id
+            ?? AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+
+        $selectedSession = $sessions->firstWhere('id', $selectedSessionId);
+
+        $transactions = StudentTransaction::where('student_id', $student->id)
+            ->where('academic_session_id', $selectedSessionId)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $summary     = WalletService::getStudentSummary($student, (int) $selectedSessionId);
+        $pendingFees = WalletService::buildPendingRows($student, (int) $selectedSessionId);
+
+        $feePlanInfo = null;
+        $plan = $student->feePlan;
+        if ($plan && $plan->installments->count() > 0) {
+            $originalCharged    = WalletService::getOriginalFeeCharged($student->id, (int) $selectedSessionId);
+            $totalFeeForPlan    = $originalCharged > 0 ? $originalCharged : (float) ($summary['total_charged'] ?? 0);
+            $totalPaid          = (float) ($summary['ledger_collection'] ?? $summary['total_paid'] ?? 0);
+            $installmentAmounts = $plan->installmentAmounts($totalFeeForPlan);
+            $cumulativeDue = 0.0;
+            $nextDueInst   = null;
+            $nextDueAmount = 0.0;
+            $totalDueSoFar = 0.0;
+            foreach ($plan->installments as $inst) {
+                $amt = (float) ($installmentAmounts[$inst->installment_number] ?? 0);
+                if ($inst->isDue($student)) {
+                    $totalDueSoFar += $amt;
+                    $cumulativeDue += $amt;
+                    if ($nextDueInst === null && $totalPaid < $cumulativeDue - 0.5) {
+                        $nextDueInst   = $inst;
+                        $nextDueAmount = min($amt, $cumulativeDue - $totalPaid);
+                    }
+                }
+            }
+            $feePlanInfo = [
+                'plan'               => $plan,
+                'installmentAmounts' => $installmentAmounts,
+                'totalFee'           => $totalFeeForPlan,
+                'totalPaid'          => $totalPaid,
+                'totalDueSoFar'      => $totalDueSoFar,
+                'nextDueInst'        => $nextDueInst,
+                'nextDueAmount'      => $nextDueAmount,
+                'fillAmount'         => $nextDueAmount,
+                'overdue'            => $totalPaid < $totalDueSoFar - 0.5,
+            ];
+        }
+
+        $sessionBalances = $sessions->map(function ($session) use ($student) {
+            $hasActivity = StudentWallet::where('student_id', $student->id)->where('academic_session_id', $session->id)->exists()
+                || StudentTransaction::where('student_id', $student->id)->where('academic_session_id', $session->id)->exists()
+                || FeeInvoice::where('student_id', $student->id)->where('academic_session_id', $session->id)->where('is_cancelled', false)->exists();
+            if (!$hasActivity) {
+                return ['session' => $session, 'balance' => null];
+            }
+            $sessionSummary = WalletService::getStudentSummary($student, (int) $session->id);
+            return ['session' => $session, 'balance' => $sessionSummary['balance']];
+        });
+
+        return view('institute.fee.student-wallet', compact(
+            'student', 'sessions', 'selectedSession', 'selectedSessionId',
+            'transactions', 'summary', 'pendingFees', 'feePlanInfo', 'sessionBalances'
+        ));
     }
 }

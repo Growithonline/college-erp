@@ -1,13 +1,14 @@
 @php
-    $isStaff = auth()->guard('staff')->check();
-    $layout = $isStaff ? 'staff.layout' : 'institute.layout';
-    $feeCreateRoute = $isStaff ? 'staff.fee.create' : 'fee.create';
-    $showRoute = $isStaff ? 'staff.admissions.show' : 'admissions.show';
-    $feeIndexRoute = $isStaff ? 'staff.fee.index' : 'fee.index';
-    $feeHistoryRoute = $isStaff ? 'staff.fee.student-history' : 'fee.student-history';
-    $walletRoute = $isStaff ? 'staff.fee.wallet.student' : 'fee.wallet.student';
-    $receiptRoute = $isStaff ? 'staff.fee.receipt' : 'fee.receipt';
-    $canCollectFee = !$isStaff || auth()->guard('staff')->user()?->canCollectFee();
+    $isStaff  = auth()->guard('staff')->check();
+    $isCenter = auth()->guard('center')->check();
+    $layout          = $isStaff ? 'staff.layout'              : ($isCenter ? 'center.layout'           : 'institute.layout');
+    $feeCreateRoute  = $isStaff ? 'staff.fee.create'          : ($isCenter ? 'center.fee.create'          : 'fee.create');
+    $showRoute       = $isStaff ? 'staff.admissions.show'     : ($isCenter ? 'center.students.show'       : 'admissions.show');
+    $feeIndexRoute   = $isStaff ? 'staff.fee.index'           : ($isCenter ? 'center.fee.index'           : 'fee.index');
+    $feeHistoryRoute = $isStaff ? 'staff.fee.student-history' : ($isCenter ? 'center.fee.student-history' : 'fee.student-history');
+    $walletRoute     = $isStaff ? 'staff.fee.wallet.student'  : ($isCenter ? 'center.fee.wallet.student'  : 'fee.wallet.student');
+    $receiptRoute    = $isStaff ? 'staff.fee.receipt'         : ($isCenter ? 'center.fee.receipt'         : 'fee.receipt');
+    $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee() : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : true);
 @endphp
 @extends($layout)
 @section('title','Student Wallet')

@@ -1,15 +1,16 @@
 @php
-    $isStaff = auth()->guard('staff')->check();
-    $layout          = $isStaff ? 'staff.layout'              : 'institute.layout';
-    $feeCreateRoute  = $isStaff ? 'staff.fee.create'          : 'fee.create';
-    $showRoute       = $isStaff ? 'staff.admissions.show'     : 'admissions.show';
-    $feeIndexRoute   = $isStaff ? 'staff.fee.index'           : 'fee.index';
-    $receiptRoute    = $isStaff ? 'staff.fee.receipt'         : 'fee.receipt';
-    $cancelRoute     = $isStaff ? 'staff.fee.cancel'          : 'fee.cancel';
-    $walletRoute     = $isStaff ? 'staff.fee.wallet.student'  : 'fee.wallet.student';
-    $canCollectFee   = !$isStaff || auth()->guard('staff')->user()?->canCollectFee();
-    $canCancelFee    = !$isStaff || auth()->guard('staff')->user()?->canCancelFee();
-    $canViewFeeWallet = !$isStaff || auth()->guard('staff')->user()?->canViewFeeWallet();
+    $isStaff  = auth()->guard('staff')->check();
+    $isCenter = auth()->guard('center')->check();
+    $layout          = $isStaff ? 'staff.layout'   : ($isCenter ? 'center.layout'           : 'institute.layout');
+    $feeCreateRoute  = $isStaff ? 'staff.fee.create'          : ($isCenter ? 'center.fee.create'          : 'fee.create');
+    $showRoute       = $isStaff ? 'staff.admissions.show'     : ($isCenter ? 'center.students.show'       : 'admissions.show');
+    $feeIndexRoute   = $isStaff ? 'staff.fee.index'           : ($isCenter ? 'center.fee.index'           : 'fee.index');
+    $receiptRoute    = $isStaff ? 'staff.fee.receipt'         : ($isCenter ? 'center.fee.receipt'         : 'fee.receipt');
+    $cancelRoute     = $isStaff ? 'staff.fee.cancel'          : ($isCenter ? null                         : 'fee.cancel');
+    $walletRoute     = $isStaff ? 'staff.fee.wallet.student'  : ($isCenter ? 'center.fee.wallet.student'  : 'fee.wallet.student');
+    $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee()   : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : true);
+    $canCancelFee    = $isStaff ? (bool) auth()->guard('staff')->user()?->canCancelFee()    : (!$isCenter);
+    $canViewFeeWallet = $isStaff ? (bool) auth()->guard('staff')->user()?->canViewFeeWallet() : true;
 
     $totalFine      = $invoices->where('is_cancelled', false)->sum(fn($i) => $i->items->sum('fine'));
     $totalDiscount  = $invoices->where('is_cancelled', false)->sum(fn($i) => (float)($i->discount ?? 0));

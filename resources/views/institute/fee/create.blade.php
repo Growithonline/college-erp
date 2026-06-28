@@ -310,12 +310,13 @@
 
 {{-- Header --}}
 @php
-    $showRoute      = auth()->guard('staff')->check() ? 'staff.admissions.show'     : 'admissions.show';
-    $walletRoute    = auth()->guard('staff')->check() ? 'staff.fee.wallet.student'  : 'fee.wallet.student';
-    $historyRoute   = auth()->guard('staff')->check() ? 'staff.fee.student-history' : 'fee.student-history';
-    $stmtPrefix     = auth()->guard('staff')->check() ? 'staff.statement' : (
-                      auth()->guard('center')->check() || auth()->guard('partner')->check() ? null : 'statement'
-                      );
+    $_isStaff   = auth()->guard('staff')->check();
+    $_isCenter  = auth()->guard('center')->check();
+    $_isPartner = auth()->guard('partner')->check();
+    $showRoute    = $_isStaff  ? 'staff.admissions.show'     : ($_isCenter ? 'center.students.show'       : 'admissions.show');
+    $walletRoute  = $_isStaff  ? 'staff.fee.wallet.student'  : ($_isCenter ? 'center.fee.wallet.student'  : 'fee.wallet.student');
+    $historyRoute = $_isStaff  ? 'staff.fee.student-history' : ($_isCenter ? 'center.fee.student-history' : 'fee.student-history');
+    $stmtPrefix   = $_isStaff  ? 'staff.statement'           : ($_isCenter || $_isPartner ? null : 'statement');
 @endphp
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -444,7 +445,7 @@
                 <div class=”fw-bold text-danger fs-5”>₹ {{ number_format(abs($walletSummary['balance']), 2) }}</div>
                 @if(isset($student))
                 @php
-                    $walletLinkRoute = auth()->guard('staff')->check() ? 'staff.fee.wallet.student' : 'fee.wallet.student';
+                    $walletLinkRoute = auth()->guard('staff')->check() ? 'staff.fee.wallet.student' : (auth()->guard('center')->check() ? 'center.fee.wallet.student' : 'fee.wallet.student');
                 @endphp
                 <a href=”{{ route($walletLinkRoute, $student->id) }}”
                    class=”btn btn-outline-danger btn-sm mt-1”>

@@ -864,6 +864,8 @@ Route::prefix('center')->name('center.')->group(function () {
         Route::get('fee/search-student',              [CenterFeeController::class, 'searchStudent'])->name('fee.search-student');
         Route::get('fee/export',                      [CenterFeeController::class, 'export'])->name('fee.export');
         Route::get('fee/{student}/receipt/{invoice}', [CenterFeeController::class, 'receipt'])->name('fee.receipt');
+        Route::get('fee/{student}/history',           [CenterFeeController::class, 'studentHistory'])->name('fee.student-history');
+        Route::get('fee/{student}/wallet',            [CenterFeeController::class, 'studentWallet'])->name('fee.wallet.student');
 
         // Admission Documents
         Route::prefix('admission-documents')->name('admission.documents.')->group(function () {
