@@ -1,14 +1,15 @@
 @php
-    $isStaff  = auth()->guard('staff')->check();
-    $isCenter = auth()->guard('center')->check();
-    $layout          = $isStaff ? 'staff.layout'              : ($isCenter ? 'center.layout'           : 'institute.layout');
-    $feeCreateRoute  = $isStaff ? 'staff.fee.create'          : ($isCenter ? 'center.fee.create'          : 'fee.create');
-    $showRoute       = $isStaff ? 'staff.admissions.show'     : ($isCenter ? 'center.students.show'       : 'admissions.show');
-    $feeIndexRoute   = $isStaff ? 'staff.fee.index'           : ($isCenter ? 'center.fee.index'           : 'fee.index');
-    $feeHistoryRoute = $isStaff ? 'staff.fee.student-history' : ($isCenter ? 'center.fee.student-history' : 'fee.student-history');
-    $walletRoute     = $isStaff ? 'staff.fee.wallet.student'  : ($isCenter ? 'center.fee.wallet.student'  : 'fee.wallet.student');
-    $receiptRoute    = $isStaff ? 'staff.fee.receipt'         : ($isCenter ? 'center.fee.receipt'         : 'fee.receipt');
-    $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee() : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : true);
+    $isStaff   = auth()->guard('staff')->check();
+    $isCenter  = auth()->guard('center')->check();
+    $isPartner = auth()->guard('partner')->check();
+    $layout          = $isStaff ? 'staff.layout'               : ($isCenter  ? 'center.layout'             : ($isPartner ? 'partner.layout'             : 'institute.layout'));
+    $feeCreateRoute  = $isStaff ? 'staff.fee.create'           : ($isCenter  ? 'center.fee.create'           : ($isPartner ? 'partner.fee.create'           : 'fee.create'));
+    $showRoute       = $isStaff ? 'staff.admissions.show'      : ($isCenter  ? 'center.students.show'        : ($isPartner ? 'partner.students.show'        : 'admissions.show'));
+    $feeIndexRoute   = $isStaff ? 'staff.fee.index'            : ($isCenter  ? 'center.fee.index'            : ($isPartner ? 'partner.fee.index'            : 'fee.index'));
+    $feeHistoryRoute = $isStaff ? 'staff.fee.student-history'  : ($isCenter  ? 'center.fee.student-history'  : ($isPartner ? 'partner.fee.student-history'  : 'fee.student-history'));
+    $walletRoute     = $isStaff ? 'staff.fee.wallet.student'   : ($isCenter  ? 'center.fee.wallet.student'   : ($isPartner ? 'partner.fee.wallet.student'   : 'fee.wallet.student'));
+    $receiptRoute    = $isStaff ? 'staff.fee.receipt'          : ($isCenter  ? 'center.fee.receipt'          : ($isPartner ? 'partner.fee.receipt'          : 'fee.receipt'));
+    $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee() : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true));
 @endphp
 @extends($layout)
 @section('title','Student Wallet')

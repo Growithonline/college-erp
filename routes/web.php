@@ -1211,6 +1211,8 @@ Route::prefix('partner')->name('partner.')->group(function () {
         Route::post('fee/collect',                    [PartnerFeeController::class, 'store'])->name('fee.store');
         Route::get('fee/search-student',              [PartnerFeeController::class, 'searchStudent'])->name('fee.search-student');
         Route::get('fee/{student}/receipt/{invoice}', [PartnerFeeController::class, 'receipt'])->name('fee.receipt');
+        Route::get('fee/{student}/history',           [PartnerFeeController::class, 'studentHistory'])->name('fee.student-history');
+        Route::get('fee/{student}/wallet',            [PartnerFeeController::class, 'studentWallet'])->name('fee.wallet.student');
 
         // Reports (only if can_download_reports)
         Route::get('reports',                [PartnerReportController::class, 'index'])->name('reports.index');
