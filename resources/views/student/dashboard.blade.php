@@ -437,7 +437,9 @@
         <a class="nav-link-item" data-tab="notices">
             <i class="bi bi-megaphone-fill"></i> Notices
             @php $unread = collect($notices ?? [])->filter(fn($n) => !in_array($n->id, $readNoticeIds ?? []))->count(); @endphp
-            @if($unread > 0)<span class="nav-badge">{{ $unread }}</span>@endif
+            @if ($unread > 0)
+                <span class="nav-badge">{{ $unread }}</span>
+            @endif
         </a>
         <a class="nav-link-item" data-tab="transport">
             <i class="bi bi-bus-front-fill"></i> Transport
@@ -552,9 +554,11 @@
             <div>
                 <div class="stat-num">
                     {{ $notices->count() }}
-                    @if($unread > 0)<span style="font-size:13px;color:var(--danger);font-weight:700;"> +{{ $unread }}</span>@endif
+                    @if ($unread > 0)
+                        <span style="font-size:13px;color:var(--danger);font-weight:700;"> +{{ $unread }}</span>
+                    @endif
                 </div>
-                <div class="stat-label">Notices@if($unread > 0) · {{ $unread }} Unread@endif</div>
+                <div class="stat-label">Notices @if($unread > 0) · {{ $unread }} Unread @endif</div>
             </div>
         </div>
     </div>
@@ -580,7 +584,9 @@
             <li class="nav-item">
                 <a class="nav-link" data-bs-toggle="tab" href="#tab-notices">
                     <i class="bi bi-megaphone"></i> Notices
-                    @if($unread > 0)<span class="ms-1" style="background:#dc2626;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;">{{ $unread }}</span>@endif
+                    @if ($unread > 0)
+                        <span class="ms-1" style="background:#dc2626;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;">{{ $unread }}</span>
+                    @endif
                 </a>
             </li>
             <li class="nav-item">
