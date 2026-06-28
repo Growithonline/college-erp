@@ -157,7 +157,9 @@ class PartnerStudentController extends Controller
             );
         }
 
-        $student->load(['stream.course', 'coursePart', 'educationDetails', 'session', 'feePlan']);
+        $student->load(['stream.course.type', 'coursePart', 'educationDetails', 'session', 'feePlan',
+            'activeTransportAllocation.route', 'activeTransportAllocation.stop',
+            'activeTransportAllocation.vehicle', 'activeTransportAllocation.driver']);
 
         $instituteId = $partner->institute_id;
 

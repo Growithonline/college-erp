@@ -244,6 +244,108 @@
     {{-- Right column --}}
     <div class="col-md-7">
 
+        {{-- Course Details --}}
+        @php
+            $course      = $student->stream->course ?? null;
+            $courseType  = $course->type->name ?? '—';
+            $courseName  = $course->name ?? '—';
+            $streamName2 = $student->stream->name ?? '—';
+            $duration    = $course ? ($course->duration . ' ' . ucfirst($course->duration_type ?? 'Year') . ($course->duration > 1 ? 's' : '')) : '—';
+            $structure   = $course ? ucfirst(str_replace('_', ' ', $course->structure_type ?? '—')) : '—';
+            $yearNumber  = $student->coursePart->year_number ?? 1;
+            $semLabel    = $student->current_semester ? 'Sem ' . $student->current_semester : '—';
+            $streamSubjects = $student->stream
+                ? $student->stream->subjectsForYear($yearNumber)->orderByPivot('sort_order')->get()
+                : collect();
+        @endphp
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header py-2" style="background:#1e293b;color:white;">
+                <span class="fw-bold small"><i class="bi bi-book me-2"></i>Course Details</span>
+            </div>
+            <div class="card-body p-0">
+                @foreach([
+                    'Course Type' => $courseType,
+                    'Course'      => $courseName,
+                    'Stream'      => $streamName2,
+                    'Duration'    => $duration,
+                    'Structure'   => $structure,
+                    'Year / Part' => $partName,
+                    'Semester'    => $semLabel,
+                ] as $label => $value)
+                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                    <div class="text-muted" style="width:120px;flex-shrink:0;">{{ $label }}</div>
+                    <div class="fw-semibold">{{ $value }}</div>
+                </div>
+                @endforeach
+
+                @if($streamSubjects->count() > 0)
+                <div class="px-3 py-2 border-bottom" style="font-size:13px;">
+                    <div class="text-muted mb-2">Subjects ({{ $partName }})</div>
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach($streamSubjects as $subj)
+                        <span class="badge border fw-normal px-2 py-1"
+                              style="font-size:11px;background:#f1f5f9;color:#334155;border-color:#cbd5e1!important;">
+                            {{ $subj->name }}
+                            @if($subj->pivot->subject_role === 'optional')
+                                <span class="text-muted ms-1" style="font-size:10px;">(opt)</span>
+                            @endif
+                        </span>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Transport --}}
+        @if($student->activeTransportAllocation)
+        @php $transport = $student->activeTransportAllocation; @endphp
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
+                <span class="fw-bold small"><i class="bi bi-bus-front me-2"></i>Transport</span>
+                <span class="badge {{ $transport->is_active ? 'bg-success' : 'bg-secondary' }} px-2" style="font-size:11px;">
+                    {{ $transport->is_active ? 'Active' : ucfirst($transport->status ?? 'Inactive') }}
+                </span>
+            </div>
+            <div class="card-body p-0">
+                @foreach(array_filter([
+                    'Route'         => $transport->route->name ?? '—',
+                    'Boarding Stop' => $transport->stop->stop_name ?? '—',
+                    'Pickup Time'   => $transport->stop->pickup_time ? \Carbon\Carbon::parse($transport->stop->pickup_time)->format('h:i A') : '—',
+                    'Drop Time'     => $transport->stop->drop_time  ? \Carbon\Carbon::parse($transport->stop->drop_time)->format('h:i A')  : null,
+                    'Vehicle No.'   => $transport->vehicle->vehicle_no ?? '—',
+                    'Driver'        => $transport->driver->name ?? '—',
+                    'Driver Mobile' => $transport->driver->mobile ?? null,
+                    'Start Date'    => $transport->start_date?->format('d M Y') ?? '—',
+                    'End Date'      => $transport->end_date?->format('d M Y') ?? null,
+                ], fn($v) => $v !== null) as $label => $value)
+                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                    <div class="text-muted" style="width:120px;flex-shrink:0;">{{ $label }}</div>
+                    <div class="fw-semibold">{{ $value }}</div>
+                </div>
+                @endforeach
+
+                {{-- Fee summary --}}
+                <div class="d-flex gap-3 px-3 py-3 flex-wrap">
+                    <div class="text-center px-3 py-2 rounded-3" style="background:#f0fdf4;border:1px solid #bbf7d0;min-width:110px;">
+                        <div class="small text-muted">Fee</div>
+                        <div class="fw-bold text-success">₹ {{ number_format($transport->fee_amount) }}</div>
+                    </div>
+                    <div class="text-center px-3 py-2 rounded-3" style="background:#eff6ff;border:1px solid #bfdbfe;min-width:110px;">
+                        <div class="small text-muted">Paid</div>
+                        <div class="fw-bold text-primary">₹ {{ number_format($transport->paid_amount) }}</div>
+                    </div>
+                    @if($transport->balance > 0)
+                    <div class="text-center px-3 py-2 rounded-3" style="background:#fef2f2;border:1px solid #fecaca;min-width:110px;">
+                        <div class="small text-muted">Balance Due</div>
+                        <div class="fw-bold text-danger">₹ {{ number_format($transport->balance) }}</div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
+
         {{-- Documents --}}
         @include('institute.admission._documents-verify', [
             'student'   => $student,
