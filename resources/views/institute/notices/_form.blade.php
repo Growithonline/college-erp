@@ -141,7 +141,7 @@
 
             <div id="emailRolesSection" style="display:{{ old('send_email') ? 'block' : 'none' }};">
                 <div class="mb-1" style="font-size:12px;font-weight:600;color:#475569;">
-                    Kisko email bhejna hai?
+                    Who should receive the email?
                 </div>
                 <div class="d-flex gap-3 flex-wrap">
                     @php
@@ -170,6 +170,15 @@
                                {{ in_array('channel', $selectedRoles) ? 'checked' : '' }}>
                         <label class="form-check-label" for="email_channel" style="font-size:13px;">
                             <i class="bi bi-diagram-3 me-1 text-warning"></i> Channel Partners
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="email_roles[]"
+                               id="email_student" value="student"
+                               {{ in_array('student', $selectedRoles) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="email_student" style="font-size:13px;">
+                            <i class="bi bi-mortarboard me-1 text-danger"></i> Students
+                            <small class="text-muted">(active, with email)</small>
                         </label>
                     </div>
                 </div>

@@ -49,8 +49,8 @@
             </div>
 
             <p style="margin-bottom:0;color:#64748b;font-size:13px;">
-                Ye notice automatically aapko bheja gaya hai.<br>
-                {{ config('app.name') }}
+                This notice has been sent to you by your institute. For more details, please log in to the student portal.<br><br>
+                <strong>{{ $notice->institute?->name ?? config('app.name') }}</strong>
             </p>
         </div>
     </div>

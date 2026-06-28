@@ -81,7 +81,7 @@ class NoticeController extends Controller
             'is_pinned'     => 'boolean',
             'attachment'    => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4096',
             'email_roles'   => 'nullable|array',
-            'email_roles.*' => 'in:staff,center,channel',
+            'email_roles.*' => 'in:staff,center,channel,student',
         ]);
 
         $attachmentPath = null;
@@ -89,7 +89,7 @@ class NoticeController extends Controller
             $attachmentPath = $request->file('attachment')->store('notices', 'public');
         }
 
-        // email_to: null = no email, string = roles to email (e.g. "staff,center")
+        // email_to: null = no email, string = roles to email (e.g. "staff,center,student")
         $emailTo = null;
         if ($request->boolean('send_email') && !empty($validated['email_roles'])) {
             $emailTo = implode(',', $validated['email_roles']);
@@ -163,7 +163,7 @@ class NoticeController extends Controller
             'is_pinned'     => 'boolean',
             'attachment'    => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4096',
             'email_roles'   => 'nullable|array',
-            'email_roles.*' => 'in:staff,center,channel',
+            'email_roles.*' => 'in:staff,center,channel,student',
         ]);
 
         if ($request->hasFile('attachment')) {
@@ -288,7 +288,7 @@ class NoticeController extends Controller
         if (!$notice->email_to) return;
 
         $instituteId = $notice->institute_id;
-        $roles       = explode(',', $notice->email_to); // ['staff','center','channel']
+        $roles       = explode(',', $notice->email_to); // ['staff','center','channel','student']
         $recipients  = collect();
 
         if (in_array('staff', $roles)) {
@@ -315,11 +315,19 @@ class NoticeController extends Controller
                 ->each(fn($e) => $recipients->push($e));
         }
 
+        if (in_array('student', $roles)) {
+            Student::where('institute_id', $instituteId)
+                ->where('status', 'active')
+                ->whereNotNull('email')
+                ->pluck('email')
+                ->each(fn($e) => $recipients->push($e));
+        }
+
         foreach ($recipients->unique() as $email) {
             try {
                 InstituteMailer::queue($instituteId, $email, new NoticePublishedMail($notice));
             } catch (\Throwable) {
-                // email fail hone pe notice create block na ho
+                // silent fail — notice create block na ho
             }
         }
     }
