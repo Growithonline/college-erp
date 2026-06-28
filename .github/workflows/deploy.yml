@@ -82,8 +82,12 @@ jobs:
             php artisan view:cache
             php artisan event:cache
 
-            # Restart queue worker
+            # Restart queue worker via Supervisor
             php artisan queue:restart
+            sudo cp /var/www/bmc.gtsaas.in/supervisor.conf /etc/supervisor/conf.d/college-erp-worker.conf
+            sudo supervisorctl reread
+            sudo supervisorctl update
+            sudo supervisorctl restart college-erp-worker:* || true
 
             # Fix permissions
             sudo chown -R www-data:www-data storage bootstrap/cache
