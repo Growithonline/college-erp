@@ -201,9 +201,30 @@ class CenterStudentController extends Controller
             );
         }
 
-        $student->load(['stream.course', 'coursePart', 'educationDetails']);
+        $student->load(['stream.course', 'coursePart', 'educationDetails', 'session', 'feePlan']);
 
-        return view('center.students.show', compact('student', 'center'));
+        $instituteId = $center->institute_id;
+
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('id')->get();
+
+        $permsMap        = $center->sessionPermsMap();
+        $allowedSessions = $permsMap === null
+            ? $allSessions
+            : $allSessions->filter(fn($s) => (bool) ($permsMap[$s->id]['view'] ?? false))->values();
+
+        $feeInvoices = \App\Models\FeeInvoice::where('student_id', $student->id)
+            ->where('is_cancelled', false)
+            ->orderByDesc('payment_date')
+            ->get();
+
+        $feeBySession = $feeInvoices->groupBy('academic_session_id');
+
+        $authUser = $center;
+
+        return view('center.students.show', compact(
+            'student', 'center', 'authUser', 'allowedSessions', 'feeBySession'
+        ));
     }
 
     // ── Global Search ──────────────────────────────────────────────────────
