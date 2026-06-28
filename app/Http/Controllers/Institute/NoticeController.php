@@ -265,6 +265,7 @@ class NoticeController extends Controller
             'staff'   => \App\Models\StaffMember::class,
             'center'  => \App\Models\Center::class,
             'partner' => \App\Models\ChannelPartner::class,
+            'student' => \App\Models\Student::class,
         ];
 
         $rows = $reads->map(function ($r) use ($typeMap) {
