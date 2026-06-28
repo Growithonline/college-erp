@@ -183,11 +183,11 @@
     <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);">
         <h6 class="fw-bold mb-1"><i class="bi bi-key-fill text-warning me-2"></i>Reset Student Portal Login</h6>
         <p class="text-muted mb-3" style="font-size:13px;">
-            Ek naya temporary password generate hoga aur student ko send kiya jayega.
+            A new temporary password will be generated and sent to the student.
             @if($student->email) <br><strong>Email:</strong> {{ $student->email }} @endif
             @if($student->mobile) <br><strong>Mobile:</strong> {{ $student->mobile }} @endif
             @if(!$student->email && !$student->mobile && !$student->father_mobile)
-            <br><span class="text-danger">⚠️ Koi email ya mobile nahi mila — password screen pe dikhega.</span>
+            <br><span class="text-danger">⚠️ No email or mobile found — password will be shown on screen only.</span>
             @endif
         </p>
         <form method="POST" action="{{ route('admissions.resend-credentials', $student) }}">

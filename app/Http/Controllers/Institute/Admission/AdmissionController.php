@@ -383,7 +383,7 @@ class AdmissionController extends Controller
 
         if ($student->email) {
             try {
-                InstituteMailer::queue($student->institute_id, $student->email, new StudentCredentialsMail($student, $plainPassword));
+                InstituteMailer::send($student->institute_id, $student->email, new StudentCredentialsMail($student, $plainPassword));
                 $emailSent = true;
             } catch (\Throwable) {}
         }
@@ -398,10 +398,10 @@ class AdmissionController extends Controller
         }
 
         $deliveryNote = match(true) {
-            $emailSent && $smsSent => 'Email aur SMS dono send ho gaye.',
-            $emailSent             => 'Email send ho gayi. (Mobile number nahi mila)',
-            $smsSent               => 'SMS send ho gaya. (Email nahi mili)',
-            default                => 'Email/SMS nahi bheja ja saka — student ka koi contact nahi mila.',
+            $emailSent && $smsSent => 'Credentials sent via Email and SMS.',
+            $emailSent             => 'Credentials sent via Email. (No mobile number found)',
+            $smsSent               => 'Credentials sent via SMS. (No email address found)',
+            default                => 'Could not send credentials — no email or mobile found for this student.',
         };
 
         return back()->with('credentials_reset', [
