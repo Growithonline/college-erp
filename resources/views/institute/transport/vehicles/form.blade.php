@@ -174,7 +174,7 @@
     {{-- New document rows added dynamically --}}
     <div id="newDocRows"></div>
 
-    <div id="noDocMsg" class="text-center py-3 text-muted small {{ isset($existingDocuments) && $existingDocuments->count() ? 'd-none' : '' }}" id="emptyDocHint">
+    <div id="noDocMsg" class="text-center py-3 text-muted small {{ isset($existingDocuments) && $existingDocuments->count() ? 'd-none' : '' }}">
         <i class="bi bi-folder2-open fs-4 d-block mb-1 text-muted opacity-50"></i>
         No documents yet. Click <strong>Add Document</strong> to upload.
     </div>
@@ -268,6 +268,7 @@
     document.querySelectorAll('input[type="date"].date-limit').forEach(bindDateLimit);
 
     // Add document row
+    const hasExistingDocs = {{ (isset($existingDocuments) && $existingDocuments->count()) ? 'true' : 'false' }};
     let docIdx      = 0;
     const newDocRows = document.getElementById('newDocRows');
     const template   = document.getElementById('docRowTemplate');
@@ -292,14 +293,8 @@
 
         clone.querySelector('.remove-doc-row').addEventListener('click', function () {
             this.closest('.new-doc-row').remove();
-            if (!newDocRows.querySelector('.new-doc-row') && noDocMsg) {
-                @isset($existingDocuments)
-                    @if(!$existingDocuments->count())
-                        noDocMsg.classList.remove('d-none');
-                    @endif
-                @else
-                    noDocMsg.classList.remove('d-none');
-                @endisset
+            if (!newDocRows.querySelector('.new-doc-row') && noDocMsg && !hasExistingDocs) {
+                noDocMsg.classList.remove('d-none');
             }
         });
 

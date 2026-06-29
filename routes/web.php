@@ -322,6 +322,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('drivers', TransportDriverController::class)->except(['show']);
         Route::post('drivers/{driver}/toggle', [TransportDriverController::class, 'toggle'])->name('drivers.toggle');
+        Route::delete('drivers/{driver}/documents/{document}', [TransportDriverController::class, 'deleteDocument'])->name('drivers.documents.destroy');
 
         Route::resource('routes', TransportRouteController::class);
         Route::get('routes/{route}/stops', [TransportRouteController::class, 'stops'])->name('routes.stops');

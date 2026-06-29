@@ -32,4 +32,9 @@ class TransportDriver extends Model
     {
         return $this->hasMany(TransportAllocation::class);
     }
+
+    public function documents()
+    {
+        return $this->hasMany(TransportDriverDocument::class);
+    }
 }
