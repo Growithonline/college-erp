@@ -137,9 +137,8 @@
                             </td>
                             <td>
                                 @if($doc->expiry_date)
-                                    @php $expired = $doc->expiry_date->isPast() @endphp
-                                    <span class="{{ $expired ? 'text-danger fw-semibold' : 'text-success' }}">
-                                        <i class="bi bi-{{ $expired ? 'exclamation-circle' : 'calendar-check' }} me-1"></i>
+                                    <span class="{{ $doc->expiry_date->isPast() ? 'text-danger fw-semibold' : 'text-success' }}">
+                                        <i class="bi bi-{{ $doc->expiry_date->isPast() ? 'exclamation-circle' : 'calendar-check' }} me-1"></i>
                                         {{ $doc->expiry_date->format('d-m-Y') }}
                                     </span>
                                 @else
