@@ -51,7 +51,7 @@ class TransportVehicleController extends TransportBaseController
             'documents'                    => ['nullable', 'array'],
             'documents.*.document_type'    => ['required_with:documents.*.file', 'string', 'max:50'],
             'documents.*.document_name'    => ['nullable', 'string', 'max:150'],
-            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:200'],
             'documents.*.expiry_date'      => ['nullable', 'date'],
             'documents.*.doc_notes'        => ['nullable', 'string', 'max:300'],
         ]);
@@ -118,7 +118,7 @@ class TransportVehicleController extends TransportBaseController
             'documents'                    => ['nullable', 'array'],
             'documents.*.document_type'    => ['required_with:documents.*.file', 'string', 'max:50'],
             'documents.*.document_name'    => ['nullable', 'string', 'max:150'],
-            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:200'],
             'documents.*.expiry_date'      => ['nullable', 'date'],
             'documents.*.doc_notes'        => ['nullable', 'string', 'max:300'],
         ]);
