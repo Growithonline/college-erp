@@ -18,11 +18,11 @@
     <div class="col-md-3"><label class="form-label">Model</label><input class="form-control" name="model" value="{{ old('model', $vehicle->model ?? '') }}"></div>
     <div class="col-md-3"><label class="form-label">Capacity</label><input type="number" min="0" class="form-control" name="capacity" id="capacityInput" value="{{ old('capacity', $vehicle->capacity ?? 0) }}"></div>
     <div class="col-md-3"><label class="form-label">Fuel Type</label><input class="form-control" name="fuel_type" value="{{ old('fuel_type', $vehicle->fuel_type ?? '') }}"></div>
-    <div class="col-md-3"><label class="form-label">Insurance Expiry</label><input type="date" class="form-control" name="insurance_expiry" value="{{ old('insurance_expiry', optional($vehicle?->insurance_expiry)->format('Y-m-d')) }}"></div>
-    <div class="col-md-3"><label class="form-label">Permit Expiry</label><input type="date" class="form-control" name="permit_expiry" value="{{ old('permit_expiry', optional($vehicle?->permit_expiry)->format('Y-m-d')) }}"></div>
-    <div class="col-md-3"><label class="form-label">Fitness Expiry</label><input type="date" class="form-control" name="fitness_expiry" value="{{ old('fitness_expiry', optional($vehicle?->fitness_expiry)->format('Y-m-d')) }}"></div>
-    <div class="col-md-3"><label class="form-label">Pollution Expiry</label><input type="date" class="form-control" name="pollution_expiry" value="{{ old('pollution_expiry', optional($vehicle?->pollution_expiry)->format('Y-m-d')) }}"></div>
-    <div class="col-md-3"><label class="form-label">Service Due Date</label><input type="date" class="form-control" name="service_due_date" value="{{ old('service_due_date', optional($vehicle?->service_due_date)->format('Y-m-d')) }}"></div>
+    <div class="col-md-3"><label class="form-label">Insurance Expiry</label><input type="date" class="form-control date-limit" name="insurance_expiry" min="1900-01-01" max="2999-12-31" value="{{ old('insurance_expiry', optional($vehicle?->insurance_expiry)->format('Y-m-d')) }}"></div>
+    <div class="col-md-3"><label class="form-label">Permit Expiry</label><input type="date" class="form-control date-limit" name="permit_expiry" min="1900-01-01" max="2999-12-31" value="{{ old('permit_expiry', optional($vehicle?->permit_expiry)->format('Y-m-d')) }}"></div>
+    <div class="col-md-3"><label class="form-label">Fitness Expiry</label><input type="date" class="form-control date-limit" name="fitness_expiry" min="1900-01-01" max="2999-12-31" value="{{ old('fitness_expiry', optional($vehicle?->fitness_expiry)->format('Y-m-d')) }}"></div>
+    <div class="col-md-3"><label class="form-label">Pollution Expiry</label><input type="date" class="form-control date-limit" name="pollution_expiry" min="1900-01-01" max="2999-12-31" value="{{ old('pollution_expiry', optional($vehicle?->pollution_expiry)->format('Y-m-d')) }}"></div>
+    <div class="col-md-3"><label class="form-label">Service Due Date</label><input type="date" class="form-control date-limit" name="service_due_date" min="1900-01-01" max="2999-12-31" value="{{ old('service_due_date', optional($vehicle?->service_due_date)->format('Y-m-d')) }}"></div>
     <div class="col-md-3 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" name="status" value="1" {{ old('status', $vehicle->status ?? true) ? 'checked' : '' }}><label class="form-check-label">Active</label></div></div>
     <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" name="notes" rows="3">{{ old('notes', $vehicle->notes ?? '') }}</textarea></div>
 </div>
@@ -102,7 +102,7 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label form-label-sm mb-1">Expiry Date</label>
-                    <input type="date" class="form-control form-control-sm" name="documents[__IDX__][expiry_date]">
+                    <input type="date" class="form-control form-control-sm date-limit" name="documents[__IDX__][expiry_date]" min="1900-01-01" max="2999-12-31">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label form-label-sm mb-1">Notes</label>
@@ -128,6 +128,19 @@
         });
     }
 
+    function bindDateLimit(input) {
+        input.addEventListener('input', function () {
+            const val = this.value;
+            if (!val) return;
+            const parts = val.split('-');
+            if (parts[0] && parts[0].length > 4) {
+                parts[0] = parts[0].slice(0, 4);
+                this.value = parts.join('-');
+            }
+        });
+    }
+    document.querySelectorAll('input[type="date"].date-limit').forEach(bindDateLimit);
+
     let docIdx = 0;
     const newDocRows = document.getElementById('newDocRows');
     const template   = document.getElementById('docRowTemplate');
@@ -150,6 +163,7 @@
             this.closest('.new-doc-row').remove();
         });
 
+        clone.querySelectorAll('input[type="date"].date-limit').forEach(bindDateLimit);
         newDocRows.appendChild(clone);
         docIdx++;
     });
