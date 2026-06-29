@@ -362,7 +362,7 @@ class TransportAllocationController extends TransportBaseController
             ->where('status', '!=', 'pending')
             ->whereDoesntHave('transportAllocations', fn ($q) => $q->where('is_active', true))
             ->orderBy('name')
-            ->get(['id', 'name', 'roll_no']);
+            ->get(['id', 'name', 'father_name', 'mother_name', 'mobile', 'roll_no', 'enrollment_no', 'uin_no']);
 
         return view('institute.transport.allocations.bulk', compact('routes', 'vehicles', 'drivers', 'sessions', 'students'));
     }
