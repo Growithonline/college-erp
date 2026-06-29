@@ -68,9 +68,18 @@ class TransportMonthlyBillingController extends TransportBaseController
         $pendingCount = $allocations->where('already_billed', false)->count();
         $quarterLabel = $this->quarterLabel($chargeMonth);
 
+        // One-time allocations (separate section — not recurring billing)
+        $oneTimeAllocations = TransportAllocation::with(['student:id,name,roll_no', 'route:id,name'])
+            ->where('institute_id', $instituteId)
+            ->where('is_active', true)
+            ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
+            ->whereHas('route', fn ($q) => $q->where('billing_frequency', 'one_time'))
+            ->orderBy('student_id')
+            ->get();
+
         return view('institute.transport.billing.index', compact(
             'allocations', 'sessions', 'sessionId', 'chargeMonth',
-            'pendingCount', 'freqFilter', 'quarterLabel'
+            'pendingCount', 'freqFilter', 'quarterLabel', 'oneTimeAllocations'
         ));
     }
 
@@ -208,6 +217,56 @@ class TransportMonthlyBillingController extends TransportBaseController
         }
 
         return back()->with('success', $msg);
+    }
+
+    public function collectOneTime(TransportAllocation $allocation)
+    {
+        $this->assertInstituteModel($allocation);
+
+        if ($allocation->route?->billing_frequency !== 'one_time') {
+            return back()->withErrors(['error' => 'Only one-time allocations can use this action.']);
+        }
+
+        $balance = round((float) $allocation->fee_amount - (float) $allocation->paid_amount, 2);
+
+        if ($balance <= 0) {
+            return back()->with('success', 'Fee already fully collected for this student.');
+        }
+
+        DB::transaction(function () use ($allocation, $balance) {
+            $wallet = StudentWallet::firstOrCreate(
+                ['student_id' => $allocation->student_id, 'academic_session_id' => $allocation->academic_session_id],
+                ['institute_id' => $allocation->institute_id, 'main_b' => 0.00]
+            );
+            $wallet = StudentWallet::where('id', $wallet->id)->lockForUpdate()->first();
+
+            $opBal = (float) $wallet->main_b;
+            $clBal = round($opBal - $balance, 2);
+
+            StudentTransaction::create([
+                'student_id'              => $allocation->student_id,
+                'institute_id'            => $allocation->institute_id,
+                'academic_session_id'     => $allocation->academic_session_id,
+                'des'                     => 'Transport one-time charge — ' . ($allocation->route?->name ?? ''),
+                'credit'                  => 0.00,
+                'debit'                   => $balance,
+                'type'                    => StudentTransaction::DEBIT,
+                'date'                    => now()->toDateString(),
+                'op_bal'                  => $opBal,
+                'cl_bal'                  => $clBal,
+                'transport_allocation_id' => $allocation->id,
+            ]);
+
+            $wallet->main_b = $clBal;
+            $wallet->save();
+
+            $allocation->charged_amount = (float) $allocation->fee_amount;
+            $allocation->paid_amount    = round((float) $allocation->paid_amount + $balance, 2);
+            $this->updateAllocationStatus($allocation);
+            $allocation->save();
+        });
+
+        return back()->with('success', 'Transport fee collected for ' . ($allocation->student?->name ?? 'student') . '.');
     }
 
     // Returns [start, end] of the calendar quarter containing $chargeMonth

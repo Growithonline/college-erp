@@ -376,6 +376,7 @@ Route::middleware(['auth'])->group(function () {
         // Monthly Billing
         Route::get('billing', [TransportMonthlyBillingController::class, 'index'])->name('billing.index');
         Route::post('billing/generate', [TransportMonthlyBillingController::class, 'generate'])->name('billing.generate');
+        Route::post('billing/collect-one-time/{allocation}', [TransportMonthlyBillingController::class, 'collectOneTime'])->name('billing.collect-one-time');
 
         // Transport Settings
         Route::get('settings', [TransportSettingController::class, 'index'])->name('settings.index');

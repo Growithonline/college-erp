@@ -153,4 +153,87 @@
         </table>
     </div>
 </div>
+
+{{-- ── One Time Allocations ── --}}
+@if($oneTimeAllocations->count())
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-1-circle text-warning me-2"></i>One Time Allocations
+            <span class="badge bg-secondary ms-2">{{ $oneTimeAllocations->count() }} total</span>
+            @php $otPending = $oneTimeAllocations->filter(fn($a) => $a->status !== 'paid')->count(); @endphp
+            @if($otPending)
+                <span class="badge bg-danger ms-1">{{ $otPending }} pending</span>
+            @else
+                <span class="badge bg-success ms-1">All collected</span>
+            @endif
+        </span>
+        <small class="text-muted" style="font-size:12px;">One-time fees are collected individually from student wallet</small>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:14px;">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Student</th>
+                    <th>Route</th>
+                    <th class="text-end">Fee</th>
+                    <th class="text-end">Paid</th>
+                    <th class="text-end">Balance</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($oneTimeAllocations as $i => $a)
+                @php
+                    $fee     = (float) $a->fee_amount;
+                    $paid    = (float) $a->paid_amount;
+                    $balance = round($fee - $paid, 2);
+                @endphp
+                <tr>
+                    <td class="text-muted">{{ $i + 1 }}</td>
+                    <td>
+                        <div class="fw-semibold">{{ $a->student?->name ?? '—' }}</div>
+                        <small class="text-muted">{{ $a->student?->roll_no ?? '' }}</small>
+                    </td>
+                    <td>{{ $a->route?->name ?? '—' }}</td>
+                    <td class="text-end">₹{{ number_format($fee, 2) }}</td>
+                    <td class="text-end {{ $paid > 0 ? 'text-success' : 'text-muted' }}">
+                        ₹{{ number_format($paid, 2) }}
+                    </td>
+                    <td class="text-end {{ $balance > 0 ? 'text-danger fw-semibold' : 'text-success' }}">
+                        ₹{{ number_format($balance, 2) }}
+                    </td>
+                    <td class="text-center">
+                        @if($a->status === 'paid')
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Paid</span>
+                        @elseif($a->status === 'partial')
+                            <span class="badge bg-warning text-dark"><i class="bi bi-half me-1"></i>Partial</span>
+                        @else
+                            <span class="badge bg-danger"><i class="bi bi-clock me-1"></i>Pending</span>
+                        @endif
+                    </td>
+                    <td class="text-center">
+                        @if($balance > 0)
+                            <form method="POST"
+                                action="{{ route('transport.billing.collect-one-time', $a) }}"
+                                onsubmit="return confirm('Collect ₹{{ number_format($balance, 2) }} from {{ addslashes($a->student?->name ?? '') }} wallet?')">
+                                @csrf
+                                <button class="btn btn-sm btn-primary px-3">
+                                    <i class="bi bi-wallet2 me-1"></i>Collect
+                                </button>
+                            </form>
+                        @else
+                            <span class="text-success"><i class="bi bi-check-lg"></i> Done</span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 @endsection
