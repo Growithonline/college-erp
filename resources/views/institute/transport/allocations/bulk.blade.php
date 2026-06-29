@@ -84,6 +84,9 @@
                         class="form-control" placeholder="Auto from stop/route">
                 </div>
             </div>
+            <div class="col-12">
+                <div id="bulkAutoFill" class="d-none alert alert-success py-2 px-3 mb-0" style="font-size:13px;"></div>
+            </div>
             <div class="col-md-3">
                 <label class="form-label fw-medium">Vehicle</label>
                 <div class="input-group">
@@ -214,12 +217,36 @@
     const stopSel  = document.getElementById('bulkStopSelect');
     const feeInput = document.getElementById('bulkFeeInput');
 
+    const vehicleSel  = document.querySelector('[name="transport_vehicle_id"]');
+    const driverSel   = document.querySelector('[name="transport_driver_id"]');
+    const sessionSel  = document.querySelector('[name="academic_session_id"]');
+    const autoFillMsg = document.getElementById('bulkAutoFill');
+
+    function fetchRouteAssignment(routeId) {
+        if (!routeId || !vehicleSel || !driverSel) return;
+        const sessionId = sessionSel?.value ?? '';
+        fetch(`/transport/route-assignments/for-route?route_id=${routeId}&session_id=${sessionId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.vehicle_id) vehicleSel.value = data.vehicle_id;
+                if (data.driver_id)  driverSel.value  = data.driver_id;
+                if (autoFillMsg) {
+                    if (data.vehicle_id || data.driver_id) {
+                        autoFillMsg.innerHTML = `<i class="bi bi-magic me-1"></i>Auto-filled: <strong>${data.vehicle_no ?? '—'}</strong> / <strong>${data.driver_name ?? '—'}</strong>`;
+                        autoFillMsg.classList.remove('d-none');
+                    } else {
+                        autoFillMsg.classList.add('d-none');
+                    }
+                }
+            });
+    }
+
     routeSel?.addEventListener('change', () => {
         const opt = routeSel.options[routeSel.selectedIndex];
         const fee = parseFloat(opt?.dataset?.fee ?? 0);
         if (fee > 0) feeInput.value = fee.toFixed(2);
         stopSel.innerHTML = '<option value="">No Stop</option>';
-        if (!routeSel.value) return;
+        if (!routeSel.value) { if(autoFillMsg) autoFillMsg.classList.add('d-none'); return; }
         fetch(`/transport/routes/${routeSel.value}/stops`)
             .then(r => r.json())
             .then(data => {
@@ -231,6 +258,7 @@
                     stopSel.appendChild(o);
                 });
             });
+        fetchRouteAssignment(routeSel.value);
     });
 
     stopSel?.addEventListener('change', () => {

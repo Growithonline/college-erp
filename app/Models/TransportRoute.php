@@ -46,4 +46,14 @@ class TransportRoute extends Model
     {
         return $this->hasMany(TransportAllocation::class)->where('is_active', true);
     }
+
+    public function assignments()
+    {
+        return $this->hasMany(TransportRouteAssignment::class);
+    }
+
+    public function activeAssignment()
+    {
+        return $this->hasOne(TransportRouteAssignment::class)->where('status', true)->latest();
+    }
 }

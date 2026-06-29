@@ -37,7 +37,9 @@
         </select>
     </div>
     <div class="col-md-4">
-        <label class="form-label">Vehicle</label>
+        <label class="form-label d-flex align-items-center gap-2">Vehicle
+            <span id="autoFillTag" class="badge bg-success d-none" style="font-size:10px;font-weight:500;"></span>
+        </label>
         <select class="form-select" name="transport_vehicle_id">
             <option value="">Select Vehicle</option>
             @foreach($vehicles as $vehicle)
@@ -114,9 +116,30 @@
         if (routeFee > 0) feeInput.value = routeFee.toFixed(2);
     }
 
+    // Auto-fill vehicle + driver from route assignment
+    const vehicleSelect = document.querySelector('[name="transport_vehicle_id"]');
+    const driverSelect  = document.querySelector('[name="transport_driver_id"]');
+    const sessionSelect = document.querySelector('[name="academic_session_id"]');
+    const autoTag       = document.getElementById('autoFillTag');
+
+    function fetchRouteAssignment(routeId) {
+        if (!routeId || !vehicleSelect || !driverSelect) return;
+        const sessionId = sessionSelect?.value ?? '';
+        fetch(`/transport/route-assignments/for-route?route_id=${routeId}&session_id=${sessionId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.vehicle_id) {
+                    vehicleSelect.value = data.vehicle_id;
+                    if (autoTag) { autoTag.textContent = `Auto: ${data.vehicle_no} / ${data.driver_name ?? '—'}`; autoTag.classList.remove('d-none'); }
+                }
+                if (data.driver_id) driverSelect.value = data.driver_id;
+            });
+    }
+
     routeSelect.addEventListener('change', () => {
         loadStops(routeSelect.value, null);
         updateFee();
+        fetchRouteAssignment(routeSelect.value);
     });
 
     stopSelect.addEventListener('change', updateFee);

@@ -766,6 +766,10 @@
                            href="{{ route('transport.routes.index') }}">
                         <i class="bi bi-signpost-split"></i> Routes
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('transport.route-assignments*') ? 'active' : '' }}"
+                           href="{{ route('transport.route-assignments.index') }}">
+                        <i class="bi bi-diagram-3"></i> Route Assignments
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('transport.vehicle-types*') ? 'active' : '' }}"
                            href="{{ route('transport.vehicle-types.index') }}">
                         <i class="bi bi-tags"></i> Vehicle Types

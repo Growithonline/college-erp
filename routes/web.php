@@ -87,6 +87,7 @@ use App\Http\Controllers\Institute\Transport\TransportComplianceController;
 use App\Http\Controllers\Institute\Transport\TransportMonthlyBillingController;
 use App\Http\Controllers\Institute\Transport\TransportReportController;
 use App\Http\Controllers\Institute\Transport\TransportRouteController;
+use App\Http\Controllers\Institute\Transport\TransportRouteAssignmentController;
 use App\Http\Controllers\Institute\Transport\TransportVehicleController;
 use App\Http\Controllers\Institute\Transport\TransportVehicleTypeController;
 use App\Http\Controllers\Institute\Transport\TransportSettingController;
@@ -327,6 +328,14 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('routes', TransportRouteController::class);
         Route::get('routes/{route}/stops', [TransportRouteController::class, 'stops'])->name('routes.stops');
         Route::post('routes/{route}/toggle', [TransportRouteController::class, 'toggle'])->name('routes.toggle');
+
+        // Route Assignments
+        Route::get('route-assignments', [TransportRouteAssignmentController::class, 'index'])->name('route-assignments.index');
+        Route::post('route-assignments', [TransportRouteAssignmentController::class, 'store'])->name('route-assignments.store');
+        Route::put('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'update'])->name('route-assignments.update');
+        Route::delete('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'destroy'])->name('route-assignments.destroy');
+        Route::post('route-assignments/{routeAssignment}/toggle', [TransportRouteAssignmentController::class, 'toggle'])->name('route-assignments.toggle');
+        Route::get('route-assignments/for-route', [TransportRouteAssignmentController::class, 'forRoute'])->name('route-assignments.for-route');
 
         // Bulk routes BEFORE resource (avoids {allocation} capturing "bulk")
         Route::get('allocations/bulk/create', [TransportAllocationController::class, 'bulkCreate'])->name('allocations.bulk-create');
