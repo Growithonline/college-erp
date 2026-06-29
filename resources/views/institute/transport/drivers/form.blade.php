@@ -50,7 +50,7 @@
         <hr class="flex-grow-1 my-0 ms-1">
     </div>
     <div class="row g-3 align-items-end">
-        <div class="col-md-3">
+        <div class="col-md-4">
             <label class="form-label fw-medium">License No</label>
             <div class="input-group">
                 <span class="input-group-text bg-light"><i class="bi bi-credit-card text-muted"></i></span>
@@ -59,13 +59,6 @@
                     placeholder="e.g. UP14 20110012345" maxlength="80">
             </div>
             @error('license_no')<div class="text-danger mt-1" style="font-size:12px;">{{ $message }}</div>@enderror
-        </div>
-        <div class="col-md-3">
-            <label class="form-label fw-medium">License Expiry</label>
-            <input type="date" class="form-control date-limit @error('license_expiry') is-invalid @enderror"
-                name="license_expiry" min="1900-01-01" max="2999-12-31"
-                value="{{ old('license_expiry', optional($driver?->license_expiry)->format('Y-m-d')) }}">
-            @error('license_expiry')<div class="text-danger mt-1" style="font-size:12px;">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-3">
             <label class="form-label fw-medium">Helper Name</label>
