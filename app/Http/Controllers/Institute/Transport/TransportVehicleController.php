@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Institute\Transport;
 
 use App\Models\TransportVehicle;
+use App\Models\TransportVehicleDocument;
 use App\Models\TransportVehicleType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class TransportVehicleController extends TransportBaseController
@@ -25,7 +27,9 @@ class TransportVehicleController extends TransportBaseController
             ? TransportVehicleType::where('institute_id', $this->instituteId())->where('status', true)->orderBy('name')->get()
             : collect();
 
-        return view('institute.transport.vehicles.create', compact('vehicleTypes'));
+        $documentTypes = TransportVehicleDocument::$types;
+
+        return view('institute.transport.vehicles.create', compact('vehicleTypes', 'documentTypes'));
     }
 
     public function store(Request $request)
@@ -44,6 +48,12 @@ class TransportVehicleController extends TransportBaseController
             'service_due_date' => ['nullable', 'date'],
             'notes'            => ['nullable', 'string'],
             'status'           => ['nullable', 'boolean'],
+            'documents'                    => ['nullable', 'array'],
+            'documents.*.document_type'    => ['required_with:documents.*.file', 'string', 'max:50'],
+            'documents.*.document_name'    => ['nullable', 'string', 'max:150'],
+            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'documents.*.expiry_date'      => ['nullable', 'date'],
+            'documents.*.doc_notes'        => ['nullable', 'string', 'max:300'],
         ]);
 
         $instituteId = $this->instituteId();
@@ -52,7 +62,7 @@ class TransportVehicleController extends TransportBaseController
             return back()->withInput()->withErrors(['vehicle_no' => 'This vehicle number already exists.']);
         }
 
-        TransportVehicle::create([
+        $vehicle = TransportVehicle::create([
             'institute_id'              => $instituteId,
             'transport_vehicle_type_id' => $data['transport_vehicle_type_id'] ?? null,
             'vehicle_no'                => strtoupper(trim($data['vehicle_no'])),
@@ -69,6 +79,8 @@ class TransportVehicleController extends TransportBaseController
             'status'                    => $request->boolean('status', true),
         ]);
 
+        $this->saveDocuments($request, $vehicle, $instituteId);
+
         return redirect()->route('transport.vehicles.index')->with('success', 'Vehicle added successfully.');
     }
 
@@ -79,7 +91,10 @@ class TransportVehicleController extends TransportBaseController
             ? TransportVehicleType::where('institute_id', $this->instituteId())->where('status', true)->orderBy('name')->get()
             : collect();
 
-        return view('institute.transport.vehicles.edit', compact('vehicle', 'vehicleTypes'));
+        $documentTypes     = TransportVehicleDocument::$types;
+        $existingDocuments = $vehicle->documents()->orderBy('document_type')->get();
+
+        return view('institute.transport.vehicles.edit', compact('vehicle', 'vehicleTypes', 'documentTypes', 'existingDocuments'));
     }
 
     public function update(Request $request, TransportVehicle $vehicle)
@@ -100,6 +115,12 @@ class TransportVehicleController extends TransportBaseController
             'service_due_date' => ['nullable', 'date'],
             'notes'            => ['nullable', 'string'],
             'status'           => ['nullable', 'boolean'],
+            'documents'                    => ['nullable', 'array'],
+            'documents.*.document_type'    => ['required_with:documents.*.file', 'string', 'max:50'],
+            'documents.*.document_name'    => ['nullable', 'string', 'max:150'],
+            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'documents.*.expiry_date'      => ['nullable', 'date'],
+            'documents.*.doc_notes'        => ['nullable', 'string', 'max:300'],
         ]);
 
         if (TransportVehicle::where('institute_id', $vehicle->institute_id)
@@ -125,7 +146,47 @@ class TransportVehicleController extends TransportBaseController
             'status'                    => $request->boolean('status', true),
         ]);
 
+        $this->saveDocuments($request, $vehicle, $vehicle->institute_id);
+
         return redirect()->route('transport.vehicles.index')->with('success', 'Vehicle updated successfully.');
+    }
+
+    public function deleteDocument(TransportVehicle $vehicle, TransportVehicleDocument $document)
+    {
+        $this->assertInstituteModel($vehicle);
+        abort_if($document->transport_vehicle_id !== $vehicle->id, 403);
+
+        Storage::disk('public')->delete($document->file_path);
+        $document->delete();
+
+        return back()->with('success', 'Document deleted successfully.');
+    }
+
+    private function saveDocuments(Request $request, TransportVehicle $vehicle, int $instituteId): void
+    {
+        $rows = $request->input('documents', []);
+        $files = $request->file('documents', []);
+
+        foreach ($rows as $i => $row) {
+            $file = $files[$i]['file'] ?? null;
+            if (!$file) continue;
+
+            $docType = $row['document_type'] ?? '';
+            if (!$docType) continue;
+
+            $path = $file->store("transport/vehicles/{$vehicle->id}/documents", 'public');
+
+            TransportVehicleDocument::create([
+                'institute_id'          => $instituteId,
+                'transport_vehicle_id'  => $vehicle->id,
+                'document_type'         => $docType,
+                'document_name'         => $row['document_name'] ?? null,
+                'file_path'             => $path,
+                'original_name'         => $file->getClientOriginalName(),
+                'expiry_date'           => $row['expiry_date'] ?? null,
+                'notes'                 => $row['doc_notes'] ?? null,
+            ]);
+        }
     }
 
     public function destroy(TransportVehicle $vehicle)

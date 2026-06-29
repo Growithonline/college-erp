@@ -52,4 +52,9 @@ class TransportVehicle extends Model
     {
         return $this->hasMany(TransportMaintenanceLog::class);
     }
+
+    public function documents()
+    {
+        return $this->hasMany(TransportVehicleDocument::class);
+    }
 }

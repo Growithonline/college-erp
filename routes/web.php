@@ -318,6 +318,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('vehicles', TransportVehicleController::class)->except(['show']);
         Route::post('vehicles/{vehicle}/toggle', [TransportVehicleController::class, 'toggle'])->name('vehicles.toggle');
+        Route::delete('vehicles/{vehicle}/documents/{document}', [TransportVehicleController::class, 'deleteDocument'])->name('vehicles.documents.destroy');
 
         Route::resource('drivers', TransportDriverController::class)->except(['show']);
         Route::post('drivers/{driver}/toggle', [TransportDriverController::class, 'toggle'])->name('drivers.toggle');
