@@ -314,77 +314,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/practical-tokens/{batch}/entries', [PracticalFeeTokenController::class, 'postEntries'])->name('practical-tokens.entries.store');
     });
 
-    // TRANSPORT
-    Route::prefix('transport')->name('transport.')->group(function () {
-        Route::get('/', [TransportDashboardController::class, 'index'])->name('dashboard');
-
-        Route::resource('vehicles', TransportVehicleController::class)->except(['show']);
-        Route::post('vehicles/{vehicle}/toggle', [TransportVehicleController::class, 'toggle'])->name('vehicles.toggle');
-        Route::delete('vehicles/{vehicle}/documents/{document}', [TransportVehicleController::class, 'deleteDocument'])->name('vehicles.documents.destroy');
-
-        Route::resource('drivers', TransportDriverController::class)->except(['show']);
-        Route::post('drivers/{driver}/toggle', [TransportDriverController::class, 'toggle'])->name('drivers.toggle');
-        Route::delete('drivers/{driver}/documents/{document}', [TransportDriverController::class, 'deleteDocument'])->name('drivers.documents.destroy');
-
-        Route::resource('routes', TransportRouteController::class);
-        Route::get('routes/{route}/stops', [TransportRouteController::class, 'stops'])->name('routes.stops');
-        Route::post('routes/{route}/toggle', [TransportRouteController::class, 'toggle'])->name('routes.toggle');
-
-        // Route Assignments
-        Route::get('route-assignments', [TransportRouteAssignmentController::class, 'index'])->name('route-assignments.index');
-        Route::post('route-assignments', [TransportRouteAssignmentController::class, 'store'])->name('route-assignments.store');
-        Route::put('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'update'])->name('route-assignments.update');
-        Route::delete('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'destroy'])->name('route-assignments.destroy');
-        Route::post('route-assignments/{routeAssignment}/toggle', [TransportRouteAssignmentController::class, 'toggle'])->name('route-assignments.toggle');
-        Route::get('route-assignments/for-route', [TransportRouteAssignmentController::class, 'forRoute'])->name('route-assignments.for-route');
-
-        // Bulk routes BEFORE resource (avoids {allocation} capturing "bulk")
-        Route::get('allocations/bulk/create', [TransportAllocationController::class, 'bulkCreate'])->name('allocations.bulk-create');
-        Route::post('allocations/bulk', [TransportAllocationController::class, 'bulkStore'])->name('allocations.bulk-store');
-
-        Route::resource('allocations', TransportAllocationController::class)->only(['index', 'create', 'store', 'show']);
-        Route::get('allocations/{allocation}/edit', [TransportAllocationController::class, 'edit'])->name('allocations.edit');
-        Route::put('allocations/{allocation}', [TransportAllocationController::class, 'update'])->name('allocations.update');
-        Route::post('allocations/{allocation}/collect-payment', [TransportAllocationController::class, 'collectPayment'])->name('allocations.collect-payment');
-        Route::post('allocations/{allocation}/close', [TransportAllocationController::class, 'close'])->name('allocations.close');
-        Route::post('allocations/{allocation}/transfer', [TransportAllocationController::class, 'transfer'])->name('allocations.transfer');
-        Route::get('allocations/{allocation}/pdf', [TransportAllocationController::class, 'pdf'])->name('allocations.pdf');
-
-        Route::get('maintenance', [TransportMaintenanceController::class, 'index'])->name('maintenance.index');
-        Route::get('maintenance/create', [TransportMaintenanceController::class, 'create'])->name('maintenance.create');
-        Route::post('maintenance', [TransportMaintenanceController::class, 'store'])->name('maintenance.store');
-        Route::delete('maintenance/{maintenance}', [TransportMaintenanceController::class, 'destroy'])->name('maintenance.destroy');
-
-        Route::get('compliance', [TransportComplianceController::class, 'index'])->name('compliance.index');
-
-        // Vehicle Types
-        Route::get('vehicle-types', [TransportVehicleTypeController::class, 'index'])->name('vehicle-types.index');
-        Route::post('vehicle-types', [TransportVehicleTypeController::class, 'store'])->name('vehicle-types.store');
-        Route::put('vehicle-types/{vehicleType}', [TransportVehicleTypeController::class, 'update'])->name('vehicle-types.update');
-        Route::patch('vehicle-types/{vehicleType}/toggle', [TransportVehicleTypeController::class, 'toggle'])->name('vehicle-types.toggle');
-        Route::delete('vehicle-types/{vehicleType}', [TransportVehicleTypeController::class, 'destroy'])->name('vehicle-types.destroy');
-
-        // Reports
-        Route::get('reports', [TransportReportController::class, 'index'])->name('reports.index');
-        Route::get('reports/route-students', [TransportReportController::class, 'routeStudents'])->name('reports.route-students');
-        Route::get('reports/route-students/export', [TransportReportController::class, 'exportRouteStudents'])->name('reports.route-students.export');
-        Route::get('reports/due', [TransportReportController::class, 'due'])->name('reports.due');
-        Route::get('reports/due/export', [TransportReportController::class, 'exportDue'])->name('reports.due.export');
-        Route::get('reports/collection', [TransportReportController::class, 'collection'])->name('reports.collection');
-        Route::get('reports/collection/export', [TransportReportController::class, 'exportCollection'])->name('reports.collection.export');
-        Route::get('reports/occupancy', [TransportReportController::class, 'occupancy'])->name('reports.occupancy');
-
-        // Monthly Billing
-        Route::get('billing', [TransportMonthlyBillingController::class, 'index'])->name('billing.index');
-        Route::post('billing/generate', [TransportMonthlyBillingController::class, 'generate'])->name('billing.generate');
-        Route::post('billing/collect-one-time/{allocation}', [TransportMonthlyBillingController::class, 'collectOneTime'])->name('billing.collect-one-time');
-        Route::get('billing/receipt/{transaction}', [TransportMonthlyBillingController::class, 'receipt'])->name('billing.receipt');
-
-        // Transport Settings
-        Route::get('settings', [TransportSettingController::class, 'index'])->name('settings.index');
-        Route::put('settings', [TransportSettingController::class, 'update'])->name('settings.update');
-    });
-
     // FEE WALLETS (token-based collection control for centers & channel partners)
     Route::prefix('fee-wallets')->name('fee-wallets.')->group(function () {
         Route::get('centers',                                    [FeeWalletController::class, 'centerIndex'])->name('centers');
@@ -822,6 +751,82 @@ Route::middleware(['lib.dual.auth'])->group(function () {
         Route::post('fines/{member}/collect', [LibraryFineCollectionController::class, 'collect'])->name('fines.collect');
         Route::get('fines/{member}/receipt/{receiptNo}', [LibraryFineCollectionController::class, 'receipt'])->name('fines.receipt');
     });
+});
+
+// ── TRANSPORT routes — shared across institute owner, staff, center & partner
+// logins (unlike the block above, which is institute-owner-only via the bare
+// 'web' guard). Staff/center/partner admission forms embed a transport
+// allocation widget that calls these same routes via AJAX, so this group
+// must accept all four guards. Route names are unchanged (transport.*), so
+// no blade view needed to change.
+Route::middleware('auth:web,staff,center,partner')->prefix('transport')->name('transport.')->group(function () {
+    Route::get('/', [TransportDashboardController::class, 'index'])->name('dashboard');
+
+    Route::resource('vehicles', TransportVehicleController::class)->except(['show']);
+    Route::post('vehicles/{vehicle}/toggle', [TransportVehicleController::class, 'toggle'])->name('vehicles.toggle');
+    Route::delete('vehicles/{vehicle}/documents/{document}', [TransportVehicleController::class, 'deleteDocument'])->name('vehicles.documents.destroy');
+
+    Route::resource('drivers', TransportDriverController::class)->except(['show']);
+    Route::post('drivers/{driver}/toggle', [TransportDriverController::class, 'toggle'])->name('drivers.toggle');
+    Route::delete('drivers/{driver}/documents/{document}', [TransportDriverController::class, 'deleteDocument'])->name('drivers.documents.destroy');
+
+    Route::resource('routes', TransportRouteController::class);
+    Route::get('routes/{route}/stops', [TransportRouteController::class, 'stops'])->name('routes.stops');
+    Route::post('routes/{route}/toggle', [TransportRouteController::class, 'toggle'])->name('routes.toggle');
+
+    // Route Assignments
+    Route::get('route-assignments', [TransportRouteAssignmentController::class, 'index'])->name('route-assignments.index');
+    Route::post('route-assignments', [TransportRouteAssignmentController::class, 'store'])->name('route-assignments.store');
+    Route::put('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'update'])->name('route-assignments.update');
+    Route::delete('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'destroy'])->name('route-assignments.destroy');
+    Route::post('route-assignments/{routeAssignment}/toggle', [TransportRouteAssignmentController::class, 'toggle'])->name('route-assignments.toggle');
+    Route::get('route-assignments/for-route', [TransportRouteAssignmentController::class, 'forRoute'])->name('route-assignments.for-route');
+
+    // Bulk routes BEFORE resource (avoids {allocation} capturing "bulk")
+    Route::get('allocations/bulk/create', [TransportAllocationController::class, 'bulkCreate'])->name('allocations.bulk-create');
+    Route::post('allocations/bulk', [TransportAllocationController::class, 'bulkStore'])->name('allocations.bulk-store');
+
+    Route::resource('allocations', TransportAllocationController::class)->only(['index', 'create', 'store', 'show']);
+    Route::get('allocations/{allocation}/edit', [TransportAllocationController::class, 'edit'])->name('allocations.edit');
+    Route::put('allocations/{allocation}', [TransportAllocationController::class, 'update'])->name('allocations.update');
+    Route::post('allocations/{allocation}/collect-payment', [TransportAllocationController::class, 'collectPayment'])->name('allocations.collect-payment');
+    Route::post('allocations/{allocation}/close', [TransportAllocationController::class, 'close'])->name('allocations.close');
+    Route::post('allocations/{allocation}/transfer', [TransportAllocationController::class, 'transfer'])->name('allocations.transfer');
+    Route::get('allocations/{allocation}/pdf', [TransportAllocationController::class, 'pdf'])->name('allocations.pdf');
+
+    Route::get('maintenance', [TransportMaintenanceController::class, 'index'])->name('maintenance.index');
+    Route::get('maintenance/create', [TransportMaintenanceController::class, 'create'])->name('maintenance.create');
+    Route::post('maintenance', [TransportMaintenanceController::class, 'store'])->name('maintenance.store');
+    Route::delete('maintenance/{maintenance}', [TransportMaintenanceController::class, 'destroy'])->name('maintenance.destroy');
+
+    Route::get('compliance', [TransportComplianceController::class, 'index'])->name('compliance.index');
+
+    // Vehicle Types
+    Route::get('vehicle-types', [TransportVehicleTypeController::class, 'index'])->name('vehicle-types.index');
+    Route::post('vehicle-types', [TransportVehicleTypeController::class, 'store'])->name('vehicle-types.store');
+    Route::put('vehicle-types/{vehicleType}', [TransportVehicleTypeController::class, 'update'])->name('vehicle-types.update');
+    Route::patch('vehicle-types/{vehicleType}/toggle', [TransportVehicleTypeController::class, 'toggle'])->name('vehicle-types.toggle');
+    Route::delete('vehicle-types/{vehicleType}', [TransportVehicleTypeController::class, 'destroy'])->name('vehicle-types.destroy');
+
+    // Reports
+    Route::get('reports', [TransportReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/route-students', [TransportReportController::class, 'routeStudents'])->name('reports.route-students');
+    Route::get('reports/route-students/export', [TransportReportController::class, 'exportRouteStudents'])->name('reports.route-students.export');
+    Route::get('reports/due', [TransportReportController::class, 'due'])->name('reports.due');
+    Route::get('reports/due/export', [TransportReportController::class, 'exportDue'])->name('reports.due.export');
+    Route::get('reports/collection', [TransportReportController::class, 'collection'])->name('reports.collection');
+    Route::get('reports/collection/export', [TransportReportController::class, 'exportCollection'])->name('reports.collection.export');
+    Route::get('reports/occupancy', [TransportReportController::class, 'occupancy'])->name('reports.occupancy');
+
+    // Monthly Billing
+    Route::get('billing', [TransportMonthlyBillingController::class, 'index'])->name('billing.index');
+    Route::post('billing/generate', [TransportMonthlyBillingController::class, 'generate'])->name('billing.generate');
+    Route::post('billing/collect-one-time/{allocation}', [TransportMonthlyBillingController::class, 'collectOneTime'])->name('billing.collect-one-time');
+    Route::get('billing/receipt/{transaction}', [TransportMonthlyBillingController::class, 'receipt'])->name('billing.receipt');
+
+    // Transport Settings
+    Route::get('settings', [TransportSettingController::class, 'index'])->name('settings.index');
+    Route::put('settings', [TransportSettingController::class, 'update'])->name('settings.update');
 });
 
 // ── CENTER routes ────────────────────────────────────────────────────
