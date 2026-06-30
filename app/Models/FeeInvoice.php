@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class FeeInvoice extends Model
 {
+    public const STATUS_APPROVED = 'approved';
+    public const STATUS_PENDING  = 'pending';
+    public const STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
         'institute_id', 'student_id', 'academic_session_id', 'semester',
         'invoice_no', 'total_amount', 'discount', 'paid_amount',
@@ -14,6 +18,8 @@ class FeeInvoice extends Model
         'collected_by', 'collected_by_staff_id', 'collected_by_center_id', 'collected_by_partner_id',
         'is_cancelled', 'cancel_reason', 'cancelled_at', 'cancelled_by',
         'remaining_due',
+        'approval_status', 'approved_by_staff_id', 'approved_at', 'approval_rejection_reason',
+        'pending_settlement_data',
     ];
 
     protected $casts = [
@@ -25,6 +31,8 @@ class FeeInvoice extends Model
         'payment_datetime' => 'datetime',
         'is_cancelled'   => 'boolean',
         'cancelled_at'   => 'datetime',
+        'approved_at'    => 'datetime',
+        'pending_settlement_data' => 'array',
     ];
 
     public function institute()
@@ -65,6 +73,21 @@ class FeeInvoice extends Model
     public function scopeActive($q)
     {
         return $q->where('is_cancelled', false);
+    }
+
+    public function scopePendingApproval($q)
+    {
+        return $q->where('approval_status', self::STATUS_PENDING);
+    }
+
+    public function isPendingApproval(): bool
+    {
+        return $this->approval_status === self::STATUS_PENDING;
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(StaffMember::class, 'approved_by_staff_id');
     }
 
     public function session()

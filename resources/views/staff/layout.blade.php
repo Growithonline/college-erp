@@ -179,8 +179,12 @@
             $canAdmissionReports = $authGuard === 'staff' ? $authUser->canViewAdmissionReports() : false;
             $canFeeReports       = $authGuard === 'staff' ? $authUser->canViewFeeReports() : false;
             $canPracticalTokens  = $authGuard === 'staff' ? $authUser->canManagePracticalTokens() : false;
+            $canApproveFee       = $authGuard === 'staff' ? $authUser->canApproveFee() : false;
+            $pendingFeeApprovals = $canApproveFee
+                ? \App\Models\FeeInvoice::where('institute_id', $authUser->institute_id ?? 0)->pendingApproval()->count()
+                : 0;
         @endphp
-        @if($canCollectFee || $canFeeHistory || $canFeeWallet)
+        @if($canCollectFee || $canFeeHistory || $canFeeWallet || $canApproveFee)
         @php $feeGroupActive = request()->routeIs($authGuard.'.fee.*') || request()->routeIs('staff.fee.*'); @endphp
         <li class="nav-item mt-1">
             <a class="group-header {{ $feeGroupActive ? 'active-group' : '' }} d-flex"
@@ -196,6 +200,15 @@
                     <li><a class="nav-link {{ request()->routeIs($authGuard.'.fee.create') ? 'active' : '' }}"
                            href="{{ route($authGuard.'.fee.create') }}">
                         <i class="bi bi-cash-coin"></i> Collect Fee
+                    </a></li>
+                    @endif
+                    @if($canApproveFee)
+                    <li><a class="nav-link {{ request()->routeIs('staff.fee.approvals.*') ? 'active' : '' }} d-flex justify-content-between align-items-center"
+                           href="{{ route('staff.fee.approvals.index') }}">
+                        <span><i class="bi bi-hourglass-split"></i> Pending Approvals</span>
+                        @if($pendingFeeApprovals > 0)
+                            <span class="badge bg-warning text-dark rounded-pill" style="font-size:10px;">{{ $pendingFeeApprovals }}</span>
+                        @endif
                     </a></li>
                     @endif
                     @if($authGuard === 'staff' && $canPracticalTokens)

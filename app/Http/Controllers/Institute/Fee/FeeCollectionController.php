@@ -8,7 +8,6 @@ use App\Models\AcademicSession;
 use App\Models\CenterWallet;
 use App\Models\ChannelWallet;
 use App\Models\FeeInvoice;
-use App\Models\FeeInvoiceItem;
 use App\Models\FeeType;
 use App\Models\InstituteBankAccount;
 use App\Models\Library\LibraryFinePayment;
@@ -360,6 +359,23 @@ class FeeCollectionController extends Controller
         }
 
         return 'fee.receipt';
+    }
+
+    private function createRouteName(): string
+    {
+        if (auth()->guard('staff')->check()) {
+            return 'staff.fee.create';
+        }
+
+        if (auth()->guard('center')->check()) {
+            return 'center.fee.create';
+        }
+
+        if (auth()->guard('partner')->check()) {
+            return 'partner.fee.create';
+        }
+
+        return 'fee.create';
     }
 
     private function portalWallet(): CenterWallet|ChannelWallet|null
@@ -1194,8 +1210,23 @@ class FeeCollectionController extends Controller
             }
         }
 
+        // Custom fee amount limit (staff only) — a custom item total above the staff
+        // member's configured cap is held for admin approval instead of being collected
+        // immediately. Mirrors the discount-limit check above in spirit, but blocks via
+        // an approval queue rather than a hard rejection.
+        $needsApproval = false;
+        if (auth()->guard('staff')->check()) {
+            $staffUser = auth()->guard('staff')->user();
+            $customTotal = (float) $validItems->filter(fn($item) => !empty($item['is_custom']))->sum('amount');
+            $customLimit = $staffUser->max_custom_fee_amount;
+            if ($customTotal > 0 && $customLimit !== null && $customTotal > (float) $customLimit + 0.01) {
+                $needsApproval = true;
+            }
+        }
+
         $invoiceId = null;
         $invoiceNo = null;
+        $pendingApproval = false;
 
         try {
             DB::transaction(function () use (
@@ -1211,9 +1242,52 @@ class FeeCollectionController extends Controller
                 $selectedBankAccount,
                 $paymentDate,
                 $paymentDatetime,
+                $needsApproval,
                 &$invoiceId,
-                &$invoiceNo
+                &$invoiceNo,
+                &$pendingApproval
             ) {
+                if ($needsApproval) {
+                    // Reserve a unique placeholder — the real sequential invoice number is
+                    // only generated once an approver confirms this, so a rejected request
+                    // never burns a number out of the sequence.
+                    $invoiceNo = 'PENDING-' . strtoupper(\Illuminate\Support\Str::random(12));
+                    $invoice = FeeInvoice::create([
+                        'institute_id'        => $instituteId,
+                        'student_id'          => $student->id,
+                        'academic_session_id' => $student->academic_session_id,
+                        'semester'            => $request->semester,
+                        'invoice_no'          => $invoiceNo,
+                        'total_amount'        => 0,
+                        'discount'            => 0,
+                        'paid_amount'         => 0,
+                        'payment_mode'        => $request->payment_mode,
+                        'bank_account_id'     => $selectedBankAccount?->id,
+                        'transaction_ref'     => $request->transaction_ref,
+                        'bank_name'           => $request->bank_name,
+                        'payment_date'        => $paymentDate,
+                        'payment_datetime'    => $paymentDatetime,
+                        'remarks'             => $request->remarks,
+                        'collected_by'            => $this->actorName(),
+                        'collected_by_staff_id'   => auth()->guard('staff')->id(),
+                        'collected_by_center_id'  => auth()->guard('center')->id(),
+                        'collected_by_partner_id' => auth()->guard('partner')->id(),
+                        'approval_status'         => FeeInvoice::STATUS_PENDING,
+                        'pending_settlement_data' => [
+                            'valid_items'    => $validItems->values()->all(),
+                            'paid_amount'    => $paidAmount,
+                            'total_cleared'  => $totalCleared,
+                            'total_discount' => $totalDiscount,
+                            'year'           => $year,
+                        ],
+                    ]);
+
+                    $invoiceId = $invoice->id;
+                    $pendingApproval = true;
+
+                    return;
+                }
+
                 $invoiceNo = StudentIdService::generateInvoiceId($instituteId, $year);
                 $invoice = FeeInvoice::create([
                     'institute_id'        => $instituteId,
@@ -1235,6 +1309,7 @@ class FeeCollectionController extends Controller
                     'collected_by_staff_id'   => auth()->guard('staff')->id(),
                     'collected_by_center_id'  => auth()->guard('center')->id(),
                     'collected_by_partner_id' => auth()->guard('partner')->id(),
+                    'approval_status'         => FeeInvoice::STATUS_APPROVED,
                 ]);
 
                 $invoice->load('student');
@@ -1244,60 +1319,7 @@ class FeeCollectionController extends Controller
                     $wallet->consumeOrFail($paidAmount, $invoice->id, $this->actorId());
                 }
 
-                foreach ($validItems as $item) {
-                    $feeType = !empty($item['fee_type_id'])
-                        ? FeeType::find($item['fee_type_id'])
-                        : null;
-
-                    $fine = (float) ($item['fine'] ?? 0);
-
-                    $assignedFee = (float) ($item['total_fee'] ?? 0);
-                    if ($assignedFee <= 0) {
-                        // fallback for custom fees where no assigned fee exists
-                        $assignedFee = (float) ($item['amount'] ?? 0) + (float) ($item['discount'] ?? 0);
-                    }
-
-                    FeeInvoiceItem::create([
-                        'fee_invoice_id' => $invoice->id,
-                        'fee_type_id'    => $feeType?->id,
-                        'subject_id'     => !empty($item['subject_id']) ? (int) $item['subject_id'] : null,
-                        'item_type'      => $item['item_type'] ?: null,
-                        'fee_name'       => $item['fee_name'] ?? ($feeType?->name ?? 'Fee'),
-                        'amount'         => (float) ($item['amount'] ?? 0),
-                        'discount'       => (float) ($item['discount'] ?? 0),
-                        'fine'           => $fine,
-                        'total_fee'      => $assignedFee,
-                    ]);
-                }
-
-                WalletService::chargeCustomFeeItems($invoice, $validItems);
-                WalletService::chargeFineItems($invoice, $validItems);
-                WalletService::onFeeCollection($invoice);
-
-                // Settle transport allocations collected via this invoice
-                foreach ($validItems as $tItem) {
-                    if (($tItem['item_type'] ?? '') === 'transport' && !empty($tItem['transport_allocation_id'])) {
-                        WalletService::settleTransportFromInvoice(
-                            (int) $tItem['transport_allocation_id'],
-                            (float) ($tItem['amount'] ?? 0),
-                            $invoice->id,
-                            auth()->id()
-                        );
-                    }
-                }
-
-                if ($partner = auth()->guard('partner')->user()) {
-                    $pct = (float) $partner->commission_percent;
-                    if ($pct > 0) {
-                        \App\Models\PartnerCommissionEntry::create([
-                            'partner_id'         => $partner->id,
-                            'fee_invoice_id'     => $invoice->id,
-                            'paid_amount'        => $paidAmount,
-                            'commission_percent' => $pct,
-                            'commission_amount'  => round($paidAmount * $pct / 100, 2),
-                        ]);
-                    }
-                }
+                WalletService::settleApprovedInvoice($invoice, $validItems->all());
 
                 $invoiceId = $invoice->id;
             });
@@ -1309,6 +1331,11 @@ class FeeCollectionController extends Controller
                 ->withErrors(['wallet_error' => $e->getMessage()])
                 ->with('wallet_blocked', $walletStatus)
                 ->withInput();
+        }
+
+        if ($pendingApproval) {
+            return redirect()->route($this->createRouteName(), ['student_id' => $student->id])
+                ->with('success', "Fee item submitted for admin approval (above your collection limit). It will be recorded once approved — nothing has been charged yet.");
         }
 
         // Save remaining_due AFTER transaction commits so buildPendingRows reads accurate state
@@ -1372,6 +1399,9 @@ class FeeCollectionController extends Controller
         $this->ensureAccessibleInvoice($invoice);
         if ($invoice->is_cancelled) {
             return back()->with('error', 'Invoice already cancelled.');
+        }
+        if ($invoice->isPendingApproval()) {
+            return back()->with('error', 'This invoice is awaiting approval — use the approval queue to approve or reject it instead.');
         }
 
         $request->validate(['cancel_reason' => 'required|string|max:255']);

@@ -14,7 +14,7 @@ class StaffMember extends Authenticatable
         'staff_category', 'payroll_type', 'daily_wage', 'monthly_salary',
         'salary_expense_head_id', 'leave_policy_group', 'bank_account_number',
         'bank_account_holder', 'bank_name', 'bank_ifsc',
-        'max_discount_percent',
+        'max_discount_percent', 'max_custom_fee_amount',
         'restrict_course_access', 'restrict_fee_collection_types',
         'allowed_admission_forms',
         'doc_full_form_upload', 'doc_quick_form_upload',
@@ -33,6 +33,7 @@ class StaffMember extends Authenticatable
         'monthly_salary' => 'decimal:2',
         'status' => 'boolean',
         'max_discount_percent' => 'integer',
+        'max_custom_fee_amount' => 'decimal:2',
         'restrict_course_access' => 'boolean',
         'restrict_fee_collection_types' => 'boolean',
         'restrict_session_access' => 'boolean',
@@ -148,6 +149,11 @@ class StaffMember extends Authenticatable
     public function canCancelFee(): bool
     {
         return $this->hasPermission('fee_cancel');
+    }
+
+    public function canApproveFee(): bool
+    {
+        return $this->hasPermission('fee_approve');
     }
 
     public function canManagePracticalTokens(): bool

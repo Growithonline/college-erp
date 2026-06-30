@@ -27,6 +27,7 @@ use App\Http\Controllers\Institute\Admission\StudentBulkImportController;
 use App\Http\Controllers\Institute\Admission\StudentPromoteController;
 use App\Http\Controllers\Institute\Admission\PromotionController;
 use App\Http\Controllers\Institute\Fee\FeeCollectionController;
+use App\Http\Controllers\Institute\Fee\FeeApprovalController;
 use App\Http\Controllers\Institute\Fee\PracticalFeeTokenController;
 use App\Http\Controllers\Institute\Fee\WalletController;
 use App\Http\Controllers\Institute\Fee\FeeWalletController;
@@ -1000,6 +1001,9 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('fee/{student}/history',           [StaffFeeController::class, 'studentHistory'])->name('fee.student-history');
         Route::get('fee/{student}/wallet',            [StaffFeeController::class, 'studentWallet'])->name('fee.wallet.student');
         Route::post('fee/{student}/invoice/{invoice}/cancel', [StaffFeeController::class, 'cancel'])->name('fee.cancel');
+        Route::get('fee/approvals',                    [FeeApprovalController::class, 'index'])->name('fee.approvals.index');
+        Route::post('fee/approvals/{invoice}/approve',  [FeeApprovalController::class, 'approve'])->name('fee.approvals.approve');
+        Route::post('fee/approvals/{invoice}/reject',   [FeeApprovalController::class, 'reject'])->name('fee.approvals.reject');
         Route::get('fee/practical-tokens', [PracticalFeeTokenController::class, 'index'])->name('fee.practical-tokens.index');
         Route::get('fee/practical-tokens/create', [PracticalFeeTokenController::class, 'create'])->name('fee.practical-tokens.create');
         Route::post('fee/practical-tokens', [PracticalFeeTokenController::class, 'store'])->name('fee.practical-tokens.store');

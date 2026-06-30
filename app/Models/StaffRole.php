@@ -24,6 +24,7 @@ class StaffRole extends Model
             'fee_collect' => 'Collect Fee',
             'fee_view' => 'View Fee',
             'fee_cancel' => 'Cancel Fee Receipt',
+            'fee_approve' => 'Approve Pending Fee Collections',
             'fee_wallet_view' => 'View Fee Wallet',
             'fee_practical_tokens' => 'Manage Practical Fee Tokens',
             'fee_reports' => 'Fee Reports',

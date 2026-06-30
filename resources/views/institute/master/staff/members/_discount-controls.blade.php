@@ -23,6 +23,27 @@
         </div>
     </div>
 
+    <div class="row g-2 align-items-center mb-1">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">Max Custom Fee Amount (₹)</label>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text">₹</span>
+                <input type="number" name="max_custom_fee_amount" min="0" step="0.01"
+                       value="{{ old('max_custom_fee_amount', $staffMember->max_custom_fee_amount ?? '') }}"
+                       class="form-control @error('max_custom_fee_amount') is-invalid @enderror"
+                       placeholder="Blank = no limit">
+            </div>
+            @error('max_custom_fee_amount')
+                <div class="text-danger small mt-1">{{ $message }}</div>
+            @enderror
+        </div>
+        <div class="col-md-8">
+            <small class="text-muted d-block mt-3">
+                Custom fee items above this amount are held for admin approval instead of being collected immediately. Blank = no limit.
+            </small>
+        </div>
+    </div>
+
     @if(isset($feeTypes) && $feeTypes->isNotEmpty())
     <style>
         .discount-tbl tbody tr:has(input[type=checkbox]:checked) {

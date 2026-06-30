@@ -7,8 +7,10 @@ use App\Models\ChequePayment;
 use App\Models\CoursePart;
 use App\Models\FeeInvoice;
 use App\Models\FeeInvoiceItem;
+use App\Models\FeeType;
 use App\Models\InstituteTransaction;
 use App\Models\InstituteWallet;
+use App\Models\PartnerCommissionEntry;
 use App\Models\PromotionLog;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
@@ -196,6 +198,74 @@ class WalletService
         }
 
         JournalService::safePostFineAssigned($invoice, $items);
+    }
+
+    /**
+     * Writes the actual financial effect of a fee collection: FeeInvoiceItem rows,
+     * custom/fine charges, the wallet+income credit, transport settlement, and partner
+     * commission. Shared by the immediate-collection path in FeeCollectionController::store()
+     * and FeeApprovalController::approve() (for invoices that were held for admin approval) —
+     * both must produce an identical result, so this is the single place that does it.
+     *
+     * Expects $invoice->total_amount/discount/paid_amount/invoice_no to already be set to
+     * their final values by the caller.
+     */
+    public static function settleApprovedInvoice(FeeInvoice $invoice, iterable $validItems): void
+    {
+        foreach ($validItems as $item) {
+            $feeType = !empty($item['fee_type_id'])
+                ? FeeType::find($item['fee_type_id'])
+                : null;
+
+            $fine = (float) ($item['fine'] ?? 0);
+
+            $assignedFee = (float) ($item['total_fee'] ?? 0);
+            if ($assignedFee <= 0) {
+                // fallback for custom fees where no assigned fee exists
+                $assignedFee = (float) ($item['amount'] ?? 0) + (float) ($item['discount'] ?? 0);
+            }
+
+            FeeInvoiceItem::create([
+                'fee_invoice_id' => $invoice->id,
+                'fee_type_id'    => $feeType?->id,
+                'subject_id'     => !empty($item['subject_id']) ? (int) $item['subject_id'] : null,
+                'item_type'      => $item['item_type'] ?: null,
+                'fee_name'       => $item['fee_name'] ?? ($feeType?->name ?? 'Fee'),
+                'amount'         => (float) ($item['amount'] ?? 0),
+                'discount'       => (float) ($item['discount'] ?? 0),
+                'fine'           => $fine,
+                'total_fee'      => $assignedFee,
+            ]);
+        }
+
+        self::chargeCustomFeeItems($invoice, $validItems);
+        self::chargeFineItems($invoice, $validItems);
+        self::onFeeCollection($invoice);
+
+        // Settle transport allocations collected via this invoice
+        foreach ($validItems as $tItem) {
+            if (($tItem['item_type'] ?? '') === 'transport' && !empty($tItem['transport_allocation_id'])) {
+                self::settleTransportFromInvoice(
+                    (int) $tItem['transport_allocation_id'],
+                    (float) ($tItem['amount'] ?? 0),
+                    $invoice->id,
+                    self::resolveActorId()
+                );
+            }
+        }
+
+        if ($partner = auth()->guard('partner')->user()) {
+            $pct = (float) $partner->commission_percent;
+            if ($pct > 0) {
+                PartnerCommissionEntry::create([
+                    'partner_id'         => $partner->id,
+                    'fee_invoice_id'     => $invoice->id,
+                    'paid_amount'        => (float) $invoice->paid_amount,
+                    'commission_percent' => $pct,
+                    'commission_amount'  => round((float) $invoice->paid_amount * $pct / 100, 2),
+                ]);
+            }
+        }
     }
 
     public static function onAdmission(Student $student): void

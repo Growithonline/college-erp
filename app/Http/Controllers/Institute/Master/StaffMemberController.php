@@ -164,6 +164,7 @@ class StaffMemberController extends Controller
             'bank_name' => 'nullable|string|max:100',
             'bank_ifsc' => 'nullable|string|max:20',
             'max_discount_percent' => 'nullable|integer|min:0|max:100',
+            'max_custom_fee_amount' => 'nullable|numeric|min:0',
             'allowed_admission_forms' => 'nullable|in:full,quick,both',
             'restrict_course_access' => 'nullable|boolean',
             'course_permissions' => ['nullable', 'array', function ($attribute, $value, $fail) {
@@ -250,6 +251,7 @@ class StaffMemberController extends Controller
                     'bank_name' => $request->bank_name,
                     'bank_ifsc' => $request->bank_ifsc,
                     'max_discount_percent' => (int) ($request->input('max_discount_percent') ?? 100),
+                    'max_custom_fee_amount' => $request->filled('max_custom_fee_amount') ? (float) $request->input('max_custom_fee_amount') : null,
                     'allowed_admission_forms' => $request->input('allowed_admission_forms', 'both'),
                     'restrict_course_access' => $request->boolean('restrict_course_access'),
                     'restrict_fee_collection_types' => $request->boolean('restrict_fee_collection_types'),
@@ -381,6 +383,7 @@ class StaffMemberController extends Controller
             'bank_name' => 'nullable|string|max:100',
             'bank_ifsc' => 'nullable|string|max:20',
             'max_discount_percent' => 'nullable|integer|min:0|max:100',
+            'max_custom_fee_amount' => 'nullable|numeric|min:0',
             'allowed_admission_forms' => 'nullable|in:full,quick,both',
             'restrict_course_access' => 'nullable|boolean',
             'course_permissions' => ['nullable', 'array', function ($attribute, $value, $fail) {
@@ -462,6 +465,7 @@ class StaffMemberController extends Controller
                     'bank_name' => $request->bank_name,
                     'bank_ifsc' => $request->bank_ifsc,
                     'max_discount_percent' => (int) ($request->input('max_discount_percent') ?? 100),
+                    'max_custom_fee_amount' => $request->filled('max_custom_fee_amount') ? (float) $request->input('max_custom_fee_amount') : null,
                     'allowed_admission_forms' => $request->input('allowed_admission_forms', 'both'),
                     'restrict_course_access' => $request->boolean('restrict_course_access'),
                     'restrict_fee_collection_types' => $request->boolean('restrict_fee_collection_types'),
