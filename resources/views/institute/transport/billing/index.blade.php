@@ -230,8 +230,8 @@
                                 onclick="openCollectModal(
                                     {{ $a->id }},
                                     '{{ addslashes($a->student?->name ?? '') }}',
-                                    '{{ $a->student?->roll_no ?? '' }}',
-                                    '{{ $a->route?->name ?? '' }}',
+                                    '{{ addslashes($a->student?->roll_no ?? '') }}',
+                                    '{{ addslashes($a->route?->name ?? '') }}',
                                     {{ $fee }},
                                     {{ $paid }},
                                     {{ $balance }},

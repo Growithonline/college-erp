@@ -205,9 +205,21 @@ class TransportAllocationController extends TransportBaseController
         abort_if((float) $data['amount'] > max(0, (float) $allocation->balance), 422, 'Amount exceeds pending balance.');
 
         $allocation->loadMissing(['student', 'route']);
-        $amount = round((float) $data['amount'], 2);
+        $requestedAmount = round((float) $data['amount'], 2);
 
-        DB::transaction(function () use ($allocation, $data, $amount) {
+        $invoice = null;
+        $amount  = 0.0;
+        DB::transaction(function () use ($allocation, $data, $requestedAmount, &$invoice, &$amount) {
+            // Lock the allocation row and re-derive the balance fresh — guards against a
+            // double-submit / concurrent-collect race. Without this, the wallet could be
+            // credited for an amount that no longer has any balance left to settle.
+            $locked = TransportAllocation::where('id', $allocation->id)->lockForUpdate()->first();
+            $liveBalance = round((float) $locked->balance, 2);
+            $amount = min($requestedAmount, max(0, $liveBalance));
+            if ($amount <= 0) {
+                return;
+            }
+
             $instituteId = $allocation->institute_id;
             $studentId   = $allocation->student_id;
             $sessionId   = $allocation->academic_session_id;
@@ -256,6 +268,10 @@ class TransportAllocationController extends TransportBaseController
             // Settle transport allocation — creates TransportPayment + updates paid_amount/status
             WalletService::settleTransportFromInvoice($allocation->id, $amount, $invoice->id, auth()->id());
         });
+
+        if (!$invoice) {
+            return back()->with('success', 'Fee already fully collected.');
+        }
 
         return back()->with('success', 'Transport payment recorded successfully.');
     }

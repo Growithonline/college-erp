@@ -243,13 +243,25 @@ class TransportMonthlyBillingController extends TransportBaseController
             'amount.max' => "Amount cannot exceed balance ₹{$balance}.",
         ]);
 
-        $amount = round((float) $data['amount'], 2);
+        $requestedAmount = round((float) $data['amount'], 2);
 
         // Load relations needed inside transaction
         $allocation->loadMissing(['student', 'route']);
 
         $invoice = null;
-        DB::transaction(function () use ($allocation, $amount, &$invoice) {
+        $amount  = 0.0;
+        DB::transaction(function () use ($allocation, $requestedAmount, &$invoice, &$amount) {
+            // Lock the allocation row and re-derive the balance fresh — guards against a
+            // double-submit / concurrent-collect race where the balance the staff saw is
+            // stale by the time this transaction actually runs. Without this, the wallet
+            // could be credited for an amount that no longer has any balance to settle.
+            $locked = TransportAllocation::where('id', $allocation->id)->lockForUpdate()->first();
+            $liveBalance = round((float) $locked->fee_amount - (float) $locked->paid_amount, 2);
+            $amount = min($requestedAmount, max(0, $liveBalance));
+            if ($amount <= 0) {
+                return;
+            }
+
             $instituteId = $allocation->institute_id;
             $studentId   = $allocation->student_id;
             $sessionId   = $allocation->academic_session_id;
@@ -297,6 +309,10 @@ class TransportMonthlyBillingController extends TransportBaseController
             // 4. Settle transport allocation — creates TransportPayment + updates paid_amount/status
             WalletService::settleTransportFromInvoice($allocation->id, $amount, $invoice->id, auth()->id());
         });
+
+        if (!$invoice) {
+            return back()->with('success', 'Fee already fully collected.');
+        }
 
         $allocation->refresh();
         $newBalance  = round((float) $allocation->fee_amount - (float) $allocation->paid_amount, 2);
