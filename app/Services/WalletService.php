@@ -477,70 +477,6 @@ class WalletService
         });
     }
 
-    public static function collectTransportPayment(TransportPayment $payment): void
-    {
-        DB::transaction(function () use ($payment) {
-            $payment->loadMissing(['allocation.route', 'allocation.stop', 'student']);
-
-            $allocation = $payment->allocation;
-            if (!$allocation) {
-                return;
-            }
-
-            $amount = round((float) $payment->amount, 2);
-            if ($amount <= 0) {
-                return;
-            }
-
-            $wallet = StudentWallet::firstOrCreate(
-                [
-                    'student_id' => $payment->student_id,
-                    'academic_session_id' => $payment->academic_session_id,
-                ],
-                [
-                    'institute_id' => $payment->institute_id,
-                    'main_b' => 0.00,
-                ]
-            );
-
-            $wallet = StudentWallet::where('student_id', $payment->student_id)
-                ->where('academic_session_id', $payment->academic_session_id)
-                ->lockForUpdate()
-                ->first() ?: $wallet;
-
-            $opBal = (float) $wallet->main_b;
-            $clBal = round($opBal + $amount, 2);
-
-            $transaction = self::createStudentTransaction([
-                'student_id'          => $payment->student_id,
-                'institute_id'        => $payment->institute_id,
-                'academic_session_id' => $payment->academic_session_id,
-                'des'                 => sprintf(
-                    'Transport fee payment - %s%s',
-                    $allocation->route?->name ?? 'Route',
-                    $allocation->stop ? ' / ' . $allocation->stop->stop_name : ''
-                ),
-                'credit'              => $amount,
-                'debit'               => 0.00,
-                'type'                => StudentTransaction::CREDIT,
-                'date'                => $payment->payment_date,
-                'op_bal'              => $opBal,
-                'cl_bal'              => $clBal,
-                'transport_allocation_id' => $allocation->id,
-                'transport_payment_id'    => $payment->id,
-                'by_user_id'          => $payment->by_user_id ?: self::resolveActorId(),
-            ]);
-
-            $wallet->main_b = $clBal;
-            $wallet->save();
-
-            $payment->student_transaction_id = $transaction->id;
-            $payment->save();
-
-            self::updateTransportAllocationBalance($allocation, $amount);
-        });
-    }
-
     public static function settleTransportFromInvoice(
         int $allocationId,
         float $amount,
@@ -558,14 +494,20 @@ class WalletService
                 return;
             }
 
+            // Use the invoice's actual payment mode/date so transport collection reports
+            // (cash/upi/cheque/online breakdown) reflect what staff actually selected,
+            // not a generic "invoice" bucket.
+            $invoice = FeeInvoice::find($invoiceId);
+
             TransportPayment::create([
                 'transport_allocation_id' => $allocation->id,
                 'student_id'              => $allocation->student_id,
                 'institute_id'            => $allocation->institute_id,
                 'academic_session_id'     => $allocation->academic_session_id,
                 'amount'                  => $amount,
-                'payment_date'            => now()->toDateString(),
-                'payment_mode'            => 'invoice',
+                'payment_date'            => $invoice?->payment_date ?? now()->toDateString(),
+                'payment_mode'            => $invoice?->payment_mode ?? 'invoice',
+                'reference_no'            => $invoice?->transaction_ref,
                 'note'                    => 'Collected via fee invoice #' . $invoiceId,
                 'fee_invoice_id'          => $invoiceId,
                 'by_user_id'              => $actorId ?? self::resolveActorId(),

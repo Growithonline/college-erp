@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Institute\Transport;
 
 use App\Models\AcademicSession;
+use App\Models\FeeInvoice;
+use App\Models\FeeInvoiceItem;
 use App\Models\InstituteTransportSetting;
 use App\Models\Student;
 use App\Models\TransportAllocation;
 use App\Models\TransportDriver;
-use App\Models\TransportPayment;
 use App\Models\TransportRoute;
 use App\Models\TransportRouteStop;
 use App\Models\TransportVehicle;
+use App\Services\StudentIdService;
 use App\Services\WalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -202,21 +204,57 @@ class TransportAllocationController extends TransportBaseController
 
         abort_if((float) $data['amount'] > max(0, (float) $allocation->balance), 422, 'Amount exceeds pending balance.');
 
-        DB::transaction(function () use ($allocation, $data) {
-            $payment = TransportPayment::create([
-                'transport_allocation_id' => $allocation->id,
-                'student_id' => $allocation->student_id,
-                'institute_id' => $allocation->institute_id,
-                'academic_session_id' => $allocation->academic_session_id,
-                'amount' => $data['amount'],
-                'payment_date' => $data['payment_date'],
-                'payment_mode' => $data['payment_mode'],
-                'reference_no' => $data['reference_no'] ?? null,
-                'note' => $data['note'] ?? null,
-                'by_user_id' => auth()->id(),
+        $allocation->loadMissing(['student', 'route']);
+        $amount = round((float) $data['amount'], 2);
+
+        DB::transaction(function () use ($allocation, $data, $amount) {
+            $instituteId = $allocation->institute_id;
+            $studentId   = $allocation->student_id;
+            $sessionId   = $allocation->academic_session_id;
+            $routeName   = $allocation->route?->name ?? '';
+
+            // Same pattern as the Fee Collection page and Transport Billing's one-time
+            // collect: create a FeeInvoice so this payment shows up in Admin Income,
+            // All Collections, Fee History, and (for cheque payments) the cheque
+            // clearance tracker — not just the wallet ledger.
+            $invoiceNo = StudentIdService::generateInvoiceId($instituteId, now()->year);
+
+            $invoice = FeeInvoice::create([
+                'institute_id'          => $instituteId,
+                'student_id'            => $studentId,
+                'academic_session_id'   => $sessionId,
+                'semester'              => $allocation->student?->current_semester ?? 1,
+                'invoice_no'            => $invoiceNo,
+                'total_amount'          => $amount,
+                'discount'              => 0,
+                'paid_amount'           => $amount,
+                'payment_mode'          => $data['payment_mode'],
+                'transaction_ref'       => $data['reference_no'] ?? null,
+                'payment_date'          => $data['payment_date'],
+                'payment_datetime'      => now(),
+                'remarks'               => $data['note'] ?? ('Transport fee — ' . $routeName),
+                'collected_by'          => auth()->guard('staff')->user()?->name ?? auth()->user()?->name ?? 'Staff',
+                'collected_by_staff_id' => auth()->guard('staff')->id(),
+                'is_cancelled'          => false,
+                'remaining_due'         => 0,
             ]);
 
-            WalletService::collectTransportPayment($payment);
+            FeeInvoiceItem::create([
+                'fee_invoice_id' => $invoice->id,
+                'item_type'      => 'transport',
+                'fee_name'       => 'Transport Fee — ' . $routeName,
+                'amount'         => $amount,
+                'discount'       => 0,
+                'fine'           => 0,
+                'total_fee'      => $amount,
+            ]);
+
+            // Wallet CREDIT + institute income + journal posting + cheque tracking —
+            // identical path the Fee Collection page uses.
+            WalletService::onFeeCollection($invoice);
+
+            // Settle transport allocation — creates TransportPayment + updates paid_amount/status
+            WalletService::settleTransportFromInvoice($allocation->id, $amount, $invoice->id, auth()->id());
         });
 
         return back()->with('success', 'Transport payment recorded successfully.');

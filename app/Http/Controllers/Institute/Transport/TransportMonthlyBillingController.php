@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Institute\Transport;
 
 use App\Models\AcademicSession;
+use App\Models\FeeInvoice;
+use App\Models\FeeInvoiceItem;
 use App\Models\InstituteTransportSetting;
 use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
 use App\Models\TransportAllocation;
 use App\Models\TransportMonthlyCharge;
+use App\Services\StudentIdService;
+use App\Services\WalletService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -219,54 +223,122 @@ class TransportMonthlyBillingController extends TransportBaseController
         return back()->with('success', $msg);
     }
 
-    public function collectOneTime(TransportAllocation $allocation)
+    public function collectOneTime(Request $request, TransportAllocation $allocation)
     {
         $this->assertInstituteModel($allocation);
 
         if ($allocation->route?->billing_frequency !== 'one_time') {
-            return back()->withErrors(['error' => 'Only one-time allocations can use this action.']);
+            return back()->with('error', 'Only one-time allocations can use this action.');
         }
 
         $balance = round((float) $allocation->fee_amount - (float) $allocation->paid_amount, 2);
 
         if ($balance <= 0) {
-            return back()->with('success', 'Fee already fully collected for this student.');
+            return back()->with('success', 'Fee already fully collected.');
         }
 
-        DB::transaction(function () use ($allocation, $balance) {
-            $wallet = StudentWallet::firstOrCreate(
-                ['student_id' => $allocation->student_id, 'academic_session_id' => $allocation->academic_session_id],
-                ['institute_id' => $allocation->institute_id, 'main_b' => 0.00]
-            );
-            $wallet = StudentWallet::where('id', $wallet->id)->lockForUpdate()->first();
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:' . $balance],
+        ], [
+            'amount.max' => "Amount cannot exceed balance ₹{$balance}.",
+        ]);
 
-            $opBal = (float) $wallet->main_b;
-            $clBal = round($opBal - $balance, 2);
+        $amount = round((float) $data['amount'], 2);
 
-            StudentTransaction::create([
-                'student_id'              => $allocation->student_id,
-                'institute_id'            => $allocation->institute_id,
-                'academic_session_id'     => $allocation->academic_session_id,
-                'des'                     => 'Transport one-time charge — ' . ($allocation->route?->name ?? ''),
-                'credit'                  => 0.00,
-                'debit'                   => $balance,
-                'type'                    => StudentTransaction::DEBIT,
-                'date'                    => now()->toDateString(),
-                'op_bal'                  => $opBal,
-                'cl_bal'                  => $clBal,
-                'transport_allocation_id' => $allocation->id,
+        // Load relations needed inside transaction
+        $allocation->loadMissing(['student', 'route']);
+
+        $invoice = null;
+        DB::transaction(function () use ($allocation, $amount, &$invoice) {
+            $instituteId = $allocation->institute_id;
+            $studentId   = $allocation->student_id;
+            $sessionId   = $allocation->academic_session_id;
+            $routeName   = $allocation->route?->name ?? '';
+
+            // 1. Create FeeInvoice — same record shape the Fee Collection page creates,
+            // so it shows up identically in Fee Collection / Admin Income / All Collections.
+            $invoiceNo = StudentIdService::generateInvoiceId($instituteId, now()->year);
+
+            $invoice = FeeInvoice::create([
+                'institute_id'          => $instituteId,
+                'student_id'            => $studentId,
+                'academic_session_id'   => $sessionId,
+                'semester'              => $allocation->student?->current_semester ?? 1,
+                'invoice_no'            => $invoiceNo,
+                'total_amount'          => $amount,
+                'discount'              => 0,
+                'paid_amount'           => $amount,
+                'payment_mode'          => 'wallet',
+                'payment_date'          => now()->toDateString(),
+                'payment_datetime'      => now(),
+                'remarks'               => 'Transport fee (one-time) — ' . $routeName,
+                'collected_by'          => auth()->guard('staff')->user()?->name ?? auth()->user()?->name ?? 'Staff',
+                'collected_by_staff_id' => auth()->guard('staff')->id(),
+                'is_cancelled'          => false,
+                'remaining_due'         => 0,
             ]);
 
-            $wallet->main_b = $clBal;
-            $wallet->save();
+            // 2. Create FeeInvoiceItem (item_type = transport)
+            FeeInvoiceItem::create([
+                'fee_invoice_id' => $invoice->id,
+                'item_type'      => 'transport',
+                'fee_name'       => 'Transport Fee — ' . $routeName,
+                'amount'         => $amount,
+                'discount'       => 0,
+                'fine'           => 0,
+                'total_fee'      => $amount,
+            ]);
 
-            $allocation->charged_amount = (float) $allocation->fee_amount;
-            $allocation->paid_amount    = round((float) $allocation->paid_amount + $balance, 2);
-            $this->updateAllocationStatus($allocation);
-            $allocation->save();
+            // 3. Wallet CREDIT + institute income + journal posting — the exact same path
+            // the Fee Collection page uses. The wallet was already DEBITed once (the charge)
+            // at allocation/billing time, so this collection must CREDIT it back, never debit again.
+            WalletService::onFeeCollection($invoice);
+
+            // 4. Settle transport allocation — creates TransportPayment + updates paid_amount/status
+            WalletService::settleTransportFromInvoice($allocation->id, $amount, $invoice->id, auth()->id());
         });
 
-        return back()->with('success', 'Transport fee collected for ' . ($allocation->student?->name ?? 'student') . '.');
+        $allocation->refresh();
+        $newBalance  = round((float) $allocation->fee_amount - (float) $allocation->paid_amount, 2);
+        $studentName = $allocation->student?->name ?? 'Student';
+
+        // The CREDIT transaction was created inside onFeeCollection() — look it up for the receipt link.
+        $txnId = StudentTransaction::where('fee_invoice_id', $invoice->id)
+            ->where('type', StudentTransaction::CREDIT)
+            ->latest('id')
+            ->value('id');
+
+        $msg = $newBalance <= 0
+            ? "₹" . number_format($amount, 2) . " collected from {$studentName}. Fee fully paid."
+            : "₹" . number_format($amount, 2) . " collected from {$studentName}. Balance ₹" . number_format(max(0, $newBalance), 2) . " remaining.";
+
+        return back()->with('success', $msg)->with('receipt_txn_id', $txnId);
+    }
+
+    public function receipt(StudentTransaction $transaction)
+    {
+        $this->assertInstituteModel($transaction);
+
+        $transaction->load([
+            'student',
+            'session',
+            'invoice',
+            'transportAllocation.route',
+            'transportAllocation.stop',
+            'transportAllocation.vehicle',
+            'transportAllocation.driver',
+        ]);
+
+        // The CREDIT transaction created by WalletService::onFeeCollection() only carries
+        // fee_invoice_id (not transport_allocation_id), so resolve the allocation via the
+        // TransportPayment row that settleTransportFromInvoice() created for this invoice.
+        $allocation = $transaction->transportAllocation
+            ?? \App\Models\TransportPayment::with(['allocation.route', 'allocation.stop', 'allocation.vehicle', 'allocation.driver'])
+                ->where('fee_invoice_id', $transaction->fee_invoice_id)
+                ->latest('id')
+                ->first()?->allocation;
+
+        return view('institute.transport.billing.receipt', compact('transaction', 'allocation'));
     }
 
     // Returns [start, end] of the calendar quarter containing $chargeMonth

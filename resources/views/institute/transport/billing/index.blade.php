@@ -11,10 +11,18 @@
 </div>
 
 @if(session('success'))
-    <div class="alert alert-success border-0 shadow-sm">{{ session('success') }}</div>
+    <div class="alert alert-success border-0 shadow-sm d-flex align-items-center justify-content-between gap-3 flex-wrap">
+        <span><i class="bi bi-check-circle me-2"></i>{{ session('success') }}</span>
+        @if(session('receipt_txn_id'))
+            <a href="{{ route('transport.billing.receipt', session('receipt_txn_id')) }}" target="_blank"
+               class="btn btn-sm btn-success px-3 flex-shrink-0">
+                <i class="bi bi-printer me-1"></i> Print Receipt
+            </a>
+        @endif
+    </div>
 @endif
 @if($errors->any())
-    <div class="alert alert-danger">{{ $errors->first() }}</div>
+    <div class="alert alert-danger border-0 shadow-sm">{{ $errors->first() }}</div>
 @endif
 
 {{-- Filter + Generate --}}
@@ -168,20 +176,20 @@
                 <span class="badge bg-success ms-1">All collected</span>
             @endif
         </span>
-        <small class="text-muted" style="font-size:12px;">One-time fees are collected individually from student wallet</small>
+        <small class="text-muted" style="font-size:12px;">Fee collected directly from student wallet — partial payment allowed</small>
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" style="font-size:14px;">
             <thead class="table-light">
                 <tr>
-                    <th>#</th>
+                    <th class="ps-3">#</th>
                     <th>Student</th>
                     <th>Route</th>
                     <th class="text-end">Fee</th>
                     <th class="text-end">Paid</th>
                     <th class="text-end">Balance</th>
                     <th class="text-center">Status</th>
-                    <th class="text-center">Action</th>
+                    <th class="text-center pe-3">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -192,40 +200,47 @@
                     $balance = round($fee - $paid, 2);
                 @endphp
                 <tr>
-                    <td class="text-muted">{{ $i + 1 }}</td>
+                    <td class="ps-3 text-muted">{{ $i + 1 }}</td>
                     <td>
                         <div class="fw-semibold">{{ $a->student?->name ?? '—' }}</div>
-                        <small class="text-muted">{{ $a->student?->roll_no ?? '' }}</small>
+                        @if($a->student?->roll_no)
+                            <small class="text-muted">{{ $a->student->roll_no }}</small>
+                        @endif
                     </td>
                     <td>{{ $a->route?->name ?? '—' }}</td>
                     <td class="text-end">₹{{ number_format($fee, 2) }}</td>
-                    <td class="text-end {{ $paid > 0 ? 'text-success' : 'text-muted' }}">
+                    <td class="text-end {{ $paid > 0 ? 'text-success fw-medium' : 'text-muted' }}">
                         ₹{{ number_format($paid, 2) }}
                     </td>
-                    <td class="text-end {{ $balance > 0 ? 'text-danger fw-semibold' : 'text-success' }}">
+                    <td class="text-end {{ $balance > 0 ? 'text-danger fw-semibold' : 'text-success fw-medium' }}">
                         ₹{{ number_format($balance, 2) }}
                     </td>
                     <td class="text-center">
                         @if($a->status === 'paid')
-                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Paid</span>
+                            <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Paid</span>
                         @elseif($a->status === 'partial')
-                            <span class="badge bg-warning text-dark"><i class="bi bi-half me-1"></i>Partial</span>
+                            <span class="badge text-bg-warning"><i class="bi bi-circle-half me-1"></i>Partial</span>
                         @else
-                            <span class="badge bg-danger"><i class="bi bi-clock me-1"></i>Pending</span>
+                            <span class="badge text-bg-danger"><i class="bi bi-clock me-1"></i>Pending</span>
                         @endif
                     </td>
-                    <td class="text-center">
+                    <td class="text-center pe-3">
                         @if($balance > 0)
-                            <form method="POST"
-                                action="{{ route('transport.billing.collect-one-time', $a) }}"
-                                onsubmit="return confirm('Collect ₹{{ number_format($balance, 2) }} from {{ addslashes($a->student?->name ?? '') }} wallet?')">
-                                @csrf
-                                <button class="btn btn-sm btn-primary px-3">
-                                    <i class="bi bi-wallet2 me-1"></i>Collect
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-primary px-3"
+                                onclick="openCollectModal(
+                                    {{ $a->id }},
+                                    '{{ addslashes($a->student?->name ?? '') }}',
+                                    '{{ $a->student?->roll_no ?? '' }}',
+                                    '{{ $a->route?->name ?? '' }}',
+                                    {{ $fee }},
+                                    {{ $paid }},
+                                    {{ $balance }},
+                                    '{{ route('transport.billing.collect-one-time', $a) }}'
+                                )">
+                                <i class="bi bi-wallet2 me-1"></i>Collect
+                            </button>
                         @else
-                            <span class="text-success"><i class="bi bi-check-lg"></i> Done</span>
+                            <span class="text-success fw-medium" style="font-size:13px;"><i class="bi bi-check-circle me-1"></i>Done</span>
                         @endif
                     </td>
                 </tr>
@@ -236,4 +251,103 @@
 </div>
 @endif
 
+{{-- ── Collect Modal ── --}}
+<div class="modal fade" id="collectModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <form method="POST" id="collectForm">
+                @csrf
+                <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2 text-primary"></i>Collect Transport Fee</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    {{-- Student info --}}
+                    <div class="bg-light rounded p-3 mb-3" style="font-size:13px;">
+                        <div class="fw-semibold text-dark" id="cm-student"></div>
+                        <div class="text-muted" id="cm-route"></div>
+                        <div class="mt-2 d-flex justify-content-between">
+                            <span class="text-muted">Total Fee</span>
+                            <span class="fw-medium" id="cm-fee"></span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Already Paid</span>
+                            <span class="text-success fw-medium" id="cm-paid"></span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold">Balance Due</span>
+                            <span class="fw-bold text-danger" id="cm-balance"></span>
+                        </div>
+                    </div>
+
+                    {{-- Amount input --}}
+                    <label class="form-label fw-medium" style="font-size:13px;">Amount to Collect <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input type="number" step="0.01" min="1" class="form-control" name="amount" id="cm-amount"
+                            placeholder="Enter amount" required>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1" id="cm-partial-btn">
+                            Partial
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm flex-grow-1" id="cm-full-btn">
+                            Full Amount
+                        </button>
+                    </div>
+                    <div class="form-text mt-1"><i class="bi bi-info-circle me-1"></i>Amount will be deducted from student wallet.</div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2 me-1"></i>Collect</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+var _collectBalance = 0;
+
+function openCollectModal(id, name, roll, route, fee, paid, balance, actionUrl) {
+    _collectBalance = balance;
+
+    document.getElementById('cm-student').textContent = name + (roll ? ' (' + roll + ')' : '');
+    document.getElementById('cm-route').textContent   = route;
+    document.getElementById('cm-fee').textContent     = '₹' + fee.toFixed(2);
+    document.getElementById('cm-paid').textContent    = '₹' + paid.toFixed(2);
+    document.getElementById('cm-balance').textContent = '₹' + balance.toFixed(2);
+    document.getElementById('cm-amount').value        = balance.toFixed(2);
+    document.getElementById('cm-amount').max          = balance;
+    document.getElementById('collectForm').action     = actionUrl;
+
+    new bootstrap.Modal(document.getElementById('collectModal')).show();
+    setTimeout(() => document.getElementById('cm-amount').select(), 400);
+}
+
+document.getElementById('cm-full-btn')?.addEventListener('click', function () {
+    document.getElementById('cm-amount').value = _collectBalance.toFixed(2);
+});
+document.getElementById('cm-partial-btn')?.addEventListener('click', function () {
+    document.getElementById('cm-amount').value = '';
+    document.getElementById('cm-amount').focus();
+});
+
+document.getElementById('collectForm')?.addEventListener('submit', function (e) {
+    const amt = parseFloat(document.getElementById('cm-amount').value);
+    if (!amt || amt <= 0) {
+        e.preventDefault();
+        document.getElementById('cm-amount').classList.add('is-invalid');
+        return;
+    }
+    if (amt > _collectBalance + 0.001) {
+        e.preventDefault();
+        document.getElementById('cm-amount').classList.add('is-invalid');
+        showToast('Amount cannot exceed balance ₹' + _collectBalance.toFixed(2), 'danger');
+        return;
+    }
+    document.getElementById('cm-amount').classList.remove('is-invalid');
+});
+</script>
 @endsection
