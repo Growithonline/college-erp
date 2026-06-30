@@ -6,6 +6,7 @@
     $streamSubjectsUrl = route($admissionRoutePrefix . '.stream-subjects');
     $streamSeatsUrl = route($admissionRoutePrefix . '.stream-seats');
     $transportStopsUrl = route('transport.routes.stops', ['route' => '__ROUTE__']);
+    $transportRouteAssignUrl = route('transport.route-assignments.for-route');
     // When staff has access to exactly 1 session (not the active one), use that session as default
     $defaultSession = (isset($admissibleSessions) && $admissibleSessions->count() === 1)
         ? $admissibleSessions->first()
@@ -378,7 +379,7 @@
                     <select name="transport_route_id" id="transportRouteSelect" class="form-select form-select-sm" {{ $transportSelected ? 'required' : '' }}>
                         <option value="">Select Route</option>
                         @foreach($transportRoutes as $route)
-                            <option value="{{ $route->id }}" {{ (string) old('transport_route_id', $pd['transport_route_id'] ?? '') === (string) $route->id ? 'selected' : '' }}>
+                            <option value="{{ $route->id }}" data-fee="{{ $route->fee_amount }}" {{ (string) old('transport_route_id', $pd['transport_route_id'] ?? '') === (string) $route->id ? 'selected' : '' }}>
                                 {{ $route->name }} (₹{{ number_format((float) $route->fee_amount, 2) }})
                             </option>
                         @endforeach
@@ -389,7 +390,7 @@
                     <select name="transport_route_stop_id" id="transportStopSelect" class="form-select form-select-sm">
                         <option value="">Select Stop</option>
                         @foreach($transportStops as $stop)
-                            <option value="{{ $stop->id }}" {{ (string) old('transport_route_stop_id', $pd['transport_route_stop_id'] ?? '') === (string) $stop->id ? 'selected' : '' }}>
+                            <option value="{{ $stop->id }}" data-fee="{{ $stop->fee_amount }}" {{ (string) old('transport_route_stop_id', $pd['transport_route_stop_id'] ?? '') === (string) $stop->id ? 'selected' : '' }}>
                                 {{ $stop->route->name ?? 'Route' }} - {{ $stop->stop_name }}
                             </option>
                         @endforeach
@@ -397,7 +398,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Vehicle</label>
-                    <select name="transport_vehicle_id" class="form-select form-select-sm">
+                    <select name="transport_vehicle_id" id="transportVehicleSelect" class="form-select form-select-sm">
                         <option value="">Auto / Optional</option>
                         @foreach($transportVehicles as $vehicle)
                             <option value="{{ $vehicle->id }}" {{ (string) old('transport_vehicle_id', $pd['transport_vehicle_id'] ?? '') === (string) $vehicle->id ? 'selected' : '' }}>
@@ -408,7 +409,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Driver</label>
-                    <select name="transport_driver_id" class="form-select form-select-sm">
+                    <select name="transport_driver_id" id="transportDriverSelect" class="form-select form-select-sm">
                         <option value="">Auto / Optional</option>
                         @foreach($transportDrivers as $driver)
                             <option value="{{ $driver->id }}" {{ (string) old('transport_driver_id', $pd['transport_driver_id'] ?? '') === (string) $driver->id ? 'selected' : '' }}>
@@ -419,7 +420,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Transport Fee</label>
-                    <input type="number" step="0.01" min="0" name="transport_fee_amount" class="form-control form-control-sm" value="{{ old('transport_fee_amount', $pd['transport_fee_amount'] ?? '') }}" placeholder="Auto from route">
+                    <input type="number" step="0.01" min="0" name="transport_fee_amount" id="transportFeeInput" class="form-control form-control-sm" value="{{ old('transport_fee_amount', $pd['transport_fee_amount'] ?? '') }}" placeholder="Auto from route">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Start Date</label>
@@ -1334,9 +1335,45 @@ function toggleTransportFields() {
 
 document.getElementById('transportUseToggle')?.addEventListener('change', toggleTransportFields);
 document.getElementById('transportRouteSelect')?.addEventListener('change', function () {
-    loadTransportStops(this.value, document.getElementById('transportStopSelect')?.value || '');
+    applyTransportFeeFromOption(this);
+    loadTransportStops(this.value, '');
+    fetchTransportRouteAssignment(this.value);
+});
+document.getElementById('transportStopSelect')?.addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    const fee = parseFloat(opt?.dataset?.fee ?? 0);
+    if (fee > 0) applyTransportFeeValue(fee);
 });
 document.addEventListener('DOMContentLoaded', toggleTransportFields);
+
+function applyTransportFeeFromOption(routeSelect) {
+    const opt = routeSelect.options[routeSelect.selectedIndex];
+    const fee = parseFloat(opt?.dataset?.fee ?? 0);
+    if (fee > 0) applyTransportFeeValue(fee);
+}
+
+function applyTransportFeeValue(fee) {
+    const feeInput = document.getElementById('transportFeeInput');
+    if (feeInput) feeInput.value = fee.toFixed(2);
+}
+
+async function fetchTransportRouteAssignment(routeId) {
+    const vehicleSelect = document.getElementById('transportVehicleSelect');
+    const driverSelect = document.getElementById('transportDriverSelect');
+    if (!routeId || !vehicleSelect || !driverSelect) return;
+
+    try {
+        const sessionId = {{ (int) ($defaultSession->id ?? 0) }};
+        const url = `{{ $transportRouteAssignUrl }}?route_id=${routeId}&session_id=${sessionId}`;
+        const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await response.json();
+
+        if (data.vehicle_id) vehicleSelect.value = data.vehicle_id;
+        if (data.driver_id) driverSelect.value = data.driver_id;
+    } catch (error) {
+        // Auto-fill is a convenience — leave Vehicle/Driver as "Auto / Optional" on failure.
+    }
+}
 
 async function loadTransportStops(routeId, selectedStopId = '') {
     const stopSelect = document.getElementById('transportStopSelect');
@@ -1359,9 +1396,15 @@ async function loadTransportStops(routeId, selectedStopId = '') {
             .concat(stops.map((stop) => {
                 const label = stop.landmark ? `${stop.stop_name} - ${stop.landmark}` : stop.stop_name;
                 const selected = String(selectedStopId) === String(stop.id) ? ' selected' : '';
-                return `<option value="${stop.id}"${selected}>${label}</option>`;
+                return `<option value="${stop.id}" data-fee="${stop.fee_amount ?? 0}"${selected}>${label}</option>`;
             }))
             .join('');
+
+        if (selectedStopId) {
+            const opt = stopSelect.options[stopSelect.selectedIndex];
+            const fee = parseFloat(opt?.dataset?.fee ?? 0);
+            if (fee > 0) applyTransportFeeValue(fee);
+        }
     } catch (error) {
         stopSelect.innerHTML = '<option value="">Failed to load stops</option>';
     }

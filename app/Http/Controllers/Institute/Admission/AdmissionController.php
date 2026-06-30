@@ -2822,11 +2822,14 @@ class AdmissionController extends Controller
                 return response()->streamDownload(function () use ($exportStudents) {
                     $out = fopen('php://output', 'w');
                     fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
-                    fputcsv($out, ['#', 'Student ID', 'Name', 'Father Name', 'Mother Name', 'Mobile', 'Course', 'Stream', 'Session', 'Admission Date', 'Status', 'Admitted By', 'Approved By', 'Approved At']);
+                    fputcsv($out, ['#', 'Student ID', 'Name', 'Father Name', 'Mother Name', 'Mobile', 'Course', 'Stream', 'Session', 'Admission Date', 'Status', 'Admitted By', 'Source', 'Approved By', 'Approved At']);
                     foreach ($exportStudents as $i => $s) {
                         $admittedBy = $s->admittedBy?->name ? 'Staff: '.$s->admittedBy->name : 'Admin/Direct';
-                        if ($s->admission_source === 'center') $admittedBy = 'Center';
-                        elseif ($s->admission_source === 'channel_partner') $admittedBy = 'Channel Partner';
+                        $sourceLabel = match ($s->admission_source) {
+                            'center' => 'Center',
+                            'channel_partner' => 'Channel Partner',
+                            default => ucfirst($s->admission_source ?? 'direct'),
+                        };
                         fputcsv($out, [
                             $i + 1,
                             $s->student_uid ?? '',
@@ -2840,6 +2843,7 @@ class AdmissionController extends Controller
                             $s->admission_date?->format('d M Y') ?? '',
                             ucwords(str_replace('_', ' ', $s->status ?? 'pending')),
                             $admittedBy,
+                            $sourceLabel,
                             $s->approved_by_name ?? '',
                             $s->approved_at?->format('d M Y, h:i A') ?? '',
                         ]);

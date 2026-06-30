@@ -162,6 +162,7 @@
             <th style="width:55px;">Stream</th>
             <th style="width:50px;">Adm. Date</th>
             <th style="width:55px;">Admitted By</th>
+            <th style="width:50px;">Source</th>
             <th style="width:38px;">Status</th>
             <th style="width:60px;">Approved By</th>
             <th style="width:45px;">Appr. Date</th>
@@ -170,14 +171,16 @@
     <tbody>
         @forelse($exportStudents as $i => $student)
             @php
+                $admittedBy = $student->admittedBy?->name
+                    ? 'Staff: ' . $student->admittedBy->name
+                    : 'Admin/Direct';
+
                 if ($student->admission_source === 'center') {
-                    $admittedBy = 'Center: ' . (\App\Models\Center::find($student->admission_source_id)?->name ?? 'Center');
+                    $sourceLabel = 'Center: ' . (\App\Models\Center::find($student->admission_source_id)?->name ?? 'Center');
                 } elseif ($student->admission_source === 'channel_partner') {
-                    $admittedBy = 'Partner: ' . (\App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner');
-                } elseif ($student->admittedBy?->name) {
-                    $admittedBy = 'Staff: ' . $student->admittedBy->name;
+                    $sourceLabel = 'Partner: ' . (\App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner');
                 } else {
-                    $admittedBy = 'Admin/Direct';
+                    $sourceLabel = ucfirst($student->admission_source ?? 'direct');
                 }
                 $badgeClass = match($student->status) {
                     'pending'   => 'badge-pending',
@@ -198,13 +201,14 @@
                 <td>{{ $student->stream?->name ?? '-' }}</td>
                 <td>{{ $student->admission_date?->format('d M Y') ?? '-' }}</td>
                 <td>{{ $admittedBy }}</td>
+                <td>{{ $sourceLabel }}</td>
                 <td><span class="badge {{ $badgeClass }}">{{ ucwords(str_replace('_',' ',$student->status ?? '-')) }}</span></td>
                 <td>{{ $student->approved_by_name ?? ($student->approvedByStaff?->name ?? '-') }}</td>
                 <td>{{ $student->approved_at?->format('d M Y') ?? '-' }}</td>
             </tr>
         @empty
             <tr>
-                <td colspan="13" style="text-align:center; padding:16px; color:#94a3b8; font-style:italic;">
+                <td colspan="14" style="text-align:center; padding:16px; color:#94a3b8; font-style:italic;">
                     No records found.
                 </td>
             </tr>

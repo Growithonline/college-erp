@@ -213,6 +213,7 @@
                     <th class="fw-semibold">Course</th>
                     <th class="fw-semibold">Admission Date</th>
                     <th class="fw-semibold">Admitted By</th>
+                    <th class="fw-semibold">Source</th>
                     <th class="fw-semibold">Status</th>
                     <th class="fw-semibold">Approved By</th>
                     <th class="text-end pe-3 fw-semibold">Action</th>
@@ -221,17 +222,19 @@
             <tbody>
                 @forelse($students as $i => $student)
                     @php
+                        $admittedBy = $student->admittedBy?->name
+                            ? 'Staff: ' . $student->admittedBy->name
+                            : 'Admin / Direct';
+
                         $source = $student->admission_source ?? 'direct';
                         if ($source === 'center') {
                             $srcName = \App\Models\Center::find($student->admission_source_id)?->name ?? 'Center';
-                            $admittedBy = 'Center: ' . $srcName;
+                            $sourceLabel = 'Center: ' . $srcName;
                         } elseif ($source === 'channel_partner') {
                             $srcName = \App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner';
-                            $admittedBy = 'Partner: ' . $srcName;
-                        } elseif ($student->admittedBy?->name) {
-                            $admittedBy = 'Staff: ' . $student->admittedBy->name;
+                            $sourceLabel = 'Partner: ' . $srcName;
                         } else {
-                            $admittedBy = 'Admin / Direct';
+                            $sourceLabel = ucfirst($source);
                         }
                         $statusClass = match($student->status) {
                             'pending' => 'bg-warning text-dark',
@@ -258,6 +261,7 @@
                         </td>
                         <td class="text-muted">{{ $student->admission_date?->format('d M Y') ?? '-' }}</td>
                         <td class="text-muted">{{ $admittedBy }}</td>
+                        <td class="text-muted">{{ $sourceLabel }}</td>
                         <td>
                             <span class="badge {{ $statusClass }}" style="font-size:0.72rem;">
                                 {{ ucwords(str_replace('_', ' ', $student->status ?? 'pending')) }}
