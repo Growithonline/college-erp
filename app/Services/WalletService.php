@@ -107,6 +107,9 @@ class WalletService
             ['student_id' => $student->id, 'academic_session_id' => $sessionId],
             ['institute_id' => $invoice->institute_id, 'main_b' => 0.00]
         );
+        // Lock the row for the rest of this transaction — guards against a concurrent
+        // double-submit interleaving its own read-modify-write of the same wallet balance.
+        $wallet = StudentWallet::where('id', $wallet->id)->lockForUpdate()->first();
 
         foreach ($items as $item) {
             if (empty($item['is_custom'])) {
@@ -159,6 +162,9 @@ class WalletService
             ['student_id' => $student->id, 'academic_session_id' => $sessionId],
             ['institute_id' => $invoice->institute_id, 'main_b' => 0.00]
         );
+        // Lock the row for the rest of this transaction — guards against a concurrent
+        // double-submit interleaving its own read-modify-write of the same wallet balance.
+        $wallet = StudentWallet::where('id', $wallet->id)->lockForUpdate()->first();
 
         foreach ($items as $item) {
             $fineAmount = (float) ($item['fine'] ?? 0);
@@ -280,6 +286,11 @@ class WalletService
                 ['student_id' => $student->id, 'academic_session_id' => $sessionId],
                 ['institute_id' => $instituteId, 'main_b' => 0.00]
             );
+            // Lock the row for the rest of this transaction — guards against a concurrent
+            // double-submit (e.g. double-click on Collect) interleaving its own
+            // read-modify-write of the same wallet balance, which would silently drop
+            // one of the two credits.
+            $studentWallet = StudentWallet::where('id', $studentWallet->id)->lockForUpdate()->first();
 
             if ($cashAmount > 0) {
                 $opBal = (float) $studentWallet->main_b;
@@ -331,6 +342,9 @@ class WalletService
                 ['institute_id' => $instituteId, 'academic_session_id' => $sessionId],
                 ['main_b' => 0.00]
             );
+            // This row is shared across every fee collection for the institute+session,
+            // so it sees far more concurrent writers than a per-student wallet — lock it.
+            $instWallet = InstituteWallet::where('id', $instWallet->id)->lockForUpdate()->first();
 
             if ($cashAmount > 0) {
                 $iOpBal = (float) $instWallet->main_b;

@@ -15,6 +15,7 @@ use App\Models\Library\LibraryFinePayment;
 use App\Models\Library\LibraryMember;
 use App\Models\PaymentModePermission;
 use App\Models\Student;
+use App\Models\TransportAllocation;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
 use App\Services\AuditLogService;
@@ -1017,6 +1018,29 @@ class FeeCollectionController extends Controller
 
             return $item;
         });
+
+        // Custom items carry a client-supplied transport_allocation_id (the server-derived
+        // overwrite above only applies to non-custom items). Without this check, a forged
+        // custom item with item_type=transport could settle ANY transport allocation in the
+        // system — including one belonging to a different student or a different institute —
+        // while the invoice/wallet credit lands on this student. Verify ownership for every
+        // item that carries a transport_allocation_id, custom or not.
+        $transportAllocationIds = $validItems->pluck('transport_allocation_id')->filter()->unique();
+        if ($transportAllocationIds->isNotEmpty()) {
+            $ownedAllocationIds = TransportAllocation::where('student_id', $student->id)
+                ->where('institute_id', $instituteId)
+                ->whereIn('id', $transportAllocationIds)
+                ->pluck('id')
+                ->all();
+
+            foreach ($validItems as $item) {
+                if (!empty($item['transport_allocation_id']) && !in_array($item['transport_allocation_id'], $ownedAllocationIds, true)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'fee_items' => 'One or more transport fee items reference an invalid allocation.',
+                    ]);
+                }
+            }
+        }
 
         foreach ($validItems as $item) {
             if (!empty($item['is_custom'])) {
