@@ -259,7 +259,6 @@
                         <th class="col_centre" style="display:none;">Centre</th>
                         <th class="col_mode">Mode</th>
                         <th class="col_amount text-end">Collection</th>
-                        <th class="text-end">Total Amt</th>
                         <th class="col_fine text-end">Fine</th>
                         <th class="col_due text-end">Due</th>
                         <th class="text-center">Actions</th>
@@ -352,7 +351,6 @@
                             @endif
                         </td>
                         <td class="col_amount text-end fw-bold text-success">Rs {{ number_format($inv->paid_amount) }}</td>
-                        <td class="text-end fw-bold">Rs {{ number_format($inv->paid_amount + ($inv->discount ?? 0)) }}</td>
                         <td class="col_fine text-end fw-bold {{ $fineTotal > 0 ? 'text-danger' : 'text-muted' }}">
                             {{ $fineTotal > 0 ? 'Rs '.number_format($fineTotal) : '—' }}
                         </td>
@@ -380,7 +378,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="17" class="text-center py-5 text-muted">
+                        <td colspan="16" class="text-center py-5 text-muted">
                             <i class="bi bi-receipt fs-2 d-block mb-2"></i>No fee collections found
                         </td>
                     </tr>
