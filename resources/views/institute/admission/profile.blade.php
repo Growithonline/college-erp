@@ -646,7 +646,7 @@
     <div class="card-body p-0">
         @foreach([
             'Route'          => $transport->route?->name ?? '—',
-            'Stop'           => $transport->stop?->name ?? '—',
+            'Stop'           => $transport->stop?->stop_name ?? '—',
             'Vehicle'        => $transport->vehicle ? ($transport->vehicle->vehicle_no ?? $transport->vehicle->name ?? '—') : '—',
             'Driver'         => $transport->driver?->name ?? '—',
             'Fee Amount'     => $transport->fee_amount ? '₹' . number_format($transport->fee_amount, 2) : '—',
