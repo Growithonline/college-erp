@@ -23,6 +23,7 @@ class StudentAcademicIdentity extends Model
         'reference_no_snapshot', 'admission_source_id_snapshot',
         'submitted_date_snapshot', 'admission_date_snapshot',
         'student_status_snapshot',
+        'profile_snapshot',
     ];
 
     protected $casts = [
@@ -33,6 +34,7 @@ class StudentAcademicIdentity extends Model
         'gap_years'        => 'integer',
         'submitted_date_snapshot' => 'date',
         'admission_date_snapshot' => 'date',
+        'profile_snapshot'        => 'array',
     ];
 
     // ── Source constants ─────────────────────────────────────────────

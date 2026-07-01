@@ -13,6 +13,7 @@ use App\Models\StudentWallet;
 use App\Models\StudentSubject;
 use App\Models\Subject;
 use App\Models\SubjectChangeLog;
+use App\Support\StudentSnapshotBuilder;
 use Illuminate\Support\Facades\DB;
 
 class StudentAcademicChangeService
@@ -499,17 +500,27 @@ class StudentAcademicChangeService
             ->first();
 
         $payload = [
-            'institute_id'              => $student->institute_id,
-            'course_id'                 => $student->stream?->course_id,
-            'course_stream_id'          => $student->course_stream_id,
-            'course_part_id'            => $student->course_part_id,
-            'semester_at_time'          => $semester,
-            'subjects_json'             => array_values(array_unique(array_map('intval', $subjectIds))),
-            'sr_no_snapshot'            => $student->sr_no,
-            'enrollment_no_snapshot'    => $student->enrollment_no,
-            'roll_no_snapshot'          => $student->roll_no,
-            'admission_source_snapshot' => $student->admission_source,
-            'admission_type'            => $student->admission_type ?? 'new',
+            'institute_id'                 => $student->institute_id,
+            'course_id'                    => $student->stream?->course_id,
+            'course_stream_id'             => $student->course_stream_id,
+            'course_part_id'               => $student->course_part_id,
+            'semester_at_time'             => $semester,
+            'subjects_json'                => array_values(array_unique(array_map('intval', $subjectIds))),
+            'sr_no_snapshot'               => $student->sr_no,
+            'enrollment_no_snapshot'       => $student->enrollment_no,
+            'roll_no_snapshot'             => $student->roll_no,
+            'admission_source_snapshot'    => $student->admission_source,
+            'student_uid_snapshot'         => $student->student_uid,
+            'institute_form_no_snapshot'   => $student->institute_form_no,
+            'exam_form_no_snapshot'        => $student->exam_form_no,
+            'uin_no_snapshot'              => $student->uin_no,
+            'reference_no_snapshot'        => $student->reference_no,
+            'admission_source_id_snapshot' => $student->admission_source_id,
+            'submitted_date_snapshot'      => $student->submitted_date,
+            'admission_date_snapshot'      => $student->admission_date,
+            'student_status_snapshot'      => $student->status,
+            'admission_type'               => $student->admission_type ?? 'new',
+            'profile_snapshot'             => StudentSnapshotBuilder::build($student),
         ];
 
         if ($identity) {

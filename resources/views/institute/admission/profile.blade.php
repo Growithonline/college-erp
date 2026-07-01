@@ -70,6 +70,9 @@
         ?? '—';
     $studentUidParts = explode('/', (string) $student->student_uid);
     $serialNo = end($studentUidParts) ?: '—';
+
+    // Profile snapshot shorthand — null means show live student data
+    $ps = $profileSnapshot ?? null;
 @endphp
 
 {{-- Pending Admission Banner --}}
@@ -108,6 +111,26 @@
             </a>
             @endforeach
         </div>
+    </div>
+</div>
+@endif
+
+{{-- Historical snapshot notice --}}
+@if($profileSnapshot)
+<div class="alert mb-3 d-flex align-items-center gap-2 py-2"
+     style="background:#fff8e1;border:1.5px solid #f59e0b;border-left:5px solid #f59e0b;font-size:13px;">
+    <i class="bi bi-clock-history text-warning fs-5"></i>
+    <div>
+        <strong>Historical View</strong> — Yeh data <strong>{{ $sessName }}{{ $semNum !== '—' ? ' · Sem '.$semNum : '' }}</strong>
+        ke samay ka snapshot hai. Koi bhi changes current profile pe nahi dikhenge.
+    </div>
+</div>
+@elseif(!($isCurrentSession ?? true))
+<div class="alert mb-3 d-flex align-items-center gap-2 py-2"
+     style="background:#f8f9fa;border:1.5px solid #adb5bd;border-left:5px solid #adb5bd;font-size:13px;">
+    <i class="bi bi-info-circle text-secondary fs-5"></i>
+    <div>
+        <strong>Historical View</strong> — Is period ka profile snapshot available nahi hai (purana record). Current profile data dikh raha hai.
     </div>
 </div>
 @endif
@@ -262,15 +285,15 @@
             </div>
             <div class="card-body p-0">
                 @foreach([
-                    'Category'         => strtoupper($student->category ?? '—'),
-                    'Special Category' => strtoupper($student->special_category ?? '—'),
-                    'Nationality'      => ucfirst($student->nationality ?? '—'),
-                    'Religion'         => ucfirst($student->religion ?? '—'),
-                    'Student Type'     => ucfirst($student->student_type ?? '—'),
-                    'Marital Status'   => ucfirst($student->marital_status ?? '—'),
-                    'Aadhar No.'       => $student->aadhar_no ?? '—',
-                    'APAAR No.'        => $student->apaar_no ?? '—',
-                    'Email'            => $student->email ?? '—',
+                    'Category'         => strtoupper($ps['category'] ?? $student->category ?? '—'),
+                    'Special Category' => strtoupper($ps['special_category'] ?? $student->special_category ?? '—'),
+                    'Nationality'      => ucfirst($ps['nationality'] ?? $student->nationality ?? '—'),
+                    'Religion'         => ucfirst($ps['religion'] ?? $student->religion ?? '—'),
+                    'Student Type'     => ucfirst($ps['student_type'] ?? $student->student_type ?? '—'),
+                    'Marital Status'   => ucfirst($ps['marital_status'] ?? $student->marital_status ?? '—'),
+                    'Aadhar No.'       => $ps['aadhar_no'] ?? $student->aadhar_no ?? '—',
+                    'APAAR No.'        => $ps['apaar_no'] ?? $student->apaar_no ?? '—',
+                    'Email'            => $ps['email'] ?? $student->email ?? '—',
                 ] as $lbl => $val)
                 <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
                     <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
@@ -287,13 +310,13 @@
             </div>
             <div class="card-body p-0">
                 @foreach([
-                    'Father Name'       => $student->father_name ?? '—',
-                    'Father Mobile'     => $student->father_mobile ?? '—',
-                    'Father Occupation' => $student->father_occupation ?? '—',
-                    'Mother Name'       => $student->mother_name ?? '—',
-                    'Mother Mobile'     => $student->mother_mobile ?? '—',
-                    'Guardian Name'     => $student->guardian_name ?? '—',
-                    'Guardian Mobile'   => $student->guardian_mobile ?? '—',
+                    'Father Name'       => $ps['father_name'] ?? $student->father_name ?? '—',
+                    'Father Mobile'     => $ps['father_mobile'] ?? $student->father_mobile ?? '—',
+                    'Father Occupation' => $ps['father_occupation'] ?? $student->father_occupation ?? '—',
+                    'Mother Name'       => $ps['mother_name'] ?? $student->mother_name ?? '—',
+                    'Mother Mobile'     => $ps['mother_mobile'] ?? $student->mother_mobile ?? '—',
+                    'Guardian Name'     => $ps['guardian_name'] ?? $student->guardian_name ?? '—',
+                    'Guardian Mobile'   => $ps['guardian_mobile'] ?? $student->guardian_mobile ?? '—',
                 ] as $lbl => $val)
                 <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
                     <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
@@ -313,13 +336,15 @@
             </div>
             <div class="card-body p-0">
                 @foreach([
-                    'Village/City'  => $student->perm_village ?? '—',
-                    'Post'          => $student->perm_post ?? '—',
-                    'Thana'         => $student->perm_thana ?? '—',
-                    'District'      => $student->perm_district ?? '—',
-                    'State'         => $student->perm_state ?? '—',
-                    'Pin Code'      => $student->perm_pincode ?? '—',
-                    'Comm. Address' => $student->comm_same_as_perm ? 'Same as above' : ($student->comm_address ?? '—'),
+                    'Village/City'  => $ps['perm_village'] ?? $student->perm_village ?? '—',
+                    'Post'          => $ps['perm_post'] ?? $student->perm_post ?? '—',
+                    'Thana'         => $ps['perm_thana'] ?? $student->perm_thana ?? '—',
+                    'District'      => $ps['perm_district'] ?? $student->perm_district ?? '—',
+                    'State'         => $ps['perm_state'] ?? $student->perm_state ?? '—',
+                    'Pin Code'      => $ps['perm_pincode'] ?? $student->perm_pincode ?? '—',
+                    'Comm. Address' => ($ps['comm_same_as_perm'] ?? $student->comm_same_as_perm)
+                        ? 'Same as above'
+                        : ($ps['comm_address'] ?? $student->comm_address ?? '—'),
                 ] as $lbl => $val)
                 <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
                     <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
@@ -562,7 +587,10 @@
     'canDelete' => $docCanDelete,
 ])
 
-@if($student->educationDetails?->count())
+@php
+    $eduRows = $ps ? ($ps['education'] ?? []) : ($student->educationDetails?->map(fn($e) => (array) $e->toArray())->all() ?? []);
+@endphp
+@if(count($eduRows))
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header py-2" style="background:#1e293b;color:white;">
         <span class="fw-bold small"><i class="bi bi-mortarboard me-2"></i>Education Details</span>
@@ -585,19 +613,20 @@
                 </tr>
             </thead>
             <tbody style="font-size:12px;">
-                @foreach($student->educationDetails as $edu)
+                @foreach($eduRows as $edu)
+                @php $edu = (array) $edu; @endphp
                 <tr>
-                    <td class="fw-semibold text-primary">{{ strtoupper($edu->exam_name) }}</td>
-                    <td>{{ $edu->education_stream ? strtoupper($edu->education_stream) : '—' }}</td>
-                    <td>{{ $edu->institute_name ?? '—' }}</td>
-                    <td>{{ $edu->roll_number ?? '—' }}</td>
-                    <td>{{ $edu->passing_year ?? '—' }}</td>
-                    <td>{{ $edu->district ?? '—' }}</td>
-                    <td>{{ $edu->division ? strtoupper($edu->division) : '—' }}</td>
-                    <td>{{ $edu->board_university ?? '—' }}</td>
-                    <td>{{ $edu->obtained_marks ?? '—' }}</td>
-                    <td>{{ $edu->max_marks ?? '—' }}</td>
-                    <td>{{ $edu->percentage ? $edu->percentage.'%' : '—' }}</td>
+                    <td class="fw-semibold text-primary">{{ strtoupper($edu['exam_name'] ?? '') }}</td>
+                    <td>{{ isset($edu['education_stream']) && $edu['education_stream'] ? strtoupper($edu['education_stream']) : '—' }}</td>
+                    <td>{{ $edu['institute_name'] ?? '—' }}</td>
+                    <td>{{ $edu['roll_number'] ?? '—' }}</td>
+                    <td>{{ $edu['passing_year'] ?? '—' }}</td>
+                    <td>{{ $edu['district'] ?? '—' }}</td>
+                    <td>{{ isset($edu['division']) && $edu['division'] ? strtoupper($edu['division']) : '—' }}</td>
+                    <td>{{ $edu['board_university'] ?? '—' }}</td>
+                    <td>{{ $edu['obtained_marks'] ?? '—' }}</td>
+                    <td>{{ $edu['max_marks'] ?? '—' }}</td>
+                    <td>{{ isset($edu['percentage']) && $edu['percentage'] ? $edu['percentage'].'%' : '—' }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -608,19 +637,22 @@
 
 
 {{-- Scholarship Details --}}
-@if($student->has_scholarship)
+@if($ps ? !empty($ps['has_scholarship']) : $student->has_scholarship)
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-header py-2" style="background:#1e293b;color:white;">
         <span class="fw-bold small"><i class="bi bi-award me-2"></i>Scholarship Details</span>
     </div>
     <div class="card-body p-0">
         @foreach([
-            'Scholarship Name'      => $student->scholarship_name ?? '—',
-            'Scholarship Type'      => ucfirst($student->scholarship_type ?? '—'),
-            'Authority'             => $student->scholarship_authority ?? '—',
-            'Reference No.'         => $student->scholarship_ref_no ?? '—',
-            'Applied Date'          => $student->scholarship_applied_date?->format('d-m-Y') ?? '—',
-            'Scholarship Amount'    => $student->scholarship_amount ? '₹' . number_format($student->scholarship_amount, 2) : '—',
+            'Scholarship Name'      => $ps['scholarship_name'] ?? $student->scholarship_name ?? '—',
+            'Scholarship Type'      => ucfirst($ps['scholarship_type'] ?? $student->scholarship_type ?? '—'),
+            'Authority'             => $ps['scholarship_authority'] ?? $student->scholarship_authority ?? '—',
+            'Reference No.'         => $ps['scholarship_ref_no'] ?? $student->scholarship_ref_no ?? '—',
+            'Applied Date'          => isset($ps['scholarship_applied_date'])
+                ? \Carbon\Carbon::parse($ps['scholarship_applied_date'])->format('d-m-Y')
+                : ($student->scholarship_applied_date?->format('d-m-Y') ?? '—'),
+            'Scholarship Amount'    => ($ps['scholarship_amount'] ?? $student->scholarship_amount)
+                ? '₹' . number_format($ps['scholarship_amount'] ?? $student->scholarship_amount, 2) : '—',
         ] as $lbl => $val)
         <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
             <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>

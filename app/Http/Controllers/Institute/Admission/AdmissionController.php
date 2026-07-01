@@ -36,6 +36,7 @@ use App\Services\StudentAcademicChangeService;
 use App\Services\StudentIdService;
 use App\Models\FeePlan;
 use App\Services\WalletService;
+use App\Support\StudentSnapshotBuilder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -2299,6 +2300,9 @@ class AdmissionController extends Controller
             WalletService::onAdmission($student);
             $this->syncTransportAllocationForAdmission($student, $formData);
 
+            // Load education so snapshot captures freshly saved rows
+            $student->load('educationDetails');
+
             // Academic identity create karo with full snapshot
             $subjectIds = $student->studentSubjects()
                 ->where('academic_session_id', $student->academic_session_id)
@@ -2323,6 +2327,7 @@ class AdmissionController extends Controller
                     'admission_source_snapshot' => $student->admission_source,
                     'source'                    => 'admission',
                     'admission_type'            => $student->admission_type ?? 'new',
+                    'profile_snapshot'          => StudentSnapshotBuilder::build($student),
                 ]
             );
         });
@@ -3051,6 +3056,7 @@ class AdmissionController extends Controller
 
         // Har session / semester ki identity load karo
         $sessionIdentities = \App\Models\StudentAcademicIdentity::where('student_id', $student->id)
+            ->where('institute_id', $this->instituteId())
             ->realOnly()
             ->with(['session', 'courseStream.course', 'coursePart'])
             ->orderBy('academic_session_id')
@@ -3112,8 +3118,18 @@ class AdmissionController extends Controller
                 ->values();
         }
 
+        // Build profile snapshot for historical view — current session uses live student data
+        $isCurrentSession = (int) $student->academic_session_id === $selectedSessionId
+            && (int) ($selectedIdentity?->semester_at_time ?? $student->current_semester) === (int) $student->current_semester;
+
+        $profileSnapshot = (!$isCurrentSession && $selectedIdentity?->profile_snapshot)
+            ? $selectedIdentity->profile_snapshot
+            : null;
+
         return view('institute.admission.profile', compact(
-            'student', 'sessionIdentities', 'selectedSessionId', 'selectedIdentity', 'selectedContext', 'feeSummary', 'academicChangeLogs', 'selectedSubjects'
+            'student', 'sessionIdentities', 'selectedSessionId', 'selectedIdentity',
+            'selectedContext', 'feeSummary', 'academicChangeLogs', 'selectedSubjects',
+            'profileSnapshot', 'isCurrentSession'
         ));
     }
 
@@ -3390,7 +3406,7 @@ class AdmissionController extends Controller
                 }
             }
 
-            $student->load(['stream.course', 'coursePart']);
+            $student->load(['stream.course', 'coursePart', 'educationDetails']);
 
             $yearNumber = (int) $selectedPart->year_number;
 
@@ -3952,6 +3968,9 @@ class AdmissionController extends Controller
 
             WalletService::onAdmission($student);
 
+            // Load education so snapshot captures freshly saved rows
+            $student->load('educationDetails');
+
             \App\Models\StudentAcademicIdentity::firstOrCreate(
                 [
                     'student_id'          => $student->id,
@@ -3971,6 +3990,7 @@ class AdmissionController extends Controller
                     'admission_source_snapshot' => $student->admission_source,
                     'source'                    => 'admission',
                     'admission_type'            => $student->admission_type ?? 'new',
+                    'profile_snapshot'          => StudentSnapshotBuilder::build($student),
                 ]
             );
 
@@ -4245,6 +4265,9 @@ class AdmissionController extends Controller
 
             WalletService::onAdmission($student);
 
+            // Load education so snapshot captures freshly saved rows
+            $student->load('educationDetails');
+
             // Academic identity create karo
             \App\Models\StudentAcademicIdentity::firstOrCreate(
                 [
@@ -4265,6 +4288,7 @@ class AdmissionController extends Controller
                     'admission_source_snapshot' => $student->admission_source,
                     'source'                    => 'admission',
                     'admission_type'            => $student->admission_type ?? 'new',
+                    'profile_snapshot'          => StudentSnapshotBuilder::build($student),
                 ]
             );
         });

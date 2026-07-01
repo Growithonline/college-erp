@@ -20,6 +20,7 @@ use App\Http\Controllers\Institute\Master\AdmissionFormController;
 use App\Services\FeeCalculatorService;
 use App\Services\WalletService;
 use App\Support\SimpleSpreadsheet;
+use App\Support\StudentSnapshotBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -307,7 +308,13 @@ class PromotionController extends Controller
             'gap_years'                    => $student->gap_year ? 1 : 0,
             'form_no'                      => $student->sr_no,
             'roll_no'                      => $student->roll_no,
+            'profile_snapshot'             => self::buildProfileSnapshot($student),
         ];
+    }
+
+    public static function buildProfileSnapshot(Student $student): array
+    {
+        return StudentSnapshotBuilder::build($student);
     }
 
     private function snapshotIdentity(Student $student, int $sessionId, string $source): void
@@ -950,7 +957,8 @@ class PromotionController extends Controller
 
         DB::transaction(function () use ($student, $data, $instituteId) {
             // Re-fetch with lock to prevent concurrent re-admissions
-            $student = Student::where('id', $student->id)
+            $student = Student::with(['stream.course', 'coursePart', 'educationDetails'])
+                ->where('id', $student->id)
                 ->where('institute_id', $instituteId)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -1143,7 +1151,7 @@ class PromotionController extends Controller
                     // lockForUpdate prevents concurrent promotions of the same student
                     // (double-click / two staff tabs) from both reading the same semester
                     // and advancing it twice.
-                    $student = Student::with(['stream.course', 'coursePart', 'session'])
+                    $student = Student::with(['stream.course', 'coursePart', 'session', 'educationDetails'])
                         ->where('id', $sid)
                         ->where('institute_id', $instituteId)
                         ->where('status', 'active')
@@ -1330,7 +1338,7 @@ class PromotionController extends Controller
                 $result = DB::transaction(function () use ($sid, $instituteId, $request) {
                     // lockForUpdate prevents concurrent session-promotions of the same
                     // student from both reading status='active' and double-promoting.
-                    $student = Student::with(['stream.course', 'coursePart', 'session'])
+                    $student = Student::with(['stream.course', 'coursePart', 'session', 'educationDetails'])
                         ->where('id', $sid)
                         ->where('institute_id', $instituteId)
                         ->where('status', 'active')
