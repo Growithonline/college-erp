@@ -130,7 +130,7 @@
      style="background:#f8f9fa;border:1.5px solid #adb5bd;border-left:5px solid #adb5bd;font-size:13px;">
     <i class="bi bi-info-circle text-secondary fs-5"></i>
     <div>
-        <strong>Historical View</strong> — Is period ka profile snapshot available nahi hai (purana record). Current profile data dikh raha hai.
+        <strong>Historical View</strong> — Profile snapshot is not available for this period (older record). Showing current profile data.
     </div>
 </div>
 @endif
