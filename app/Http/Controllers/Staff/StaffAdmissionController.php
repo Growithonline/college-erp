@@ -145,15 +145,17 @@ class StaffAdmissionController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $filters = $this->globalSearchFilters($request);
+        $filters   = $this->globalSearchFilters($request);
         $sessionId = $request->filled('session_id') ? (int) $request->session_id : null;
+        $perPage   = in_array((int) $request->input('per_page', 20), [10, 20, 50, 100])
+            ? (int) $request->input('per_page', 20) : 20;
 
         $isInitialLoad = false;
         $students      = null;
 
         if ($this->hasGlobalSearchFilters($filters)) {
             $students = $this->buildGlobalSearchQuery($staff->institute_id, $filters, $sessionId)
-                ->paginate(15)
+                ->paginate($perPage)
                 ->withQueryString();
         } else {
             $isInitialLoad = true;
@@ -162,7 +164,7 @@ class StaffAdmissionController extends Controller
                 ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
                 ->orderByDesc('id');
             $staff->scopeAdmissionStudents($students);
-            $students = $students->limit(50)->get();
+            $students = $students->paginate($perPage)->withQueryString();
         }
 
         $viewData = [
@@ -170,6 +172,7 @@ class StaffAdmissionController extends Controller
             'students'      => $students,
             'filters'       => $filters,
             'sessionId'     => $sessionId,
+            'perPage'       => $perPage,
             'isInitialLoad' => $isInitialLoad,
             'layout' => 'staff.layout',
             'indexRoute' => 'staff.admissions.index',

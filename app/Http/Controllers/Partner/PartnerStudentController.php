@@ -87,13 +87,15 @@ class PartnerStudentController extends Controller
 
         $filters   = $this->globalSearchFilters($request);
         $sessionId = $request->filled('session_id') ? (int) $request->session_id : null;
+        $perPage   = in_array((int) $request->input('per_page', 20), [10, 20, 50, 100])
+            ? (int) $request->input('per_page', 20) : 20;
 
         $isInitialLoad = false;
         $students      = null;
 
         if ($this->hasGlobalSearchFilters($filters)) {
             $students = $this->buildGlobalSearchQuery($partner, $filters, $sessionId)
-                ->paginate(12)->withQueryString();
+                ->paginate($perPage)->withQueryString();
         } else {
             $isInitialLoad = true;
             $baseQuery = Student::where('institute_id', $partner->institute_id)
@@ -109,7 +111,7 @@ class PartnerStudentController extends Controller
             if ($sessionId) {
                 $baseQuery->where('academic_session_id', $sessionId);
             }
-            $students = $baseQuery->limit(30)->get();
+            $students = $baseQuery->paginate($perPage)->withQueryString();
         }
 
         $viewData = [
@@ -117,6 +119,7 @@ class PartnerStudentController extends Controller
             'students'             => $students,
             'filters'              => $filters,
             'sessionId'            => $sessionId,
+            'perPage'              => $perPage,
             'isInitialLoad'        => $isInitialLoad,
             'layout'               => 'partner.layout',
             'indexRoute'           => 'partner.students.index',

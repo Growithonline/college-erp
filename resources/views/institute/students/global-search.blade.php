@@ -37,6 +37,13 @@ let globalSearchTimer;
 let globalSearchController = null;
 let lastFocusedInputName = null;
 
+function updateQueryParam(key, value) {
+    const url = new URL(window.location.href);
+    url.searchParams.set(key, value);
+    url.searchParams.set('page', '1');
+    return url.toString();
+}
+
 document.addEventListener('focus', function (e) {
     if (e.target.classList.contains('global-search-input')) {
         lastFocusedInputName = e.target.name;

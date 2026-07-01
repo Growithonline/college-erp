@@ -241,15 +241,17 @@ class StudentDirectoryController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $filters = $this->globalSearchFilters($request);
+        $filters  = $this->globalSearchFilters($request);
         $sessionId = $request->filled('session_id') ? (int) $request->session_id : null;
+        $perPage  = in_array((int) $request->input('per_page', 20), [10, 20, 50, 100])
+            ? (int) $request->input('per_page', 20) : 20;
 
         $isInitialLoad = false;
         $students      = null;
 
         if ($this->hasGlobalSearchFilters($filters)) {
             $students = $this->buildGlobalStudentSearchQuery($instituteId, $filters, $sessionId)
-                ->paginate(15)
+                ->paginate($perPage)
                 ->withQueryString();
         } else {
             $isInitialLoad = true;
@@ -257,12 +259,12 @@ class StudentDirectoryController extends Controller
                 ->with(['stream.course', 'session', 'coursePart'])
                 ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
                 ->orderByDesc('id')
-                ->limit(50)
-                ->get();
+                ->paginate($perPage)
+                ->withQueryString();
         }
 
         $viewData = array_merge(
-            compact('sessions', 'students', 'filters', 'sessionId', 'isInitialLoad'),
+            compact('sessions', 'students', 'filters', 'sessionId', 'perPage', 'isInitialLoad'),
             [
                 'layout'               => 'institute.layout',
                 'indexRoute'           => 'students.index',

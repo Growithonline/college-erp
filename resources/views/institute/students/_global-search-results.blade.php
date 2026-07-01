@@ -191,6 +191,6 @@
     </div>
 </div>
 
-@if($students && method_exists($students, 'hasPages') && $students->hasPages())
-<div class="mt-3">{{ $students->links('pagination::bootstrap-5') }}</div>
+@if($students && method_exists($students, 'total'))
+@include('institute.components.pagination', ['paginator' => $students, 'perPage' => $perPage ?? 20])
 @endif
