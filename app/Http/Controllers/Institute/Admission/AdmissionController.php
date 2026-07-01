@@ -2964,6 +2964,10 @@ class AdmissionController extends Controller
             'approval_notes' => $validated['approval_notes'] ?? null,
         ]);
 
+        // Refresh snapshot with final verified data at approval time
+        $student->load('educationDetails');
+        StudentAcademicChangeService::syncCurrentIdentity($student);
+
         AuditLogService::log($this->instituteId(), 'admission', 'admission_approved', 'Admission approved after verification.', $student, [
             'student_id' => $student->id,
             'student_uid' => $student->student_uid,
