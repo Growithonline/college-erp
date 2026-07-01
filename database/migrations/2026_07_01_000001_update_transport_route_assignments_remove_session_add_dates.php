@@ -37,16 +37,17 @@ return new class extends Migration
         });
 
         Schema::table('transport_route_assignments', function (Blueprint $table) {
+            // nullable() avoids DEFAULT expression — MySQL 5.7 does not support DEFAULT CURDATE()
             if (!Schema::hasColumn('transport_route_assignments', 'start_date')) {
-                $table->date('start_date')->default(DB::raw('CURDATE()'))->after('transport_driver_id');
+                $table->date('start_date')->nullable()->after('transport_driver_id');
             }
             if (!Schema::hasColumn('transport_route_assignments', 'end_date')) {
                 $table->date('end_date')->nullable()->after('start_date');
             }
         });
 
-        // Existing records: start_date = DATE(created_at), end_date = NULL (all treated as current)
-        DB::statement('UPDATE transport_route_assignments SET start_date = DATE(created_at) WHERE start_date = CURDATE()');
+        // Backfill start_date from created_at for existing rows
+        DB::statement('UPDATE transport_route_assignments SET start_date = DATE(created_at) WHERE start_date IS NULL');
     }
 
     public function down(): void
