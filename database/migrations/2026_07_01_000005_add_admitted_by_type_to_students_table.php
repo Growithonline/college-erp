@@ -9,11 +9,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('students', function (Blueprint $table) {
-            $table->enum('admitted_by_type', ['admin', 'staff', 'center', 'channel_partner'])
-                  ->default('admin')
-                  ->after('admitted_by_staff_id');
-        });
+        if (!Schema::hasColumn('students', 'admitted_by_type')) {
+            Schema::table('students', function (Blueprint $table) {
+                $table->enum('admitted_by_type', ['admin', 'staff', 'center', 'channel_partner'])
+                      ->default('admin')
+                      ->after('admitted_by_staff_id');
+            });
+        }
 
         // Backfill existing rows (default 'admin' already set by column default;
         // this corrects rows that were admitted via staff/center/partner).

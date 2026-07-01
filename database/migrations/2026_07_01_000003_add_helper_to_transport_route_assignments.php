@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('transport_route_assignments', 'transport_helper_id')) {
+            return;
+        }
+
         Schema::table('transport_route_assignments', function (Blueprint $table) {
             $table->unsignedBigInteger('transport_helper_id')->nullable()->after('transport_driver_id');
             $table->foreign('transport_helper_id')->references('id')->on('transport_helpers')->onDelete('set null');

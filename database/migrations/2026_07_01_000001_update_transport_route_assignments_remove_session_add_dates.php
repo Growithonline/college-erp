@@ -9,18 +9,40 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Drop unique index only if it exists (may not exist on all environments)
+        $indexExists = DB::select(
+            "SELECT COUNT(*) as cnt FROM information_schema.statistics
+             WHERE table_schema = DATABASE()
+               AND table_name = 'transport_route_assignments'
+               AND index_name = 'unique_route_session'"
+        );
+        if (($indexExists[0]->cnt ?? 0) > 0) {
+            Schema::table('transport_route_assignments', function (Blueprint $table) {
+                $table->dropUnique('unique_route_session');
+            });
+        }
+
+        // Drop columns only if they exist
         Schema::table('transport_route_assignments', function (Blueprint $table) {
-            // Drop unique constraint on route+session
-            $table->dropUnique('unique_route_session');
+            $columns = [];
+            if (Schema::hasColumn('transport_route_assignments', 'academic_session_id')) {
+                $columns[] = 'academic_session_id';
+            }
+            if (Schema::hasColumn('transport_route_assignments', 'status')) {
+                $columns[] = 'status';
+            }
+            if (!empty($columns)) {
+                $table->dropColumn($columns);
+            }
         });
 
         Schema::table('transport_route_assignments', function (Blueprint $table) {
-            $table->dropColumn(['academic_session_id', 'status']);
-        });
-
-        Schema::table('transport_route_assignments', function (Blueprint $table) {
-            $table->date('start_date')->default(DB::raw('CURDATE()'))->after('transport_driver_id');
-            $table->date('end_date')->nullable()->after('start_date');
+            if (!Schema::hasColumn('transport_route_assignments', 'start_date')) {
+                $table->date('start_date')->default(DB::raw('CURDATE()'))->after('transport_driver_id');
+            }
+            if (!Schema::hasColumn('transport_route_assignments', 'end_date')) {
+                $table->date('end_date')->nullable()->after('start_date');
+            }
         });
 
         // Existing records: start_date = DATE(created_at), end_date = NULL (all treated as current)
