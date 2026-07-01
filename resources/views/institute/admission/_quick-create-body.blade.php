@@ -163,9 +163,9 @@
 
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Payment Date <span class="text-danger">*</span></label>
-                    <input type="date" name="payment_date" class="form-control"
+                    <input type="date" name="payment_date" class="form-control quick-cash-date"
                            value="{{ old('payment_date', $defaultPaymentDate) }}"
-                           {{ $lockPaymentDate ? 'readonly' : '' }}>
+                           {{ $lockPaymentDate ? 'readonly' : "min={$defaultPaymentDate} max={$defaultPaymentDate}" }}>
                 </div>
 
                 <div class="col-md-4">
@@ -1032,9 +1032,9 @@
 
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Payment Date <span class="text-danger">*</span></label>
-                    <input type="date" name="payment_date" class="form-control"
+                    <input type="date" name="payment_date" class="form-control quick-cash-date"
                            value="{{ old('payment_date', $defaultPaymentDate) }}"
-                           {{ $lockPaymentDate ? 'readonly' : '' }}>
+                           {{ $lockPaymentDate ? 'readonly' : "min={$defaultPaymentDate} max={$defaultPaymentDate}" }}>
                 </div>
 
                 <div class="col-md-4">
@@ -2164,6 +2164,22 @@ function toggleQuickBankAccount() {
                 : 'Transaction Ref <span class="text-danger">*</span>';
         }
     }
+
+    // Cash date — lock to today only; non-cash removes restriction
+    @if(!$lockPaymentDate)
+    document.querySelectorAll('.quick-cash-date').forEach(function(el) {
+        const now   = new Date();
+        const today = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+        if (isCash) {
+            el.min   = today;
+            el.max   = today;
+            el.value = today;
+        } else {
+            el.removeAttribute('min');
+            el.removeAttribute('max');
+        }
+    });
+    @endif
 
     // Payment Date & Time — show only when not cash
     const timeWrap = document.getElementById('quickPaymentTimeWrap');

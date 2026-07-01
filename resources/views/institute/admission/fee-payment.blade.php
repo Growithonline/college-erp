@@ -572,8 +572,9 @@
                                value="{{ \Carbon\Carbon::parse($defaultPaymentDate)->format('d-m-Y') }}" readonly>
                         <div class="form-text">Auto set to today's date for this panel.</div>
                         @else
-                        <input type="date" name="payment_date" class="form-control form-control-sm"
-                               value="{{ $defaultPaymentDate }}" required>
+                        <input type="date" name="payment_date" id="cashDateInput" class="form-control form-control-sm"
+                               value="{{ $defaultPaymentDate }}"
+                               min="{{ $defaultPaymentDate }}" max="{{ $defaultPaymentDate }}" required>
                         @endif
                     </div>
                     <div class="col-md-6" id="refField" style="display:none;">
@@ -932,6 +933,21 @@ function togglePaymentFields() {
     } else {
         refField.style.display  = 'none';
         bankField.style.display = 'none';
+    }
+
+    // Cash date — lock to today only when cash mode
+    const cashDateEl = document.getElementById('cashDateInput');
+    if (cashDateEl) {
+        const now   = new Date();
+        const today = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+        if (!isNonCash) {
+            cashDateEl.min   = today;
+            cashDateEl.max   = today;
+            cashDateEl.value = today;
+        } else {
+            cashDateEl.removeAttribute('min');
+            cashDateEl.removeAttribute('max');
+        }
     }
 
     // Payment Date & Time — mandatory for non-cash; auto-set date to today when shown

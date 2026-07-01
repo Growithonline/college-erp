@@ -1982,16 +1982,26 @@ function togglePaymentFields() {
     const cashDateInputEl = document.getElementById('cashDateInput');
     if (cashDateInputEl) {
         cashDateInputEl.required = !isNonCash;
+        const _n = new Date();
+        const _today = _n.getFullYear() + '-' + String(_n.getMonth()+1).padStart(2,'0') + '-' + String(_n.getDate()).padStart(2,'0');
+        if (!isNonCash) {
+            // Cash: lock to today only — no past, no future
+            cashDateInputEl.min   = _today;
+            cashDateInputEl.max   = _today;
+            cashDateInputEl.value = _today;
+        } else {
+            // Non-cash: remove lock so any date can be entered
+            cashDateInputEl.removeAttribute('min');
+            cashDateInputEl.removeAttribute('max');
+        }
         if (paymentDatetimeInput) {
             paymentDatetimeInput.disabled = !isNonCash;
             if (isNonCash) {
-                const _n = new Date();
-                const _d = _n.getFullYear() + '-' + String(_n.getMonth()+1).padStart(2,'0') + '-' + String(_n.getDate()).padStart(2,'0');
                 const _t = String(_n.getHours()).padStart(2,'0') + ':' + String(_n.getMinutes()).padStart(2,'0');
                 if (!paymentDatetimeInput.value) {
-                    paymentDatetimeInput.value = _d + 'T' + _t;
+                    paymentDatetimeInput.value = _today + 'T' + _t;
                 }
-                paymentDatetimeInput.max = _d + 'T' + _t;
+                paymentDatetimeInput.max = _today + 'T' + _t;
                 cashDateInputEl.value = paymentDatetimeInput.value.split('T')[0];
             }
         }
