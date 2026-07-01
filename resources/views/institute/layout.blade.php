@@ -782,6 +782,10 @@
                            href="{{ route('transport.drivers.index') }}">
                         <i class="bi bi-person-badge"></i> Drivers
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('transport.helpers*') ? 'active' : '' }}"
+                           href="{{ route('transport.helpers.index') }}">
+                        <i class="bi bi-person-raised-hand"></i> Helpers
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('transport.allocations*') ? 'active' : '' }}"
                            href="{{ route('transport.allocations.index') }}">
                         <i class="bi bi-people"></i> Allocations
@@ -805,6 +809,33 @@
                     <li><a class="nav-link {{ request()->routeIs('transport.settings.*') ? 'active' : '' }}"
                            href="{{ route('transport.settings.index') }}">
                         <i class="bi bi-gear"></i> Settings
+                    </a></li>
+                </ul>
+            </div>
+        </li>
+
+        {{-- Employees (non-teaching support staff) --}}
+        @php $empActive = request()->routeIs('employees.*'); @endphp
+        <li class="nav-item">
+            <a class="nav-link {{ $empActive ? 'active' : '' }} d-flex"
+               data-bs-toggle="collapse" href="#menuEmployees" role="button"
+               aria-expanded="{{ $empActive ? 'true' : 'false' }}">
+                <i class="bi bi-people-fill"></i> Employees
+                <i class="bi bi-chevron-down collapse-arrow"></i>
+            </a>
+            <div class="collapse {{ $empActive ? 'show' : '' }}" id="menuEmployees">
+                <ul class="nav flex-column sub-menu">
+                    <li><a class="nav-link {{ request()->routeIs('employees.index') || request()->routeIs('employees.show') || request()->routeIs('employees.create') || request()->routeIs('employees.edit') ? 'active' : '' }}"
+                           href="{{ route('employees.index') }}">
+                        <i class="bi bi-people"></i> All Employees
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('employees.departments*') ? 'active' : '' }}"
+                           href="{{ route('employees.departments.index') }}">
+                        <i class="bi bi-building"></i> Departments
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('employees.designations*') ? 'active' : '' }}"
+                           href="{{ route('employees.designations.index') }}">
+                        <i class="bi bi-person-lines-fill"></i> Designations
                     </a></li>
                 </ul>
             </div>

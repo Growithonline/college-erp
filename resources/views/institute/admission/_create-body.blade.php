@@ -1359,19 +1359,25 @@ function applyTransportFeeValue(fee) {
 
 async function fetchTransportRouteAssignment(routeId) {
     const vehicleSelect = document.getElementById('transportVehicleSelect');
-    const driverSelect = document.getElementById('transportDriverSelect');
+    const driverSelect  = document.getElementById('transportDriverSelect');
     if (!routeId || !vehicleSelect || !driverSelect) return;
 
     try {
-        const sessionId = {{ (int) ($defaultSession->id ?? 0) }};
-        const url = `{{ $transportRouteAssignUrl }}?route_id=${routeId}&session_id=${sessionId}`;
+        const url = `{{ $transportRouteAssignUrl }}?route_id=${routeId}`;
         const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok) return;
         const data = await response.json();
 
-        if (data.vehicle_id) vehicleSelect.value = data.vehicle_id;
-        if (data.driver_id) driverSelect.value = data.driver_id;
-    } catch (error) {
-        // Auto-fill is a convenience — leave Vehicle/Driver as "Auto / Optional" on failure.
+        if (data.vehicle_id) {
+            vehicleSelect.value = String(data.vehicle_id);
+            if (vehicleSelect.value !== String(data.vehicle_id)) vehicleSelect.value = '';
+        }
+        if (data.driver_id) {
+            driverSelect.value = String(data.driver_id);
+            if (driverSelect.value !== String(data.driver_id)) driverSelect.value = '';
+        }
+    } catch (_) {
+        // Auto-fill is a convenience — silent fail is fine
     }
 }
 

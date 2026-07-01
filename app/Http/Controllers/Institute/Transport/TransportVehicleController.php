@@ -8,7 +8,6 @@ use App\Models\TransportVehicleType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class TransportVehicleController extends TransportBaseController
 {
@@ -46,7 +45,7 @@ class TransportVehicleController extends TransportBaseController
             'documents'                    => ['nullable', 'array'],
             'documents.*.document_type'    => ['required_with:documents.*.file', 'string', 'max:50'],
             'documents.*.document_name'    => ['nullable', 'string', 'max:150'],
-            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:200'],
+            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'documents.*.expiry_date'      => ['nullable', 'date'],
             'documents.*.doc_notes'        => ['nullable', 'string', 'max:300'],
         ]);
@@ -103,7 +102,7 @@ class TransportVehicleController extends TransportBaseController
             'documents'                    => ['nullable', 'array'],
             'documents.*.document_type'    => ['required_with:documents.*.file', 'string', 'max:50'],
             'documents.*.document_name'    => ['nullable', 'string', 'max:150'],
-            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:200'],
+            'documents.*.file'             => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'documents.*.expiry_date'      => ['nullable', 'date'],
             'documents.*.doc_notes'        => ['nullable', 'string', 'max:300'],
         ]);

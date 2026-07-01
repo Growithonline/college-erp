@@ -4,107 +4,96 @@
 
 @section('content')
 
-{{-- Header --}}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-0">Route Assignments</h4>
-        <p class="text-muted mb-0" style="font-size:13px;">Link each route with a vehicle and driver</p>
+        <p class="text-muted mb-0" style="font-size:13px;">
+            Route pe Vehicle, Driver aur Helper assign karo. Change karne pe purana record automatically band ho jaata hai.
+        </p>
     </div>
     <button class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#addModal">
-        <i class="bi bi-plus-lg me-1"></i> Add Assignment
+        <i class="bi bi-plus-lg me-1"></i> New Assignment
     </button>
 </div>
 
 @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show py-2" role="alert">
+    <div class="alert alert-success alert-dismissible fade show py-2">
         <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 @endif
 @if($errors->any())
-    <div class="alert alert-danger alert-dismissible fade show py-2" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show py-2">
         <i class="bi bi-exclamation-circle me-2"></i>{{ $errors->first() }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 @endif
 
-{{-- Assignment Cards --}}
-@if($assignments->count())
+{{-- ── Current Active Assignments ── --}}
+<h6 class="fw-semibold text-uppercase text-muted mb-3" style="font-size:11px; letter-spacing:.05em;">
+    <i class="bi bi-circle-fill text-success me-1" style="font-size:8px;"></i> Current Active Assignments
+</h6>
+
+@if($current->count())
 <div class="row g-3 mb-4">
-    @foreach($assignments as $a)
+    @foreach($current as $a)
     <div class="col-md-6 col-xl-4">
-        <div class="card border-0 shadow-sm h-100 {{ $a->status ? '' : 'opacity-50' }}">
+        <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
-                {{-- Route name --}}
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="bg-primary bg-opacity-10 text-primary rounded p-2" style="line-height:1;">
-                            <i class="bi bi-signpost-2 fs-5"></i>
-                        </span>
-                        <div>
-                            <div class="fw-semibold" style="font-size:14px;">{{ $a->route->name }}</div>
-                            @if($a->session)
-                                <div class="text-muted" style="font-size:11px;"><i class="bi bi-calendar3 me-1"></i>{{ $a->session->name }}</div>
-                            @else
-                                <div class="text-muted" style="font-size:11px;">All Sessions</div>
-                            @endif
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="bg-primary bg-opacity-10 text-primary rounded p-2" style="line-height:1;">
+                        <i class="bi bi-signpost-2 fs-5"></i>
+                    </span>
+                    <div>
+                        <div class="fw-semibold" style="font-size:14px;">{{ $a->route->name ?? '—' }}</div>
+                        <div class="text-muted" style="font-size:11px;">
+                            <i class="bi bi-calendar3 me-1"></i>From {{ $a->start_date?->format('d M Y') ?? '—' }}
                         </div>
                     </div>
-                    <span class="badge {{ $a->status ? 'text-bg-success' : 'text-bg-secondary' }}">
-                        {{ $a->status ? 'Active' : 'Inactive' }}
+                    <span class="badge text-bg-success ms-auto">Active</span>
+                </div>
+                <hr class="my-2">
+
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-truck text-muted" style="width:16px;"></i>
+                    <span style="font-size:13px;">{{ $a->vehicle?->vehicle_no ?? '—' }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-person-badge text-muted" style="width:16px;"></i>
+                    <span style="font-size:13px;">{{ $a->driver?->name ?? '—' }}</span>
+                    @if($a->driver?->mobile)
+                        <span class="text-muted" style="font-size:12px;">— {{ $a->driver->mobile }}</span>
+                    @endif
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-person text-muted" style="width:16px;"></i>
+                    <span style="font-size:13px;">{{ $a->helper?->name ?? '—' }}
+                        <span class="text-muted" style="font-size:11px;">(Helper)</span>
                     </span>
                 </div>
 
-                <hr class="my-2">
-
-                {{-- Vehicle --}}
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="bi bi-truck text-muted" style="width:16px;"></i>
-                    @if($a->vehicle)
-                        <span class="fw-medium" style="font-size:13px;">{{ $a->vehicle->vehicle_no }}</span>
-                        @if($a->vehicle->model)
-                            <span class="text-muted" style="font-size:12px;">— {{ $a->vehicle->model }}</span>
-                        @endif
-                    @else
-                        <span class="text-muted" style="font-size:13px;">No vehicle assigned</span>
-                    @endif
-                </div>
-
-                {{-- Driver --}}
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <i class="bi bi-person-badge text-muted" style="width:16px;"></i>
-                    @if($a->driver)
-                        <span class="fw-medium" style="font-size:13px;">{{ $a->driver->name }}</span>
-                        @if($a->driver->mobile)
-                            <span class="text-muted" style="font-size:12px;">— {{ $a->driver->mobile }}</span>
-                        @endif
-                    @else
-                        <span class="text-muted" style="font-size:13px;">No driver assigned</span>
-                    @endif
-                </div>
-
                 @if($a->notes)
-                <div class="text-muted mb-3" style="font-size:12px;"><i class="bi bi-sticky me-1"></i>{{ $a->notes }}</div>
+                <div class="text-muted mb-2" style="font-size:12px;"><i class="bi bi-sticky me-1"></i>{{ $a->notes }}</div>
                 @endif
 
-                {{-- Actions --}}
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 mt-2">
                     <button class="btn btn-sm btn-outline-primary flex-grow-1"
-                        onclick="openEdit({{ $a->id }}, {{ $a->transport_vehicle_id ?? 'null' }}, {{ $a->transport_driver_id ?? 'null' }}, '{{ addslashes($a->notes ?? '') }}')">
+                        onclick="openEdit({{ $a->id }},
+                            {{ $a->transport_vehicle_id ?? 'null' }},
+                            {{ $a->transport_driver_id ?? 'null' }},
+                            {{ $a->transport_helper_id ?? 'null' }},
+                            '{{ addslashes($a->notes ?? '') }}')">
                         <i class="bi bi-pencil me-1"></i> Edit
                     </button>
-                    <form method="POST" action="{{ route('transport.route-assignments.toggle', $a) }}">
-                        @csrf
-                        <button class="btn btn-sm {{ $a->status ? 'btn-outline-warning' : 'btn-outline-success' }}" title="{{ $a->status ? 'Deactivate' : 'Activate' }}">
-                            <i class="bi bi-{{ $a->status ? 'pause' : 'play' }}"></i>
-                        </button>
-                    </form>
+                    <button class="btn btn-sm btn-outline-warning"
+                        onclick="openChange({{ $a->transport_route_id }})"
+                        title="Change Vehicle/Driver/Helper — purana record band ho jaayega">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
                     <form method="POST" action="{{ route('transport.route-assignments.destroy', $a) }}"
-                        onsubmit="return confirm('Remove this assignment?')">
+                        onsubmit="return confirm('Delete this assignment?')">
                         @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-outline-danger" title="Delete">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                     </form>
                 </div>
             </div>
@@ -113,14 +102,49 @@
     @endforeach
 </div>
 @else
-<div class="card border-0 shadow-sm">
+<div class="card border-0 shadow-sm mb-4">
     <div class="card-body text-center py-5 text-muted">
         <i class="bi bi-signpost-2 fs-1 d-block mb-2 opacity-25"></i>
-        <p class="mb-1 fw-medium">No assignments yet</p>
-        <p class="mb-3" style="font-size:13px;">Assign a vehicle and driver to each route so they auto-fill during student allocation.</p>
+        <p class="mb-1 fw-medium">No active assignments</p>
+        <p style="font-size:13px;">Route pe vehicle aur driver assign karo taaki admission form me auto-select ho.</p>
         <button class="btn btn-primary btn-sm px-4" data-bs-toggle="modal" data-bs-target="#addModal">
-            <i class="bi bi-plus-lg me-1"></i> Add First Assignment
+            <i class="bi bi-plus-lg me-1"></i> Add Assignment
         </button>
+    </div>
+</div>
+@endif
+
+{{-- ── History ── --}}
+@if($history->count())
+<h6 class="fw-semibold text-uppercase text-muted mb-3" style="font-size:11px; letter-spacing:.05em;">
+    <i class="bi bi-clock-history me-1"></i> Assignment History
+</h6>
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead style="background:#f8fafc; font-size:12px;">
+                <tr>
+                    <th class="ps-3">Route</th>
+                    <th>Vehicle</th>
+                    <th>Driver</th>
+                    <th>Helper</th>
+                    <th>From</th>
+                    <th>To</th>
+                </tr>
+            </thead>
+            <tbody style="font-size:13px;">
+                @foreach($history as $h)
+                <tr class="text-muted">
+                    <td class="ps-3">{{ $h->route?->name ?? '—' }}</td>
+                    <td>{{ $h->vehicle?->vehicle_no ?? '—' }}</td>
+                    <td>{{ $h->driver?->name ?? '—' }}</td>
+                    <td>{{ $h->helper?->name ?? '—' }}</td>
+                    <td>{{ $h->start_date?->format('d M Y') ?? '—' }}</td>
+                    <td>{{ $h->end_date?->format('d M Y') ?? '—' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </div>
 @endif
@@ -132,14 +156,18 @@
             <form method="POST" action="{{ route('transport.route-assignments.store') }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>Add Route Assignment</h5>
+                    <h5 class="modal-title fw-semibold"><i class="bi bi-plus-circle me-2 text-primary"></i>New Route Assignment</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="alert alert-info py-2 mb-3" style="font-size:13px;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Agar is route pe pehle se assignment hai to woh automatically band ho jaayegi.
+                    </div>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-medium">Route <span class="text-danger">*</span></label>
-                            <select class="form-select" name="transport_route_id" required>
+                            <select class="form-select" name="transport_route_id" id="addRouteSelect" required>
                                 <option value="">— Select Route —</option>
                                 @foreach($routes as $r)
                                     <option value="{{ $r->id }}">{{ $r->name }}</option>
@@ -147,30 +175,33 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-medium">Session</label>
-                            <select class="form-select" name="academic_session_id">
-                                <option value="">All Sessions (default)</option>
-                                @foreach($sessions as $sess)
-                                    <option value="{{ $sess->id }}" {{ $sess->is_active ? 'selected' : '' }}>{{ $sess->name }}</option>
-                                @endforeach
-                            </select>
-                            <div class="form-text">Session-specific assignment overrides the default.</div>
+                            <label class="form-label fw-medium">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="start_date" value="{{ date('Y-m-d') }}" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-medium">Vehicle</label>
                             <select class="form-select" name="transport_vehicle_id">
-                                <option value="">— Select Vehicle —</option>
+                                <option value="">— None —</option>
                                 @foreach($vehicles as $v)
                                     <option value="{{ $v->id }}">{{ $v->vehicle_no }}{{ $v->model ? ' — '.$v->model : '' }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-medium">Driver</label>
                             <select class="form-select" name="transport_driver_id">
-                                <option value="">— Select Driver —</option>
+                                <option value="">— None —</option>
                                 @foreach($drivers as $d)
                                     <option value="{{ $d->id }}">{{ $d->name }}{{ $d->mobile ? ' — '.$d->mobile : '' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Helper</label>
+                            <select class="form-select" name="transport_helper_id">
+                                <option value="">— None —</option>
+                                @foreach($helpers as $h)
+                                    <option value="{{ $h->id }}">{{ $h->name }}{{ $h->mobile ? ' — '.$h->mobile : '' }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -182,14 +213,14 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-5"><i class="bi bi-floppy me-1"></i> Save</button>
+                    <button type="submit" class="btn btn-primary px-5"><i class="bi bi-floppy me-1"></i> Save Assignment</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-{{-- ── Edit Modal ── --}}
+{{-- ── Edit Modal (current assignment ka vehicle/driver/helper update) ── --}}
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -201,27 +232,36 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-medium">Vehicle</label>
                             <select class="form-select" name="transport_vehicle_id" id="editVehicle">
                                 <option value="">— None —</option>
                                 @foreach($vehicles as $v)
-                                    <option value="{{ $v->id }}">{{ $v->vehicle_no }}{{ $v->model ? ' — '.$v->model : '' }}</option>
+                                    <option value="{{ $v->id }}">{{ $v->vehicle_no }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-medium">Driver</label>
                             <select class="form-select" name="transport_driver_id" id="editDriver">
                                 <option value="">— None —</option>
                                 @foreach($drivers as $d)
-                                    <option value="{{ $d->id }}">{{ $d->name }}{{ $d->mobile ? ' — '.$d->mobile : '' }}</option>
+                                    <option value="{{ $d->id }}">{{ $d->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">Helper</label>
+                            <select class="form-select" name="transport_helper_id" id="editHelper">
+                                <option value="">— None —</option>
+                                @foreach($helpers as $h)
+                                    <option value="{{ $h->id }}">{{ $h->name }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-medium">Notes</label>
-                            <input type="text" class="form-control" name="notes" id="editNotes" placeholder="Optional">
+                            <input type="text" class="form-control" name="notes" id="editNotes">
                         </div>
                     </div>
                 </div>
@@ -234,23 +274,84 @@
     </div>
 </div>
 
+{{-- ── Change Modal (new assignment, purana auto-close) ── --}}
+<div class="modal fade" id="changeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('transport.route-assignments.store') }}">
+                @csrf
+                <input type="hidden" name="transport_route_id" id="changeRouteId">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-semibold"><i class="bi bi-arrow-repeat me-2 text-warning"></i>Change Vehicle / Driver / Helper</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 mb-3" style="font-size:13px;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Purani assignment band ho jaayegi. Naya record Start Date se shuru hoga.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-medium">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="start_date" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">New Vehicle</label>
+                            <select class="form-select" name="transport_vehicle_id">
+                                <option value="">— None —</option>
+                                @foreach($vehicles as $v)
+                                    <option value="{{ $v->id }}">{{ $v->vehicle_no }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">New Driver</label>
+                            <select class="form-select" name="transport_driver_id">
+                                <option value="">— None —</option>
+                                @foreach($drivers as $d)
+                                    <option value="{{ $d->id }}">{{ $d->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">New Helper</label>
+                            <select class="form-select" name="transport_helper_id">
+                                <option value="">— None —</option>
+                                @foreach($helpers as $h)
+                                    <option value="{{ $h->id }}">{{ $h->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-medium">Notes</label>
+                            <input type="text" class="form-control" name="notes" placeholder="Optional">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning px-5"><i class="bi bi-arrow-repeat me-1"></i> Change & Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
-function openEdit(id, vehicleId, driverId, notes) {
+function openEdit(id, vehicleId, driverId, helperId, notes) {
     document.getElementById('editForm').action = `/transport/route-assignments/${id}`;
-    const v = document.getElementById('editVehicle');
-    const d = document.getElementById('editDriver');
-    const n = document.getElementById('editNotes');
-    v.value = vehicleId ?? '';
-    d.value = driverId ?? '';
-    n.value = notes;
+    document.getElementById('editVehicle').value = vehicleId ?? '';
+    document.getElementById('editDriver').value  = driverId  ?? '';
+    document.getElementById('editHelper').value  = helperId  ?? '';
+    document.getElementById('editNotes').value   = notes;
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }
-
-// Auto-open add modal if there was a validation error
+function openChange(routeId) {
+    document.getElementById('changeRouteId').value = routeId;
+    new bootstrap.Modal(document.getElementById('changeModal')).show();
+}
 @if($errors->any())
-    document.addEventListener('DOMContentLoaded', () => {
-        new bootstrap.Modal(document.getElementById('addModal')).show();
-    });
+    document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('addModal')).show());
 @endif
 </script>
 @endsection

@@ -31,7 +31,7 @@ class Student extends Authenticatable
         'scholarship_authority', 'scholarship_applied_date',
         'scholarship_amount', 'scholarship_ref_no',
         'is_quick_admission',
-        'admitted_by_staff_id',
+        'admitted_by_staff_id', 'admitted_by_type',
         'approved_by_staff_id', 'approved_by_name', 'approved_at', 'approval_notes',
         'status_reason',
     ];

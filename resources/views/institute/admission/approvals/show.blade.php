@@ -100,10 +100,11 @@
                     <div class="col-md-4"><span class="text-muted">Reference No:</span> <span class="fw-semibold">{{ $student->reference_no ?? '-' }}</span></div>
                     <div class="col-md-4"><span class="text-muted">Admitted By:</span>
                         <span class="fw-semibold">
-                            @if($student->admission_source === 'center') Center
-                            @elseif($student->admission_source === 'channel_partner') Channel Partner
-                            @elseif($student->admittedBy?->name) Staff: {{ $student->admittedBy->name }}
-                            @else Admin / Direct
+                            @php $admittedByType = $student->admitted_by_type ?? 'admin'; @endphp
+                            @if($admittedByType === 'staff') Staff: {{ $student->admittedBy?->name ?? 'Staff' }}
+                            @elseif($admittedByType === 'center') Center
+                            @elseif($admittedByType === 'channel_partner') Partner
+                            @else Admin
                             @endif
                             @if($admissionSourceName) — {{ $admissionSourceName }} @endif
                         </span>

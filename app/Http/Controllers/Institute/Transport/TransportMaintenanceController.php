@@ -42,7 +42,7 @@ class TransportMaintenanceController extends TransportBaseController
         $data = $request->validate([
             'transport_vehicle_id' => ['required', Rule::exists('transport_vehicles', 'id')->where('institute_id', $this->instituteId())],
             'service_date' => ['required', 'date'],
-            'next_service_due' => ['nullable', 'date', 'after_or_equal:service_date'],
+            'next_service_due' => ['nullable', 'date', 'after:service_date'],
             'odometer_km' => ['nullable', 'integer', 'min:0'],
             'service_type' => ['nullable', 'string', 'max:80'],
             'garage_name' => ['nullable', 'string', 'max:120'],

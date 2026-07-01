@@ -67,6 +67,13 @@ class AdmissionController extends Controller
         return null;
     }
 
+    private function admittedByType(): string
+    {
+        $actor = $this->actorType();
+        if ($actor === 'partner') return 'channel_partner';
+        return $actor ?? 'admin';
+    }
+
     private function authenticatedUser()
     {
         foreach (['staff', 'center', 'partner', 'web'] as $guard) {
@@ -853,23 +860,21 @@ class AdmissionController extends Controller
         return $filters;
     }
 
-    private function admissionExportRows(Collection $students): array
+    private function admissionExportRows(Collection $students, Collection $centers, Collection $partners): array
     {
-        return $students->map(function (Student $student) {
-            $source = $student->admission_source ?? 'direct';
-            $admittedBy = match ($source) {
-                'center' => 'Center',
-                'channel_partner' => 'Partner',
-                default => $student->admittedBy?->name ?: 'Admin / Direct',
+        return $students->map(function (Student $student) use ($centers, $partners) {
+            $source  = $student->admission_source ?? 'direct';
+            $srcName = match ($source) {
+                'center'          => $centers->firstWhere('id', $student->admission_source_id)?->name ?? 'Center',
+                'channel_partner' => $partners->firstWhere('id', $student->admission_source_id)?->name ?? 'Partner',
+                default           => null,
             };
-
-            if ($source === 'center') {
-                $admittedBy = 'Center: ' . (Center::find($student->admission_source_id)?->name ?? 'Unknown');
-            } elseif ($source === 'channel_partner') {
-                $admittedBy = 'Partner: ' . (ChannelPartner::find($student->admission_source_id)?->name ?? 'Unknown');
-            } elseif ($student->admittedBy?->name) {
-                $admittedBy = 'Staff: ' . $student->admittedBy->name;
-            }
+            $admittedBy = match ($student->admitted_by_type ?? 'admin') {
+                'staff'           => 'Staff: ' . ($student->admittedBy?->name ?? 'Staff'),
+                'center'          => 'Center: ' . ($srcName ?? 'Center'),
+                'channel_partner' => 'Partner: ' . ($srcName ?? 'Partner'),
+                default           => 'Admin',
+            };
 
             return [
                 $student->student_uid,
@@ -2253,6 +2258,7 @@ class AdmissionController extends Controller
                 'current_semester'    => 1,
                 'status'              => $this->initialAdmissionStatus(),
                 'admitted_by_staff_id' => auth()->guard('staff')->check() ? auth()->guard('staff')->id() : null,
+                'admitted_by_type'    => $this->admittedByType(),
                 'has_scholarship'     => (bool) ($formData['has_scholarship'] ?? false),
                 'scholarship_name'    => ($formData['has_scholarship'] ?? false) ? ($formData['scholarship_name'] ?? null) : null,
                 'scholarship_type'    => ($formData['has_scholarship'] ?? false) ? ($formData['scholarship_type'] ?? null) : null,
@@ -2260,7 +2266,6 @@ class AdmissionController extends Controller
                 'scholarship_applied_date' => ($formData['has_scholarship'] ?? false) ? ($formData['scholarship_applied_date'] ?? null) : null,
                 'scholarship_amount'  => ($formData['has_scholarship'] ?? false) ? ($formData['scholarship_amount'] ?? null) : null,
                 'scholarship_ref_no'  => ($formData['has_scholarship'] ?? false) ? ($formData['scholarship_ref_no'] ?? null) : null,
-                'admitted_by_staff_id' => auth()->guard('staff')->check() ? auth()->guard('staff')->id() : null,
             ]);
 
             // Photo: temp se permanent
@@ -2612,7 +2617,7 @@ class AdmissionController extends Controller
         if ($request->filled('export')) {
             $students = (clone $query)->orderBy('admission_date')->orderBy('id')->get();
             $headers = $this->admissionExportHeaders();
-            $rows = $this->admissionExportRows($students);
+            $rows = $this->admissionExportRows($students, $centers, $partners);
             $generatedAt = now()->format('d M Y, h:i A');
             $headline = $appliedFilters !== []
                 ? 'Filtered By: ' . implode(' | ', array_map(fn($label, $value) => "{$label}: {$value}", array_keys($appliedFilters), $appliedFilters))
@@ -2824,16 +2829,27 @@ class AdmissionController extends Controller
             $exportStudents = $sortedQuery($query)->get();
 
             if ($request->export === 'csv') {
-                return response()->streamDownload(function () use ($exportStudents) {
+                return response()->streamDownload(function () use ($exportStudents, $centers, $channelPartners) {
                     $out = fopen('php://output', 'w');
                     fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
                     fputcsv($out, ['#', 'Student ID', 'Name', 'Father Name', 'Mother Name', 'Mobile', 'Course', 'Stream', 'Session', 'Admission Date', 'Status', 'Admitted By', 'Source', 'Approved By', 'Approved At']);
                     foreach ($exportStudents as $i => $s) {
-                        $admittedBy = $s->admittedBy?->name ? 'Staff: '.$s->admittedBy->name : 'Admin/Direct';
-                        $sourceLabel = match ($s->admission_source) {
-                            'center' => 'Center',
-                            'channel_partner' => 'Channel Partner',
-                            default => ucfirst($s->admission_source ?? 'direct'),
+                        $csvSrc = $s->admission_source ?? 'direct';
+                        $csvSrcName = match ($csvSrc) {
+                            'center'           => $centers->firstWhere('id', $s->admission_source_id)?->name ?? 'Center',
+                            'channel_partner'  => $channelPartners->firstWhere('id', $s->admission_source_id)?->name ?? 'Partner',
+                            default            => null,
+                        };
+                        $sourceLabel = match ($csvSrc) {
+                            'center'          => 'Center: ' . $csvSrcName,
+                            'channel_partner' => 'Partner: ' . $csvSrcName,
+                            default           => ucfirst($csvSrc),
+                        };
+                        $admittedBy = match ($s->admitted_by_type ?? 'admin') {
+                            'staff'            => 'Staff: ' . ($s->admittedBy?->name ?? 'Staff'),
+                            'center'           => 'Center: ' . ($csvSrcName ?? 'Center'),
+                            'channel_partner'  => 'Partner: ' . ($csvSrcName ?? 'Partner'),
+                            default            => 'Admin',
                         };
                         fputcsv($out, [
                             $i + 1,
@@ -2864,7 +2880,7 @@ class AdmissionController extends Controller
                     : ($activeSession?->name ?? '');
                 $institute = \App\Models\Institute::find($instituteId);
                 return view('institute.admission.approvals.export-pdf', compact(
-                    'exportStudents', 'printTitle', 'filterLabel', 'institute'
+                    'exportStudents', 'printTitle', 'filterLabel', 'institute', 'centers', 'channelPartners'
                 ));
             }
         }
@@ -3920,6 +3936,7 @@ class AdmissionController extends Controller
                 'current_semester'    => 1,
                 'status'              => $this->initialAdmissionStatus(),
                 'admitted_by_staff_id' => auth()->guard('staff')->check() ? auth()->guard('staff')->id() : null,
+                'admitted_by_type'    => $this->admittedByType(),
                 'is_quick_admission'  => true,
                 'has_scholarship'     => (bool) ($request->has_scholarship ?? false),
                 'scholarship_name'    => ($request->has_scholarship ?? false) ? ($request->scholarship_name ?? null) : null,
@@ -4216,6 +4233,7 @@ class AdmissionController extends Controller
                 'current_semester'    => 1,
                 'status'              => $this->initialAdmissionStatus(),
                 'admitted_by_staff_id' => auth()->guard('staff')->check() ? auth()->guard('staff')->id() : null,
+                'admitted_by_type'    => $this->admittedByType(),
                 'has_scholarship'     => (bool) ($formData['has_scholarship'] ?? false),
                 'scholarship_name'    => ($formData['has_scholarship'] ?? false) ? ($formData['scholarship_name'] ?? null) : null,
                 'scholarship_type'    => ($formData['has_scholarship'] ?? false) ? ($formData['scholarship_type'] ?? null) : null,

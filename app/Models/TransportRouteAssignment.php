@@ -11,13 +11,15 @@ class TransportRouteAssignment extends Model
         'transport_route_id',
         'transport_vehicle_id',
         'transport_driver_id',
-        'academic_session_id',
-        'status',
+        'transport_helper_id',
+        'start_date',
+        'end_date',
         'notes',
     ];
 
     protected $casts = [
-        'status' => 'boolean',
+        'start_date' => 'date',
+        'end_date'   => 'date',
     ];
 
     public function route()
@@ -35,22 +37,29 @@ class TransportRouteAssignment extends Model
         return $this->belongsTo(TransportDriver::class, 'transport_driver_id');
     }
 
-    public function session()
+    public function helper()
     {
-        return $this->belongsTo(AcademicSession::class, 'academic_session_id');
+        return $this->belongsTo(TransportHelper::class, 'transport_helper_id');
     }
 
-    // Helper: given route + session, return active assignment
-    public static function forRoute(int $instituteId, int $routeId, ?int $sessionId): ?self
+    public function isCurrent(): bool
+    {
+        return $this->end_date === null;
+    }
+
+    // Return the current active assignment for a route (session-independent)
+    public static function forRoute(int $instituteId, int $routeId): ?self
     {
         return static::where('institute_id', $instituteId)
             ->where('transport_route_id', $routeId)
-            ->where('status', true)
-            ->where(function ($q) use ($sessionId) {
-                $q->where('academic_session_id', $sessionId)
-                  ->orWhereNull('academic_session_id');
-            })
-            ->orderByRaw('academic_session_id IS NULL ASC') // session-specific takes priority
+            ->whereNull('end_date')
+            ->latest('start_date')
             ->first();
+    }
+
+    // Close this assignment (set end_date = yesterday so new one can start today)
+    public function close(?string $endDate = null): void
+    {
+        $this->update(['end_date' => $endDate ?? now()->subDay()->toDateString()]);
     }
 }

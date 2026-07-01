@@ -171,16 +171,27 @@
     <tbody>
         @forelse($exportStudents as $i => $student)
             @php
-                $admittedBy = $student->admittedBy?->name
-                    ? 'Staff: ' . $student->admittedBy->name
-                    : 'Admin/Direct';
-
-                if ($student->admission_source === 'center') {
-                    $sourceLabel = 'Center: ' . (\App\Models\Center::find($student->admission_source_id)?->name ?? 'Center');
-                } elseif ($student->admission_source === 'channel_partner') {
-                    $sourceLabel = 'Partner: ' . (\App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner');
+                $pdfSrc = $student->admission_source ?? 'direct';
+                if ($pdfSrc === 'center') {
+                    $pdfSrcName  = $centers->firstWhere('id', $student->admission_source_id)?->name ?? 'Center';
+                    $sourceLabel = 'Center: ' . $pdfSrcName;
+                } elseif ($pdfSrc === 'channel_partner') {
+                    $pdfSrcName  = $channelPartners->firstWhere('id', $student->admission_source_id)?->name ?? 'Partner';
+                    $sourceLabel = 'Partner: ' . $pdfSrcName;
                 } else {
-                    $sourceLabel = ucfirst($student->admission_source ?? 'direct');
+                    $pdfSrcName  = null;
+                    $sourceLabel = ucfirst($pdfSrc);
+                }
+
+                $pdfAdmittedByType = $student->admitted_by_type ?? 'admin';
+                if ($pdfAdmittedByType === 'staff') {
+                    $admittedBy = 'Staff: ' . ($student->admittedBy?->name ?? 'Staff');
+                } elseif ($pdfAdmittedByType === 'center') {
+                    $admittedBy = 'Center: ' . ($pdfSrcName ?? ($centers->firstWhere('id', $student->admission_source_id)?->name ?? 'Center'));
+                } elseif ($pdfAdmittedByType === 'channel_partner') {
+                    $admittedBy = 'Partner: ' . ($pdfSrcName ?? ($channelPartners->firstWhere('id', $student->admission_source_id)?->name ?? 'Partner'));
+                } else {
+                    $admittedBy = 'Admin';
                 }
                 $badgeClass = match($student->status) {
                     'pending'   => 'badge-pending',

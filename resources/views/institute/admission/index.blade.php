@@ -337,16 +337,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         ];
                         $srcColor = $srcColors[$src] ?? 'secondary';
 
-                        $admittedByLabel = $student->admittedBy?->name
-                            ? 'Staff: '.$student->admittedBy->name
-                            : 'Admin / Direct';
-
-                        if ($src === 'center') {
-                            $centerName = $centers->firstWhere('id', (int) $student->admission_source_id)?->name ?? 'Center';
-                            $admittedByLabel = 'Center: '.$centerName;
-                        } elseif ($src === 'channel_partner') {
-                            $partnerName = $partners->firstWhere('id', (int) $student->admission_source_id)?->name ?? 'Partner';
-                            $admittedByLabel = 'Partner: '.$partnerName;
+                        $admittedByType = $student->admitted_by_type ?? 'admin';
+                        if ($admittedByType === 'staff') {
+                            $admittedByLabel = 'Staff: ' . ($student->admittedBy?->name ?? 'Staff');
+                        } elseif ($admittedByType === 'center') {
+                            $admittedByLabel = 'Center: ' . ($centers->firstWhere('id', (int) $student->admission_source_id)?->name ?? 'Center');
+                        } elseif ($admittedByType === 'channel_partner') {
+                            $admittedByLabel = 'Partner: ' . ($partners->firstWhere('id', (int) $student->admission_source_id)?->name ?? 'Partner');
+                        } else {
+                            $admittedByLabel = 'Admin';
                         }
                     @endphp
                     <tr class="{{ !$isComplete ? 'table-warning bg-opacity-25' : '' }}">

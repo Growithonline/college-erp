@@ -222,19 +222,35 @@
             <tbody>
                 @forelse($students as $i => $student)
                     @php
-                        $admittedBy = $student->admittedBy?->name
-                            ? 'Staff: ' . $student->admittedBy->name
-                            : 'Admin / Direct';
+                        $source  = $student->admission_source ?? 'direct';
+                        $srcName = null;
 
-                        $source = $student->admission_source ?? 'direct';
+                        // Source column — what was selected in the admission form
+                        // Uses pre-loaded $centers / $channelPartners collections (no extra DB query)
                         if ($source === 'center') {
-                            $srcName = \App\Models\Center::find($student->admission_source_id)?->name ?? 'Center';
+                            $srcName     = $centers->firstWhere('id', $student->admission_source_id)?->name ?? 'Center';
                             $sourceLabel = 'Center: ' . $srcName;
                         } elseif ($source === 'channel_partner') {
-                            $srcName = \App\Models\ChannelPartner::find($student->admission_source_id)?->name ?? 'Partner';
+                            $srcName     = $channelPartners->firstWhere('id', $student->admission_source_id)?->name ?? 'Partner';
                             $sourceLabel = 'Partner: ' . $srcName;
+                        } elseif ($source === 'online') {
+                            $sourceLabel = 'Online';
                         } else {
-                            $sourceLabel = ucfirst($source);
+                            $sourceLabel = 'Direct';
+                        }
+
+                        // Admitted By — who actually performed the admission (from admitted_by_type)
+                        $admittedByType = $student->admitted_by_type ?? 'admin';
+                        if ($admittedByType === 'staff') {
+                            $admittedBy = 'Staff: ' . ($student->admittedBy?->name ?? 'Staff');
+                        } elseif ($admittedByType === 'center') {
+                            $centerName = $srcName ?? ($centers->firstWhere('id', $student->admission_source_id)?->name ?? 'Center');
+                            $admittedBy = 'Center: ' . $centerName;
+                        } elseif ($admittedByType === 'channel_partner') {
+                            $partnerName = $srcName ?? ($channelPartners->firstWhere('id', $student->admission_source_id)?->name ?? 'Partner');
+                            $admittedBy = 'Partner: ' . $partnerName;
+                        } else {
+                            $admittedBy = 'Admin';
                         }
                         $statusClass = match($student->status) {
                             'pending' => 'bg-warning text-dark',

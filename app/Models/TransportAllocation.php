@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TransportAllocation extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'student_id',
         'institute_id',
@@ -15,8 +18,6 @@ class TransportAllocation extends Model
         'transport_vehicle_id',
         'transport_driver_id',
         'fee_amount',
-        'charged_amount',
-        'paid_amount',
         'start_date',
         'end_date',
         'status',

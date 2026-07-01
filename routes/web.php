@@ -92,6 +92,10 @@ use App\Http\Controllers\Institute\Transport\TransportRouteAssignmentController;
 use App\Http\Controllers\Institute\Transport\TransportVehicleController;
 use App\Http\Controllers\Institute\Transport\TransportVehicleTypeController;
 use App\Http\Controllers\Institute\Transport\TransportSettingController;
+use App\Http\Controllers\Institute\Employee\EmployeeController;
+use App\Http\Controllers\Institute\Employee\EmployeeDepartmentController;
+use App\Http\Controllers\Institute\Employee\EmployeeDesignationController;
+use App\Http\Controllers\Institute\Employee\EmployeeSalaryController;
 
 // Library Staff
 use App\Http\Controllers\Institute\Library\LibraryStaffController;
@@ -779,7 +783,6 @@ Route::middleware('auth:web,staff,center,partner')->prefix('transport')->name('t
     Route::post('route-assignments', [TransportRouteAssignmentController::class, 'store'])->name('route-assignments.store');
     Route::put('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'update'])->name('route-assignments.update');
     Route::delete('route-assignments/{routeAssignment}', [TransportRouteAssignmentController::class, 'destroy'])->name('route-assignments.destroy');
-    Route::post('route-assignments/{routeAssignment}/toggle', [TransportRouteAssignmentController::class, 'toggle'])->name('route-assignments.toggle');
     Route::get('route-assignments/for-route', [TransportRouteAssignmentController::class, 'forRoute'])->name('route-assignments.for-route');
 
     // Bulk routes BEFORE resource (avoids {allocation} capturing "bulk")
@@ -824,9 +827,50 @@ Route::middleware('auth:web,staff,center,partner')->prefix('transport')->name('t
     Route::post('billing/collect-one-time/{allocation}', [TransportMonthlyBillingController::class, 'collectOneTime'])->name('billing.collect-one-time');
     Route::get('billing/receipt/{transaction}', [TransportMonthlyBillingController::class, 'receipt'])->name('billing.receipt');
 
+    // Transport Helpers
+    Route::resource('helpers', \App\Http\Controllers\Institute\Transport\TransportHelperController::class)->except(['show', 'create', 'edit']);
+    Route::post('helpers/{helper}/toggle', [\App\Http\Controllers\Institute\Transport\TransportHelperController::class, 'toggle'])->name('helpers.toggle');
+
     // Transport Settings
     Route::get('settings', [TransportSettingController::class, 'index'])->name('settings.index');
     Route::put('settings', [TransportSettingController::class, 'update'])->name('settings.update');
+});
+
+// ── EMPLOYEE MODULE ──────────────────────────────────────────────────
+Route::middleware('auth:web,staff')->prefix('employees')->name('employees.')->group(function () {
+    // Departments
+    Route::prefix('departments')->name('departments.')->group(function () {
+        Route::get('/',                [EmployeeDepartmentController::class, 'index'])->name('index');
+        Route::post('/',               [EmployeeDepartmentController::class, 'store'])->name('store');
+        Route::put('/{department}',    [EmployeeDepartmentController::class, 'update'])->name('update');
+        Route::post('/{department}/toggle', [EmployeeDepartmentController::class, 'toggle'])->name('toggle');
+        Route::delete('/{department}', [EmployeeDepartmentController::class, 'destroy'])->name('destroy');
+    });
+
+    // Designations
+    Route::prefix('designations')->name('designations.')->group(function () {
+        Route::get('/',                   [EmployeeDesignationController::class, 'index'])->name('index');
+        Route::post('/',                  [EmployeeDesignationController::class, 'store'])->name('store');
+        Route::put('/{designation}',      [EmployeeDesignationController::class, 'update'])->name('update');
+        Route::delete('/{designation}',   [EmployeeDesignationController::class, 'destroy'])->name('destroy');
+    });
+
+    // Salary sub-routes (BEFORE resource to avoid route model binding conflict)
+    Route::post('/{employee}/salary/components',            [EmployeeSalaryController::class, 'storeComponent'])->name('salary.storeComponent');
+    Route::delete('/{employee}/salary/components/{component}', [EmployeeSalaryController::class, 'destroyComponent'])->name('salary.destroyComponent');
+    Route::get('/{employee}/salary/disbursements',          [EmployeeSalaryController::class, 'disbursements'])->name('salary.disbursements');
+    Route::post('/{employee}/salary/disbursements',         [EmployeeSalaryController::class, 'storeDisbursement'])->name('salary.storeDisbursement');
+    Route::post('/{employee}/salary/bonuses',               [EmployeeSalaryController::class, 'storeBonus'])->name('salary.storeBonus');
+    Route::delete('/{employee}/salary/bonuses/{bonus}',     [EmployeeSalaryController::class, 'destroyBonus'])->name('salary.destroyBonus');
+    Route::post('/{employee}/salary/advances',              [EmployeeSalaryController::class, 'storeAdvance'])->name('salary.storeAdvance');
+    Route::patch('/{employee}/advances/{advance}/recovery', [EmployeeSalaryController::class, 'updateAdvanceRecovery'])->name('salary.updateAdvanceRecovery');
+
+    // Documents
+    Route::post('/{employee}/documents',            [EmployeeController::class, 'storeDocument'])->name('documents.store');
+    Route::delete('/{employee}/documents/{document}', [EmployeeController::class, 'destroyDocument'])->name('documents.destroy');
+
+    // Employee CRUD
+    Route::resource('/', EmployeeController::class)->parameters(['' => 'employee']);
 });
 
 // ── CENTER routes ────────────────────────────────────────────────────
