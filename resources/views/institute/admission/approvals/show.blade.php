@@ -239,8 +239,14 @@
                                     <tr>
                                         <th>Exam</th>
                                         <th>Institute</th>
+                                        <th>Stream</th>
                                         <th>Board / University</th>
+                                        <th>Roll No</th>
                                         <th>Year</th>
+                                        <th>District</th>
+                                        <th>Division</th>
+                                        <th>Obtained</th>
+                                        <th>Max</th>
                                         <th>Percentage</th>
                                     </tr>
                                 </thead>
@@ -249,8 +255,14 @@
                                         <tr>
                                             <td>{{ $edu->exam_name ?? '-' }}</td>
                                             <td>{{ $edu->institute_name ?? '-' }}</td>
+                                            <td>{{ $edu->education_stream ?? '-' }}</td>
                                             <td>{{ $edu->board_university ?? '-' }}</td>
+                                            <td>{{ $edu->roll_number ?? '-' }}</td>
                                             <td>{{ $edu->passing_year ?? '-' }}</td>
+                                            <td>{{ $edu->district ?? '-' }}</td>
+                                            <td>{{ $edu->division ?? '-' }}</td>
+                                            <td>{{ $edu->obtained_marks ?? '-' }}</td>
+                                            <td>{{ $edu->max_marks ?? '-' }}</td>
                                             <td>{{ $edu->percentage ?? '-' }}</td>
                                         </tr>
                                     @endforeach
