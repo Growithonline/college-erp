@@ -24,6 +24,7 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::post('/institutes/{institute}/reset-password', [InstituteController::class, 'resetPassword'])->name('institutes.reset-password');
         Route::post('/institutes/{institute}/resend-credentials', [InstituteController::class, 'resendCredentials'])->name('institutes.resend-credentials');
         Route::post('/institutes/{institute}/clean-data',         [InstituteController::class, 'cleanData'])->name('institutes.clean-data');
+        Route::get('/institutes/{institute}/export-data',          [InstituteController::class, 'exportData'])->name('institutes.export-data');
 
         // SMS Management
         Route::prefix('sms')->name('sms.')->group(function () {

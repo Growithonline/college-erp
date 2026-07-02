@@ -322,6 +322,35 @@
     </div>
 </div>
 
+{{-- Data Export --}}
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pb-0 pt-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-download text-success me-2"></i>Data Backup / Export</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3 flex-wrap">
+                    <div class="flex-grow-1">
+                        <p class="fw-semibold mb-1">Institute ka Data .sql File mein Download Karo</p>
+                        <p class="text-muted small mb-0">
+                            Sirf <strong>{{ $institute->name }}</strong> ka data export hoga — students, courses, fees, staff, centers, partners, library, transport sab.
+                            Dusre institutes ka koi data include nahi hoga.
+                            File directly browser se download hogi, server pe kuch save nahi hoga.
+                        </p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="{{ route('super_admin.institutes.export-data', $institute->id) }}"
+                           class="btn btn-success btn-sm fw-semibold px-3">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Download .sql Backup
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Danger Zone: Clean Institute Data --}}
 <div class="row g-3 mt-1">
     <div class="col-12">
