@@ -204,20 +204,23 @@ class CleanInstituteData extends Command
                 $this->deleteLine('Institute wallet', 'institute_wallets', $id);
 
                 // ── 11. Academic Structure ──────────────────────────────
-                // course_stream_subjects, stream_year_subject_rules, subject_components, fee_assignments
-                $sessionIds = DB::table('academic_sessions')->where('institute_id', $id)->pluck('id');
-                if ($sessionIds->isNotEmpty()) {
-                    $streamIds = DB::table('course_streams')->whereIn('academic_session_id', $sessionIds)->pluck('id');
+                // course_streams → course_id FK hai (academic_session_id nahi)
+                $courseIdsForStreams = DB::table('courses')->where('institute_id', $id)->pluck('id');
+                if ($courseIdsForStreams->isNotEmpty()) {
+                    $streamIds = DB::table('course_streams')->whereIn('course_id', $courseIdsForStreams)->pluck('id');
                     if ($streamIds->isNotEmpty()) {
                         DB::table('stream_year_subject_rules')->whereIn('course_stream_id', $streamIds)->delete();
                         DB::table('course_stream_subjects')->whereIn('course_stream_id', $streamIds)->delete();
-                        DB::table('stream_session_limits')->whereIn('course_stream_id', $streamIds)->delete();
-                        DB::table('fee_assignments')->whereIn('course_stream_id', $streamIds)->delete();
+                        if (DB::getSchemaBuilder()->hasTable('stream_session_limits'))
+                            DB::table('stream_session_limits')->whereIn('course_stream_id', $streamIds)->delete();
+                        $this->line("  - Course stream rules, subjects, session limits deleted");
+                        DB::table('course_streams')->whereIn('course_id', $courseIdsForStreams)->delete();
+                        $this->line("  - Course streams deleted");
                     }
-                    $this->line("  - Course stream rules, subjects, fee assignments deleted");
-                    DB::table('course_streams')->whereIn('academic_session_id', $sessionIds)->delete();
-                    $this->line("  - Course streams deleted");
                 }
+                // fee_assignments ka direct institute_id hai
+                $this->deleteLine('Fee assignments', 'fee_assignments', $id);
+                // academic_sessions ka direct institute_id hai
                 $this->deleteLine('Academic sessions', 'academic_sessions', $id);
 
                 // ── 12. Course Structure ────────────────────────────────

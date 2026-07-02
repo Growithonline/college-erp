@@ -312,17 +312,20 @@ class InstituteController extends Controller
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
 
-                // Academic structure
-                $sessionIds = \DB::table('academic_sessions')->where('institute_id', $id)->pluck('id');
-                if ($sessionIds->isNotEmpty()) {
-                    $streamIds = \DB::table('course_streams')->whereIn('academic_session_id', $sessionIds)->pluck('id');
+                // Academic structure — course_streams → course_id FK (academic_session_id nahi)
+                $courseIdsForStreams = \DB::table('courses')->where('institute_id', $id)->pluck('id');
+                if ($courseIdsForStreams->isNotEmpty()) {
+                    $streamIds = \DB::table('course_streams')->whereIn('course_id', $courseIdsForStreams)->pluck('id');
                     if ($streamIds->isNotEmpty()) {
-                        foreach (['stream_year_subject_rules','course_stream_subjects','stream_session_limits','fee_assignments'] as $tbl) {
+                        foreach (['stream_year_subject_rules','course_stream_subjects','stream_session_limits'] as $tbl) {
                             if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->whereIn('course_stream_id', $streamIds)->delete();
                         }
-                        \DB::table('course_streams')->whereIn('academic_session_id', $sessionIds)->delete();
+                        \DB::table('course_streams')->whereIn('course_id', $courseIdsForStreams)->delete();
                     }
                 }
+                // fee_assignments ka direct institute_id hai
+                if (\DB::getSchemaBuilder()->hasTable('fee_assignments')) \DB::table('fee_assignments')->where('institute_id', $id)->delete();
+                // academic_sessions ka direct institute_id hai
                 \DB::table('academic_sessions')->where('institute_id', $id)->delete();
 
                 // Courses & Subjects
