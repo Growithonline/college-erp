@@ -278,7 +278,13 @@ class InstituteController extends Controller
                 // Centers
                 $centerIds = \DB::table('centers')->where('institute_id', $id)->pluck('id');
                 if ($centerIds->isNotEmpty()) {
-                    foreach (['center_wallet_transactions','center_fee_collection_permissions','center_fee_discount_permissions','center_wallets'] as $tbl) {
+                    // center_wallet_transactions ka FK center_wallet_id hai (center_id nahi)
+                    $centerWalletIds = \DB::table('center_wallets')->whereIn('center_id', $centerIds)->pluck('id');
+                    if ($centerWalletIds->isNotEmpty()) {
+                        if (\DB::getSchemaBuilder()->hasTable('center_wallet_transactions'))
+                            \DB::table('center_wallet_transactions')->whereIn('center_wallet_id', $centerWalletIds)->delete();
+                    }
+                    foreach (['center_fee_collection_permissions','center_fee_discount_permissions','center_wallets'] as $tbl) {
                         if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->whereIn('center_id', $centerIds)->delete();
                     }
                 }
@@ -287,9 +293,17 @@ class InstituteController extends Controller
                 // Channel Partners
                 $partnerIds = \DB::table('channel_partners')->where('institute_id', $id)->pluck('id');
                 if ($partnerIds->isNotEmpty()) {
-                    foreach (['channel_wallet_transactions','channel_wallets','partner_commission_entries'] as $tbl) {
-                        if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->whereIn('partner_id', $partnerIds)->delete();
+                    // channel_wallet_transactions ka FK channel_wallet_id hai (partner_id nahi)
+                    $channelWalletIds = \DB::table('channel_wallets')->whereIn('channel_partner_id', $partnerIds)->pluck('id');
+                    if ($channelWalletIds->isNotEmpty()) {
+                        if (\DB::getSchemaBuilder()->hasTable('channel_wallet_transactions'))
+                            \DB::table('channel_wallet_transactions')->whereIn('channel_wallet_id', $channelWalletIds)->delete();
                     }
+                    // channel_wallets ka FK channel_partner_id hai (partner_id nahi)
+                    if (\DB::getSchemaBuilder()->hasTable('channel_wallets'))
+                        \DB::table('channel_wallets')->whereIn('channel_partner_id', $partnerIds)->delete();
+                    if (\DB::getSchemaBuilder()->hasTable('partner_commission_entries'))
+                        \DB::table('partner_commission_entries')->whereIn('partner_id', $partnerIds)->delete();
                 }
                 \DB::table('channel_partners')->where('institute_id', $id)->delete();
 

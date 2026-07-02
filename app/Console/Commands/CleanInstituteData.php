@@ -172,7 +172,11 @@ class CleanInstituteData extends Command
                 // ── 8. Centers ──────────────────────────────────────────
                 $centerIds = DB::table('centers')->where('institute_id', $id)->pluck('id');
                 if ($centerIds->isNotEmpty()) {
-                    DB::table('center_wallet_transactions')->whereIn('center_id', $centerIds)->delete();
+                    // center_wallet_transactions ka FK center_wallet_id hai (center_id nahi)
+                    $centerWalletIds = DB::table('center_wallets')->whereIn('center_id', $centerIds)->pluck('id');
+                    if ($centerWalletIds->isNotEmpty()) {
+                        DB::table('center_wallet_transactions')->whereIn('center_wallet_id', $centerWalletIds)->delete();
+                    }
                     DB::table('center_fee_collection_permissions')->whereIn('center_id', $centerIds)->delete();
                     DB::table('center_fee_discount_permissions')->whereIn('center_id', $centerIds)->delete();
                     DB::table('center_wallets')->whereIn('center_id', $centerIds)->delete();
@@ -183,8 +187,13 @@ class CleanInstituteData extends Command
                 // ── 9. Channel Partners ─────────────────────────────────
                 $partnerIds = DB::table('channel_partners')->where('institute_id', $id)->pluck('id');
                 if ($partnerIds->isNotEmpty()) {
-                    DB::table('channel_wallet_transactions')->whereIn('partner_id', $partnerIds)->delete();
-                    DB::table('channel_wallets')->whereIn('partner_id', $partnerIds)->delete();
+                    // channel_wallet_transactions ka FK channel_wallet_id hai (partner_id nahi)
+                    $channelWalletIds = DB::table('channel_wallets')->whereIn('channel_partner_id', $partnerIds)->pluck('id');
+                    if ($channelWalletIds->isNotEmpty()) {
+                        DB::table('channel_wallet_transactions')->whereIn('channel_wallet_id', $channelWalletIds)->delete();
+                    }
+                    // channel_wallets ka FK channel_partner_id hai
+                    DB::table('channel_wallets')->whereIn('channel_partner_id', $partnerIds)->delete();
                     DB::table('partner_commission_entries')->whereIn('partner_id', $partnerIds)->delete();
                     $this->line("  - Partner wallets, transactions, commissions deleted");
                 }
