@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class TransportHelper extends Model
 {
-    protected $fillable = ['institute_id', 'name', 'mobile', 'status', 'notes'];
+    protected $fillable = ['institute_id', 'employee_id', 'name', 'mobile', 'status', 'notes'];
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
 
     protected $casts = ['status' => 'boolean'];
 

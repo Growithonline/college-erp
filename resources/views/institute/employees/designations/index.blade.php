@@ -34,6 +34,7 @@
                 <tr>
                     <th class="ps-4">Designation</th>
                     <th>Department</th>
+                    <th>Transport Role</th>
                     <th>Employees</th>
                     <th>Status</th>
                     <th class="text-end pe-4">Actions</th>
@@ -44,6 +45,15 @@
                 <tr>
                     <td class="ps-4 fw-medium">{{ $desig->name }}</td>
                     <td class="text-muted" style="font-size:13px;">{{ $desig->department?->name ?? '—' }}</td>
+                    <td>
+                        @if($desig->transport_role === 'driver')
+                            <span class="badge text-bg-primary" style="font-size:11px;"><i class="bi bi-truck me-1"></i>Driver</span>
+                        @elseif($desig->transport_role === 'helper')
+                            <span class="badge text-bg-warning text-dark" style="font-size:11px;"><i class="bi bi-person-badge me-1"></i>Helper</span>
+                        @else
+                            <span class="text-muted" style="font-size:12px;">—</span>
+                        @endif
+                    </td>
                     <td><span class="badge text-bg-light text-dark border">{{ $desig->employees_count }}</span></td>
                     <td>
                         <span class="badge {{ $desig->status ? 'text-bg-success' : 'text-bg-secondary' }}">
@@ -52,7 +62,7 @@
                     </td>
                     <td class="text-end pe-4">
                         <button class="btn btn-sm btn-outline-primary"
-                            onclick="openEdit({{ $desig->id }}, '{{ addslashes($desig->name) }}', {{ $desig->employee_department_id ?? 'null' }})">
+                            onclick="openEdit({{ $desig->id }}, '{{ addslashes($desig->name) }}', {{ $desig->employee_department_id ?? 'null' }}, '{{ $desig->transport_role ?? '' }}')">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <form method="POST" action="{{ route('employees.designations.destroy', $desig) }}" class="d-inline"
@@ -100,6 +110,15 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Transport Role</label>
+                        <select class="form-select" name="transport_role">
+                            <option value="">— None —</option>
+                            <option value="driver">Driver (auto-sync to Transport Drivers)</option>
+                            <option value="helper">Helper (auto-sync to Transport Helpers)</option>
+                        </select>
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>Set this to auto-create transport records when employees with this designation are saved.</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -133,6 +152,14 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Transport Role</label>
+                        <select class="form-select" name="transport_role" id="editTransportRole">
+                            <option value="">— None —</option>
+                            <option value="driver">Driver (auto-sync to Transport Drivers)</option>
+                            <option value="helper">Helper (auto-sync to Transport Helpers)</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -144,10 +171,11 @@
 </div>
 
 <script>
-function openEdit(id, name, deptId) {
+function openEdit(id, name, deptId, transportRole) {
     document.getElementById('editForm').action = `/employees/designations/${id}`;
-    document.getElementById('editName').value = name;
-    document.getElementById('editDept').value = deptId ?? '';
+    document.getElementById('editName').value          = name;
+    document.getElementById('editDept').value          = deptId ?? '';
+    document.getElementById('editTransportRole').value = transportRole ?? '';
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }
 </script>

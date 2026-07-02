@@ -131,7 +131,8 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-medium">Designation</label>
-                            <select class="form-select" name="employee_designation_id">
+                            <select class="form-select" name="employee_designation_id" id="designationSelect"
+                                data-transport-roles="{{ $designations->pluck('transport_role', 'id')->toJson() }}">
                                 <option value="">— Select —</option>
                                 @foreach($designations as $desig)
                                     <option value="{{ $desig->id }}" {{ old('employee_designation_id', $employee->employee_designation_id) == $desig->id ? 'selected' : '' }}>{{ $desig->name }}</option>
@@ -178,6 +179,39 @@
             </div>
         </div>
 
+        {{-- Driver Details — shown only when designation transport_role = driver --}}
+        <div class="col-12" id="driverDetailsSection" style="display:none;">
+            <div class="card border-0 shadow-sm border-start border-primary border-3">
+                <div class="card-header bg-transparent py-3 border-bottom">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-truck me-2 text-primary"></i>Driver Details <span class="badge text-bg-primary ms-2" style="font-size:11px;">Auto-syncs to Transport</span></h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-medium">License No</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-credit-card text-muted"></i></span>
+                                <input type="text" class="form-control text-uppercase" name="license_no"
+                                    value="{{ old('license_no', $employee->license_no) }}"
+                                    placeholder="e.g. UP14 20110012345" maxlength="80">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-medium">License Expiry</label>
+                            <input type="date" class="form-control" name="license_expiry"
+                                value="{{ old('license_expiry', $employee->license_expiry?->format('Y-m-d')) }}">
+                        </div>
+                        <div class="col-md-5 d-flex align-items-end">
+                            <div class="alert alert-info py-2 px-3 mb-0 w-100" style="font-size:12px;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Update karne par <strong>Transport → Drivers</strong> me record automatically update ho jayega.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="col-12 d-flex gap-2 justify-content-end">
             <a href="{{ route('employees.index') }}" class="btn btn-light px-4">Cancel</a>
             <button type="submit" class="btn btn-primary px-5">
@@ -186,4 +220,19 @@
         </div>
     </div>
 </form>
+
+<script>
+(() => {
+    const sel   = document.getElementById('designationSelect');
+    const sec   = document.getElementById('driverDetailsSection');
+    const roles = JSON.parse(sel.dataset.transportRoles || '{}');
+
+    function toggleSection() {
+        sec.style.display = (roles[sel.value] === 'driver') ? '' : 'none';
+    }
+
+    sel.addEventListener('change', toggleSection);
+    toggleSection();
+})();
+</script>
 @endsection

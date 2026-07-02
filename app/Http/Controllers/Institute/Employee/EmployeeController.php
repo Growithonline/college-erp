@@ -78,8 +78,10 @@ class EmployeeController extends EmployeeBaseController
             'employment_type'         => $data['employment_type'],
             'salary_type'             => $data['salary_type'],
             'basic_salary'            => $data['basic_salary'] ?? 0,
-            'status'                  => $data['status'],
-            'notes'                   => $data['notes'] ?? null,
+            'status'         => $data['status'],
+            'notes'          => $data['notes'] ?? null,
+            'license_no'     => $data['license_no'] ?? null,
+            'license_expiry' => $data['license_expiry'] ?? null,
         ]);
 
         return redirect()->route('employees.show', $employee)->with('success', 'Employee added successfully.');
@@ -139,8 +141,10 @@ class EmployeeController extends EmployeeBaseController
             'employment_type'         => $data['employment_type'],
             'salary_type'             => $data['salary_type'],
             'basic_salary'            => $data['basic_salary'] ?? 0,
-            'status'                  => $data['status'],
-            'notes'                   => $data['notes'] ?? null,
+            'status'         => $data['status'],
+            'notes'          => $data['notes'] ?? null,
+            'license_no'     => $data['license_no'] ?? null,
+            'license_expiry' => $data['license_expiry'] ?? null,
         ]);
 
         return redirect()->route('employees.show', $employee)->with('success', 'Employee updated successfully.');
@@ -228,8 +232,10 @@ class EmployeeController extends EmployeeBaseController
             'employment_type'         => ['required', 'in:full_time,part_time,contractual,daily_wage'],
             'salary_type'             => ['required', 'in:monthly,daily_wage'],
             'basic_salary'            => ['nullable', 'numeric', 'min:0'],
-            'status'                  => ['required', 'in:active,inactive,terminated,resigned'],
-            'notes'                   => ['nullable', 'string'],
+            'status'          => ['required', 'in:active,inactive,terminated,resigned'],
+            'notes'           => ['nullable', 'string'],
+            'license_no'      => ['nullable', 'string', 'max:80'],
+            'license_expiry'  => ['nullable', 'date'],
         ]);
     }
 }

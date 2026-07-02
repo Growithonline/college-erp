@@ -11,12 +11,14 @@ class Employee extends Model
         'employee_code', 'name', 'father_name', 'dob', 'gender', 'blood_group',
         'phone', 'alternate_phone', 'email', 'address', 'city', 'state', 'pincode', 'photo',
         'joining_date', 'employment_type', 'salary_type', 'basic_salary', 'status', 'notes',
+        'license_no', 'license_expiry',
     ];
 
     protected $casts = [
-        'dob'          => 'date',
-        'joining_date' => 'date',
-        'basic_salary' => 'decimal:2',
+        'dob'            => 'date',
+        'joining_date'   => 'date',
+        'basic_salary'   => 'decimal:2',
+        'license_expiry' => 'date',
     ];
 
     public function institute()

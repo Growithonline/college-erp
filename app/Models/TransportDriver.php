@@ -8,6 +8,7 @@ class TransportDriver extends Model
 {
     protected $fillable = [
         'institute_id',
+        'employee_id',
         'name',
         'mobile',
         'license_no',
@@ -15,6 +16,11 @@ class TransportDriver extends Model
         'status',
         'notes',
     ];
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
 
     protected $casts = [
         'status' => 'boolean',

@@ -27,12 +27,14 @@ class EmployeeDesignationController extends EmployeeBaseController
         $data = $request->validate([
             'name'                    => ['required', 'string', 'max:100'],
             'employee_department_id'  => ['nullable', 'exists:employee_departments,id'],
+            'transport_role'          => ['nullable', 'in:driver,helper'],
         ]);
 
         EmployeeDesignation::create([
             'institute_id'           => $this->instituteId(),
             'employee_department_id' => $data['employee_department_id'] ?? null,
             'name'                   => trim($data['name']),
+            'transport_role'         => $data['transport_role'] ?? null,
             'status'                 => true,
         ]);
 
@@ -46,11 +48,13 @@ class EmployeeDesignationController extends EmployeeBaseController
         $data = $request->validate([
             'name'                   => ['required', 'string', 'max:100'],
             'employee_department_id' => ['nullable', 'exists:employee_departments,id'],
+            'transport_role'         => ['nullable', 'in:driver,helper'],
         ]);
 
         $designation->update([
             'employee_department_id' => $data['employee_department_id'] ?? null,
             'name'                   => trim($data['name']),
+            'transport_role'         => $data['transport_role'] ?? null,
         ]);
 
         return back()->with('success', 'Designation updated.');
