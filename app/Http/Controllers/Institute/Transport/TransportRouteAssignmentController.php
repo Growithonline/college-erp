@@ -53,6 +53,49 @@ class TransportRouteAssignmentController extends TransportBaseController
             'notes'                => ['nullable', 'string', 'max:300'],
         ]);
 
+        // Uniqueness: vehicle/driver/helper must not already be active on a DIFFERENT route
+        if (!empty($data['transport_vehicle_id'])) {
+            $conflict = TransportRouteAssignment::with(['route:id,name', 'vehicle:id,vehicle_no'])
+                ->where('institute_id', $instituteId)
+                ->whereNull('end_date')
+                ->where('transport_vehicle_id', $data['transport_vehicle_id'])
+                ->where('transport_route_id', '!=', $data['transport_route_id'])
+                ->first();
+            if ($conflict) {
+                return back()->withErrors(['transport_vehicle_id' =>
+                    "Vehicle {$conflict->vehicle?->vehicle_no} is already active on {$conflict->route?->name}. Remove it from that route before reassigning."
+                ])->withInput();
+            }
+        }
+
+        if (!empty($data['transport_driver_id'])) {
+            $conflict = TransportRouteAssignment::with(['route:id,name', 'driver:id,name'])
+                ->where('institute_id', $instituteId)
+                ->whereNull('end_date')
+                ->where('transport_driver_id', $data['transport_driver_id'])
+                ->where('transport_route_id', '!=', $data['transport_route_id'])
+                ->first();
+            if ($conflict) {
+                return back()->withErrors(['transport_driver_id' =>
+                    "Driver {$conflict->driver?->name} is already active on {$conflict->route?->name}. Remove them from that route before reassigning."
+                ])->withInput();
+            }
+        }
+
+        if (!empty($data['transport_helper_id'])) {
+            $conflict = TransportRouteAssignment::with(['route:id,name', 'helper:id,name'])
+                ->where('institute_id', $instituteId)
+                ->whereNull('end_date')
+                ->where('transport_helper_id', $data['transport_helper_id'])
+                ->where('transport_route_id', '!=', $data['transport_route_id'])
+                ->first();
+            if ($conflict) {
+                return back()->withErrors(['transport_helper_id' =>
+                    "Helper {$conflict->helper?->name} is already active on {$conflict->route?->name}. Remove them from that route before reassigning."
+                ])->withInput();
+            }
+        }
+
         // Close existing active assignment for this route (if any)
         $existing = TransportRouteAssignment::where('institute_id', $instituteId)
             ->where('transport_route_id', $data['transport_route_id'])
@@ -89,6 +132,50 @@ class TransportRouteAssignmentController extends TransportBaseController
             'transport_helper_id'  => ['nullable', Rule::exists('transport_helpers', 'id')->where('institute_id', $instituteId)],
             'notes'                => ['nullable', 'string', 'max:300'],
         ]);
+
+        $currentRouteId = $routeAssignment->transport_route_id;
+
+        if (!empty($data['transport_vehicle_id'])) {
+            $conflict = TransportRouteAssignment::with(['route:id,name', 'vehicle:id,vehicle_no'])
+                ->where('institute_id', $instituteId)
+                ->whereNull('end_date')
+                ->where('transport_vehicle_id', $data['transport_vehicle_id'])
+                ->where('transport_route_id', '!=', $currentRouteId)
+                ->first();
+            if ($conflict) {
+                return back()->withErrors(['transport_vehicle_id' =>
+                    "Vehicle {$conflict->vehicle?->vehicle_no} is already active on {$conflict->route?->name}. Remove it from that route before reassigning."
+                ])->withInput();
+            }
+        }
+
+        if (!empty($data['transport_driver_id'])) {
+            $conflict = TransportRouteAssignment::with(['route:id,name', 'driver:id,name'])
+                ->where('institute_id', $instituteId)
+                ->whereNull('end_date')
+                ->where('transport_driver_id', $data['transport_driver_id'])
+                ->where('transport_route_id', '!=', $currentRouteId)
+                ->first();
+            if ($conflict) {
+                return back()->withErrors(['transport_driver_id' =>
+                    "Driver {$conflict->driver?->name} is already active on {$conflict->route?->name}. Remove them from that route before reassigning."
+                ])->withInput();
+            }
+        }
+
+        if (!empty($data['transport_helper_id'])) {
+            $conflict = TransportRouteAssignment::with(['route:id,name', 'helper:id,name'])
+                ->where('institute_id', $instituteId)
+                ->whereNull('end_date')
+                ->where('transport_helper_id', $data['transport_helper_id'])
+                ->where('transport_route_id', '!=', $currentRouteId)
+                ->first();
+            if ($conflict) {
+                return back()->withErrors(['transport_helper_id' =>
+                    "Helper {$conflict->helper?->name} is already active on {$conflict->route?->name}. Remove them from that route before reassigning."
+                ])->withInput();
+            }
+        }
 
         $routeAssignment->update([
             'transport_vehicle_id' => $data['transport_vehicle_id'] ?? null,

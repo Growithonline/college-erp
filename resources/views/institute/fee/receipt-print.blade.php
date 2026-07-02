@@ -227,7 +227,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
         'staff'   => route('staff.dashboard'),
         'center'  => route('center.dashboard'),
         'partner' => route('partner.dashboard'),
-        default   => route('dashboard'),
+        default   => route('institute.dashboard'),
     };
     $feeHistoryUrl = $panel === 'staff'
         ? route('staff.fee.index')
