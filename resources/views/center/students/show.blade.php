@@ -254,9 +254,27 @@
             $structure   = $course ? ucfirst(str_replace('_', ' ', $course->structure_type ?? '—')) : '—';
             $yearNumber  = $student->coursePart->year_number ?? 1;
             $semLabel    = $student->current_semester ? 'Sem ' . $student->current_semester : '—';
-            $streamSubjects = $student->stream
-                ? $student->stream->subjectsForYear($yearNumber)->orderByPivot('sort_order')->get()
-                : collect();
+
+            $assignedSubjects = $student->studentSubjects
+                ->where('academic_session_id', $student->academic_session_id)
+                ->filter(fn($ss) => $ss->subject !== null)
+                ->map(fn($ss) => (object)[
+                    'name'         => $ss->subject->name,
+                    'subject_role' => $ss->subject_role ?? 'compulsory',
+                ]);
+
+            if ($assignedSubjects->count() > 0) {
+                $displaySubjects = $assignedSubjects;
+            } elseif ($student->stream) {
+                $displaySubjects = $student->stream->subjectsForYear($yearNumber)
+                    ->orderByPivot('sort_order')->get()
+                    ->map(fn($s) => (object)[
+                        'name'         => $s->name,
+                        'subject_role' => $s->pivot->subject_role ?? 'compulsory',
+                    ]);
+            } else {
+                $displaySubjects = collect();
+            }
         @endphp
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header py-2" style="background:#1e293b;color:white;">
@@ -278,15 +296,15 @@
                 </div>
                 @endforeach
 
-                @if($streamSubjects->count() > 0)
+                @if($displaySubjects->count() > 0)
                 <div class="px-3 py-2 border-bottom" style="font-size:13px;">
                     <div class="text-muted mb-2">Subjects ({{ $partName }})</div>
                     <div class="d-flex flex-wrap gap-1">
-                        @foreach($streamSubjects as $subj)
+                        @foreach($displaySubjects as $subj)
                         <span class="badge border fw-normal px-2 py-1"
                               style="font-size:11px;background:#f1f5f9;color:#334155;border-color:#cbd5e1!important;">
                             {{ $subj->name }}
-                            @if($subj->pivot->subject_role === 'optional')
+                            @if($subj->subject_role === 'optional')
                                 <span class="text-muted ms-1" style="font-size:10px;">(opt)</span>
                             @endif
                         </span>

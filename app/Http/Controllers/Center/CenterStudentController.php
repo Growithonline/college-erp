@@ -203,7 +203,8 @@ class CenterStudentController extends Controller
 
         $student->load(['stream.course.type', 'coursePart', 'educationDetails', 'session', 'feePlan',
             'activeTransportAllocation.route', 'activeTransportAllocation.stop',
-            'activeTransportAllocation.vehicle', 'activeTransportAllocation.driver']);
+            'activeTransportAllocation.vehicle', 'activeTransportAllocation.driver',
+            'studentSubjects.subject']);
 
         $instituteId = $center->institute_id;
 
