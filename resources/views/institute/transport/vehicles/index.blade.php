@@ -49,10 +49,13 @@
                         <td>
                             <div class="d-flex gap-1">
                                 <a href="{{ route('transport.vehicles.edit', $vehicle) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></a>
-                                <form method="POST" action="{{ route('transport.vehicles.destroy', $vehicle) }}" onsubmit="return confirm('Delete this vehicle?')">
+                                <form id="del-v-{{ $vehicle->id }}" method="POST" action="{{ route('transport.vehicles.destroy', $vehicle) }}" class="d-none">
                                     @csrf @method('DELETE')
-                                    <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
                                 </form>
+                                <button class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteConfirm('del-v-{{ $vehicle->id }}', 'Delete Vehicle?', '{{ addslashes($vehicle->vehicle_no) }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -65,4 +68,5 @@
 </div>
 
 <div class="mt-3">{{ $vehicles->links() }}</div>
+@include('partials.delete-confirm-modal')
 @endsection

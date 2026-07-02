@@ -59,11 +59,13 @@
                                 <i class="bi bi-{{ $dept->status ? 'pause' : 'play' }}"></i>
                             </button>
                         </form>
-                        <form method="POST" action="{{ route('employees.departments.destroy', $dept) }}" class="d-inline"
-                            onsubmit="return confirm('Delete department?')">
+                        <form id="del-dept-{{ $dept->id }}" method="POST" action="{{ route('employees.departments.destroy', $dept) }}" class="d-none">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
+                        <button class="btn btn-sm btn-outline-danger"
+                            onclick="deleteConfirm('del-dept-{{ $dept->id }}', 'Delete Department?', '{{ addslashes($dept->name) }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </td>
                 </tr>
                 @endforeach
@@ -127,6 +129,7 @@
     </div>
 </div>
 
+@include('partials.delete-confirm-modal')
 <script>
 function openEdit(id, name) {
     document.getElementById('editForm').action = `/employees/departments/${id}`;

@@ -46,10 +46,13 @@
                         <td>
                             <div class="d-flex gap-1">
                                 <a href="{{ route('transport.drivers.edit', $driver) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></a>
-                                <form method="POST" action="{{ route('transport.drivers.destroy', $driver) }}" onsubmit="return confirm('Delete this driver?')">
+                                <form id="del-d-{{ $driver->id }}" method="POST" action="{{ route('transport.drivers.destroy', $driver) }}" class="d-none">
                                     @csrf @method('DELETE')
-                                    <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
                                 </form>
+                                <button class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteConfirm('del-d-{{ $driver->id }}', 'Delete Driver?', '{{ addslashes($driver->name) }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -61,4 +64,5 @@
     </div>
 </div>
 <div class="mt-3">{{ $drivers->links() }}</div>
+@include('partials.delete-confirm-modal')
 @endsection

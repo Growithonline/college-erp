@@ -90,11 +90,13 @@
                         title="Change Vehicle/Driver/Helper — purana record band ho jaayega">
                         <i class="bi bi-arrow-repeat"></i>
                     </button>
-                    <form method="POST" action="{{ route('transport.route-assignments.destroy', $a) }}"
-                        onsubmit="return confirm('Delete this assignment?')">
+                    <form id="del-ra-{{ $a->id }}" method="POST" action="{{ route('transport.route-assignments.destroy', $a) }}" class="d-none">
                         @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                     </form>
+                    <button class="btn btn-sm btn-outline-danger"
+                        onclick="deleteConfirm('del-ra-{{ $a->id }}', 'Delete Assignment?', '{{ addslashes($a->route->name ?? '') }}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -354,4 +356,5 @@ function openChange(routeId) {
     document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('addModal')).show());
 @endif
 </script>
+@include('partials.delete-confirm-modal')
 @endsection

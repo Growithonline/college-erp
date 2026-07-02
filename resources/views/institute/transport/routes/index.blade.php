@@ -46,10 +46,13 @@
                             <div class="d-flex gap-1">
                                 <a href="{{ route('transport.routes.show', $route) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('transport.routes.edit', $route) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></a>
-                                <form method="POST" action="{{ route('transport.routes.destroy', $route) }}" onsubmit="return confirm('Delete this route?')">
+                                <form id="del-r-{{ $route->id }}" method="POST" action="{{ route('transport.routes.destroy', $route) }}" class="d-none">
                                     @csrf @method('DELETE')
-                                    <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
                                 </form>
+                                <button class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteConfirm('del-r-{{ $route->id }}', 'Delete Route?', '{{ addslashes($route->name) }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -61,4 +64,5 @@
     </div>
 </div>
 <div class="mt-3">{{ $routes->links() }}</div>
+@include('partials.delete-confirm-modal')
 @endsection

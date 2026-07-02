@@ -65,11 +65,13 @@
                             onclick="openEdit({{ $desig->id }}, '{{ addslashes($desig->name) }}', {{ $desig->employee_department_id ?? 'null' }}, '{{ $desig->transport_role ?? '' }}')">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <form method="POST" action="{{ route('employees.designations.destroy', $desig) }}" class="d-inline"
-                            onsubmit="return confirm('Delete?')">
+                        <form id="del-desig-{{ $desig->id }}" method="POST" action="{{ route('employees.designations.destroy', $desig) }}" class="d-none">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
+                        <button class="btn btn-sm btn-outline-danger"
+                            onclick="deleteConfirm('del-desig-{{ $desig->id }}', 'Delete Designation?', '{{ addslashes($desig->name) }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </td>
                 </tr>
                 @endforeach
@@ -170,6 +172,7 @@
     </div>
 </div>
 
+@include('partials.delete-confirm-modal')
 <script>
 function openEdit(id, name, deptId, transportRole) {
     document.getElementById('editForm').action = `/employees/designations/${id}`;
