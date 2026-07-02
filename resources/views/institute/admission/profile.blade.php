@@ -66,8 +66,7 @@
     $submittedDate = $selectedIdentity?->submitted_date_snapshot?->format('d-m-Y')
         ?? ($isCurrentSession ? ($student->submitted_date?->format('d-m-Y') ?? '—') : '—');
     $admissionDate = $selectedIdentity?->admission_date_snapshot?->format('d-m-Y')
-        ?? ($isCurrentSession ? ($student->admission_date?->format('d-m-Y') ?? '—') : '—'
-        ?? '—';
+        ?? ($isCurrentSession ? ($student->admission_date?->format('d-m-Y') ?? '—') : '—');
     $studentUidParts = explode('/', (string) $student->student_uid);
     $serialNo = end($studentUidParts) ?: '—';
 
