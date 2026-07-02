@@ -15,11 +15,15 @@ return new class extends Migration
                 $table->unsignedBigInteger('institute_id')->nullable()->after('id');
             });
 
+            // Backfill from parent
             DB::statement('
                 UPDATE library_staff_permissions lsp
                 JOIN library_staff ls ON ls.id = lsp.library_staff_id
                 SET lsp.institute_id = ls.institute_id
             ');
+
+            // Orphaned rows (staff deleted) — delete kar do
+            DB::table('library_staff_permissions')->whereNull('institute_id')->delete();
 
             Schema::table('library_staff_permissions', function (Blueprint $table) {
                 $table->unsignedBigInteger('institute_id')->nullable(false)->change();
@@ -40,6 +44,9 @@ return new class extends Migration
                 SET lll.institute_id = ls.institute_id
             ');
 
+            // Orphaned rows delete
+            DB::table('library_login_logs')->whereNull('institute_id')->delete();
+
             Schema::table('library_login_logs', function (Blueprint $table) {
                 $table->unsignedBigInteger('institute_id')->nullable(false)->change();
                 $table->foreign('institute_id')->references('id')->on('institutes')->cascadeOnDelete();
@@ -58,6 +65,9 @@ return new class extends Migration
                 JOIN library_staff ls ON ls.id = lsal.library_staff_id
                 SET lsal.institute_id = ls.institute_id
             ');
+
+            // Orphaned rows delete (library_staff delete ho chuki, logs orphan hain)
+            DB::table('library_staff_activity_logs')->whereNull('institute_id')->delete();
 
             Schema::table('library_staff_activity_logs', function (Blueprint $table) {
                 $table->unsignedBigInteger('institute_id')->nullable(false)->change();
