@@ -10,6 +10,7 @@ use App\Models\Student;
 use App\Models\TransportAllocation;
 use App\Models\TransportDriver;
 use App\Models\TransportRoute;
+use App\Models\TransportRouteAssignment;
 use App\Models\TransportRouteStop;
 use App\Models\TransportVehicle;
 use App\Services\StudentIdService;
@@ -350,7 +351,16 @@ class TransportAllocationController extends TransportBaseController
 
         $setting = InstituteTransportSetting::forInstitute($this->instituteId());
 
-        DB::transaction(function () use ($allocation, $data, $newRoute, $stop, $setting) {
+        // Auto-populate vehicle/driver from active route assignment if not provided in form
+        $routeAssignment = TransportRouteAssignment::where('institute_id', $allocation->institute_id)
+            ->where('transport_route_id', $newRoute->id)
+            ->whereNull('end_date')
+            ->first();
+
+        $vehicleId = $data['transport_vehicle_id'] ?? $routeAssignment?->transport_vehicle_id;
+        $driverId  = $data['transport_driver_id']  ?? $routeAssignment?->transport_driver_id;
+
+        DB::transaction(function () use ($allocation, $data, $newRoute, $stop, $setting, $vehicleId, $driverId) {
             $allocation->update([
                 'is_active' => false,
                 'status'    => 'closed',
@@ -378,8 +388,8 @@ class TransportAllocationController extends TransportBaseController
                 'academic_session_id'     => $allocation->academic_session_id,
                 'transport_route_id'      => $newRoute->id,
                 'transport_route_stop_id' => $stop?->id,
-                'transport_vehicle_id'    => $data['transport_vehicle_id'] ?? null,
-                'transport_driver_id'     => $data['transport_driver_id'] ?? null,
+                'transport_vehicle_id'    => $vehicleId,
+                'transport_driver_id'     => $driverId,
                 'fee_amount'              => $baseFee,   // original fee stored for future billing
                 'charged_amount'          => 0,
                 'paid_amount'             => 0,

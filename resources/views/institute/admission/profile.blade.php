@@ -707,4 +707,57 @@
     @endif
 </div>
 
+{{-- Transport Route Change History --}}
+@php $allTransport = $student->transportAllocations->sortByDesc('id'); @endphp
+@if($allTransport->count() > 1)
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
+        <span class="fw-bold small"><i class="bi bi-arrow-left-right me-2"></i>Route Change History</span>
+        <span class="badge bg-secondary">{{ $allTransport->count() }} records</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0" style="font-size:12px;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Route</th>
+                        <th>Stop</th>
+                        <th class="text-end">Fee</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-end">Balance</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($allTransport as $i => $ta)
+                    <tr class="{{ $ta->is_active ? 'table-success' : '' }}">
+                        <td class="ps-3 text-muted">{{ $allTransport->count() - $i }}</td>
+                        <td class="fw-semibold">{{ $ta->route?->name ?? '—' }}</td>
+                        <td class="text-muted">{{ $ta->stop?->stop_name ?? '—' }}</td>
+                        <td class="text-end">₹{{ number_format((float)$ta->fee_amount, 2) }}</td>
+                        <td class="text-end text-success">₹{{ number_format((float)$ta->paid_amount, 2) }}</td>
+                        <td class="text-end {{ $ta->balance > 0 ? 'text-danger fw-semibold' : 'text-success' }}">
+                            {{ $ta->balance > 0 ? '₹'.number_format($ta->balance,2) : '✓ Clear' }}
+                        </td>
+                        <td>{{ $ta->start_date?->format('d M Y') ?? '—' }}</td>
+                        <td>{{ $ta->end_date?->format('d M Y') ?? '—' }}</td>
+                        <td>
+                            @if($ta->is_active)
+                                <span class="badge bg-success">Active</span>
+                            @else
+                                <span class="badge bg-secondary">Closed</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection

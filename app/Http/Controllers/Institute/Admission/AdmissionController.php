@@ -3071,10 +3071,12 @@ class AdmissionController extends Controller
             'activeTransportAllocation.stop',
             'activeTransportAllocation.vehicle',
             'activeTransportAllocation.driver',
+            'transportAllocations.route',
+            'transportAllocations.stop',
             'feePlan.installments',
         ]);
 
-        // Har session / semester ki identity load karo
+        // Load identity records for each session/semester
         $sessionIdentities = \App\Models\StudentAcademicIdentity::where('student_id', $student->id)
             ->where('institute_id', $this->instituteId())
             ->realOnly()
