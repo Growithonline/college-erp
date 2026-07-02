@@ -152,7 +152,7 @@ class CenterStudentController extends Controller
         $query->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId));
 
         if ($request->filled('search')) {
-            $s = $request->search;
+            $s = $this->escapeLike(trim((string) $request->search));
             $query->where(fn($q) => $q
                 ->where('name', 'like', "%{$s}%")
                 ->orWhere('father_name', 'like', "%{$s}%")
@@ -594,25 +594,31 @@ class CenterStudentController extends Controller
     private function applyGlobalSearchFilters($query, array $filters): void
     {
         if ($filters['student_name'] !== '') {
-            $query->where('name', 'like', '%' . $filters['student_name'] . '%');
+            $v = $this->escapeLike($filters['student_name']);
+            $query->where('name', 'like', "%{$v}%");
         }
         if ($filters['father_name'] !== '') {
-            $query->where('father_name', 'like', '%' . $filters['father_name'] . '%');
+            $v = $this->escapeLike($filters['father_name']);
+            $query->where('father_name', 'like', "%{$v}%");
         }
         if ($filters['mother_name'] !== '') {
-            $query->where('mother_name', 'like', '%' . $filters['mother_name'] . '%');
+            $v = $this->escapeLike($filters['mother_name']);
+            $query->where('mother_name', 'like', "%{$v}%");
         }
         if ($filters['mobile'] !== '') {
-            $query->where('mobile', 'like', '%' . $filters['mobile'] . '%');
+            $v = $this->escapeLike($filters['mobile']);
+            $query->where('mobile', 'like', "%{$v}%");
         }
         if ($filters['email'] !== '') {
-            $query->where('email', 'like', '%' . $filters['email'] . '%');
+            $v = $this->escapeLike($filters['email']);
+            $query->where('email', 'like', "%{$v}%");
         }
         if ($filters['student_id'] !== '') {
-            $query->where('student_uid', 'like', '%' . $filters['student_id'] . '%');
+            $v = $this->escapeLike($filters['student_id']);
+            $query->where('student_uid', 'like', "%{$v}%");
         }
         if ($filters['roll_no'] !== '') {
-            $t = $filters['roll_no'];
+            $t = $this->escapeLike($filters['roll_no']);
             $query->where(function ($b) use ($t) {
                 $b->where('roll_no', 'like', "%{$t}%")
                   ->orWhereHas('academicIdentities', fn($q) => $q->where('roll_no', 'like', "%{$t}%")
@@ -620,11 +626,16 @@ class CenterStudentController extends Controller
             });
         }
         if ($filters['enrollment_no'] !== '') {
-            $t = $filters['enrollment_no'];
+            $t = $this->escapeLike($filters['enrollment_no']);
             $query->where(function ($b) use ($t) {
                 $b->where('enrollment_no', 'like', "%{$t}%")
                   ->orWhereHas('academicIdentities', fn($q) => $q->where('enrollment_no_snapshot', 'like', "%{$t}%"));
             });
         }
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 }

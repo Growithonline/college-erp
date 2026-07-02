@@ -63,10 +63,11 @@ class PartnerStudentController extends Controller
         }
 
         $query->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
-              ->when($request->search, fn($q) => $q->where(function ($sq) use ($request) {
-                  $sq->where('name', 'like', "%{$request->search}%")
-                     ->orWhere('mobile', 'like', "%{$request->search}%")
-                     ->orWhere('student_uid', 'like', "%{$request->search}%");
+              ->when($request->filled('search'), fn($q) => $q->where(function ($sq) use ($request) {
+                  $s = $this->escapeLike(trim((string) $request->search));
+                  $sq->where('name', 'like', "%{$s}%")
+                     ->orWhere('mobile', 'like', "%{$s}%")
+                     ->orWhere('student_uid', 'like', "%{$s}%");
               }))
               ->orderByDesc('admission_date');
 
@@ -439,25 +440,36 @@ class PartnerStudentController extends Controller
         }
 
         if ($filters['student_name'] !== '') {
-            $query->where('name', 'like', '%' . $filters['student_name'] . '%');
+            $v = $this->escapeLike($filters['student_name']);
+            $query->where('name', 'like', "%{$v}%");
         }
         if ($filters['father_name'] !== '') {
-            $query->where('father_name', 'like', '%' . $filters['father_name'] . '%');
+            $v = $this->escapeLike($filters['father_name']);
+            $query->where('father_name', 'like', "%{$v}%");
         }
         if ($filters['mobile'] !== '') {
-            $query->where('mobile', 'like', '%' . $filters['mobile'] . '%');
+            $v = $this->escapeLike($filters['mobile']);
+            $query->where('mobile', 'like', "%{$v}%");
         }
         if ($filters['email'] !== '') {
-            $query->where('email', 'like', '%' . $filters['email'] . '%');
+            $v = $this->escapeLike($filters['email']);
+            $query->where('email', 'like', "%{$v}%");
         }
         if ($filters['student_id'] !== '') {
-            $query->where('student_uid', 'like', '%' . $filters['student_id'] . '%');
+            $v = $this->escapeLike($filters['student_id']);
+            $query->where('student_uid', 'like', "%{$v}%");
         }
         if ($filters['enrollment_no'] !== '') {
-            $query->where('enrollment_no', 'like', '%' . $filters['enrollment_no'] . '%');
+            $v = $this->escapeLike($filters['enrollment_no']);
+            $query->where('enrollment_no', 'like', "%{$v}%");
         }
 
         return $query;
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
     public function feePreview(Request $request)
