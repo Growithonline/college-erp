@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\AcademicSession;
+use App\Models\CenterWallet;
+use App\Models\ChannelWallet;
 use App\Models\ChequePayment;
 use App\Models\CoursePart;
 use App\Models\FeeInvoice;
@@ -1250,6 +1252,21 @@ class WalletService
                     $allocation->status = 'paid';
                 }
                 $allocation->save();
+            }
+
+            // Refund center/partner token wallet if the invoice was collected via one
+            if ($cashAmount > 0) {
+                if ($invoice->collected_by_center_id) {
+                    $centerWallet = CenterWallet::where('center_id', (int) $invoice->collected_by_center_id)
+                        ->where('institute_id', $instituteId)
+                        ->first();
+                    $centerWallet?->refund($cashAmount, $invoice->id, self::resolveActorId(), 'Fee cancellation refund');
+                } elseif ($invoice->collected_by_partner_id) {
+                    $channelWallet = ChannelWallet::where('channel_partner_id', (int) $invoice->collected_by_partner_id)
+                        ->where('institute_id', $instituteId)
+                        ->first();
+                    $channelWallet?->refund($cashAmount, $invoice->id, self::resolveActorId(), 'Fee cancellation refund');
+                }
             }
         });
 

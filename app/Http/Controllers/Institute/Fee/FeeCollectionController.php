@@ -391,33 +391,6 @@ class FeeCollectionController extends Controller
         return null;
     }
 
-    private function refundPortalWalletForCancelledInvoice(FeeInvoice $invoice): void
-    {
-        $amount = (float) $invoice->paid_amount;
-        if ($amount <= 0) {
-            return;
-        }
-
-        if ($invoice->collected_by_center_id) {
-            $wallet = CenterWallet::where('center_id', (int) $invoice->collected_by_center_id)
-                ->where('institute_id', $invoice->institute_id)
-                ->lockForUpdate()
-                ->first();
-
-            $wallet?->refund($amount, $invoice->id, $this->actorId());
-            return;
-        }
-
-        if ($invoice->collected_by_partner_id) {
-            $wallet = ChannelWallet::where('channel_partner_id', (int) $invoice->collected_by_partner_id)
-                ->where('institute_id', $invoice->institute_id)
-                ->lockForUpdate()
-                ->first();
-
-            $wallet?->refund($amount, $invoice->id, $this->actorId());
-        }
-    }
-
     public function index(Request $request)
     {
         $instituteId = $this->instituteId();
@@ -1415,7 +1388,6 @@ class FeeCollectionController extends Controller
             ]);
 
             WalletService::onFeeCancel($invoice);
-            $this->refundPortalWalletForCancelledInvoice($invoice);
         });
         AuditLogService::log($this->instituteId(), 'fee', 'fee_cancelled', 'Fee invoice cancelled.', $invoice, [
             'student_id' => $student->id,
