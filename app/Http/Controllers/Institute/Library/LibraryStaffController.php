@@ -105,6 +105,7 @@ class LibraryStaffController extends Controller
                 : ($data['permissions'] ?? []);
 
             LibraryStaffPermission::create([
+                'institute_id'     => $instituteId,
                 'library_staff_id' => $staff->id,
                 'preset'           => $preset,
                 'permissions'      => $permissions,
@@ -206,7 +207,7 @@ class LibraryStaffController extends Controller
 
             LibraryStaffPermission::updateOrCreate(
                 ['library_staff_id' => $libraryStaff->id],
-                ['preset' => $preset, 'permissions' => $permissions]
+                ['institute_id' => $libraryStaff->institute_id, 'preset' => $preset, 'permissions' => $permissions]
             );
         });
 
@@ -267,10 +268,16 @@ class LibraryStaffController extends Controller
     {
         $instituteId = $this->instituteId();
 
+        $request->validate([
+            'staff_id' => ['nullable', 'integer', Rule::exists('library_staff', 'id')->where('institute_id', $instituteId)],
+            'status'   => ['nullable', 'string', 'in:success,failed_otp,locked'],
+            'date'     => ['nullable', 'date'],
+        ]);
+
         $staffList = LibraryStaff::where('institute_id', $instituteId)
             ->orderBy('name')->get(['id', 'name', 'employee_id']);
 
-        $query = LibraryLoginLog::whereHas('libraryStaff', fn($q) => $q->where('institute_id', $instituteId))
+        $query = LibraryLoginLog::where('institute_id', $instituteId)
             ->with('libraryStaff:id,name,employee_id')
             ->latest('created_at');
 
@@ -287,10 +294,16 @@ class LibraryStaffController extends Controller
     {
         $instituteId = $this->instituteId();
 
+        $request->validate([
+            'staff_id' => ['nullable', 'integer', Rule::exists('library_staff', 'id')->where('institute_id', $instituteId)],
+            'action'   => ['nullable', 'string', 'in:' . implode(',', array_keys(LibraryStaffActivityLog::ACTION_LABELS))],
+            'date'     => ['nullable', 'date'],
+        ]);
+
         $staffList = LibraryStaff::where('institute_id', $instituteId)
             ->orderBy('name')->get(['id', 'name', 'employee_id']);
 
-        $query = LibraryStaffActivityLog::whereHas('libraryStaff', fn($q) => $q->where('institute_id', $instituteId))
+        $query = LibraryStaffActivityLog::where('institute_id', $instituteId)
             ->with('libraryStaff:id,name,employee_id')
             ->latest('created_at');
 

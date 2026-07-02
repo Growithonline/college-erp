@@ -9,7 +9,7 @@ class LibraryStaffActivityLog extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'library_staff_id', 'action', 'subject', 'details', 'ip_address',
+        'institute_id', 'library_staff_id', 'action', 'subject', 'details', 'ip_address',
     ];
 
     // Readable action labels
@@ -34,7 +34,9 @@ class LibraryStaffActivityLog extends Model
         ?string $details = null,
         ?string $ip = null
     ): void {
+        $instituteId = LibraryStaff::where('id', $staffId)->value('institute_id');
         static::create([
+            'institute_id'     => $instituteId,
             'library_staff_id' => $staffId,
             'action'           => $action,
             'subject'          => $subject,

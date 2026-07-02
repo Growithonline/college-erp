@@ -59,24 +59,28 @@ class CleanInstituteData extends Command
             DB::transaction(function () use ($id) {
 
                 // ── 1. Library ─────────────────────────────────────────
+                // library staff child tables — ab direct institute_id se delete hoga
+                $this->deleteLine('Library staff activity logs', 'library_staff_activity_logs', $id);
+                $this->deleteLine('Library login logs', 'library_login_logs', $id);
+                $this->deleteLine('Library staff permissions', 'library_staff_permissions', $id);
+                // baki sabhi library tables mein direct institute_id hai
                 $this->deleteLine('Library fine payments', 'library_fine_payments', $id);
                 $this->deleteLine('Library reservations', 'library_reservations', $id);
                 $this->deleteLine('Library transactions', 'library_transactions', $id);
                 $this->deleteLine('Library members', 'library_members', $id);
                 $this->deleteLine('Library book copies', 'library_book_copies', $id);
-                // book_author pivot — cascade hoga books delete hone par, but explicitly delete
                 DB::table('library_book_author')
                     ->whereIn('book_id', DB::table('library_books')->where('institute_id', $id)->pluck('id'))
                     ->delete();
+                $this->line("  - Library book-author pivot deleted");
                 $this->deleteLine('Library books', 'library_books', $id);
                 $this->deleteLine('Library racks', 'library_racks', $id);
                 $this->deleteLine('Library rule sets', 'library_rule_sets', $id);
+                $this->deleteLine('Library subjects', 'library_subjects', $id);
+                $this->deleteLine('Library vendors', 'library_vendors', $id);
                 $this->deleteLine('Library publishers', 'library_publishers', $id);
                 $this->deleteLine('Library authors', 'library_authors', $id);
                 $this->deleteLine('Library categories', 'library_categories', $id);
-                $this->deleteLine('Library staff activity logs', 'library_staff_activity_logs', $id);
-                $this->deleteLine('Library login logs', 'library_login_logs', $id);
-                $this->deleteLine('Library staff permissions', 'library_staff_permissions', $id);
                 $this->deleteLine('Library staff', 'library_staff', $id);
 
                 // ── 2. Transport ────────────────────────────────────────

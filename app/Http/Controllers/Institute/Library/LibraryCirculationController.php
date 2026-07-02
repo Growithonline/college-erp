@@ -194,8 +194,12 @@ class LibraryCirculationController extends BaseLibraryController
             'remarks' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function () use ($transaction, $data) {
-            $tx = LibraryTransaction::where('id', $transaction->id)->lockForUpdate()->firstOrFail();
+        $instituteId = $this->instituteId();
+        DB::transaction(function () use ($transaction, $data, $instituteId) {
+            $tx = LibraryTransaction::where('id', $transaction->id)
+                ->where('institute_id', $instituteId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $pendingFine = max(0, (float) $tx->fine_amount - (float) $tx->fine_paid);
 

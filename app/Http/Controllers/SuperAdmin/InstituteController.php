@@ -210,8 +210,15 @@ class InstituteController extends Controller
             \DB::transaction(function () use ($institute) {
                 $id = $institute->id;
 
-                // Library
-                foreach (['library_fine_payments','library_reservations','library_transactions','library_members','library_book_copies','library_books','library_racks','library_rule_sets','library_publishers','library_authors','library_categories','library_staff_activity_logs','library_login_logs','library_staff_permissions','library_staff'] as $tbl) {
+                // Library — pehle staff ke child records (library_staff_id se linked)
+                $libStaffIds = \DB::table('library_staff')->where('institute_id', $id)->pluck('id');
+                if ($libStaffIds->isNotEmpty()) {
+                    foreach (['library_staff_activity_logs','library_login_logs','library_staff_permissions'] as $tbl) {
+                        if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->whereIn('library_staff_id', $libStaffIds)->delete();
+                    }
+                }
+                // Library — baki sabhi institute_id se linked hain
+                foreach (['library_fine_payments','library_reservations','library_transactions','library_members','library_book_copies','library_books','library_racks','library_rule_sets','library_publishers','library_authors','library_categories','library_subjects','library_vendors','library_staff'] as $tbl) {
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
 

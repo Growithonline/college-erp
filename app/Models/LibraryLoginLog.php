@@ -8,7 +8,7 @@ class LibraryLoginLog extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['library_staff_id', 'ip_address', 'user_agent', 'status'];
+    protected $fillable = ['institute_id', 'library_staff_id', 'ip_address', 'user_agent', 'status'];
 
     public function libraryStaff()
     {

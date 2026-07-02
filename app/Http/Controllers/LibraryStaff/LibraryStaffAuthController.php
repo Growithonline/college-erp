@@ -361,6 +361,7 @@ class LibraryStaffAuthController extends Controller
     private function logAttempt(LibraryStaff $staff, Request $request, string $status): void
     {
         LibraryLoginLog::create([
+            'institute_id'     => $staff->institute_id,
             'library_staff_id' => $staff->id,
             'ip_address'       => $request->ip(),
             'user_agent'       => substr($request->userAgent() ?? '', 0, 300),

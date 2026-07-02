@@ -121,7 +121,7 @@ class LibraryFineCollectionController extends BaseLibraryController
         $instituteId   = $this->instituteId();
         $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
 
-        DB::transaction(function () use ($data, $member, $receiptNo, $totalAmount, $paymentDate, $paymentDatetime) {
+        DB::transaction(function () use ($data, $member, $receiptNo, $totalAmount, $paymentDate, $paymentDatetime, $instituteId) {
             foreach ($data['items'] as $item) {
                 $amount = (float) $item['amount'];
                 if ($amount <= 0) {
@@ -129,6 +129,7 @@ class LibraryFineCollectionController extends BaseLibraryController
                 }
 
                 $tx = LibraryTransaction::where('id', (int) $item['transaction_id'])
+                    ->where('institute_id', $instituteId)
                     ->where('library_member_id', $member->id)
                     ->lockForUpdate()
                     ->firstOrFail();
