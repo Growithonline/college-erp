@@ -140,9 +140,7 @@ class DataExportController extends Controller
             if ($bookIds->isNotEmpty())
                 $this->streamTableInserts('library_book_author', fn($q) => $q->whereIn('book_id', $bookIds));
 
-            $noticeIds = DB::table('notices')->where('institute_id', $id)->pluck('id');
-            if ($noticeIds->isNotEmpty())
-                $this->streamTableInserts('notice_reads', fn($q) => $q->whereIn('notice_id', $noticeIds));
+            $this->streamTableInserts('notice_reads', fn($q) => $q->where('institute_id', $id));
 
             $batchIds = DB::table('practical_fee_token_batches')->where('institute_id', $id)->pluck('id');
             if ($batchIds->isNotEmpty())

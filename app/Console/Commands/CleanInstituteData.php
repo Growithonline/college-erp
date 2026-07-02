@@ -272,8 +272,7 @@ class CleanInstituteData extends Command
                 $this->deleteLine('Document categories', 'document_categories', $id);
 
                 // ── 17. Notices & SMS ───────────────────────────────────
-                $noticeIds = DB::table('notices')->where('institute_id', $id)->pluck('id');
-                DB::table('notice_reads')->whereIn('notice_id', $noticeIds)->delete();
+                $this->deleteLine('Notice reads', 'notice_reads', $id);
                 $this->deleteLine('Notices', 'notices', $id);
                 $this->deleteLine('SMS logs', 'sms_logs', $id);
                 $this->deleteLine('SMS due reminder settings', 'sms_due_reminder_settings', $id);

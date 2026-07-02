@@ -370,9 +370,7 @@ class InstituteController extends Controller
                 if (\DB::getSchemaBuilder()->hasTable('document_categories')) \DB::table('document_categories')->where('institute_id', $id)->delete();
 
                 // Notices, SMS
-                $noticeIds = \DB::table('notices')->where('institute_id', $id)->pluck('id');
-                if ($noticeIds->isNotEmpty()) \DB::table('notice_reads')->whereIn('notice_id', $noticeIds)->delete();
-                foreach (['notices','sms_logs','sms_due_reminder_settings','sms_provider_settings'] as $tbl) {
+                foreach (['notice_reads','notices','sms_logs','sms_due_reminder_settings','sms_provider_settings'] as $tbl) {
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
 
@@ -532,9 +530,7 @@ class InstituteController extends Controller
                 $this->streamTableInserts('library_book_author', fn($q) => $q->whereIn('book_id', $bookIds));
 
             // notices pivot
-            $noticeIds = \DB::table('notices')->where('institute_id', $id)->pluck('id');
-            if ($noticeIds->isNotEmpty())
-                $this->streamTableInserts('notice_reads', fn($q) => $q->whereIn('notice_id', $noticeIds));
+            $this->streamTableInserts('notice_reads', fn($q) => $q->where('institute_id', $id));
 
             // practical fee token entries
             $batchIds = \DB::table('practical_fee_token_batches')->where('institute_id', $id)->pluck('id');
