@@ -59,10 +59,12 @@
                                 <i class="bi bi-{{ $h->status ? 'pause' : 'play' }}"></i>
                             </button>
                         </form>
-                        <form method="POST" action="{{ route('transport.helpers.destroy', $h) }}" class="d-inline"
-                            onsubmit="return confirm('Delete this helper?')">
+                        <button class="btn btn-sm btn-outline-danger"
+                            onclick="confirmDelete({{ $h->id }}, '{{ addslashes($h->name) }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        <form id="deleteForm-{{ $h->id }}" method="POST" action="{{ route('transport.helpers.destroy', $h) }}" class="d-none">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
                     </td>
                 </tr>
@@ -148,7 +150,92 @@
     </div>
 </div>
 
+{{-- Delete Confirmation Modal --}}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4 px-3">
+                <div class="mb-3">
+                    <span class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                        <i class="bi bi-trash text-danger fs-4"></i>
+                    </span>
+                </div>
+                <h6 class="fw-semibold mb-1">Delete Helper?</h6>
+                <p class="text-muted small mb-0" id="deleteHelperName"></p>
+            </div>
+            <div id="deleteErrorAlert" class="alert alert-danger alert-sm mx-3 mb-0 py-2 d-none" style="font-size:13px;">
+                <i class="bi bi-exclamation-circle me-1"></i>
+                <span id="deleteErrorMsg"></span>
+            </div>
+            <div class="modal-footer border-0 justify-content-center gap-2 pt-2">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn">
+                    <span id="deleteBtnText">Delete</span>
+                    <span id="deleteBtnSpinner" class="spinner-border spinner-border-sm ms-1 d-none"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let _deleteId = null;
+const _deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+function confirmDelete(id, name) {
+    _deleteId = id;
+    document.getElementById('deleteHelperName').textContent = name;
+    document.getElementById('deleteErrorAlert').classList.add('d-none');
+    document.getElementById('deleteBtnText').textContent = 'Delete';
+    document.getElementById('deleteBtnSpinner').classList.add('d-none');
+    document.getElementById('confirmDeleteBtn').disabled = false;
+    _deleteModal.show();
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+    if (!_deleteId) return;
+
+    const btn     = document.getElementById('confirmDeleteBtn');
+    const spinner = document.getElementById('deleteBtnSpinner');
+    const btnText = document.getElementById('deleteBtnText');
+    const errDiv  = document.getElementById('deleteErrorAlert');
+    const errMsg  = document.getElementById('deleteErrorMsg');
+
+    btn.disabled = true;
+    btnText.textContent = 'Deleting…';
+    spinner.classList.remove('d-none');
+    errDiv.classList.add('d-none');
+
+    const form   = document.getElementById(`deleteForm-${_deleteId}`);
+    const token  = form.querySelector('[name="_token"]').value;
+
+    try {
+        const res = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': token, 'X-HTTP-Method-Override': 'DELETE', 'Accept': 'application/json' },
+            body: new URLSearchParams({ _token: token, _method: 'DELETE' }),
+        });
+
+        if (res.ok) {
+            _deleteModal.hide();
+            window.location.reload();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            errMsg.textContent = data.message || 'Could not delete helper.';
+            errDiv.classList.remove('d-none');
+            btn.disabled = false;
+            btnText.textContent = 'Delete';
+            spinner.classList.add('d-none');
+        }
+    } catch (e) {
+        errMsg.textContent = 'Network error. Please try again.';
+        errDiv.classList.remove('d-none');
+        btn.disabled = false;
+        btnText.textContent = 'Delete';
+        spinner.classList.add('d-none');
+    }
+});
+
 function openEdit(id, name, mobile, notes) {
     document.getElementById('editForm').action = `/transport/helpers/${id}`;
     document.getElementById('editName').value   = name;

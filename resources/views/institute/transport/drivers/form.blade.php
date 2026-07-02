@@ -40,17 +40,17 @@
     </div>
 </div>
 
-{{-- ── Section 2: License & Helper ── --}}
+{{-- ── Section 2: License Details ── --}}
 <div class="mb-4">
     <div class="d-flex align-items-center gap-2 mb-3">
         <span class="bg-success rounded-circle d-flex align-items-center justify-content-center text-white" style="width:28px;height:28px;font-size:13px;flex-shrink:0;">
             <i class="bi bi-card-text"></i>
         </span>
-        <span class="fw-semibold text-dark" style="font-size:14px;">License & Helper Details</span>
+        <span class="fw-semibold text-dark" style="font-size:14px;">License Details</span>
         <hr class="flex-grow-1 my-0 ms-1">
     </div>
     <div class="row g-3 align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-5">
             <label class="form-label fw-medium">License No</label>
             <div class="input-group">
                 <span class="input-group-text bg-light"><i class="bi bi-credit-card text-muted"></i></span>
@@ -60,27 +60,10 @@
             </div>
             @error('license_no')<div class="text-danger mt-1" style="font-size:12px;">{{ $message }}</div>@enderror
         </div>
-        <div class="col-md-3">
-            <label class="form-label fw-medium">Helper Name</label>
-            <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-person text-muted"></i></span>
-                <input class="form-control @error('helper_name') is-invalid @enderror" name="helper_name"
-                    value="{{ old('helper_name', $driver->helper_name ?? '') }}"
-                    placeholder="Helper / Conductor name" maxlength="120">
-            </div>
-            @error('helper_name')<div class="text-danger mt-1" style="font-size:12px;">{{ $message }}</div>@enderror
+        <div class="col-md-5">
+            {{-- License expiry handled via documents section --}}
         </div>
         <div class="col-md-2">
-            <label class="form-label fw-medium">Helper Mobile</label>
-            <div class="input-group">
-                <span class="input-group-text bg-light"><i class="bi bi-phone text-muted"></i></span>
-                <input class="form-control @error('helper_mobile') is-invalid @enderror" name="helper_mobile"
-                    value="{{ old('helper_mobile', $driver->helper_mobile ?? '') }}"
-                    maxlength="10" inputmode="numeric" pattern="\d{10}" placeholder="10-digit">
-            </div>
-            @error('helper_mobile')<div class="text-danger mt-1" style="font-size:12px;">{{ $message }}</div>@enderror
-        </div>
-        <div class="col-md-1">
             <label class="form-label fw-medium d-block">Status</label>
             <div class="form-check form-switch mt-1">
                 <input class="form-check-input" type="checkbox" role="switch" name="status" value="1"
@@ -212,7 +195,7 @@
                     <label class="form-label form-label-sm fw-medium mb-1">Upload File <span class="text-danger">*</span></label>
                     <input type="file" class="form-control form-control-sm" name="documents[__IDX__][file]"
                         accept=".pdf,.jpg,.jpeg,.png" required>
-                    <div class="form-text" style="font-size:11px;">PDF / Image · Max 200 KB</div>
+                    <div class="form-text" style="font-size:11px;">PDF / Image · Max 5 MB</div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label form-label-sm fw-medium mb-1">Expiry Date</label>

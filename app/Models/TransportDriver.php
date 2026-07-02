@@ -12,8 +12,6 @@ class TransportDriver extends Model
         'mobile',
         'license_no',
         'license_expiry',
-        'helper_name',
-        'helper_mobile',
         'status',
         'notes',
     ];

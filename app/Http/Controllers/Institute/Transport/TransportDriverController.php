@@ -27,13 +27,11 @@ class TransportDriverController extends TransportBaseController
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'          => ['required', 'string', 'max:120'],
-            'mobile'        => ['nullable', 'digits:10'],
-            'license_no'    => ['nullable', 'string', 'max:80'],
-            'helper_name'   => ['nullable', 'string', 'max:120'],
-            'helper_mobile' => ['nullable', 'digits:10'],
-            'notes'         => ['nullable', 'string'],
-            'status'        => ['nullable', 'boolean'],
+            'name'       => ['required', 'string', 'max:120'],
+            'mobile'     => ['nullable', 'digits:10'],
+            'license_no' => ['nullable', 'string', 'max:80'],
+            'notes'      => ['nullable', 'string'],
+            'status'     => ['nullable', 'boolean'],
             'documents'                 => ['nullable', 'array'],
             'documents.*.document_type' => ['required_with:documents.*.file', 'string', 'max:50'],
             'documents.*.document_name' => ['nullable', 'string', 'max:150'],
@@ -45,14 +43,12 @@ class TransportDriverController extends TransportBaseController
         $instituteId = $this->instituteId();
 
         $driver = TransportDriver::create([
-            'institute_id'  => $instituteId,
-            'name'          => trim($data['name']),
-            'mobile'        => $data['mobile'] ?? null,
-            'license_no'    => $data['license_no'] ?? null,
-            'helper_name'   => $data['helper_name'] ?? null,
-            'helper_mobile' => $data['helper_mobile'] ?? null,
-            'notes'         => $data['notes'] ?? null,
-            'status'        => $request->boolean('status', true),
+            'institute_id' => $instituteId,
+            'name'         => trim($data['name']),
+            'mobile'       => $data['mobile'] ?? null,
+            'license_no'   => $data['license_no'] ?? null,
+            'notes'        => $data['notes'] ?? null,
+            'status'       => $request->boolean('status', true),
         ]);
 
         $this->saveDocuments($request, $driver, $instituteId);
@@ -74,13 +70,11 @@ class TransportDriverController extends TransportBaseController
         $this->assertInstituteModel($driver);
 
         $data = $request->validate([
-            'name'          => ['required', 'string', 'max:120'],
-            'mobile'        => ['nullable', 'digits:10'],
-            'license_no'    => ['nullable', 'string', 'max:80'],
-            'helper_name'   => ['nullable', 'string', 'max:120'],
-            'helper_mobile' => ['nullable', 'digits:10'],
-            'notes'         => ['nullable', 'string'],
-            'status'        => ['nullable', 'boolean'],
+            'name'       => ['required', 'string', 'max:120'],
+            'mobile'     => ['nullable', 'digits:10'],
+            'license_no' => ['nullable', 'string', 'max:80'],
+            'notes'      => ['nullable', 'string'],
+            'status'     => ['nullable', 'boolean'],
             'documents'                 => ['nullable', 'array'],
             'documents.*.document_type' => ['required_with:documents.*.file', 'string', 'max:50'],
             'documents.*.document_name' => ['nullable', 'string', 'max:150'],
@@ -90,13 +84,11 @@ class TransportDriverController extends TransportBaseController
         ]);
 
         $driver->update([
-            'name'          => trim($data['name']),
-            'mobile'        => $data['mobile'] ?? null,
-            'license_no'    => $data['license_no'] ?? null,
-            'helper_name'   => $data['helper_name'] ?? null,
-            'helper_mobile' => $data['helper_mobile'] ?? null,
-            'notes'         => $data['notes'] ?? null,
-            'status'        => $request->boolean('status', true),
+            'name'       => trim($data['name']),
+            'mobile'     => $data['mobile'] ?? null,
+            'license_no' => $data['license_no'] ?? null,
+            'notes'      => $data['notes'] ?? null,
+            'status'     => $request->boolean('status', true),
         ]);
 
         $this->saveDocuments($request, $driver, $driver->institute_id);
