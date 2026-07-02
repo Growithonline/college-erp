@@ -255,26 +255,13 @@
             $yearNumber  = $student->coursePart->year_number ?? 1;
             $semLabel    = $student->current_semester ? 'Sem ' . $student->current_semester : '—';
 
-            $assignedSubjects = $student->studentSubjects
+            $displaySubjects = $student->studentSubjects
                 ->where('academic_session_id', $student->academic_session_id)
                 ->filter(fn($ss) => $ss->subject !== null)
                 ->map(fn($ss) => (object)[
                     'name'         => $ss->subject->name,
                     'subject_role' => $ss->subject_role ?? 'compulsory',
                 ]);
-
-            if ($assignedSubjects->count() > 0) {
-                $displaySubjects = $assignedSubjects;
-            } elseif ($student->stream) {
-                $displaySubjects = $student->stream->subjectsForYear($yearNumber)
-                    ->orderByPivot('sort_order')->get()
-                    ->map(fn($s) => (object)[
-                        'name'         => $s->name,
-                        'subject_role' => $s->pivot->subject_role ?? 'compulsory',
-                    ]);
-            } else {
-                $displaySubjects = collect();
-            }
         @endphp
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header py-2" style="background:#1e293b;color:white;">

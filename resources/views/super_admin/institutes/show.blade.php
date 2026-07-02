@@ -322,6 +322,117 @@
     </div>
 </div>
 
+{{-- Danger Zone: Clean Institute Data --}}
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm border border-danger-subtle">
+            <div class="card-header bg-danger-subtle border-0 pb-0 pt-3">
+                <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Danger Zone</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-start gap-3 flex-wrap">
+                    <div class="flex-grow-1">
+                        <p class="fw-semibold mb-1">Institute Data Permanently Delete Karo</p>
+                        <p class="text-muted small mb-0">
+                            Yeh action institute ke <strong>sabhi students, courses, fee records, staff, centers, partners, wallets, aur settings</strong> ko permanently delete kar dega.
+                            Institute ka record, subscription aur UID safe rahega — sirf andar ka data clean hoga.
+                            <strong class="text-danger">Yeh action undo nahi ho sakta.</strong>
+                        </p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <button type="button" class="btn btn-danger btn-sm fw-semibold px-3"
+                                onclick="openCleanModal()">
+                            <i class="bi bi-trash3 me-1"></i> Clean All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Clean Data Modal --}}
+<div id="cleanModal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:0;background:rgba(15,23,42,0.55);backdrop-filter:blur(3px);" onclick="closeCleanModal()"></div>
+    <div id="cleanModalBox"
+         style="position:relative;background:#fff;border-radius:18px;padding:32px 28px 24px;max-width:460px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,0.22);transform:scale(0.92) translateY(12px);transition:transform 0.22s ease,opacity 0.22s ease;opacity:0;">
+
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:64px;height:64px;border-radius:50%;background:#fef2f2;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:14px;">🗑️</div>
+            <h5 style="margin:0 0 8px;font-size:18px;font-weight:700;color:#0f172a;">Institute Data Clean Karo?</h5>
+            <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
+                Yeh action <strong>{{ $institute->name }}</strong> ke sabhi students, courses, fees, staff, centers, aur partners ko
+                <span class="text-danger fw-bold">permanently delete</span> kar dega.<br><br>
+                Confirm karne ke liye niche institute ka exact naam type karo:
+            </p>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <div class="text-center mb-2">
+                <code style="background:#f1f5f9;padding:4px 12px;border-radius:6px;font-size:13px;color:#1e293b;">{{ $institute->name }}</code>
+            </div>
+            <input type="text" id="cleanConfirmInput"
+                   class="form-control text-center fw-semibold"
+                   placeholder="Institute ka naam yahan type karo..."
+                   autocomplete="off"
+                   oninput="checkCleanName()">
+        </div>
+
+        <form id="form-clean-data" method="POST" action="{{ route('super_admin.institutes.clean-data', $institute->id) }}">
+            @csrf
+            <input type="hidden" name="confirm_name" id="cleanConfirmHidden" value="">
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button type="button" onclick="closeCleanModal()"
+                        style="flex:1;padding:10px 0;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-size:14px;font-weight:600;cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="submit" id="cleanSubmitBtn" disabled
+                        style="flex:1;padding:10px 0;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;color:#fff;background:#ef4444;opacity:0.45;transition:opacity 0.2s;">
+                    <i class="bi bi-trash3 me-1"></i> Haan, Delete Karo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCleanModal() {
+    document.getElementById('cleanConfirmInput').value = '';
+    document.getElementById('cleanConfirmHidden').value = '';
+    var btn = document.getElementById('cleanSubmitBtn');
+    btn.disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed';
+
+    var modal = document.getElementById('cleanModal');
+    modal.style.display = 'flex';
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+            var box = document.getElementById('cleanModalBox');
+            box.style.transform = 'scale(1) translateY(0)';
+            box.style.opacity = '1';
+        });
+    });
+    setTimeout(function () { document.getElementById('cleanConfirmInput').focus(); }, 250);
+}
+
+function closeCleanModal() {
+    var box = document.getElementById('cleanModalBox');
+    box.style.transform = 'scale(0.92) translateY(12px)';
+    box.style.opacity = '0';
+    setTimeout(function () { document.getElementById('cleanModal').style.display = 'none'; }, 220);
+}
+
+function checkCleanName() {
+    var expected = @json($institute->name);
+    var val = document.getElementById('cleanConfirmInput').value;
+    var btn = document.getElementById('cleanSubmitBtn');
+    var match = (val === expected);
+    btn.disabled = !match;
+    btn.style.opacity = match ? '1' : '0.45';
+    btn.style.cursor = match ? 'pointer' : 'not-allowed';
+    if (match) document.getElementById('cleanConfirmHidden').value = val;
+}
+</script>
+
 {{-- Custom Confirm Modal --}}
 <div id="confirmModal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;">
     <div id="confirmBackdrop"
