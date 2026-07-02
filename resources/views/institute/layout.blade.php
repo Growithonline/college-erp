@@ -1117,6 +1117,13 @@
             </a>
         </li>
 
+        {{-- Data Backup --}}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('master.settings.data-export') }}" target="_blank">
+                <i class="bi bi-database-down"></i> Data Backup
+            </a>
+        </li>
+
         {{-- Bulk Student Correction --}}
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('admissions.bulk-correction*') ? 'active' : '' }}"

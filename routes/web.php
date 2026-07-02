@@ -283,6 +283,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('settings/email/save',       [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'save'])->name('settings.email.save');
         Route::post('settings/email/test',       [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'testConnection'])->name('settings.email.test');
         Route::post('settings/email/disconnect', [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'disconnect'])->name('settings.email.disconnect');
+
+        // Data Export / Backup
+        Route::get('settings/data-export', [\App\Http\Controllers\Institute\Settings\DataExportController::class, 'download'])->name('settings.data-export');
     });
 
     // Library Staff management — institute admin only (CRUD, reports)
