@@ -8,7 +8,7 @@
     <div>
         <h4 class="fw-bold mb-0">Route Assignments</h4>
         <p class="text-muted mb-0" style="font-size:13px;">
-            Route pe Vehicle, Driver aur Helper assign karo. Change karne pe purana record automatically band ho jaata hai.
+            Assign vehicle, driver, and helper to a route. The previous record is automatically closed when changed.
         </p>
     </div>
     <button class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#addModal">
@@ -16,18 +16,6 @@
     </button>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show py-2">
-        <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
-@if($errors->any())
-    <div class="alert alert-danger alert-dismissible fade show py-2">
-        <i class="bi bi-exclamation-circle me-2"></i>{{ $errors->first() }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 
 {{-- ── Current Active Assignments ── --}}
 <h6 class="fw-semibold text-uppercase text-muted mb-3" style="font-size:11px; letter-spacing:.05em;">
@@ -87,7 +75,7 @@
                     </button>
                     <button class="btn btn-sm btn-outline-warning"
                         onclick="openChange({{ $a->transport_route_id }})"
-                        title="Change Vehicle/Driver/Helper — purana record band ho jaayega">
+                        title="Change Vehicle/Driver/Helper — previous record will be closed">
                         <i class="bi bi-arrow-repeat"></i>
                     </button>
                     <form id="del-ra-{{ $a->id }}" method="POST" action="{{ route('transport.route-assignments.destroy', $a) }}" class="d-none">
@@ -108,7 +96,7 @@
     <div class="card-body text-center py-5 text-muted">
         <i class="bi bi-signpost-2 fs-1 d-block mb-2 opacity-25"></i>
         <p class="mb-1 fw-medium">No active assignments</p>
-        <p style="font-size:13px;">Route pe vehicle aur driver assign karo taaki admission form me auto-select ho.</p>
+        <p style="font-size:13px;">Assign a vehicle and driver to a route so they auto-select in the admission form.</p>
         <button class="btn btn-primary btn-sm px-4" data-bs-toggle="modal" data-bs-target="#addModal">
             <i class="bi bi-plus-lg me-1"></i> Add Assignment
         </button>
@@ -164,7 +152,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info py-2 mb-3" style="font-size:13px;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Agar is route pe pehle se assignment hai to woh automatically band ho jaayegi.
+                        If a previous assignment exists for this route, it will be automatically closed.
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -222,7 +210,7 @@
     </div>
 </div>
 
-{{-- ── Edit Modal (current assignment ka vehicle/driver/helper update) ── --}}
+{{-- ── Edit Modal ── --}}
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -276,7 +264,7 @@
     </div>
 </div>
 
-{{-- ── Change Modal (new assignment, purana auto-close) ── --}}
+{{-- ── Change Modal ── --}}
 <div class="modal fade" id="changeModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -290,7 +278,7 @@
                 <div class="modal-body">
                     <div class="alert alert-warning py-2 mb-3" style="font-size:13px;">
                         <i class="bi bi-exclamation-triangle me-1"></i>
-                        Purani assignment band ho jaayegi. Naya record Start Date se shuru hoga.
+                        The existing assignment will be closed. A new record will start from the selected date.
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -340,6 +328,13 @@
 </div>
 
 <script>
+@if(session('success'))
+    document.addEventListener('DOMContentLoaded', () => showToast('{{ addslashes(session('success')) }}', 'success'));
+@endif
+@if($errors->any())
+    document.addEventListener('DOMContentLoaded', () => showToast('{{ addslashes($errors->first()) }}', 'danger'));
+@endif
+
 function openEdit(id, vehicleId, driverId, helperId, notes) {
     document.getElementById('editForm').action = `/transport/route-assignments/${id}`;
     document.getElementById('editVehicle').value = vehicleId ?? '';

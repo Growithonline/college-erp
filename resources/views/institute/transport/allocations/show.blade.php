@@ -42,8 +42,8 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <div class="alert alert-info mb-0 small">
-                    <strong>Transport fee collect karne ke liye</strong> main Fee Collection page use karein.<br>
-                    Student search karein — Transport Fee automatically line item mein aayegi.
+                    <strong>To collect the transport fee,</strong> use the Fee Collection page.<br>
+                    Search for the student — the transport fee will appear automatically as a line item.
                 </div>
                 <a href="{{ route('fee.create', ['student_id' => $allocation->student_id]) }}" class="btn btn-primary w-100 mt-2">
                     Go to Fee Collection

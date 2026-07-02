@@ -36,7 +36,6 @@ class TransportDashboardController extends TransportBaseController
             ->where('is_active', true)
             ->whereRaw('COALESCE(charged_amount, 0) > COALESCE(paid_amount, 0)')
             ->orderByDesc('id')
-            ->limit(10)
             ->get();
 
         $recentPayments = TransportPayment::with(['student:id,name,roll_no', 'allocation.route:id,name'])

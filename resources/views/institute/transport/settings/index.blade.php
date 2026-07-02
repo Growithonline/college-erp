@@ -7,9 +7,9 @@
     <div class="col-md-8">
 
         @if(session('success'))
-            <div class="alert alert-success border-0 shadow-sm">
-                <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            </div>
+            @push('scripts')
+            <script>document.addEventListener('DOMContentLoaded', () => showToast('{{ addslashes(session('success')) }}', 'success'));</script>
+            @endpush
         @endif
 
         <div class="card border-0 shadow-sm">
@@ -31,9 +31,9 @@
 
                         <div class="row g-3">
                             @foreach([
-                                'full_charge'     => ['title' => 'Full Charge', 'desc' => 'New route ki full fee charge hogi on transfer. (Default)', 'icon' => 'bi-cash-coin', 'color' => 'warning'],
-                                'no_charge'       => ['title' => 'No Charge',   'desc' => 'Transfer pe naya charge nahi hoga. Purani fee valid rahegi year bhar.', 'icon' => 'bi-shield-check', 'color' => 'success'],
-                                'prorated_charge' => ['title' => 'Prorated Charge', 'desc' => 'Remaining days ke hisab se partial fee charge hogi.', 'icon' => 'bi-percent', 'color' => 'info'],
+                                'full_charge'     => ['title' => 'Full Charge',     'desc' => 'Full fee of the new route will be charged on transfer. (Default)', 'icon' => 'bi-cash-coin',    'color' => 'warning'],
+                                'no_charge'       => ['title' => 'No Charge',       'desc' => 'No additional charge on transfer. The existing fee remains valid for the academic year.',  'icon' => 'bi-shield-check', 'color' => 'success'],
+                                'prorated_charge' => ['title' => 'Prorated Charge', 'desc' => 'A partial fee will be charged based on remaining days.',                'icon' => 'bi-percent',      'color' => 'info'],
                             ] as $value => $opt)
                             <div class="col-md-4">
                                 <label class="d-block cursor-pointer">
@@ -58,13 +58,13 @@
                     {{-- Prorated Billing --}}
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Prorated Monthly Billing</label>
-                        <small class="d-block text-muted mb-2">Monthly routes ke liye — naya student mid-month join kare to kitna charge hoga?</small>
+                        <small class="d-block text-muted mb-2">For monthly routes — how much to charge when a new student joins mid-month?</small>
 
                         <div class="row g-3">
                             @foreach([
-                                'disabled'      => ['title' => 'Disabled',        'desc' => 'Hamesha full month ka charge. Join date matter nahi karti.', 'icon' => 'bi-dash-circle'],
-                                'after_midmonth'=> ['title' => 'Half After 15th', 'desc' => '15 tarikh ke baad join kare to aadha charge lo.', 'icon' => 'bi-calendar-half'],
-                                'daily_basis'   => ['title' => 'Daily Basis',     'desc' => 'Exact days: (remaining days / total days) × fee.', 'icon' => 'bi-calculator'],
+                                'disabled'      => ['title' => 'Disabled',        'desc' => 'Always charge the full month fee regardless of join date.',            'icon' => 'bi-dash-circle'],
+                                'after_midmonth'=> ['title' => 'Half After 15th', 'desc' => 'Charge half the fee if the student joins after the 15th of the month.', 'icon' => 'bi-calendar-half'],
+                                'daily_basis'   => ['title' => 'Daily Basis',     'desc' => 'Charge proportionally: (remaining days / total days) × fee.',           'icon' => 'bi-calculator'],
                             ] as $value => $opt)
                             <div class="col-md-4">
                                 <label class="d-block cursor-pointer">
@@ -97,8 +97,8 @@
                             </label>
                         </div>
                         <small class="text-muted d-block mt-1">
-                            Jab <strong>ON</strong> ho: agar student ne Semester 1 mein yearly transport fee di hai, to Semester 2 mein dobara charge nahi hoga (same academic year ke andar).<br>
-                            Jab <strong>OFF</strong> ho: har session change pe dobara charge hoga.
+                            <strong>ON:</strong> If a student has already paid the yearly transport fee in Semester 1, they will not be charged again in Semester 2 within the same academic year.<br>
+                            <strong>OFF:</strong> Transport fee will be charged again on every session change.
                         </small>
                     </div>
 
