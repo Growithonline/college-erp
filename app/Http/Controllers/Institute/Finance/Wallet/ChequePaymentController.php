@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\ChequePayment;
 use App\Models\FeeInvoice;
+use App\Services\WalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ChequePaymentController extends Controller
@@ -72,19 +74,35 @@ class ChequePaymentController extends Controller
             'remarks'         => 'nullable|string|max:500',
         ]);
 
-        $cheque->update([
-            'status'         => $data['status'],
-            'clearance_date' => $data['status'] === 'cleared' ? $data['clearance_date'] : null,
-            'bounce_reason'  => $data['status'] === 'bounced' ? $data['bounce_reason'] : null,
-            'remarks'        => $data['remarks'] ?? null,
-            'updated_by'     => auth()->id(),
-        ]);
+        DB::transaction(function () use ($cheque, $data) {
+            $cheque->update([
+                'status'         => $data['status'],
+                'clearance_date' => $data['status'] === 'cleared' ? $data['clearance_date'] : null,
+                'bounce_reason'  => $data['status'] === 'bounced' ? $data['bounce_reason'] : null,
+                'remarks'        => $data['remarks'] ?? null,
+                'updated_by'     => auth()->id(),
+            ]);
+
+            if ($data['status'] === 'bounced' && $cheque->fee_invoice_id) {
+                $invoice = FeeInvoice::with('student')->find($cheque->fee_invoice_id);
+                if ($invoice && !$invoice->is_cancelled) {
+                    $invoice->update([
+                        'is_cancelled'  => true,
+                        'cancel_reason' => 'Cheque bounced: ' . ($data['bounce_reason'] ?? ''),
+                        'cancelled_at'  => now(),
+                        'cancelled_by'  => auth()->id(),
+                    ]);
+
+                    WalletService::onFeeCancel($invoice);
+                }
+            }
+        });
 
         Cache::forget('pending_cheques_' . $cheque->institute_id);
 
         $msg = $data['status'] === 'cleared'
             ? 'Cheque marked as cleared.'
-            : 'Cheque marked as bounced.';
+            : 'Cheque bounced — invoice cancelled and payment reversed.';
 
         return back()->with('success', $msg);
     }
