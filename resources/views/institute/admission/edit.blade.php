@@ -779,15 +779,19 @@
             @if($formConfig['perm_district']['enabled'] ?? false)
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">District</label>
-                <input type="text" name="perm_district" class="form-control form-control-sm"
-                       value="{{ old('perm_district', $student->perm_district) }}">
+                <select name="perm_district" id="editPermDist" class="form-select form-select-sm"
+                        data-saved="{{ old('perm_district', $student->perm_district) }}">
+                    <option value="">— Select District —</option>
+                </select>
             </div>
             @endif
             @if($formConfig['perm_state']['enabled'] ?? false)
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">State</label>
-                <input type="text" name="perm_state" class="form-control form-control-sm"
-                       value="{{ old('perm_state', $student->perm_state) }}">
+                <select name="perm_state" id="editPermState" class="form-select form-select-sm"
+                        data-saved="{{ old('perm_state', $student->perm_state) }}">
+                    <option value="">— Select State —</option>
+                </select>
             </div>
             @endif
             @if($formConfig['perm_pincode']['enabled'] ?? false)
@@ -837,15 +841,19 @@
             @if($formConfig['perm_district']['enabled'] ?? false)
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">District</label>
-                <input type="text" name="comm_district" class="form-control form-control-sm"
-                       value="{{ old('comm_district', $student->comm_district) }}">
+                <select name="comm_district" id="editCommDist" class="form-select form-select-sm"
+                        data-saved="{{ old('comm_district', $student->comm_district) }}">
+                    <option value="">— Select District —</option>
+                </select>
             </div>
             @endif
             @if($formConfig['perm_state']['enabled'] ?? false)
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">State</label>
-                <input type="text" name="comm_state" class="form-control form-control-sm"
-                       value="{{ old('comm_state', $student->comm_state) }}">
+                <select name="comm_state" id="editCommState" class="form-select form-select-sm"
+                        data-saved="{{ old('comm_state', $student->comm_state) }}">
+                    <option value="">— Select State —</option>
+                </select>
             </div>
             @endif
             @if($formConfig['perm_pincode']['enabled'] ?? false)
@@ -965,6 +973,8 @@
 </div>
 
 </form>
+
+@include('partials._india-geo')
 
 @push('scripts')
 {{-- TomSelect — tag-style multi-select dropdown --}}
@@ -1602,6 +1612,57 @@ window.addEventListener('DOMContentLoaded', function() {
 
     loadSubjectsForSelection();
     setProjectedWallet(currentWalletBalance);
+
+    // Auto-uppercase all text inputs (email type excluded automatically by selector)
+    document.querySelectorAll('#editAdmissionForm input[type="text"]').forEach(function(input) {
+        if (input.value) input.value = input.value.toUpperCase();
+        input.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+    });
+
+    // State/District dropdowns — edit form (uses window.INDIA_GEO from _india-geo partial)
+    (function() {
+        var geo = window.INDIA_GEO || {};
+        var states = Object.keys(geo).sort();
+
+        function fillStates(sel, saved) {
+            states.forEach(function(s) {
+                var o = document.createElement('option');
+                o.value = s; o.textContent = s;
+                if (s === saved) o.selected = true;
+                sel.appendChild(o);
+            });
+        }
+
+        function fillDistricts(sel, stateName, saved) {
+            sel.innerHTML = '<option value="">— Select District —</option>';
+            (geo[stateName] || []).forEach(function(d) {
+                var o = document.createElement('option');
+                o.value = d; o.textContent = d;
+                if (d === saved) o.selected = true;
+                sel.appendChild(o);
+            });
+        }
+
+        var permState = document.getElementById('editPermState');
+        var permDist  = document.getElementById('editPermDist');
+        if (permState && permDist) {
+            var sv = permState.dataset.saved || '';
+            var dv = permDist.dataset.saved  || '';
+            fillStates(permState, sv);
+            if (sv) fillDistricts(permDist, sv, dv);
+            permState.addEventListener('change', function() { fillDistricts(permDist, this.value, ''); });
+        }
+
+        var commState = document.getElementById('editCommState');
+        var commDist  = document.getElementById('editCommDist');
+        if (commState && commDist) {
+            var csv = commState.dataset.saved || '';
+            var cdv = commDist.dataset.saved  || '';
+            fillStates(commState, csv);
+            if (csv) fillDistricts(commDist, csv, cdv);
+            commState.addEventListener('change', function() { fillDistricts(commDist, this.value, ''); });
+        }
+    })();
 });
 </script>
 @endpush

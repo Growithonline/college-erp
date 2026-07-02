@@ -54,25 +54,29 @@
                 ?? ($student->current_semester ?: null)
                 ?? '—';
 
-    // Office details: snapshot pehle, phir student
-    $srNo         = $selectedIdentity?->sr_no_snapshot         ?? $student->sr_no ?? '—';
-    $enrollmentNo = $selectedIdentity?->enrollment_no_snapshot ?? $student->enrollment_no ?? '—';
-    $rollNo       = $selectedIdentity?->roll_no_snapshot       ?? $selectedIdentity?->roll_no ?? $student->roll_no ?? '—';
-    $formNo       = $selectedIdentity?->institute_form_no_snapshot ?? $student->institute_form_no ?? '—';
-    $examFormNo   = $selectedIdentity?->exam_form_no_snapshot ?? $student->exam_form_no ?? '—';
-    $uinNo        = $selectedIdentity?->uin_no_snapshot ?? $student->uin_no ?? '—';
-    $referenceNo  = $selectedIdentity?->reference_no_snapshot ?? $student->reference_no ?? '—';
+    // Office details: snapshot pehle; historical view mein null snapshot = us waqt blank tha — live data se fallback nahi
+    $live = fn($v) => $isCurrentSession ? ($v ?? '—') : '—';
+    $srNo         = $selectedIdentity?->sr_no_snapshot         ?? $live($student->sr_no);
+    $enrollmentNo = $selectedIdentity?->enrollment_no_snapshot ?? $live($student->enrollment_no);
+    $rollNo       = $selectedIdentity?->roll_no_snapshot       ?? $selectedIdentity?->roll_no ?? $live($student->roll_no);
+    $formNo       = $selectedIdentity?->institute_form_no_snapshot ?? $live($student->institute_form_no);
+    $examFormNo   = $selectedIdentity?->exam_form_no_snapshot ?? $live($student->exam_form_no);
+    $uinNo        = $selectedIdentity?->uin_no_snapshot ?? $live($student->uin_no);
+    $referenceNo  = $selectedIdentity?->reference_no_snapshot ?? $live($student->reference_no);
     $submittedDate = $selectedIdentity?->submitted_date_snapshot?->format('d-m-Y')
-        ?? $student->submitted_date?->format('d-m-Y')
-        ?? '—';
+        ?? ($isCurrentSession ? ($student->submitted_date?->format('d-m-Y') ?? '—') : '—');
     $admissionDate = $selectedIdentity?->admission_date_snapshot?->format('d-m-Y')
-        ?? $student->admission_date?->format('d-m-Y')
+        ?? ($isCurrentSession ? ($student->admission_date?->format('d-m-Y') ?? '—') : '—'
         ?? '—';
     $studentUidParts = explode('/', (string) $student->student_uid);
     $serialNo = end($studentUidParts) ?: '—';
 
     // Profile snapshot shorthand — null means show live student data
     $ps = $profileSnapshot ?? null;
+    // Helper: jab $ps set ho (snapshot available), use snapshot exclusively;
+    // null field in snapshot = us waqt blank tha, show '—'.
+    // jab $ps null ho (current session ya old record), live data use karo.
+    $snapVal = fn($key, $live) => $ps !== null ? ($ps[$key] ?? '—') : ($live ?? '—');
 @endphp
 
 {{-- Pending Admission Banner --}}
@@ -285,15 +289,15 @@
             </div>
             <div class="card-body p-0">
                 @foreach([
-                    'Category'         => strtoupper($ps['category'] ?? $student->category ?? '—'),
-                    'Special Category' => strtoupper($ps['special_category'] ?? $student->special_category ?? '—'),
-                    'Nationality'      => ucfirst($ps['nationality'] ?? $student->nationality ?? '—'),
-                    'Religion'         => ucfirst($ps['religion'] ?? $student->religion ?? '—'),
-                    'Student Type'     => ucfirst($ps['student_type'] ?? $student->student_type ?? '—'),
-                    'Marital Status'   => ucfirst($ps['marital_status'] ?? $student->marital_status ?? '—'),
-                    'Aadhar No.'       => $ps['aadhar_no'] ?? $student->aadhar_no ?? '—',
-                    'APAAR No.'        => $ps['apaar_no'] ?? $student->apaar_no ?? '—',
-                    'Email'            => $ps['email'] ?? $student->email ?? '—',
+                    'Category'         => strtoupper($snapVal('category', $student->category)),
+                    'Special Category' => strtoupper($snapVal('special_category', $student->special_category)),
+                    'Nationality'      => ucfirst($snapVal('nationality', $student->nationality)),
+                    'Religion'         => ucfirst($snapVal('religion', $student->religion)),
+                    'Student Type'     => ucfirst($snapVal('student_type', $student->student_type)),
+                    'Marital Status'   => ucfirst($snapVal('marital_status', $student->marital_status)),
+                    'Aadhar No.'       => $snapVal('aadhar_no', $student->aadhar_no),
+                    'APAAR No.'        => $snapVal('apaar_no', $student->apaar_no),
+                    'Email'            => $snapVal('email', $student->email),
                 ] as $lbl => $val)
                 <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
                     <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
@@ -310,13 +314,13 @@
             </div>
             <div class="card-body p-0">
                 @foreach([
-                    'Father Name'       => $ps['father_name'] ?? $student->father_name ?? '—',
-                    'Father Mobile'     => $ps['father_mobile'] ?? $student->father_mobile ?? '—',
-                    'Father Occupation' => $ps['father_occupation'] ?? $student->father_occupation ?? '—',
-                    'Mother Name'       => $ps['mother_name'] ?? $student->mother_name ?? '—',
-                    'Mother Mobile'     => $ps['mother_mobile'] ?? $student->mother_mobile ?? '—',
-                    'Guardian Name'     => $ps['guardian_name'] ?? $student->guardian_name ?? '—',
-                    'Guardian Mobile'   => $ps['guardian_mobile'] ?? $student->guardian_mobile ?? '—',
+                    'Father Name'       => $snapVal('father_name', $student->father_name),
+                    'Father Mobile'     => $snapVal('father_mobile', $student->father_mobile),
+                    'Father Occupation' => $snapVal('father_occupation', $student->father_occupation),
+                    'Mother Name'       => $snapVal('mother_name', $student->mother_name),
+                    'Mother Mobile'     => $snapVal('mother_mobile', $student->mother_mobile),
+                    'Guardian Name'     => $snapVal('guardian_name', $student->guardian_name),
+                    'Guardian Mobile'   => $snapVal('guardian_mobile', $student->guardian_mobile),
                 ] as $lbl => $val)
                 <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
                     <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
@@ -336,15 +340,15 @@
             </div>
             <div class="card-body p-0">
                 @foreach([
-                    'Village/City'  => $ps['perm_village'] ?? $student->perm_village ?? '—',
-                    'Post'          => $ps['perm_post'] ?? $student->perm_post ?? '—',
-                    'Thana'         => $ps['perm_thana'] ?? $student->perm_thana ?? '—',
-                    'District'      => $ps['perm_district'] ?? $student->perm_district ?? '—',
-                    'State'         => $ps['perm_state'] ?? $student->perm_state ?? '—',
-                    'Pin Code'      => $ps['perm_pincode'] ?? $student->perm_pincode ?? '—',
-                    'Comm. Address' => ($ps['comm_same_as_perm'] ?? $student->comm_same_as_perm)
+                    'Village/City'  => $snapVal('perm_village', $student->perm_village),
+                    'Post'          => $snapVal('perm_post', $student->perm_post),
+                    'Thana'         => $snapVal('perm_thana', $student->perm_thana),
+                    'District'      => $snapVal('perm_district', $student->perm_district),
+                    'State'         => $snapVal('perm_state', $student->perm_state),
+                    'Pin Code'      => $snapVal('perm_pincode', $student->perm_pincode),
+                    'Comm. Address' => (bool)($ps !== null ? ($ps['comm_same_as_perm'] ?? false) : $student->comm_same_as_perm)
                         ? 'Same as above'
-                        : ($ps['comm_address'] ?? $student->comm_address ?? '—'),
+                        : $snapVal('comm_address', $student->comm_address),
                 ] as $lbl => $val)
                 <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
                     <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
@@ -644,15 +648,16 @@
     </div>
     <div class="card-body p-0">
         @foreach([
-            'Scholarship Name'      => $ps['scholarship_name'] ?? $student->scholarship_name ?? '—',
-            'Scholarship Type'      => ucfirst($ps['scholarship_type'] ?? $student->scholarship_type ?? '—'),
-            'Authority'             => $ps['scholarship_authority'] ?? $student->scholarship_authority ?? '—',
-            'Reference No.'         => $ps['scholarship_ref_no'] ?? $student->scholarship_ref_no ?? '—',
-            'Applied Date'          => isset($ps['scholarship_applied_date'])
-                ? \Carbon\Carbon::parse($ps['scholarship_applied_date'])->format('d-m-Y')
+            'Scholarship Name'      => $snapVal('scholarship_name', $student->scholarship_name),
+            'Scholarship Type'      => ucfirst($snapVal('scholarship_type', $student->scholarship_type)),
+            'Authority'             => $snapVal('scholarship_authority', $student->scholarship_authority),
+            'Reference No.'         => $snapVal('scholarship_ref_no', $student->scholarship_ref_no),
+            'Applied Date'          => $ps !== null
+                ? (isset($ps['scholarship_applied_date']) ? \Carbon\Carbon::parse($ps['scholarship_applied_date'])->format('d-m-Y') : '—')
                 : ($student->scholarship_applied_date?->format('d-m-Y') ?? '—'),
-            'Scholarship Amount'    => ($ps['scholarship_amount'] ?? $student->scholarship_amount)
-                ? '₹' . number_format($ps['scholarship_amount'] ?? $student->scholarship_amount, 2) : '—',
+            'Scholarship Amount'    => $ps !== null
+                ? (($ps['scholarship_amount'] ?? null) ? '₹'.number_format($ps['scholarship_amount'], 2) : '—')
+                : ($student->scholarship_amount ? '₹'.number_format($student->scholarship_amount, 2) : '—'),
         ] as $lbl => $val)
         <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
             <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>
