@@ -8,6 +8,7 @@ use App\Models\FeeInvoice;
 use App\Models\FeeType;
 use App\Models\FinanceSetting;
 use App\Models\InstituteBankAccount;
+use App\Models\EmployeeSalaryDisbursement;
 use App\Models\SalaryRecord;
 use App\Models\Student;
 use App\Models\JournalEntry;
@@ -21,7 +22,8 @@ class JournalService
     private const ENTRY_KEY_FINE_FEE = 'fee-assigned:fine:invoice:%d';
     private const ENTRY_KEY_FEE_COLLECTION = 'fee-collected:invoice:%d';
     private const ENTRY_KEY_EXPENSE_PAYMENT = 'expense-payment:%d';
-    private const ENTRY_KEY_SALARY_PAYMENT = 'salary-payment:%d';
+    private const ENTRY_KEY_SALARY_PAYMENT     = 'salary-payment:%d';
+    private const ENTRY_KEY_EMP_DISBURSEMENT   = 'emp-salary:%d';
     private const ENTRY_KEY_LIBRARY_FINE = 'library-fine-collection:receipt:%s';
 
     public static function post(array $header, array $lines): JournalEntry
@@ -600,6 +602,72 @@ class JournalService
                     'salary_year'      => (int) $salaryRecord->salary_year,
                     'payment_mode'     => $salaryRecord->payment_mode,
                     'bank_account_id'  => $salaryRecord->bank_account_id,
+                ],
+            ], $lines);
+        });
+    }
+
+    public static function safePostEmployeeDisbursement(EmployeeSalaryDisbursement $d): ?JournalEntry
+    {
+        return self::safely(function () use ($d) {
+            $d->loadMissing(['employee', 'expenseAccount', 'paymentAccount', 'bankAccount']);
+
+            $netPay = round((float) $d->net_salary, 2);
+            if ($netPay <= 0) {
+                return null;
+            }
+
+            $expenseAccount = self::accountOrFail($d->expense_account_id ? (int) $d->expense_account_id : null);
+            $paymentAccount = self::accountOrFail($d->payment_account_id ? (int) $d->payment_account_id : null);
+
+            $grossSalary = round((float) $d->gross_salary, 2);
+            $deductions  = round((float) $d->deductions, 2);
+
+            $lines = [];
+
+            // Debit: full gross salary as expense
+            $lines[] = [
+                'account_id' => (int) $expenseAccount->id,
+                'entry_type' => 'debit',
+                'amount'     => $grossSalary,
+                'narration'  => 'Salary expense — ' . ($d->employee?->name ?? 'Employee'),
+            ];
+
+            // Credit: net salary to cash / bank account
+            $lines[] = [
+                'account_id' => (int) $paymentAccount->id,
+                'entry_type' => 'credit',
+                'amount'     => $netPay,
+                'narration'  => $d->payment_mode === 'cash' ? 'Cash salary paid' : 'Bank salary paid',
+            ];
+
+            // Credit: deductions back to expense account (reduces gross to net on the P&L)
+            if ($deductions > 0) {
+                $lines[] = [
+                    'account_id' => (int) $expenseAccount->id,
+                    'entry_type' => 'credit',
+                    'amount'     => $deductions,
+                    'narration'  => 'Salary deductions (advance recovery / other)',
+                ];
+            }
+
+            $monthLabel = date('M Y', mktime(0, 0, 0, (int) $d->month, 1, (int) $d->year));
+
+            return self::post([
+                'institute_id'    => (int) $d->institute_id,
+                'date'            => optional($d->payment_date)->toDateString() ?: now()->toDateString(),
+                'entry_key'       => sprintf(self::ENTRY_KEY_EMP_DISBURSEMENT, (int) $d->id),
+                'reference_type'  => 'employee_salary',
+                'reference_id'    => (int) $d->id,
+                'narration'       => 'Salary paid — ' . ($d->employee?->name ?? 'Employee') . ' ' . $monthLabel,
+                'created_by'      => self::resolveActorId(),
+                'created_by_role' => self::resolveActorRole(),
+                'meta'            => [
+                    'employee_id'   => (int) $d->employee_id,
+                    'salary_month'  => (int) $d->month,
+                    'salary_year'   => (int) $d->year,
+                    'payment_mode'  => $d->payment_mode,
+                    'bank_account_id' => $d->bank_account_id,
                 ],
             ], $lines);
         });

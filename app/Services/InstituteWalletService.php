@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\InstituteManualIncome;
 use App\Models\InstituteTransaction;
 use App\Models\InstituteWallet;
+use App\Models\EmployeeSalaryDisbursement;
 use App\Models\SalaryRecord;
 use Illuminate\Support\Facades\DB;
 
@@ -276,6 +277,59 @@ class InstituteWalletService
 
             $wallet->update(['main_b' => $clBal]);
             $freshSalary->update(['wallet_debited' => true]);
+        });
+    }
+
+    public static function debitEmployeeDisbursement(EmployeeSalaryDisbursement $disbursement): void
+    {
+        $instituteId = $disbursement->institute_id;
+
+        $sessionId = AcademicSession::where('institute_id', $instituteId)
+            ->where('is_active', true)
+            ->value('id');
+
+        if (!$sessionId) {
+            return;
+        }
+
+        DB::transaction(function () use ($disbursement, $instituteId, $sessionId) {
+            $fresh = EmployeeSalaryDisbursement::where('id', $disbursement->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$fresh || $fresh->wallet_debited) {
+                return;
+            }
+
+            $wallet = InstituteWallet::firstOrCreate(
+                ['institute_id' => $instituteId, 'academic_session_id' => $sessionId],
+                ['main_b' => 0.00]
+            );
+            $wallet = InstituteWallet::where('id', $wallet->id)->lockForUpdate()->first();
+
+            $opBal      = (float) $wallet->main_b;
+            $amount     = (float) $fresh->net_salary;
+            $clBal      = round($opBal - $amount, 2);
+            $empName    = $fresh->employee?->name ?? 'Employee';
+            $monthLabel = str_pad($fresh->month, 2, '0', STR_PAD_LEFT) . '/' . $fresh->year;
+
+            InstituteTransaction::create([
+                'institute_id'        => $instituteId,
+                'academic_session_id' => $sessionId,
+                'des'                 => "Salary paid: {$empName} - {$monthLabel}",
+                'credit'              => 0.00,
+                'debit'               => $amount,
+                'type'                => InstituteTransaction::DEBIT,
+                'date'                => optional($fresh->payment_date)->toDateString() ?? now()->toDateString(),
+                'op_bal'              => $opBal,
+                'cl_bal'              => $clBal,
+                'source_type'         => 'employee_salary',
+                'source_id'           => $fresh->id,
+                'by_user_id'          => self::resolveActorId(),
+            ]);
+
+            $wallet->update(['main_b' => $clBal]);
+            $fresh->update(['wallet_debited' => true]);
         });
     }
 

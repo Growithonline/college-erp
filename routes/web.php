@@ -862,7 +862,8 @@ Route::middleware('auth:web,staff')->prefix('employees')->name('employees.')->gr
     Route::post('/{employee}/salary/components',            [EmployeeSalaryController::class, 'storeComponent'])->name('salary.storeComponent');
     Route::delete('/{employee}/salary/components/{component}', [EmployeeSalaryController::class, 'destroyComponent'])->name('salary.destroyComponent');
     Route::get('/{employee}/salary/disbursements',          [EmployeeSalaryController::class, 'disbursements'])->name('salary.disbursements');
-    Route::post('/{employee}/salary/disbursements',         [EmployeeSalaryController::class, 'storeDisbursement'])->name('salary.storeDisbursement');
+    Route::post('/{employee}/salary/disbursements',             [EmployeeSalaryController::class, 'storeDisbursement'])->name('salary.storeDisbursement');
+    Route::delete('/{employee}/salary/disbursements/{disbursement}', [EmployeeSalaryController::class, 'destroyDisbursement'])->name('salary.destroyDisbursement');
     Route::post('/{employee}/salary/bonuses',               [EmployeeSalaryController::class, 'storeBonus'])->name('salary.storeBonus');
     Route::delete('/{employee}/salary/bonuses/{bonus}',     [EmployeeSalaryController::class, 'destroyBonus'])->name('salary.destroyBonus');
     Route::post('/{employee}/salary/advances',              [EmployeeSalaryController::class, 'storeAdvance'])->name('salary.storeAdvance');

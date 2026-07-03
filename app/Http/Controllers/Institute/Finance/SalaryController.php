@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Institute\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Account;
+use App\Models\EmployeeSalaryDisbursement;
 use App\Models\FinanceSetting;
 use App\Models\InstituteBankAccount;
 use App\Models\SalaryRecord;
@@ -44,24 +45,17 @@ class SalaryController extends Controller
         }
 
         $instituteId = $this->instituteId();
-        $salaryRecords = SalaryRecord::with(['staffMember.role', 'expenseAccount', 'bankAccount', 'reversalJournalEntry'])
+
+        $salaryRecords = EmployeeSalaryDisbursement::with(['employee.department', 'employee.designation', 'expenseAccount', 'bankAccount', 'journalEntry'])
             ->where('institute_id', $instituteId)
-            ->orderByDesc('salary_year')
-            ->orderByDesc('salary_month')
+            ->orderByDesc('year')
+            ->orderByDesc('month')
             ->orderByDesc('id')
             ->get();
 
-        $totalPayable = (float) $salaryRecords->sum('net_payable');
-        $totalPaid = (float) $salaryRecords
-            ->where('status', SalaryRecord::STATUS_PAID)
-            ->sum('paid_amount');
-        $pendingCount = $salaryRecords->filter(function ($record) {
-            return in_array($record->status, [
-                SalaryRecord::STATUS_PENDING,
-                SalaryRecord::STATUS_DRAFT,
-                SalaryRecord::STATUS_APPROVED,
-            ], true);
-        })->count();
+        $totalPayable = (float) $salaryRecords->sum('gross_salary');
+        $totalPaid    = (float) $salaryRecords->where('status', 'paid')->sum('net_salary');
+        $pendingCount = $salaryRecords->where('status', 'pending')->count();
 
         return view('institute.finance.salary.index', compact(
             'salaryRecords',
