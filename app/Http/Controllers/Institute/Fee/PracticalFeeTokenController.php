@@ -105,6 +105,33 @@ class PracticalFeeTokenController extends Controller
             ->orderBy('name')
             ->get();
 
+        foreach ($courses as $course) {
+            $subjectOptions = [];
+            $seenSubjectIds = [];
+            foreach ($course->streams as $stream) {
+                foreach ($stream->subjects as $subject) {
+                    if (in_array($subject->id, $seenSubjectIds, true)) {
+                        continue;
+                    }
+                    $seenSubjectIds[] = $subject->id;
+                    $subjectOptions[] = ['id' => $subject->id, 'name' => $subject->name];
+                }
+            }
+            usort($subjectOptions, fn ($a, $b) => strcmp($a['name'], $b['name']));
+            $course->subject_options = $subjectOptions;
+
+            $partOptions = [];
+            foreach ($course->parts as $part) {
+                $partOptions[] = [
+                    'id' => $part->id,
+                    'part_number' => $part->part_number,
+                    'part_name' => $part->part_name,
+                    'year_number' => $part->year_number,
+                ];
+            }
+            $course->part_options = $partOptions;
+        }
+
         return view('institute.fee.practical-tokens.create', [
             'sessions' => AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get(),
             'courseTypes' => CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get(),

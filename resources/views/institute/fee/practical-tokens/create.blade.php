@@ -45,8 +45,8 @@
                         <option
                             value="{{ $course->id }}"
                             data-type="{{ $course->course_type_id }}"
-                            data-subjects='@json($course->streams->flatMap->subjects->unique("id")->sortBy("name")->values()->map(fn($s) => ["id" => $s->id, "name" => $s->name])->values())'
-                            data-parts='@json($course->parts->map(fn($p) => ["id" => $p->id, "part_number" => $p->part_number, "part_name" => $p->part_name, "year_number" => $p->year_number]))'
+                            data-subjects='@json($course->subject_options)'
+                            data-parts='@json($course->part_options)'
                             {{ old('course_id') == $course->id ? 'selected' : '' }}
                         >{{ $course->name }}</option>
                     @endforeach
