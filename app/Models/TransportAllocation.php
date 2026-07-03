@@ -74,15 +74,9 @@ class TransportAllocation extends Model
         return $this->hasMany(TransportPayment::class);
     }
 
-    public function monthlyCharges()
-    {
-        return $this->hasMany(TransportMonthlyCharge::class);
-    }
-
     public function getBalanceAttribute(): float
     {
-        // For monthly billing, charged_amount grows each month.
-        // For one_time, charged_amount = fee_amount (set on allocation creation).
+        // charged_amount = fee_amount set on allocation creation (or on semester charge generation).
         $charged = (float) $this->charged_amount > 0
             ? (float) $this->charged_amount
             : (float) $this->fee_amount;

@@ -139,43 +139,163 @@
 
 {{-- Route Transfer Modal --}}
 @if($allocation->is_active)
+@php
+    $oldBalance     = (float) $allocation->balance;
+    $oldFee         = (float) $allocation->fee_amount;
+    $oldCharged     = (float) $allocation->charged_amount ?: $oldFee;
+    $oldPaid        = (float) $allocation->paid_amount;
+    $allocStart     = $allocation->start_date;
+    $sessionEnd     = $allocation->session?->end_date;
+    $today          = now()->startOfDay();
+
+    // Prorated suggestion: unused portion of charged fee
+    $suggestedCredit = 0.0;
+    if ($allocStart && $sessionEnd && $oldBalance > 0 && $oldCharged > 0) {
+        $totalDays     = max(1, $allocStart->diffInDays($sessionEnd));
+        $usedDays      = min($totalDays, $allocStart->diffInDays($today));
+        $remainingDays = max(0, $totalDays - $usedDays);
+        $prorated      = round(($remainingDays / $totalDays) * $oldCharged, 2);
+        $suggestedCredit = min($oldBalance, $prorated);
+    }
+@endphp
 <div class="modal fade" id="transferModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title">Change Route</h6>
+                <h6 class="modal-title fw-semibold"><i class="bi bi-arrow-left-right me-2 text-warning"></i>Change Route</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ route('transport.allocations.transfer', $allocation) }}">
                 @csrf
                 <div class="modal-body">
-                    <div class="alert alert-warning small">Current allocation will be closed. A new allocation will be created on the selected route.</div>
-                    <div class="mb-3">
-                        <label class="form-label">New Route *</label>
-                        <select class="form-select" name="transport_route_id" id="transferRouteSelect" required>
-                            <option value="">Select Route</option>
-                            @foreach($routes as $r)
-                                <option value="{{ $r->id }}" data-fee="{{ $r->fee_amount }}">{{ $r->name }}</option>
-                            @endforeach
-                        </select>
+
+                    {{-- Old Allocation Summary --}}
+                    <div class="card border-0 bg-light rounded mb-3 p-3" style="font-size:13px;">
+                        <div class="fw-semibold text-muted mb-2" style="font-size:11px; letter-spacing:.05em; text-transform:uppercase;">Current Allocation</div>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <div class="text-muted">Route</div>
+                                <div class="fw-semibold">{{ $allocation->route?->name ?? '—' }}</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted">Fee Charged</div>
+                                <div class="fw-semibold">₹{{ number_format($oldCharged, 2) }}</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted">Paid / Outstanding</div>
+                                <div>
+                                    <span class="text-success fw-semibold">₹{{ number_format($oldPaid, 2) }}</span>
+                                    <span class="text-muted mx-1">/</span>
+                                    <span class="text-danger fw-semibold">₹{{ number_format($oldBalance, 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Stop</label>
-                        <select class="form-select" name="transport_route_stop_id" id="transferStopSelect">
-                            <option value="">No Stop</option>
-                        </select>
+
+                    {{-- Credit Note Section --}}
+                    @if($oldBalance > 0)
+                    <div class="card border border-success-subtle rounded mb-3 p-3" style="font-size:13px;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold text-success" style="font-size:12px; text-transform:uppercase; letter-spacing:.05em;">
+                                <i class="bi bi-receipt me-1"></i>Credit Note on Old Route
+                            </span>
+                            <span class="text-muted" style="font-size:11px;">Max: ₹{{ number_format($oldBalance, 2) }}</span>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-8">
+                                <label class="form-label text-muted mb-1" style="font-size:11px;">Credit Amount (₹) — unused portion to write off</label>
+                                <input type="number" step="0.01" min="0" max="{{ $oldBalance }}"
+                                       name="credit_amount" id="creditAmountInput"
+                                       class="form-control form-control-sm"
+                                       value="{{ number_format($suggestedCredit, 2, '.', '') }}"
+                                       placeholder="0.00">
+                            </div>
+                            <div class="col-4">
+                                <button type="button" class="btn btn-sm btn-outline-secondary w-100"
+                                        onclick="document.getElementById('creditAmountInput').value = '{{ number_format($oldBalance, 2, '.', '') }}'">
+                                    Full Credit
+                                </button>
+                            </div>
+                        </div>
+                        @if($suggestedCredit > 0 && $sessionEnd)
+                        <div class="text-muted mt-2" style="font-size:11px;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Suggested ₹{{ number_format($suggestedCredit, 2) }} = prorated unused days
+                            ({{ $allocStart->format('d M') }} → {{ $today->format('d M') }} used,
+                             {{ $today->format('d M') }} → {{ $sessionEnd->format('d M Y') }} remaining).
+                            You can adjust this amount.
+                        </div>
+                        @endif
+                        <div class="text-muted mt-1" style="font-size:11px;">
+                            <i class="bi bi-lightbulb me-1 text-warning"></i>
+                            Enter <strong>0</strong> to carry forward the full outstanding balance to the student's ledger.
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Fee Amount</label>
-                        <input type="number" step="0.01" min="0" name="fee_amount" id="transferFeeInput" class="form-control">
+                    @endif
+
+                    <hr class="my-3">
+
+                    {{-- New Route Section --}}
+                    <div class="fw-semibold text-muted mb-3" style="font-size:11px; letter-spacing:.05em; text-transform:uppercase;">New Route Details</div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">New Route <span class="text-danger">*</span></label>
+                            <select class="form-select" name="transport_route_id" id="transferRouteSelect" required>
+                                <option value="">Select Route</option>
+                                @foreach($routes as $r)
+                                    <option value="{{ $r->id }}" data-fee="{{ $r->fee_amount }}">{{ $r->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" name="start_date" id="transferStartDate" class="form-control"
+                                   value="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Stop</label>
+                            <select class="form-select" name="transport_route_stop_id" id="transferStopSelect">
+                                <option value="">No Stop</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">New Route Fee</label>
+                            <input type="number" step="0.01" min="0" name="fee_amount"
+                                   id="transferFeeInput" class="form-control" placeholder="Auto-filled on route select">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Start Date *</label>
-                        <input type="date" name="start_date" class="form-control" value="{{ now()->toDateString() }}" required>
+
+                    {{-- Net Summary --}}
+                    <div class="mt-3 p-3 rounded bg-light" id="transferSummary" style="font-size:13px; display:none;">
+                        <div class="fw-semibold mb-2">Transfer Summary</div>
+                        <div class="d-flex justify-content-between border-bottom pb-1 mb-1">
+                            <span class="text-muted">Old Route Outstanding</span>
+                            <span class="text-danger">₹{{ number_format($oldBalance, 2) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom pb-1 mb-1">
+                            <span class="text-muted">Credit Note Applied</span>
+                            <span class="text-success" id="summaryCredit">₹0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom pb-1 mb-1">
+                            <span class="text-muted">Remaining Old Balance After Credit</span>
+                            <span class="text-danger fw-semibold" id="summaryOldRemain">₹{{ number_format($oldBalance, 2) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-bottom pb-1 mb-1">
+                            <span class="text-muted">New Route Fee</span>
+                            <span id="summaryNewFee">₹0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>Total Payable After Transfer</span>
+                            <span class="text-danger" id="summaryTotal">₹{{ number_format($oldBalance, 2) }}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-warning">Transfer Route</button>
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning px-5">
+                        <i class="bi bi-arrow-left-right me-1"></i> Confirm Transfer
+                    </button>
                 </div>
             </form>
         </div>
@@ -184,17 +304,36 @@
 
 <script>
 (() => {
-    const routeSel = document.getElementById('transferRouteSelect');
-    const stopSel  = document.getElementById('transferStopSelect');
-    const feeInput = document.getElementById('transferFeeInput');
+    const routeSel    = document.getElementById('transferRouteSelect');
+    const stopSel     = document.getElementById('transferStopSelect');
+    const feeInput    = document.getElementById('transferFeeInput');
+    const creditInput = document.getElementById('creditAmountInput');
+    const summary     = document.getElementById('transferSummary');
+    const oldBalance  = {{ $oldBalance }};
+
     if (!routeSel) return;
+
+    function updateSummary() {
+        const credit  = Math.min(Math.max(0, parseFloat(creditInput?.value ?? 0) || 0), oldBalance);
+        const newFee  = parseFloat(feeInput?.value ?? 0) || 0;
+        const oldRemain = Math.max(0, oldBalance - credit);
+        const total   = oldRemain + newFee;
+
+        if (document.getElementById('summaryCredit'))     document.getElementById('summaryCredit').textContent     = '₹' + credit.toFixed(2);
+        if (document.getElementById('summaryOldRemain'))  document.getElementById('summaryOldRemain').textContent  = '₹' + oldRemain.toFixed(2);
+        if (document.getElementById('summaryNewFee'))     document.getElementById('summaryNewFee').textContent     = '₹' + newFee.toFixed(2);
+        if (document.getElementById('summaryTotal'))      document.getElementById('summaryTotal').textContent      = '₹' + total.toFixed(2);
+
+        if (summary && routeSel.value) summary.style.display = '';
+    }
 
     routeSel.addEventListener('change', () => {
         const opt = routeSel.options[routeSel.selectedIndex];
         feeInput.value = parseFloat(opt?.dataset?.fee ?? 0).toFixed(2);
         stopSel.innerHTML = '<option value="">No Stop</option>';
 
-        if (!routeSel.value) return;
+        if (!routeSel.value) { if (summary) summary.style.display = 'none'; return; }
+
         fetch(`/transport/routes/${routeSel.value}/stops`)
             .then(r => r.json())
             .then(data => {
@@ -206,13 +345,18 @@
                     stopSel.appendChild(o);
                 });
             });
+
+        updateSummary();
     });
 
     stopSel.addEventListener('change', () => {
         const opt = stopSel.options[stopSel.selectedIndex];
         const fee = parseFloat(opt?.dataset?.fee ?? 0);
-        if (fee > 0) feeInput.value = fee.toFixed(2);
+        if (fee > 0) { feeInput.value = fee.toFixed(2); updateSummary(); }
     });
+
+    feeInput?.addEventListener('input', updateSummary);
+    creditInput?.addEventListener('input', updateSummary);
 })();
 </script>
 @endif

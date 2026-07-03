@@ -55,37 +55,6 @@
 
                     <hr>
 
-                    {{-- Prorated Billing --}}
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold">Prorated Monthly Billing</label>
-                        <small class="d-block text-muted mb-2">For monthly routes — how much to charge when a new student joins mid-month?</small>
-
-                        <div class="row g-3">
-                            @foreach([
-                                'disabled'      => ['title' => 'Disabled',        'desc' => 'Always charge the full month fee regardless of join date.',            'icon' => 'bi-dash-circle'],
-                                'after_midmonth'=> ['title' => 'Half After 15th', 'desc' => 'Charge half the fee if the student joins after the 15th of the month.', 'icon' => 'bi-calendar-half'],
-                                'daily_basis'   => ['title' => 'Daily Basis',     'desc' => 'Charge proportionally: (remaining days / total days) × fee.',           'icon' => 'bi-calculator'],
-                            ] as $value => $opt)
-                            <div class="col-md-4">
-                                <label class="d-block cursor-pointer">
-                                    <input type="radio" name="prorated_billing" value="{{ $value }}"
-                                           class="d-none policy-radio"
-                                           {{ $setting->prorated_billing === $value ? 'checked' : '' }}>
-                                    <div class="card border-2 h-100 p-3 policy-card {{ $setting->prorated_billing === $value ? 'border-primary bg-primary bg-opacity-5' : 'border-light' }}"
-                                         style="cursor:pointer; transition: all .15s;">
-                                        <i class="bi {{ $opt['icon'] }} text-secondary fs-4 mb-2"></i>
-                                        <div class="fw-semibold small">{{ $opt['title'] }}</div>
-                                        <div class="text-muted" style="font-size:11px;">{{ $opt['desc'] }}</div>
-                                    </div>
-                                </label>
-                            </div>
-                            @endforeach
-                        </div>
-                        @error('prorated_billing') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
-                    </div>
-
-                    <hr>
-
                     {{-- Yearly Fee Cross Session --}}
                     <div class="mb-4">
                         <div class="form-check form-switch">

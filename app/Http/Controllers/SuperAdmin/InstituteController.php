@@ -223,7 +223,7 @@ class InstituteController extends Controller
                 }
 
                 // Transport
-                foreach (['transport_payments','transport_monthly_charges','transport_maintenance_logs'] as $tbl) {
+                foreach (['transport_payments','transport_maintenance_logs'] as $tbl) {
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
                 $vehicleIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
@@ -427,7 +427,7 @@ class InstituteController extends Controller
                 'payment_mode_permissions', 'practical_fee_token_batches', 'salary_records',
                 'sms_due_reminder_settings', 'sms_logs', 'sms_provider_settings',
                 'staff_members', 'staff_roles', 'student_types', 'students', 'subjects',
-                'transport_drivers', 'transport_maintenance_logs', 'transport_monthly_charges',
+                'transport_drivers', 'transport_maintenance_logs',
                 'transport_payments', 'transport_routes', 'transport_vehicles',
                 'users', 'wallet_extension_requests',
             ];

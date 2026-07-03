@@ -603,6 +603,60 @@ class WalletService
         });
     }
 
+    /**
+     * Apply a credit note to a transport allocation when a student transfers routes.
+     * Reduces charged_amount on the old allocation and credits the student wallet ledger.
+     */
+    public static function creditTransportAllocation(TransportAllocation $allocation, float $creditAmount, string $reason): void
+    {
+        DB::transaction(function () use ($allocation, $creditAmount, $reason) {
+            // Cap credit to the actual outstanding balance (can't credit more than owed)
+            $outstanding = max(0, round((float) $allocation->charged_amount - (float) $allocation->paid_amount, 2));
+            $creditAmount = min(round($creditAmount, 2), $outstanding);
+
+            if ($creditAmount <= 0) {
+                return;
+            }
+
+            $wallet = StudentWallet::where('student_id', $allocation->student_id)
+                ->where('academic_session_id', $allocation->academic_session_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$wallet) {
+                return;
+            }
+
+            $opBal = (float) $wallet->main_b;
+            $clBal = round($opBal + $creditAmount, 2);
+
+            self::createStudentTransaction([
+                'student_id'              => $allocation->student_id,
+                'institute_id'            => $allocation->institute_id,
+                'academic_session_id'     => $allocation->academic_session_id,
+                'des'                     => $reason,
+                'credit'                  => $creditAmount,
+                'debit'                   => 0.00,
+                'type'                    => StudentTransaction::CREDIT,
+                'date'                    => now()->toDateString(),
+                'op_bal'                  => $opBal,
+                'cl_bal'                  => $clBal,
+                'transport_allocation_id' => $allocation->id,
+                'by_user_id'              => self::resolveActorId(),
+            ]);
+
+            $wallet->main_b = $clBal;
+            $wallet->save();
+
+            // Reduce charged_amount — the billed amount shrinks by the credited portion
+            $allocation->charged_amount = round(
+                max((float) $allocation->paid_amount, (float) $allocation->charged_amount - $creditAmount),
+                2
+            );
+            $allocation->save();
+        });
+    }
+
     public static function resolveAcademicContext(Student $student, int $sessionId): array
     {
         $student->loadMissing(['stream.course', 'coursePart']);
@@ -857,31 +911,39 @@ class WalletService
             $feeData['items'] ?? []
         );
 
-        // Transport fee — active allocation with pending balance
-        $transportAllocation = TransportAllocation::where('student_id', $student->id)
+        // Transport fees — all allocations with outstanding balance (including closed/transferred routes)
+        $transportAllocations = TransportAllocation::where('student_id', $student->id)
             ->where('academic_session_id', $sessionId)
-            ->where('is_active', true)
-            ->whereIn('status', ['active', 'partial'])
             ->with(['route', 'stop'])
-            ->first();
+            ->orderByDesc('is_active')
+            ->orderByDesc('id')
+            ->get();
 
         $transportTotal = 0.0;
-        if ($transportAllocation && (float) $transportAllocation->balance > 0) {
-            $tLabel = 'Transport Fee';
-            if ($transportAllocation->route) {
-                $tLabel .= ' — ' . $transportAllocation->route->name;
+        foreach ($transportAllocations as $ta) {
+            $balance = round((float) $ta->balance, 2);
+            if ($balance <= 0) {
+                continue;
             }
-            if ($transportAllocation->stop) {
-                $tLabel .= ' / ' . $transportAllocation->stop->stop_name;
+            $tLabel = ($ta->is_active ? '' : '[Previous Route] ') . 'Transport Fee';
+            if ($ta->route) {
+                $tLabel .= ' — ' . $ta->route->name;
             }
-            $transportTotal = round((float) $transportAllocation->balance, 2);
+            if ($ta->stop) {
+                $tLabel .= ' / ' . $ta->stop->stop_name;
+            }
+            $feeAmt  = round((float) ($ta->charged_amount ?: $ta->fee_amount), 2);
+            $paidAmt = round((float) $ta->paid_amount, 2);
+            $transportTotal += $balance;
             $items[] = [
                 'type'                    => 'transport',
                 'fee_type_id'             => null,
                 'label'                   => $tLabel,
                 'subject_id'              => null,
-                'amount'                  => $transportTotal,
-                'transport_allocation_id' => $transportAllocation->id,
+                'amount'                  => $balance,
+                'transport_allocation_id' => $ta->id,
+                'fee_amount'              => $feeAmt,
+                'paid_amount'             => $paidAmt,
             ];
         }
 
@@ -936,17 +998,19 @@ class WalletService
             $label   = $item['label'] ?? 'Fee';
             $charged = (float) ($item['amount'] ?? 0);
 
-            // Transport: 'amount' is already the current pending balance from allocation.
-            // alreadyPaid subtraction would double-count, so return pending = charged directly.
+            // Transport: 'amount' is the pending balance. Use fee_amount/paid_amount for display so
+            // Charged shows the actual allocated fee and Cash Paid shows what was actually collected.
             if (($item['type'] ?? '') === 'transport') {
+                $feeAmount  = (float) ($item['fee_amount'] ?? $charged);
+                $paidAmount = (float) ($item['paid_amount'] ?? 0.0);
                 return [
                     'name'       => $label,
-                    'charged'    => $charged,
-                    'collection' => 0.0,
+                    'charged'    => $feeAmount,
+                    'collection' => $paidAmount,
                     'discount'   => 0.0,
                     'fine'       => 0.0,
-                    'paid'       => 0.0,
-                    'pending'    => $charged,
+                    'paid'       => $paidAmount,
+                    'pending'    => $charged,   // $charged = balance (passed as 'amount')
                 ];
             }
 

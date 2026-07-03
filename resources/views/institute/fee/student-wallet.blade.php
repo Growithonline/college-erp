@@ -87,7 +87,7 @@
             <div class="card-body p-3">
                 <div class="small text-muted mb-1">Total Charged</div>
                 <div class="fs-5 fw-bold text-danger">₹ {{ number_format($summary['total_charged'], 2) }}</div>
-                <div class="small text-muted">Is session mein</div>
+                <div class="small text-muted">This session</div>
             </div>
         </div>
     </div>
@@ -105,7 +105,7 @@
             <div class="card-body p-3">
                 <div class="small text-muted mb-1">Total Discount</div>
                 <div class="fs-5 fw-bold" style="color:#7c3aed;">₹ {{ number_format($summary['total_discount'], 2) }}</div>
-                <div class="small text-muted">Is session mein</div>
+                <div class="small text-muted">This session</div>
             </div>
         </div>
     </div>
@@ -114,7 +114,7 @@
             <div class="card-body p-3">
                 <div class="small text-muted mb-1">Total Fine</div>
                 <div class="fs-5 fw-bold text-warning">₹ {{ number_format($summary['total_fine'] ?? 0, 2) }}</div>
-                <div class="small text-muted">Is session mein</div>
+                <div class="small text-muted">This session</div>
             </div>
         </div>
     </div>
@@ -125,7 +125,7 @@
                 <div class="fs-5 fw-bold {{ $summary['total_due'] > 0 ? 'text-danger' : 'text-success' }}">
                     ₹ {{ number_format($summary['total_due'], 2) }}
                 </div>
-                <div class="small text-muted">{{ $summary['is_clear'] ? '✓ No dues' : 'Baki hai' }}</div>
+                <div class="small text-muted">{{ $summary['is_clear'] ? '✓ No dues' : 'Balance due' }}</div>
             </div>
         </div>
     </div>
@@ -365,7 +365,7 @@
                 <i class="bi bi-inbox" style="font-size:24px;"></i>
             </div>
             <div style="font-size:14px;font-weight:500;">No transactions in this session</div>
-            <div style="font-size:12px;margin-top:4px;">Koi transaction nahi mili</div>
+            <div style="font-size:12px;margin-top:4px;">No entries found for this session</div>
         </div>
         @else
         <div class="table-responsive">

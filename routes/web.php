@@ -85,7 +85,7 @@ use App\Http\Controllers\Institute\Transport\TransportDashboardController;
 use App\Http\Controllers\Institute\Transport\TransportDriverController;
 use App\Http\Controllers\Institute\Transport\TransportMaintenanceController;
 use App\Http\Controllers\Institute\Transport\TransportComplianceController;
-use App\Http\Controllers\Institute\Transport\TransportMonthlyBillingController;
+use App\Http\Controllers\Institute\Transport\TransportBillingController;
 use App\Http\Controllers\Institute\Transport\TransportReportController;
 use App\Http\Controllers\Institute\Transport\TransportRouteController;
 use App\Http\Controllers\Institute\Transport\TransportRouteAssignmentController;
@@ -824,11 +824,11 @@ Route::middleware('auth:web,staff,center,partner')->prefix('transport')->name('t
     Route::get('reports/collection/export', [TransportReportController::class, 'exportCollection'])->name('reports.collection.export');
     Route::get('reports/occupancy', [TransportReportController::class, 'occupancy'])->name('reports.occupancy');
 
-    // Monthly Billing
-    Route::get('billing', [TransportMonthlyBillingController::class, 'index'])->name('billing.index');
-    Route::post('billing/generate', [TransportMonthlyBillingController::class, 'generate'])->name('billing.generate');
-    Route::post('billing/collect-one-time/{allocation}', [TransportMonthlyBillingController::class, 'collectOneTime'])->name('billing.collect-one-time');
-    Route::get('billing/receipt/{transaction}', [TransportMonthlyBillingController::class, 'receipt'])->name('billing.receipt');
+    // Billing
+    Route::get('billing', [TransportBillingController::class, 'index'])->name('billing.index');
+    Route::post('billing/generate', [TransportBillingController::class, 'generate'])->name('billing.generate');
+    Route::post('billing/collect-one-time/{allocation}', [TransportBillingController::class, 'collectOneTime'])->name('billing.collect-one-time');
+    Route::get('billing/receipt/{transaction}', [TransportBillingController::class, 'receipt'])->name('billing.receipt');
 
     // Transport Helpers
     Route::resource('helpers', \App\Http\Controllers\Institute\Transport\TransportHelperController::class)->except(['show', 'create', 'edit']);

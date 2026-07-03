@@ -22,10 +22,17 @@
         <select class="form-select" name="transport_route_id" id="routeSelect" required>
             <option value="">Select Route</option>
             @foreach($routes as $route)
+                @php
+                    $billingLabel = match($route->billing_frequency ?? 'one_time') {
+                        'semester' => 'Per Semester',
+                        'yearly'   => 'Yearly',
+                        default    => 'One Time',
+                    };
+                @endphp
                 <option value="{{ $route->id }}"
                     @selected(old('transport_route_id') == $route->id)
                     data-fee="{{ $route->fee_amount }}">
-                    {{ $route->name }} (₹{{ number_format((float) $route->fee_amount, 2) }})
+                    {{ $route->name }} — {{ $billingLabel }} (₹{{ number_format((float) $route->fee_amount, 2) }})
                 </option>
             @endforeach
         </select>

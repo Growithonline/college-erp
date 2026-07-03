@@ -47,7 +47,7 @@ class DataExportController extends Controller
                 'payment_mode_permissions', 'practical_fee_token_batches', 'salary_records',
                 'sms_due_reminder_settings', 'sms_logs', 'sms_provider_settings',
                 'staff_members', 'staff_roles', 'student_types', 'students', 'subjects',
-                'transport_drivers', 'transport_maintenance_logs', 'transport_monthly_charges',
+                'transport_drivers', 'transport_maintenance_logs',
                 'transport_payments', 'transport_routes', 'transport_vehicles',
                 'wallet_extension_requests',
             ];

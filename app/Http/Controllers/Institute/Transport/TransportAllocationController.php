@@ -15,6 +15,7 @@ use App\Models\TransportRouteStop;
 use App\Models\TransportVehicle;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -37,9 +38,10 @@ class TransportAllocationController extends TransportBaseController
         }
 
         if ($request->filled('student')) {
-            $query->whereHas('student', function ($studentQuery) use ($request) {
-                $studentQuery->where('name', 'like', '%' . $request->student . '%')
-                    ->orWhere('roll_no', 'like', '%' . $request->student . '%');
+            $s = $this->escapeLike(trim((string) $request->student));
+            $query->whereHas('student', function ($studentQuery) use ($s) {
+                $studentQuery->where('name', 'like', '%' . $s . '%')
+                    ->orWhere('roll_no', 'like', '%' . $s . '%');
             });
         }
 
@@ -195,15 +197,19 @@ class TransportAllocationController extends TransportBaseController
     {
         $this->assertInstituteModel($allocation);
 
+        $balance = max(0, round((float) $allocation->balance, 2));
+
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'amount'       => ['required', 'numeric', 'min:0.01', 'max:' . $balance],
             'payment_date' => ['required', 'date'],
             'payment_mode' => ['required', 'in:cash,upi,online,cheque'],
             'reference_no' => ['nullable', 'string', 'max:100'],
-            'note' => ['nullable', 'string'],
+            'note'         => ['nullable', 'string'],
+        ], [
+            'amount.max' => "Amount cannot exceed balance ₹{$balance}.",
         ]);
 
-        abort_if((float) $data['amount'] > max(0, (float) $allocation->balance), 422, 'Amount exceeds pending balance.');
+        abort_if($balance <= 0, 422, 'No pending balance on this allocation.');
 
         $allocation->loadMissing(['student', 'route']);
         $requestedAmount = round((float) $data['amount'], 2);
@@ -341,6 +347,7 @@ class TransportAllocationController extends TransportBaseController
             'transport_driver_id'     => ['nullable', Rule::exists('transport_drivers', 'id')->where('institute_id', $this->instituteId())],
             'fee_amount'              => ['nullable', 'numeric', 'min:0'],
             'start_date'              => ['required', 'date'],
+            'credit_amount'           => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $newRoute = TransportRoute::findOrFail($data['transport_route_id']);
@@ -357,10 +364,21 @@ class TransportAllocationController extends TransportBaseController
             ->whereNull('end_date')
             ->first();
 
-        $vehicleId = $data['transport_vehicle_id'] ?? $routeAssignment?->transport_vehicle_id;
-        $driverId  = $data['transport_driver_id']  ?? $routeAssignment?->transport_driver_id;
+        $vehicleId    = $data['transport_vehicle_id'] ?? $routeAssignment?->transport_vehicle_id;
+        $driverId     = $data['transport_driver_id']  ?? $routeAssignment?->transport_driver_id;
+        $creditAmount = round((float) ($data['credit_amount'] ?? 0), 2);
+        $oldRouteName = $allocation->route?->name ?? 'Previous Route';
 
-        DB::transaction(function () use ($allocation, $data, $newRoute, $stop, $setting, $vehicleId, $driverId) {
+        DB::transaction(function () use ($allocation, $data, $newRoute, $stop, $setting, $vehicleId, $driverId, $creditAmount, $oldRouteName) {
+            // Apply credit note on old allocation before closing it
+            if ($creditAmount > 0) {
+                WalletService::creditTransportAllocation(
+                    $allocation,
+                    $creditAmount,
+                    "Route transfer credit — {$oldRouteName}"
+                );
+            }
+
             $allocation->update([
                 'is_active' => false,
                 'status'    => 'closed',
@@ -406,10 +424,11 @@ class TransportAllocationController extends TransportBaseController
             }
         });
 
+        $creditNote = $creditAmount > 0 ? ' Credit note of ₹' . number_format($creditAmount, 2) . ' applied on old route.' : '';
         $msg = match ($setting->on_route_transfer) {
-            'no_charge'      => 'Route transfer complete. No charge applied as per institute policy.',
-            'prorated_charge'=> 'Route transfer complete. Prorated charge applied for remaining days.',
-            default          => 'Route transfer complete. New allocation created.',
+            'no_charge'      => 'Route transfer complete. No charge applied as per institute policy.' . $creditNote,
+            'prorated_charge'=> 'Route transfer complete. Prorated charge applied for remaining days.' . $creditNote,
+            default          => 'Route transfer complete. New allocation created.' . $creditNote,
         };
 
         return redirect()->route('transport.allocations.index')->with('success', $msg);

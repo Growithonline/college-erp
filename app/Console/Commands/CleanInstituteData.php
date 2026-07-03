@@ -85,7 +85,6 @@ class CleanInstituteData extends Command
 
                 // ── 2. Transport ────────────────────────────────────────
                 $this->deleteLine('Transport payments', 'transport_payments', $id);
-                $this->deleteLine('Transport monthly charges', 'transport_monthly_charges', $id);
                 $this->deleteLine('Transport maintenance logs', 'transport_maintenance_logs', $id);
                 $vehicleIds = DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
                 DB::table('transport_vehicle_documents')->whereIn('vehicle_id', $vehicleIds)->delete();

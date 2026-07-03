@@ -41,4 +41,9 @@ abstract class TransportBaseController extends Controller
             ->where('institute_id', $this->instituteId())
             ->orderBy('name');
     }
+
+    protected function escapeLike(string $value): string
+    {
+        return addcslashes($value, '%_\\');
+    }
 }

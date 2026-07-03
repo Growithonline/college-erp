@@ -9,7 +9,6 @@ class InstituteTransportSetting extends Model
     protected $fillable = [
         'institute_id',
         'on_route_transfer',
-        'prorated_billing',
         'yearly_fee_cross_session',
     ];
 
@@ -31,7 +30,6 @@ class InstituteTransportSetting extends Model
                 ['institute_id' => $instituteId],
                 [
                     'on_route_transfer'        => 'full_charge',
-                    'prorated_billing'         => 'disabled',
                     'yearly_fee_cross_session' => true,
                 ]
             );
@@ -56,30 +54,4 @@ class InstituteTransportSetting extends Model
         return $this->on_route_transfer === 'prorated_charge';
     }
 
-    // Calculate prorated fee for a monthly allocation starting mid-month
-    public function calculateProratedFee(float $fullFee, string $startDate, string $chargeMonth): float
-    {
-        if ($this->prorated_billing === 'disabled') {
-            return $fullFee;
-        }
-
-        $start        = \Carbon\Carbon::parse($startDate);
-        $monthStart   = \Carbon\Carbon::parse($chargeMonth . '-01');
-        $monthEnd     = $monthStart->copy()->endOfMonth();
-
-        // Only prorate if start date is within this charge month
-        if (!$start->between($monthStart, $monthEnd)) {
-            return $fullFee;
-        }
-
-        if ($this->prorated_billing === 'after_midmonth') {
-            return $start->day > 15 ? round($fullFee / 2, 2) : $fullFee;
-        }
-
-        // daily_basis: (remaining days including start / total days) × fee
-        $totalDays     = $monthEnd->day;
-        $remainingDays = $totalDays - $start->day + 1;
-
-        return round(($remainingDays / $totalDays) * $fullFee, 2);
-    }
 }

@@ -18,7 +18,6 @@ class TransportSettingController extends TransportBaseController
     {
         $data = $request->validate([
             'on_route_transfer'        => ['required', 'in:full_charge,no_charge,prorated_charge'],
-            'prorated_billing'         => ['required', 'in:disabled,after_midmonth,daily_basis'],
             'yearly_fee_cross_session' => ['nullable', 'boolean'],
         ]);
 
@@ -26,7 +25,6 @@ class TransportSettingController extends TransportBaseController
             ['institute_id' => $this->instituteId()],
             [
                 'on_route_transfer'        => $data['on_route_transfer'],
-                'prorated_billing'         => $data['prorated_billing'],
                 'yearly_fee_cross_session' => $request->boolean('yearly_fee_cross_session'),
             ]
         );
