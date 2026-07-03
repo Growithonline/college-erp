@@ -63,7 +63,11 @@
 
 <div class="sidebar">
     <div class="sidebar-brand">
-        @php $inst = $authUser->institute; @endphp
+        @php
+            $inst = $authUser->institute;
+            $fwWallet = $authUser->wallet;
+            $fwBadgeColor = $fwWallet ? (($fwWallet->isExpired() || (float)$fwWallet->remaining_tokens <= 0) ? 'danger' : (((float)$fwWallet->remaining_tokens < (float)$fwWallet->total_tokens * 0.15) ? 'warning' : null)) : null;
+        @endphp
         <div class="d-flex align-items-center gap-2">
             @if($inst && $inst->image)
                 <img src="{{ asset('storage/' . $inst->image) }}" alt="{{ $inst->name }}"
@@ -134,11 +138,7 @@
 
         {{-- Fee Group --}}
         @if($authUser->canCollectFee())
-        @php
-            $feeGroupActive = request()->routeIs('partner.fee.*');
-            $fwWallet = $authUser->wallet;
-            $fwBadgeColor = $fwWallet ? (($fwWallet->isExpired() || (float)$fwWallet->remaining_tokens <= 0) ? 'danger' : (((float)$fwWallet->remaining_tokens < (float)$fwWallet->total_tokens * 0.15) ? 'warning' : null)) : null;
-        @endphp
+        @php $feeGroupActive = request()->routeIs('partner.fee.*'); @endphp
         <li class="nav-item mt-1">
             <a class="group-header {{ $feeGroupActive ? 'active-group' : '' }} d-flex"
                data-bs-toggle="collapse" href="#partnerFeeGroup" role="button"

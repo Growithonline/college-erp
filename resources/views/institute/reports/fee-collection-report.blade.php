@@ -139,6 +139,8 @@
                                     {{ $modeKey=='online' ? 'bg-info text-dark' : '' }}
                                     {{ $modeKey=='cheque' ? 'bg-warning text-dark' : '' }}
                                     {{ $modeKey=='dd' ? 'bg-secondary' : '' }}
+                                    {{ $modeKey=='neft' ? 'bg-dark' : '' }}
+                                    {{ $modeKey=='rtgs' ? 'bg-danger' : '' }}
                                     bg-opacity-75">
                                     {{ strtoupper($modeKey) }}
                                 </span>
@@ -592,6 +594,8 @@
                                 {{ $inv->payment_mode=='online' ? 'bg-info text-dark' : '' }}
                                 {{ $inv->payment_mode=='cheque' ? 'bg-warning text-dark' : '' }}
                                 {{ $inv->payment_mode=='dd' ? 'bg-secondary' : '' }}
+                                {{ $inv->payment_mode=='neft' ? 'bg-dark' : '' }}
+                                {{ $inv->payment_mode=='rtgs' ? 'bg-danger' : '' }}
                                 bg-opacity-75" style="font-size:10px;">
                                 {{ strtoupper($inv->payment_mode) }}
                             </span>
@@ -735,7 +739,7 @@ function showBankDetail(bankLabel) {
         rows.forEach(r => {
             grandTotal += r.total || 0;
             grandCnt   += r.cnt   || 0;
-            const modeColors = {CASH:'bg-success',UPI:'bg-primary',ONLINE:'bg-info text-dark',CHEQUE:'bg-warning text-dark',DD:'bg-secondary'};
+            const modeColors = {CASH:'bg-success',UPI:'bg-primary',ONLINE:'bg-info text-dark',CHEQUE:'bg-warning text-dark',DD:'bg-secondary',NEFT:'bg-dark',RTGS:'bg-danger'};
             const badgeCls = modeColors[r.mode] || 'bg-secondary';
             html += `<tr>
                 <td class="ps-3 fw-semibold">${r.collector}</td>
@@ -890,6 +894,8 @@ tfoot td.r { text-align: right; }
 .badge-online{ background:#cffafe; color:#0e7490; padding:1px 4px; border-radius:3px; font-weight:700; }
 .badge-cheque{ background:#fef9c3; color:#854d0e; padding:1px 4px; border-radius:3px; font-weight:700; }
 .badge-dd    { background:#f1f5f9; color:#475569; padding:1px 4px; border-radius:3px; font-weight:700; }
+.badge-neft  { background:#1e293b; color:#ffffff; padding:1px 4px; border-radius:3px; font-weight:700; }
+.badge-rtgs  { background:#fee2e2; color:#b91c1c; padding:1px 4px; border-radius:3px; font-weight:700; }
 .t-success { color: #16a34a; font-weight: 600; }
 .t-danger  { color: #dc2626; font-weight: 600; }
 .t-purple  { color: #7c3aed; font-weight: 600; }
@@ -953,7 +959,7 @@ const tfoot = document.getElementById('printTfoot');
 let totColl = 0, totFine = 0, totDisc = 0, totAmt = 0, totDue = 0;
 rows.forEach((r, i) => {
     totColl += r.coll; totFine += r.fine; totDisc += r.disc; totAmt += r.amt; totDue += r.due;
-    const modeClass = {cash:'badge-cash',upi:'badge-upi',online:'badge-online',cheque:'badge-cheque',dd:'badge-dd'}[r.mode] || '';
+    const modeClass = {cash:'badge-cash',upi:'badge-upi',online:'badge-online',cheque:'badge-cheque',dd:'badge-dd',neft:'badge-neft',rtgs:'badge-rtgs'}[r.mode] || '';
     tbody.innerHTML += \`<tr>
         <td class="t-muted">\${i+1}</td>
         <td style="font-weight:600;">\${r.invoice}</td>
