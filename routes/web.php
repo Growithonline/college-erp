@@ -864,6 +864,8 @@ Route::middleware('auth:web,staff')->prefix('employees')->name('employees.')->gr
     Route::get('/{employee}/salary/disbursements',          [EmployeeSalaryController::class, 'disbursements'])->name('salary.disbursements');
     Route::post('/{employee}/salary/disbursements',             [EmployeeSalaryController::class, 'storeDisbursement'])->name('salary.storeDisbursement');
     Route::delete('/{employee}/salary/disbursements/{disbursement}', [EmployeeSalaryController::class, 'destroyDisbursement'])->name('salary.destroyDisbursement');
+    Route::get('/{employee}/salary/disbursements/{disbursement}/reverse',  [EmployeeSalaryController::class, 'reverseForm'])->name('salary.reverseForm');
+    Route::post('/{employee}/salary/disbursements/{disbursement}/reverse', [EmployeeSalaryController::class, 'reverse'])->name('salary.reverse');
     Route::post('/{employee}/salary/bonuses',               [EmployeeSalaryController::class, 'storeBonus'])->name('salary.storeBonus');
     Route::delete('/{employee}/salary/bonuses/{bonus}',     [EmployeeSalaryController::class, 'destroyBonus'])->name('salary.destroyBonus');
     Route::post('/{employee}/salary/advances',              [EmployeeSalaryController::class, 'storeAdvance'])->name('salary.storeAdvance');

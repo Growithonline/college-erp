@@ -126,8 +126,8 @@ class EmployeeSalaryController extends EmployeeBaseController
 
         if ($exists) {
             return back()->withInput()->with('error',
-                date('F', mktime(0, 0, 0, $data['month'], 1)) . ' ' . $data['year'] .
-                ' ka salary record pehle se exist karta hai.'
+                'A salary disbursement for ' . $employee->name . ' — ' .
+                date('F', mktime(0, 0, 0, $data['month'], 1)) . ' ' . $data['year'] . ' already exists.'
             );
         }
 
@@ -212,6 +212,46 @@ class EmployeeSalaryController extends EmployeeBaseController
         $disbursement->delete();
 
         return back()->with('success', 'Disbursement record deleted.');
+    }
+
+    public function reverseForm(Employee $employee, EmployeeSalaryDisbursement $disbursement)
+    {
+        abort_if($employee->institute_id !== $this->instituteId(), 403);
+        abort_if($disbursement->employee_id !== $employee->id, 403);
+        abort_if($disbursement->status !== 'paid', 422, 'Only paid disbursements can be reversed.');
+
+        return view('institute.employees.salary.reverse', compact('employee', 'disbursement'));
+    }
+
+    public function reverse(Request $request, Employee $employee, EmployeeSalaryDisbursement $disbursement)
+    {
+        abort_if($employee->institute_id !== $this->instituteId(), 403);
+        abort_if($disbursement->employee_id !== $employee->id, 403);
+        abort_if($disbursement->status !== 'paid', 422, 'Only paid disbursements can be reversed.');
+
+        $data = $request->validate([
+            'reversal_reason' => ['required', 'string', 'max:300'],
+        ]);
+
+        $disbursement->loadMissing(['employee']);
+
+        $reversalEntry = JournalService::safeReverseEmployeeDisbursement($disbursement, $data['reversal_reason']);
+
+        $disbursement->update([
+            'status'                    => 'reversed',
+            'reversed_at'               => now(),
+            'reversal_reason'           => $data['reversal_reason'],
+            'reversal_journal_entry_id' => $reversalEntry?->id,
+        ]);
+
+        InstituteWalletService::creditEmployeeDisbursementReversal($disbursement->fresh(['employee']));
+
+        return redirect()
+            ->route('employees.salary.disbursements', $employee)
+            ->with('success', $reversalEntry
+                ? 'Salary reversal complete. Journal entry reversed and wallet credited back.'
+                : 'Salary marked as reversed. Accounting reversal was skipped (no posted journal found).'
+            );
     }
 
     // ── Bonuses ────────────────────────────────────────────────────────────

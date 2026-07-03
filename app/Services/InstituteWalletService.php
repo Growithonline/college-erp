@@ -395,6 +395,62 @@ class InstituteWalletService
         });
     }
 
+    public static function creditEmployeeDisbursementReversal(EmployeeSalaryDisbursement $disbursement): void
+    {
+        $instituteId = $disbursement->institute_id;
+
+        $sessionId = AcademicSession::where('institute_id', $instituteId)
+            ->where('is_active', true)
+            ->value('id');
+
+        if (!$sessionId) {
+            return;
+        }
+
+        DB::transaction(function () use ($disbursement, $instituteId, $sessionId) {
+            $fresh = EmployeeSalaryDisbursement::where('id', $disbursement->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$fresh || !$fresh->wallet_debited) {
+                return;
+            }
+
+            $wallet = InstituteWallet::where('institute_id', $instituteId)
+                ->where('academic_session_id', $sessionId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$wallet) {
+                return;
+            }
+
+            $opBal      = (float) $wallet->main_b;
+            $amount     = (float) $fresh->net_salary;
+            $clBal      = round($opBal + $amount, 2);
+            $empName    = $fresh->employee?->name ?? $disbursement->employee?->name ?? 'Employee';
+            $monthLabel = str_pad($fresh->month, 2, '0', STR_PAD_LEFT) . '/' . $fresh->year;
+
+            InstituteTransaction::create([
+                'institute_id'        => $instituteId,
+                'academic_session_id' => $sessionId,
+                'des'                 => "Salary reversed: {$empName} - {$monthLabel}",
+                'credit'              => $amount,
+                'debit'               => 0.00,
+                'type'                => InstituteTransaction::CREDIT,
+                'date'                => now()->toDateString(),
+                'op_bal'              => $opBal,
+                'cl_bal'              => $clBal,
+                'source_type'         => 'employee_salary_reversal',
+                'source_id'           => $fresh->id,
+                'by_user_id'          => self::resolveActorId(),
+            ]);
+
+            $wallet->update(['main_b' => $clBal]);
+            $fresh->update(['wallet_debited' => false]);
+        });
+    }
+
     private static function resolveActorId(): ?int
     {
         foreach (['staff', 'center', 'partner', 'web'] as $guard) {

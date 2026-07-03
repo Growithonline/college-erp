@@ -767,6 +767,35 @@ class JournalService
         });
     }
 
+    public static function safeReverseEmployeeDisbursement(EmployeeSalaryDisbursement $d, ?string $reason = null): ?JournalEntry
+    {
+        return self::safely(function () use ($d, $reason) {
+            if (!$d->journal_entry_id) {
+                return null;
+            }
+
+            $entry = JournalEntry::find($d->journal_entry_id);
+            if (!$entry) {
+                return null;
+            }
+
+            $monthLabel = date('M Y', mktime(0, 0, 0, (int) $d->month, 1, (int) $d->year));
+
+            return self::reverse($entry, [
+                'date'            => now()->toDateString(),
+                'created_by'      => self::resolveActorId(),
+                'created_by_role' => self::resolveActorRole(),
+                'narration'       => 'Salary reversal — ' . ($d->employee?->name ?? 'Employee') . ' ' . $monthLabel . ($reason ? ': ' . $reason : ''),
+                'meta'            => [
+                    'reason'          => $reason,
+                    'source'          => 'employee_salary_reversal',
+                    'disbursement_id' => (int) $d->id,
+                    'employee_id'     => (int) $d->employee_id,
+                ],
+            ]);
+        });
+    }
+
     private static function normalizeLines(array $lines): array
     {
         $normalized = [];

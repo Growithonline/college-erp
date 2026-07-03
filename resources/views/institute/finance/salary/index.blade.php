@@ -88,7 +88,9 @@
                         @endif
                     </td>
                     <td>
-                        @if($record->status === 'paid')
+                        @if($record->status === 'reversed')
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Reversed</span>
+                        @elseif($record->status === 'paid')
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
                                 {{ $record->journal_entry_id ? 'Paid & Posted' : 'Paid' }}
                             </span>
@@ -97,7 +99,11 @@
                         @endif
                     </td>
                     <td class="pe-3">
-                        @if($record->journal_entry_id)
+                        @if($record->status === 'reversed')
+                            <span class="small text-muted">
+                                {{ $record->reversal_journal_entry_id ? 'Rev JE #' . $record->reversal_journal_entry_id : 'Reversed' }}
+                            </span>
+                        @elseif($record->journal_entry_id)
                             <span class="small text-muted">JE #{{ $record->journal_entry_id }}</span>
                         @else
                             <span class="small text-muted">—</span>

@@ -12,6 +12,7 @@ class EmployeeSalaryDisbursement extends Model
         'payment_date', 'payment_mode', 'status', 'remarks',
         'expense_account_id', 'payment_account_id', 'bank_account_id',
         'journal_entry_id', 'wallet_debited', 'components_snapshot',
+        'reversed_at', 'reversal_reason', 'reversal_journal_entry_id',
     ];
 
     protected $casts = [
@@ -23,6 +24,7 @@ class EmployeeSalaryDisbursement extends Model
         'payment_date'        => 'date',
         'wallet_debited'      => 'boolean',
         'components_snapshot' => 'array',
+        'reversed_at'         => 'datetime',
     ];
 
     public function employee()
@@ -48,6 +50,11 @@ class EmployeeSalaryDisbursement extends Model
     public function journalEntry()
     {
         return $this->belongsTo(JournalEntry::class);
+    }
+
+    public function reversalJournalEntry()
+    {
+        return $this->belongsTo(JournalEntry::class, 'reversal_journal_entry_id');
     }
 
     public function getMonthNameAttribute(): string

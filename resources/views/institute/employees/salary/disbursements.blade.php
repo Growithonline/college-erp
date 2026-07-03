@@ -94,7 +94,9 @@
                             {{ $dis->payment_date?->format('d M Y') ?? '—' }}
                         </td>
                         <td>
-                            @if($dis->status === 'paid')
+                            @if($dis->status === 'reversed')
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:11px;">Reversed</span>
+                            @elseif($dis->status === 'paid')
                                 <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:11px;">
                                     {{ $dis->journal_entry_id ? 'Paid & Posted' : 'Paid' }}
                                 </span>
@@ -103,9 +105,24 @@
                             @endif
                         </td>
                         <td class="pe-3">
-                            @if($dis->journal_entry_id)
-                                <span class="small text-muted">JE #{{ $dis->journal_entry_id }}</span>
-                            @elseif(!$dis->journal_entry_id && $dis->status === 'paid')
+                            @if($dis->status === 'reversed')
+                                <div class="small text-muted">
+                                    @if($dis->reversal_journal_entry_id)
+                                        Rev JE #{{ $dis->reversal_journal_entry_id }}
+                                    @else
+                                        Reversed
+                                    @endif
+                                </div>
+                            @elseif($dis->status === 'paid' && $dis->journal_entry_id)
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small text-muted">JE #{{ $dis->journal_entry_id }}</span>
+                                    <a href="{{ route('employees.salary.reverseForm', [$employee, $dis]) }}"
+                                       class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:11px;"
+                                       title="Reverse this disbursement">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </a>
+                                </div>
+                            @elseif($dis->status === 'paid')
                                 <span class="small text-warning">Posting pending</span>
                             @else
                                 <form method="POST" action="{{ route('employees.salary.destroyDisbursement', [$employee, $dis]) }}"

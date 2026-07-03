@@ -7,6 +7,7 @@ use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CoursePart;
 use App\Models\CourseStream;
+use App\Models\CourseType;
 use App\Models\FeeInvoice;
 use App\Models\FeeInvoiceItem;
 use App\Models\FeeType;
@@ -95,10 +96,19 @@ class PracticalFeeTokenController extends Controller
         $instituteId = $this->instituteId();
         $activeSession = AcademicSession::viewSession($instituteId);
 
+        $courses = Course::with([
+                'parts' => fn ($q) => $q->orderBy('part_number'),
+                'streams.subjects' => fn ($q) => $q->where('subjects.status', true)->orderBy('subjects.name'),
+            ])
+            ->where('institute_id', $instituteId)
+            ->where('status', true)
+            ->orderBy('name')
+            ->get();
+
         return view('institute.fee.practical-tokens.create', [
             'sessions' => AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get(),
-            'courses' => Course::with(['parts', 'streams'])->where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get(),
-            'subjects' => Subject::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get(),
+            'courseTypes' => CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get(),
+            'courses' => $courses,
             'activeSession' => $activeSession,
             'routePrefix' => $this->routePrefix(),
         ]);
