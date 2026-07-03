@@ -265,6 +265,7 @@ class StaffMemberController extends Controller
                 $this->syncFeeDiscountPermissions($staffMember, $request);
                 $this->syncScopes($staffMember, $request);
                 $this->syncPermissionOverrides($staffMember, $request);
+                $this->syncPaymentModePermissions($staffMember, $request);
 
                 return $staffMember;
             });
@@ -485,6 +486,7 @@ class StaffMemberController extends Controller
                 $this->syncFeeDiscountPermissions($staffMember, $request);
                 $this->syncScopes($staffMember, $request);
                 $this->syncPermissionOverrides($staffMember, $request);
+                $this->syncPaymentModePermissions($staffMember, $request);
             });
 
             AuditLogService::log($this->instituteId(), 'staff', 'staff_updated', 'Staff member updated.', $staffMember, [
@@ -630,6 +632,21 @@ class StaffMemberController extends Controller
                 'fee_type_id' => (int) $feeTypeId,
             ]);
         }
+    }
+
+    private function syncPaymentModePermissions(StaffMember $staffMember, Request $request): void
+    {
+        PaymentModePermission::updateOrCreate(
+            [
+                'institute_id' => $this->instituteId(),
+                'user_type' => 'staff',
+                'user_id' => $staffMember->id,
+            ],
+            [
+                'allowed_modes' => array_values($request->input('payment_modes', [])) ?: ['cash'],
+                'allowed_bank_ids' => array_map('intval', $request->input('payment_bank_ids', [])),
+            ]
+        );
     }
 
     private function syncPermissionOverrides(StaffMember $staffMember, Request $request): void

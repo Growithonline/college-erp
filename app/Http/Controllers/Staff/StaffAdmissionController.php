@@ -243,8 +243,17 @@ class StaffAdmissionController extends Controller
                     return !empty(array_intersect($allowedPaymentModes, $bankModes));
                 })->values();
         } else {
-            $allowedPaymentModes = ['cash'];
-            $bankAccounts        = collect();
+            // No PaymentModePermission record = unrestricted (all modes allowed), matching Fee Collection / Full Admission
+            $allowedPaymentModes = $allModes;
+            $bankAccounts        = \App\Models\InstituteBankAccount::where('institute_id', $instituteId)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get()
+                ->filter(function ($account) use ($allModes) {
+                    $bankModes = array_values(array_filter(array_map('trim', explode(',', (string) $account->allowed_payment_modes))));
+                    $bankModes = $bankModes ?: $allModes;
+                    return !empty(array_intersect($allModes, $bankModes));
+                })->values();
         }
 
         $staffMaxDiscount     = $staff->max_discount_percent ?? 100;

@@ -12,8 +12,8 @@
     $selectedFeeCollectionIdsFromOld = array_keys((array) old('fee_collection_allowed', []));
     if (!empty($selectedFeeCollectionIdsFromOld)) { $selectedFeeCollectionIds = array_map('intval', $selectedFeeCollectionIdsFromOld); }
 
-    $selectedPaymentModes       = old('payment_modes', $paymentPermission?->allowed_modes ?? ['cash']);
-    $selectedPaymentBankIds     = array_map('intval', old('payment_bank_ids', $paymentPermission?->allowed_bank_ids ?? []));
+    $selectedPaymentModes       = old('payment_modes', ($paymentPermission ?? null)?->allowed_modes ?? ['cash']);
+    $selectedPaymentBankIds     = array_map('intval', old('payment_bank_ids', ($paymentPermission ?? null)?->allowed_bank_ids ?? []));
     $selectedPayrollCategories  = old('payroll_scope_categories', $staffMember->payroll_scope_categories ?? []);
     $selectedSessionIds         = array_map('intval', old('allowed_session_ids', $staffMember->allowed_session_ids ?? []));
     $selectedStudentVisibility  = old('student_visibility_scope', $staffMember->student_visibility_scope ?? 'role_based');
