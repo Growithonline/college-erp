@@ -940,7 +940,7 @@ class WalletService
                 'fee_type_id'             => null,
                 'label'                   => $tLabel,
                 'subject_id'              => null,
-                'amount'                  => $balance,
+                'amount'                  => $feeAmt,
                 'transport_allocation_id' => $ta->id,
                 'fee_amount'              => $feeAmt,
                 'paid_amount'             => $paidAmt,

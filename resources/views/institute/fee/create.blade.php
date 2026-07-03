@@ -1004,6 +1004,12 @@
                         $paidData     = $alreadyPaid->get($feeName);
                         $paidAmt      = (float) ($paidData?->paid_total ?? $paidData ?? 0);
                         $paidDisc     = (float) ($paidData?->discount_total ?? 0);
+                        // Transport: paid_amount from allocation is authoritative — invoice fee_name
+                        // may not match the label (stop name included in label, not in invoice item).
+                        if (($item['type'] ?? null) === 'transport' && isset($item['paid_amount'])) {
+                            $paidAmt  = (float) $item['paid_amount'];
+                            $paidDisc = 0.0;
+                        }
                         $prevFine     = (float) ($fineByFee[$feeName] ?? 0);
                         // Use buildPendingRows result directly — already accounts for fine correctly
                         $remaining    = isset($pendingByFee[$feeName])
