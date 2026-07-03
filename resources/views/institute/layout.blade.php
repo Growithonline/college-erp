@@ -1413,6 +1413,21 @@
 })();
 </script>
 
+<script>
+// Limit year segment of native date inputs to 4 digits (prevents Chrome/Edge
+// letting the year spinner run past 9999 when typed continuously).
+document.addEventListener('input', function (e) {
+    if (!e.target.matches('input[type="date"]')) return;
+    var val = e.target.value;
+    if (!val) return;
+    var parts = val.split('-');
+    if (parts[0] && parts[0].length > 4) {
+        parts[0] = parts[0].slice(0, 4);
+        e.target.value = parts.join('-');
+    }
+});
+</script>
+
 @stack('scripts')
 
 <script>

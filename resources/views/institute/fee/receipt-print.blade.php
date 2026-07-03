@@ -206,7 +206,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 
     body.print-thermal #thermal-view { display:block !important; }
     body.print-thermal #a4-view      { display:none  !important; }
-    body.print-thermal .thermal-sheet { border:none; width:76mm; max-width:76mm; margin:0; padding:5mm 2.6mm; }
+    body.print-thermal .thermal-sheet { border:none; width:76mm; max-width:76mm; margin:0; padding:2mm 2.6mm; }
     body.print-thermal { width:80mm; margin:0 !important; padding:0 !important; }
 
     body.print-pdf #a4-view      { display:block !important; }
@@ -540,13 +540,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
                 <div class="thermal-sheet">
                     @php $fr = 'display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;font-weight:600;'; @endphp
 
-                    <div style="text-align:center;font-size:13px;font-weight:700;line-height:1.15;">{{ $inst->name ?? 'Institute Name' }}</div>
-                    @if($instituteAddress !== '')
-                    <div style="text-align:center;font-size:9px;line-height:1.15;">{{ $instituteAddress }}</div>
-                    @endif
-                    @if($inst?->mobile)
-                    <div style="text-align:center;font-size:9px;margin-bottom:2px;">Ph: {{ $inst->mobile }}</div>
-                    @endif
+                    <div style="text-align:center;font-size:16px;font-weight:700;line-height:1.15;">{{ $inst->name ?? 'Institute Name' }}</div>
 
                     <div style="text-align:center;font-size:11px;font-weight:700;border:1px solid #000;padding:2px;margin:3px 0;">
                         Fee Receipt{{ $receipt->is_cancelled ? ' - CANCELLED' : '' }}{{ $receipt->session?->name ? ' (' . $receipt->session->name . ')' : '' }}
@@ -567,15 +561,10 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
                     @if($student->mother_name)
                     <div style="{{ $fr }}"><span style="white-space:nowrap;">Mother:</span><span style="text-align:right;max-width:44mm;word-break:break-word;">{{ strtoupper($student->mother_name) }}</span></div>
                     @endif
-                    @if($student->mobile)
-                    <div style="{{ $fr }}"><span style="white-space:nowrap;">Mobile:</span><span>{{ $student->mobile }}</span></div>
-                    @endif
-
                     <div style="border-top:0.8px dashed #555;margin:3px 0 2px;"></div>
                     @if($formNo)
                     <div style="{{ $fr }}"><span style="white-space:nowrap;">Form No:</span><span>{{ $formNo }}</span></div>
                     @endif
-                    <div style="{{ $fr }}"><span style="white-space:nowrap;">App No:</span><span style="text-align:right;max-width:44mm;word-break:break-word;">{{ $student->student_uid }}</span></div>
                     @if($enrollNo)
                     <div style="{{ $fr }}"><span style="white-space:nowrap;">Enroll No:</span><span>{{ $enrollNo }}</span></div>
                     @endif
@@ -587,21 +576,8 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
                     @endif
 
                     <div style="text-align:center;font-size:10px;font-weight:700;border-top:0.8px dashed #555;padding-top:3px;margin-top:3px;margin-bottom:2px;">{{ $student->stream->course->name ?? '' }} | {{ $student->coursePart?->year_label ?? '' }}@if($student->current_semester) / Sem {{ $student->current_semester }}@endif</div>
-                    @if($majorSubjects->count())
-                    <div style="font-size:9px;font-weight:600;margin-bottom:1px;"><span style="opacity:.7;">Major:</span> {{ $majorSubjects->map(fn($ss)=>$ss->subject?->name)->filter()->implode(', ') }}</div>
-                    @endif
-                    @if($minorSubjects->count())
-                    <div style="font-size:9px;font-weight:600;margin-bottom:1px;"><span style="opacity:.7;">Minor:</span> {{ $minorSubjects->map(fn($ss)=>$ss->subject?->name)->filter()->implode(', ') }}</div>
-                    @endif
-                    @if($compulsorySubjects->count())
-                    <div style="font-size:9px;font-weight:600;margin-bottom:2px;"><span style="opacity:.7;">Comp:</span> {{ $compulsorySubjects->map(fn($ss)=>$ss->subject?->name)->filter()->implode(', ') }}</div>
-                    @endif
-                    @if($student->admission_date)
-                    <div style="{{ $fr }}"><span style="white-space:nowrap;">Adm Date:</span><span>{{ \Carbon\Carbon::parse($student->admission_date)->format('d/m/Y') }}</span></div>
-                    @endif
                     <div style="{{ $fr }}"><span style="white-space:nowrap;">Adm Type:</span><span>{{ $admTypeLabel }}</span></div>
                     <div style="{{ $fr }}"><span style="white-space:nowrap;">Source:</span><span style="text-align:right;max-width:44mm;word-break:break-word;">{{ $admissionSourceLabel ?? 'Direct / Walk-in' }}@if(!empty($admissionSourceDetail)) / {{ $admissionSourceDetail }}@endif</span></div>
-                    <div style="{{ $fr }}"><span style="white-space:nowrap;">Fee At:</span><span style="text-align:right;max-width:44mm;word-break:break-word;">{{ $feeCenterLabel ?? 'Institute' }}</span></div>
 
                     <div style="display:flex;justify-content:space-between;border-top:1.5px solid #000;margin-top:4px;padding-top:3px;font-size:13px;font-weight:700;">
                         <span style="white-space:nowrap;">Amt Paid:</span><span>{{ number_format($grandPaid, 0) }}</span>
@@ -630,8 +606,8 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
                     @endif
 
                     <div style="text-align:center;font-size:9px;border-top:1.5px solid #000;margin-top:3px;padding-top:2px;">Fees once paid are non-refundable.</div>
-                    <div style="display:flex;justify-content:space-between;margin-top:2mm;font-size:10px;font-weight:700;border-top:1px solid #000;padding-top:2px;">
-                        <span>Student Sign</span><span>Auth. Sign</span>
+                    <div style="display:flex;justify-content:flex-end;margin-top:2mm;font-size:10px;font-weight:700;border-top:1px solid #000;padding-top:2px;">
+                        <span>Auth. Sign</span>
                     </div>
                 </div>
             </div>

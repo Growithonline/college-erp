@@ -537,6 +537,10 @@ class FeeCollectionController extends Controller
             ->whereDate('payment_date', '>=', $dateFrom)
             ->whereDate('payment_date', '<=', $dateTo);
 
+        if ($sessionId) {
+            $libFineQuery->whereHas('member.student', fn($q) => $q->where('academic_session_id', $sessionId));
+        }
+
         if ($request->payment_mode) {
             $libFineQuery->where('payment_mode', $request->payment_mode);
         }
