@@ -51,8 +51,9 @@ jobs:
             set -e
             cd /var/www/bmc.gtsaas.in
 
-            # Pull latest code
-            git pull origin main
+            # Pull latest code (discard any untracked local changes)
+            git fetch origin main
+            git reset --hard origin/main
 
             # Install PHP dependencies
             composer install --no-dev --optimize-autoloader --no-interaction
