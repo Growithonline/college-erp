@@ -169,12 +169,26 @@ class InstituteController extends Controller
 
     public function resendCredentials(Institute $institute)
     {
+        $plainPassword = Str::random(10);
+
         $user = User::where('institute_id', $institute->id)
             ->where('role', 'institute_admin')
-            ->firstOrFail();
+            ->first();
 
-        $plainPassword = Str::random(10);
-        $user->update(['password' => Hash::make($plainPassword)]);
+        if ($user) {
+            $user->update(['password' => Hash::make($plainPassword)]);
+        } else {
+            // User was accidentally deleted (e.g. via data clean before the bug was fixed) — recreate it
+            $user = User::create([
+                'institute_id' => $institute->id,
+                'name'         => $institute->owner_name,
+                'email'        => $institute->owner_email,
+                'mobile'       => $institute->owner_mobile,
+                'password'     => Hash::make($plainPassword),
+            ]);
+            $user->role = 'institute_admin';
+            $user->save();
+        }
 
         try {
             Mail::mailer('smtp')->to($user->email)->send(new InstituteCredentialMail(
