@@ -109,7 +109,8 @@
                         <td class="pe-4 text-end">
                             <a href="{{ route('super_admin.backup.download', $file['name']) }}"
                                class="btn btn-sm btn-outline-success"
-                               onclick="showDownloadToast('Scheduled Backup', '{{ $file[\'name\'] }} is downloading...')">
+                               data-filename="{{ $file['name'] }}"
+                               onclick="showDownloadToast('Scheduled Backup', this.dataset.filename + ' is downloading...')">
                                 <i class="bi bi-download me-1"></i>Download
                             </a>
                         </td>
