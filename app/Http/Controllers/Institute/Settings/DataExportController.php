@@ -126,11 +126,11 @@ class DataExportController extends Controller
 
             $vehicleIds = DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
             if ($vehicleIds->isNotEmpty())
-                $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->whereIn('vehicle_id', $vehicleIds));
+                $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->whereIn('transport_vehicle_id', $vehicleIds));
 
             $driverIds = DB::table('transport_drivers')->where('institute_id', $id)->pluck('id');
             if ($driverIds->isNotEmpty())
-                $this->streamTableInserts('transport_driver_documents', fn($q) => $q->whereIn('driver_id', $driverIds));
+                $this->streamTableInserts('transport_driver_documents', fn($q) => $q->whereIn('transport_driver_id', $driverIds));
 
             $routeIds = DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
             if ($routeIds->isNotEmpty())

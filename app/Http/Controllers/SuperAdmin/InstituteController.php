@@ -321,10 +321,10 @@ class InstituteController extends Controller
             if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
         }
         $vIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
-        if ($vIds->isNotEmpty()) \DB::table('transport_vehicle_documents')->whereIn('vehicle_id', $vIds)->delete();
+        if ($vIds->isNotEmpty()) \DB::table('transport_vehicle_documents')->whereIn('transport_vehicle_id', $vIds)->delete();
         $dIds = \DB::table('transport_drivers')->where('institute_id', $id)->pluck('id');
         if ($dIds->isNotEmpty() && $schema->hasTable('transport_driver_documents'))
-            \DB::table('transport_driver_documents')->whereIn('driver_id', $dIds)->delete();
+            \DB::table('transport_driver_documents')->whereIn('transport_driver_id', $dIds)->delete();
         $rIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
         if ($rIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('route_id', $rIds)->delete();
         foreach (['transport_vehicles','transport_drivers','transport_routes'] as $t) {
@@ -490,7 +490,7 @@ class InstituteController extends Controller
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
                 $vehicleIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
-                if ($vehicleIds->isNotEmpty()) \DB::table('transport_vehicle_documents')->whereIn('vehicle_id', $vehicleIds)->delete();
+                if ($vehicleIds->isNotEmpty()) \DB::table('transport_vehicle_documents')->whereIn('transport_vehicle_id', $vehicleIds)->delete();
                 $routeIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
                 if ($routeIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('route_id', $routeIds)->delete();
                 foreach (['transport_vehicles','transport_routes'] as $tbl) {
@@ -779,10 +779,10 @@ class InstituteController extends Controller
             // transport children
             $vehicleIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
             if ($vehicleIds->isNotEmpty())
-                $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->whereIn('vehicle_id', $vehicleIds));
+                $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->whereIn('transport_vehicle_id', $vehicleIds));
             $driverIds = \DB::table('transport_drivers')->where('institute_id', $id)->pluck('id');
             if ($driverIds->isNotEmpty())
-                $this->streamTableInserts('transport_driver_documents', fn($q) => $q->whereIn('driver_id', $driverIds));
+                $this->streamTableInserts('transport_driver_documents', fn($q) => $q->whereIn('transport_driver_id', $driverIds));
             $routeIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
             if ($routeIds->isNotEmpty())
                 $this->streamTableInserts('transport_route_stops', fn($q) => $q->whereIn('route_id', $routeIds));

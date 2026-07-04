@@ -87,7 +87,7 @@ class CleanInstituteData extends Command
                 $this->deleteLine('Transport payments', 'transport_payments', $id);
                 $this->deleteLine('Transport maintenance logs', 'transport_maintenance_logs', $id);
                 $vehicleIds = DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
-                DB::table('transport_vehicle_documents')->whereIn('vehicle_id', $vehicleIds)->delete();
+                DB::table('transport_vehicle_documents')->whereIn('transport_vehicle_id', $vehicleIds)->delete();
                 $this->line("  - Transport vehicle documents deleted");
                 $routeIds = DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
                 DB::table('transport_route_stops')->whereIn('route_id', $routeIds)->delete();
@@ -95,7 +95,7 @@ class CleanInstituteData extends Command
                 $this->deleteLine('Transport vehicles', 'transport_vehicles', $id);
                 $driverIds = DB::table('transport_drivers')->where('institute_id', $id)->pluck('id') ?? collect();
                 if ($driverIds->isNotEmpty()) {
-                    DB::table('transport_driver_documents')->whereIn('driver_id', $driverIds)->delete();
+                    DB::table('transport_driver_documents')->whereIn('transport_driver_id', $driverIds)->delete();
                     DB::table('transport_drivers')->where('institute_id', $id)->delete();
                     $this->line("  - Transport drivers deleted");
                 }
