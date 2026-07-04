@@ -1,3 +1,12 @@
+# ── PHP upload limits for large backup restore files ─────────────────────────
+<IfModule mod_php.c>
+    php_value upload_max_filesize 512M
+    php_value post_max_size       520M
+    php_value max_execution_time  300
+    php_value max_input_time      300
+    php_value memory_limit        256M
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

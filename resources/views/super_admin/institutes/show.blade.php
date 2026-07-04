@@ -352,32 +352,88 @@
                 <div class="pt-3">
                     <p class="fw-semibold mb-1"><i class="bi bi-upload text-warning me-1"></i> Data Restore (Backup se)</p>
                     <p class="text-muted small mb-2">
-                        Pehle se liya hua <code>.sql</code> backup file upload karo.
-                        <strong class="text-warning">Restore karne se pehle is institute ka current data automatically clean ho jaayega</strong>,
-                        phir backup ka data restore hoga. Sirf is institute (<strong>{{ $institute->name }}</strong>) ka data affect hoga.
+                        Pehle se liya hua <code>.sql</code> backup file se restore karo.
+                        <strong class="text-warning">Restore karne se pehle is institute ka current data automatically clean ho jaayega</strong> —
+                        sirf <strong>{{ $institute->name }}</strong> (UID: {{ $institute->institute_uid }}) affect hoga.
                     </p>
 
-                    <form id="form-restore" method="POST"
-                          action="{{ route('super_admin.institutes.restore-data', $institute->id) }}"
-                          enctype="multipart/form-data">
-                        @csrf
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="file" name="backup_file" id="restoreFile"
-                                   accept=".sql,.txt"
-                                   class="form-control form-control-sm @error('backup_file') is-invalid @enderror"
-                                   style="max-width:340px;">
-                            @error('backup_file')
-                                <div class="text-danger small">{{ $message }}</div>
-                            @enderror
-                            <button type="button" class="btn btn-warning btn-sm fw-semibold px-3"
-                                    onclick="openRestoreConfirm()">
-                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restore Karo
-                            </button>
-                        </div>
-                        <p class="text-muted mt-2 mb-0" style="font-size:11px;">
-                            Max file size: 100 MB &nbsp;|&nbsp; Sirf is institute ka backup file kaam karega (UID: <strong>{{ $institute->institute_uid }}</strong>)
-                        </p>
-                    </form>
+                    {{-- Method tabs --}}
+                    <div class="mb-3 d-flex gap-2">
+                        <button type="button" id="tabUpload" onclick="switchRestoreTab('upload')"
+                                class="btn btn-sm btn-warning fw-semibold">
+                            <i class="bi bi-cloud-upload me-1"></i> File Upload <span class="badge bg-white text-warning ms-1" style="font-size:10px;">≤ 500 MB</span>
+                        </button>
+                        <button type="button" id="tabPath" onclick="switchRestoreTab('path')"
+                                class="btn btn-sm btn-outline-secondary fw-semibold">
+                            <i class="bi bi-terminal me-1"></i> Server Path <span class="badge bg-secondary ms-1" style="font-size:10px;">Any size</span>
+                        </button>
+                    </div>
+
+                    {{-- Upload form --}}
+                    <div id="restoreUploadPanel">
+                        <form id="form-restore" method="POST"
+                              action="{{ route('super_admin.institutes.restore-data', $institute->id) }}"
+                              enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="restore_mode" value="upload">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <input type="file" name="backup_file" id="restoreFile"
+                                       accept=".sql,.txt"
+                                       class="form-control form-control-sm @error('backup_file') is-invalid @enderror"
+                                       style="max-width:360px;"
+                                       onchange="updateRestoreBtn()">
+                                @error('backup_file')
+                                    <div class="text-danger small w-100">{{ $message }}</div>
+                                @enderror
+                                <button type="button" id="restoreUploadBtn"
+                                        class="btn btn-warning btn-sm fw-semibold px-3" disabled
+                                        onclick="openRestoreConfirm('upload')">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Restore Karo
+                                </button>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" style="font-size:11px;">
+                                Max upload size: <strong>500 MB</strong> &nbsp;|&nbsp;
+                                Agar file larger hai toh "Server Path" tab use karo &nbsp;|&nbsp;
+                                Sirf is institute ka backup (UID: <strong>{{ $institute->institute_uid }}</strong>) accept hoga
+                            </p>
+                        </form>
+                    </div>
+
+                    {{-- Server path form --}}
+                    <div id="restorePathPanel" style="display:none;">
+                        <form id="form-restore-path" method="POST"
+                              action="{{ route('super_admin.institutes.restore-data', $institute->id) }}">
+                            @csrf
+                            <input type="hidden" name="restore_mode" value="path">
+                            <p class="small text-muted mb-2">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Pehle backup file ko server pe copy karo (SCP/SFTP), phir niche path do:
+                            </p>
+                            <div class="p-2 rounded mb-2" style="background:#1e293b;color:#94a3b8;font-size:12px;font-family:monospace;">
+                                scp backup.sql user@bmc.gtsaas.in:/var/www/college-erp/storage/app/restores/
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <input type="text" name="server_path" id="serverPathInput"
+                                       class="form-control form-control-sm @error('server_path') is-invalid @enderror"
+                                       placeholder="/var/www/college-erp/storage/app/restores/backup.sql"
+                                       style="max-width:420px;"
+                                       onkeyup="updatePathBtn()">
+                                @error('server_path')
+                                    <div class="text-danger small w-100">{{ $message }}</div>
+                                @enderror
+                                <button type="button" id="restorePathBtn"
+                                        class="btn btn-warning btn-sm fw-semibold px-3" disabled
+                                        onclick="openRestoreConfirm('path')">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Restore Karo
+                                </button>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" style="font-size:11px;">
+                                <strong>Allowed directory:</strong> <code>storage/app/restores/</code> &nbsp;|&nbsp;
+                                Restore ke baad file automatically delete ho jaayegi
+                            </p>
+                        </form>
+                    </div>
+                </div>
                 </div>
 
             </div>
@@ -459,22 +515,51 @@
 </div>
 
 <script>
-function openRestoreConfirm() {
+function switchRestoreTab(tab) {
+    var isUpload = (tab === 'upload');
+    document.getElementById('restoreUploadPanel').style.display = isUpload ? '' : 'none';
+    document.getElementById('restorePathPanel').style.display   = isUpload ? 'none' : '';
+    document.getElementById('tabUpload').className = isUpload
+        ? 'btn btn-sm btn-warning fw-semibold'
+        : 'btn btn-sm btn-outline-secondary fw-semibold';
+    document.getElementById('tabPath').className = isUpload
+        ? 'btn btn-sm btn-outline-secondary fw-semibold'
+        : 'btn btn-sm btn-warning fw-semibold';
+}
+
+function updateRestoreBtn() {
     var file = document.getElementById('restoreFile');
-    if (!file.files || !file.files.length) {
-        alert('Pehle .sql backup file select karo.');
-        file.focus();
-        return;
+    var btn  = document.getElementById('restoreUploadBtn');
+    var hasFile = file.files && file.files.length > 0;
+    btn.disabled = !hasFile;
+}
+
+function updatePathBtn() {
+    var val = document.getElementById('serverPathInput').value.trim();
+    document.getElementById('restorePathBtn').disabled = (val === '');
+}
+
+function openRestoreConfirm(mode) {
+    var formId, detail;
+    if (mode === 'path') {
+        var p = document.getElementById('serverPathInput').value.trim();
+        if (!p) { alert('Server path enter karo.'); return; }
+        formId = 'form-restore-path';
+        detail = 'Path: <code>' + p + '</code>';
+    } else {
+        var file = document.getElementById('restoreFile');
+        if (!file.files || !file.files.length) { alert('File select karo.'); return; }
+        formId = 'form-restore';
+        detail = 'File: <code>' + file.files[0].name + '</code>';
     }
-    var name = file.files[0].name;
     openConfirm({
-        formId:       'form-restore',
+        formId:       formId,
         icon:         '♻️',
         iconBg:       '#fffbeb',
         iconColor:    '#d97706',
         title:        'Data Restore Karo?',
         message:      '<strong>{{ addslashes($institute->name) }}</strong> ka current data pehle delete hoga, phir backup se restore hoga.<br><br>' +
-                      'File: <code>' + name + '</code><br><br>' +
+                      detail + '<br><br>' +
                       '<span class="text-danger fw-semibold">Yeh action undo nahi ho sakta.</span>',
         confirmText:  'Haan, Restore Karo',
         confirmClass: 'btn-warning',

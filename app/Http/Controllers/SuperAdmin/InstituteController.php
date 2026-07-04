@@ -196,12 +196,34 @@ class InstituteController extends Controller
 
     public function restoreData(Request $request, Institute $institute)
     {
-        $request->validate([
-            'backup_file' => ['required', 'file', 'mimes:sql,txt', 'max:102400'], // 100 MB
-        ]);
+        $mode = $request->input('restore_mode', 'upload');
 
-        $file    = $request->file('backup_file');
-        $content = file_get_contents($file->getPathname());
+        if ($mode === 'path') {
+            $request->validate([
+                'server_path' => ['required', 'string', 'max:500'],
+            ]);
+
+            $path = $request->input('server_path');
+
+            // Only allow storage/app/restores/ directory — prevent path traversal
+            $allowed = storage_path('app/restores');
+            $real    = realpath($path);
+            if (! $real || ! str_starts_with($real, $allowed) || ! is_file($real)) {
+                return back()->with('error',
+                    'Invalid server path. File must be inside: storage/app/restores/'
+                );
+            }
+
+            $content  = file_get_contents($real);
+            $pathToDelete = $real; // delete after restore
+
+        } else {
+            $request->validate([
+                'backup_file' => ['required', 'file', 'mimes:sql,txt', 'max:512000'], // 500 MB
+            ]);
+            $content      = file_get_contents($request->file('backup_file')->getPathname());
+            $pathToDelete = null;
+        }
 
         // ── Verify backup is for this institute ───────────────────────────
         $uid = $institute->institute_uid;
@@ -255,6 +277,11 @@ class InstituteController extends Controller
 
             \DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
+            // Server path se restore tha — file delete karo (security)
+            if ($pathToDelete && is_file($pathToDelete)) {
+                @unlink($pathToDelete);
+            }
+
         } catch (\Throwable $e) {
             \DB::statement('SET FOREIGN_KEY_CHECKS=1');
             \Log::error('Institute restore failed', [
@@ -266,7 +293,7 @@ class InstituteController extends Controller
 
         return back()->with('success',
             "\"{$institute->name}\" ka data successfully restore ho gaya. " .
-            number_format($restored) . " INSERT statements execute hue."
+            number_format($restored) . " rows restore hue."
         );
     }
 
