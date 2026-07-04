@@ -286,6 +286,9 @@ Route::middleware(['auth'])->group(function () {
 
         // Data Export / Backup
         Route::get('settings/data-export', [\App\Http\Controllers\Institute\Settings\DataExportController::class, 'download'])->name('settings.data-export');
+        Route::get('settings/backup',                    [\App\Http\Controllers\Institute\Settings\BackupController::class, 'index'])->name('settings.backup');
+        Route::get('settings/backup/students-excel',     [\App\Http\Controllers\Institute\Settings\BackupController::class, 'downloadStudentExcel'])->name('settings.backup.students');
+        Route::get('settings/backup/financial-excel',    [\App\Http\Controllers\Institute\Settings\BackupController::class, 'downloadFinancialExcel'])->name('settings.backup.financial');
     });
 
     // Library Staff management — institute admin only (CRUD, reports)

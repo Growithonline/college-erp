@@ -1119,8 +1119,9 @@
 
         {{-- Data Backup --}}
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('master.settings.data-export') }}" target="_blank">
-                <i class="bi bi-database-down"></i> Data Backup
+            <a class="nav-link {{ request()->routeIs('master.settings.backup*') ? 'active' : '' }}"
+               href="{{ route('master.settings.backup') }}">
+                <i class="bi bi-database-down"></i> Backup & Export
             </a>
         </li>
 
