@@ -14,25 +14,25 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('channel_partner_fee_discount_permissions')) {
-            Schema::create('channel_partner_fee_discount_permissions', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('channel_partner_id')->constrained('channel_partners')->onDelete('cascade');
-                $table->foreignId('fee_type_id')->constrained('fee_types')->onDelete('cascade');
-                $table->timestamps();
-                $table->unique(['channel_partner_id', 'fee_type_id']);
-            });
-        }
+        // Drop and recreate: this feature never completed a successful deploy, so any
+        // partially-created table from an earlier failed attempt is safely discarded.
+        Schema::dropIfExists('channel_partner_fee_discount_permissions');
+        Schema::create('channel_partner_fee_discount_permissions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('channel_partner_id')->constrained('channel_partners', 'id', 'cpfd_partner_id_fk')->onDelete('cascade');
+            $table->foreignId('fee_type_id')->constrained('fee_types', 'id', 'cpfd_fee_type_id_fk')->onDelete('cascade');
+            $table->timestamps();
+            $table->unique(['channel_partner_id', 'fee_type_id'], 'cpfd_partner_feetype_unique');
+        });
 
-        if (!Schema::hasTable('channel_partner_fee_collection_permissions')) {
-            Schema::create('channel_partner_fee_collection_permissions', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('channel_partner_id')->constrained('channel_partners')->onDelete('cascade');
-                $table->foreignId('fee_type_id')->constrained('fee_types')->onDelete('cascade');
-                $table->timestamps();
-                $table->unique(['channel_partner_id', 'fee_type_id'], 'channel_partner_fee_collect_perm_unique');
-            });
-        }
+        Schema::dropIfExists('channel_partner_fee_collection_permissions');
+        Schema::create('channel_partner_fee_collection_permissions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('channel_partner_id')->constrained('channel_partners', 'id', 'cpfc_partner_id_fk')->onDelete('cascade');
+            $table->foreignId('fee_type_id')->constrained('fee_types', 'id', 'cpfc_fee_type_id_fk')->onDelete('cascade');
+            $table->timestamps();
+            $table->unique(['channel_partner_id', 'fee_type_id'], 'cpfc_partner_feetype_unique');
+        });
 
         if (Schema::hasColumn('centers', 'can_waive_fee')) {
             Schema::table('centers', function (Blueprint $table) {
