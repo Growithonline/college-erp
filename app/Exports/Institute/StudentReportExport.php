@@ -19,10 +19,11 @@ class StudentReportExport implements WithMultipleSheets
         ];
     }
 
+    // ── 1. Students ──────────────────────────────────────────────────────────
+
     private function studentsSheet(): object
     {
         $id = $this->id;
-
         return new class($id) implements
             \Maatwebsite\Excel\Concerns\FromCollection,
             \Maatwebsite\Excel\Concerns\WithHeadings,
@@ -30,49 +31,73 @@ class StudentReportExport implements WithMultipleSheets
             \Maatwebsite\Excel\Concerns\ShouldAutoSize
         {
             public function __construct(private int $id) {}
-
             public function title(): string { return 'Students'; }
-
             public function headings(): array
             {
                 return [
-                    'Sr No', 'Student UID', 'Enrollment No', 'Name', 'Father Name',
-                    'Mother Name', 'Mobile', 'Email', 'DOB', 'Gender', 'Category',
-                    'Course', 'Stream', 'Semester/Part', 'Admission Session',
+                    'Sr No', 'Session', 'Student UID', 'Enrollment No',
+                    'Name', 'Father Name', 'Mother Name',
+                    'Mobile', 'Email', 'DOB', 'Gender', 'Category',
+                    'Course', 'Stream', 'Semester/Part',
                     'Admission Date', 'Admission Type', 'Student Type', 'Status',
                 ];
             }
-
             public function collection()
             {
-                return DB::table('students as s')
+                $rows = DB::table('students as s')
                     ->leftJoin('course_streams as cs', 'cs.id', '=', 's.course_stream_id')
                     ->leftJoin('courses as c', 'c.id', '=', 'cs.course_id')
                     ->leftJoin('academic_sessions as ses', 'ses.id', '=', 's.academic_session_id')
                     ->leftJoin('course_parts as cp', 'cp.id', '=', 's.course_part_id')
                     ->where('s.institute_id', $this->id)
+                    ->orderByDesc('ses.start_date')
                     ->orderBy('s.name')
                     ->select([
-                        DB::raw('ROW_NUMBER() OVER (ORDER BY s.name) as sr_no'),
-                        's.student_uid', 's.enrollment_no', 's.name',
-                        's.father_name', 's.mother_name',
+                        's.name',           // for row numbering grouping only
+                        'ses.name as session_name',
+                        'ses.start_date',   // for ordering only
+                        's.student_uid', 's.enrollment_no',
+                        's.name as student_name', 's.father_name', 's.mother_name',
                         's.mobile', 's.email', 's.dob', 's.gender', 's.category',
                         'c.name as course', 'cs.name as stream',
                         'cp.part_name as semester_part',
-                        'ses.name as session',
                         's.admission_date', 's.admission_type',
                         's.student_type', 's.status',
                     ])
-                    ->get()
-                    ->map(fn($r) => array_values((array) $r));
+                    ->get();
+
+                return $rows->values()->map(function ($r, $index) {
+                    return [
+                        $index + 1,
+                        $r->session_name,
+                        $r->student_uid,
+                        $r->enrollment_no,
+                        $r->student_name,
+                        $r->father_name,
+                        $r->mother_name,
+                        $r->mobile,
+                        $r->email,
+                        $r->dob,
+                        $r->gender,
+                        $r->category,
+                        $r->course,
+                        $r->stream,
+                        $r->semester_part,
+                        $r->admission_date,
+                        $r->admission_type,
+                        $r->student_type,
+                        $r->status,
+                    ];
+                });
             }
         };
     }
 
+    // ── 2. Fee History ───────────────────────────────────────────────────────
+
     private function feeHistorySheet(): object
     {
         $id = $this->id;
-
         return new class($id) implements
             \Maatwebsite\Excel\Concerns\FromCollection,
             \Maatwebsite\Excel\Concerns\WithHeadings,
@@ -80,19 +105,16 @@ class StudentReportExport implements WithMultipleSheets
             \Maatwebsite\Excel\Concerns\ShouldAutoSize
         {
             public function __construct(private int $id) {}
-
             public function title(): string { return 'Fee History'; }
-
             public function headings(): array
             {
                 return [
-                    'Invoice No', 'Payment Date', 'Semester', 'Student Name', 'Student UID',
-                    'Course', 'Stream', 'Session',
+                    'Session', 'Semester', 'Invoice No', 'Payment Date',
+                    'Student Name', 'Student UID', 'Course', 'Stream',
                     'Total Amount (₹)', 'Discount (₹)', 'Paid Amount (₹)', 'Remaining Due (₹)',
                     'Payment Mode', 'Transaction Ref', 'Collected By',
                 ];
             }
-
             public function collection()
             {
                 return DB::table('fee_invoices as fi')
@@ -101,17 +123,18 @@ class StudentReportExport implements WithMultipleSheets
                     ->leftJoin('course_streams as cs', 'cs.id', '=', 's.course_stream_id')
                     ->leftJoin('courses as c', 'c.id', '=', 'cs.course_id')
                     ->where('fi.institute_id', $this->id)
+                    ->orderByDesc('ses.start_date')
                     ->orderBy('s.name')
                     ->orderByDesc('fi.payment_date')
                     ->select([
+                        'ses.name as session',
+                        DB::raw('COALESCE(fi.semester, "—") as semester'),
                         'fi.invoice_no',
                         'fi.payment_date',
-                        DB::raw('COALESCE(fi.semester, "—") as semester'),
                         's.name as student_name',
                         's.student_uid',
                         'c.name as course',
                         'cs.name as stream',
-                        'ses.name as session',
                         'fi.total_amount',
                         'fi.discount',
                         'fi.paid_amount',
@@ -126,10 +149,11 @@ class StudentReportExport implements WithMultipleSheets
         };
     }
 
+    // ── 3. Library ───────────────────────────────────────────────────────────
+
     private function librarySheet(): object
     {
         $id = $this->id;
-
         return new class($id) implements
             \Maatwebsite\Excel\Concerns\FromCollection,
             \Maatwebsite\Excel\Concerns\WithHeadings,
@@ -137,18 +161,16 @@ class StudentReportExport implements WithMultipleSheets
             \Maatwebsite\Excel\Concerns\ShouldAutoSize
         {
             public function __construct(private int $id) {}
-
             public function title(): string { return 'Library'; }
-
             public function headings(): array
             {
                 return [
-                    'Student Name', 'Student UID', 'Book Title', 'ISBN',
+                    'Session', 'Student Name', 'Student UID',
+                    'Book Title', 'ISBN',
                     'Issue Date', 'Due Date', 'Return Date',
                     'Fine Amount (₹)', 'Fine Paid (₹)', 'Status', 'Issued By',
                 ];
             }
-
             public function collection()
             {
                 return DB::table('library_transactions as lt')
@@ -156,11 +178,14 @@ class StudentReportExport implements WithMultipleSheets
                     ->join('students as s', 's.id', '=', 'lm.student_id')
                     ->join('library_book_copies as lbc', 'lbc.id', '=', 'lt.library_book_copy_id')
                     ->join('library_books as lb', 'lb.id', '=', 'lbc.book_id')
+                    ->leftJoin('academic_sessions as ses', 'ses.id', '=', 'lt.academic_session_id')
                     ->where('lt.institute_id', $this->id)
                     ->where('lm.member_type', 'student')
+                    ->orderByDesc('ses.start_date')
                     ->orderBy('s.name')
                     ->orderByDesc('lt.issued_on')
                     ->select([
+                        'ses.name as session',
                         's.name as student_name',
                         's.student_uid',
                         'lb.title as book_title',
@@ -179,10 +204,11 @@ class StudentReportExport implements WithMultipleSheets
         };
     }
 
+    // ── 4. Transport ─────────────────────────────────────────────────────────
+
     private function transportSheet(): object
     {
         $id = $this->id;
-
         return new class($id) implements
             \Maatwebsite\Excel\Concerns\FromCollection,
             \Maatwebsite\Excel\Concerns\WithHeadings,
@@ -190,18 +216,16 @@ class StudentReportExport implements WithMultipleSheets
             \Maatwebsite\Excel\Concerns\ShouldAutoSize
         {
             public function __construct(private int $id) {}
-
             public function title(): string { return 'Transport'; }
-
             public function headings(): array
             {
                 return [
-                    'Student Name', 'Student UID', 'Session', 'Route',
-                    'Stop', 'Vehicle No', 'Fee Amount (₹)', 'Charged (₹)',
-                    'Paid (₹)', 'Start Date', 'Status',
+                    'Session', 'Student Name', 'Student UID',
+                    'Route', 'Stop', 'Vehicle No',
+                    'Fee Amount (₹)', 'Charged (₹)', 'Paid (₹)',
+                    'Start Date', 'Status',
                 ];
             }
-
             public function collection()
             {
                 return DB::table('transport_allocations as ta')
@@ -211,11 +235,12 @@ class StudentReportExport implements WithMultipleSheets
                     ->leftJoin('transport_vehicles as tv', 'tv.id', '=', 'ta.transport_vehicle_id')
                     ->leftJoin('academic_sessions as ses', 'ses.id', '=', 'ta.academic_session_id')
                     ->where('ta.institute_id', $this->id)
+                    ->orderByDesc('ses.start_date')
                     ->orderBy('s.name')
                     ->select([
+                        'ses.name as session',
                         's.name as student_name',
                         's.student_uid',
-                        'ses.name as session',
                         'tr.name as route',
                         'trs.stop_name as stop',
                         'tv.vehicle_no',
