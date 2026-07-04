@@ -36,3 +36,6 @@ Artisan::command('finance:bootstrap {institute_id?}', function (?int $instituteI
 
 // Send due payment reminder SMS — runs every hour, command itself checks per-institute send_time
 Schedule::command('sms:send-due-reminders')->hourly()->withoutOverlapping();
+
+// Full database backup — daily at 2:00 AM server time, keep last 14 days
+Schedule::command('db:backup --keep=14')->dailyAt('02:00')->withoutOverlapping();
