@@ -325,7 +325,7 @@ class InstituteController extends Controller
         if ($schema->hasTable('transport_driver_documents'))
             \DB::table('transport_driver_documents')->where('institute_id', $id)->delete();
         $rIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
-        if ($rIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('route_id', $rIds)->delete();
+        if ($rIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('transport_route_id', $rIds)->delete();
         foreach (['transport_vehicles','transport_drivers','transport_routes'] as $t) {
             if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
         }
@@ -493,7 +493,7 @@ class InstituteController extends Controller
                 if (\DB::getSchemaBuilder()->hasTable('transport_driver_documents'))
                     \DB::table('transport_driver_documents')->where('institute_id', $id)->delete();
                 $routeIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
-                if ($routeIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('route_id', $routeIds)->delete();
+                if ($routeIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('transport_route_id', $routeIds)->delete();
                 foreach (['transport_vehicles','transport_routes'] as $tbl) {
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
@@ -782,7 +782,7 @@ class InstituteController extends Controller
             $this->streamTableInserts('transport_driver_documents',  fn($q) => $q->where('institute_id', $id));
             $routeIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
             if ($routeIds->isNotEmpty())
-                $this->streamTableInserts('transport_route_stops', fn($q) => $q->whereIn('route_id', $routeIds));
+                $this->streamTableInserts('transport_route_stops', fn($q) => $q->whereIn('transport_route_id', $routeIds));
 
             // library pivot
             $bookIds = \DB::table('library_books')->where('institute_id', $id)->pluck('id');

@@ -89,7 +89,7 @@ class CleanInstituteData extends Command
                 DB::table('transport_vehicle_documents')->where('institute_id', $id)->delete();
                 $this->line("  - Transport vehicle documents deleted");
                 $routeIds = DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
-                DB::table('transport_route_stops')->whereIn('route_id', $routeIds)->delete();
+                DB::table('transport_route_stops')->whereIn('transport_route_id', $routeIds)->delete();
                 $this->line("  - Transport route stops deleted");
                 $this->deleteLine('Transport vehicles', 'transport_vehicles', $id);
                 DB::table('transport_driver_documents')->where('institute_id', $id)->delete();

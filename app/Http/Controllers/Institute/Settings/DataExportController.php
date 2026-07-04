@@ -130,7 +130,7 @@ class DataExportController extends Controller
 
             $routeIds = DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
             if ($routeIds->isNotEmpty())
-                $this->streamTableInserts('transport_route_stops', fn($q) => $q->whereIn('route_id', $routeIds));
+                $this->streamTableInserts('transport_route_stops', fn($q) => $q->whereIn('transport_route_id', $routeIds));
 
             $bookIds = DB::table('library_books')->where('institute_id', $id)->pluck('id');
             if ($bookIds->isNotEmpty())
