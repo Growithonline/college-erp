@@ -124,13 +124,9 @@ class DataExportController extends Controller
                     $this->streamTableInserts('channel_wallet_transactions', fn($q) => $q->whereIn('channel_wallet_id', $chIds));
             }
 
-            $vehicleIds = DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
-            if ($vehicleIds->isNotEmpty())
-                $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->whereIn('transport_vehicle_id', $vehicleIds));
-
-            $driverIds = DB::table('transport_drivers')->where('institute_id', $id)->pluck('id');
-            if ($driverIds->isNotEmpty())
-                $this->streamTableInserts('transport_driver_documents', fn($q) => $q->whereIn('transport_driver_id', $driverIds));
+            // both tables have institute_id directly
+            $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->where('institute_id', $id));
+            $this->streamTableInserts('transport_driver_documents',  fn($q) => $q->where('institute_id', $id));
 
             $routeIds = DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
             if ($routeIds->isNotEmpty())

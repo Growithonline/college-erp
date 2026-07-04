@@ -320,11 +320,10 @@ class InstituteController extends Controller
         foreach (['transport_payments','transport_monthly_charges','transport_maintenance_logs'] as $t) {
             if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
         }
-        $vIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
-        if ($vIds->isNotEmpty()) \DB::table('transport_vehicle_documents')->whereIn('transport_vehicle_id', $vIds)->delete();
-        $dIds = \DB::table('transport_drivers')->where('institute_id', $id)->pluck('id');
-        if ($dIds->isNotEmpty() && $schema->hasTable('transport_driver_documents'))
-            \DB::table('transport_driver_documents')->whereIn('transport_driver_id', $dIds)->delete();
+        if ($schema->hasTable('transport_vehicle_documents'))
+            \DB::table('transport_vehicle_documents')->where('institute_id', $id)->delete();
+        if ($schema->hasTable('transport_driver_documents'))
+            \DB::table('transport_driver_documents')->where('institute_id', $id)->delete();
         $rIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
         if ($rIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('route_id', $rIds)->delete();
         foreach (['transport_vehicles','transport_drivers','transport_routes'] as $t) {
@@ -489,8 +488,10 @@ class InstituteController extends Controller
                 foreach (['transport_payments','transport_maintenance_logs'] as $tbl) {
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
-                $vehicleIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
-                if ($vehicleIds->isNotEmpty()) \DB::table('transport_vehicle_documents')->whereIn('transport_vehicle_id', $vehicleIds)->delete();
+                if (\DB::getSchemaBuilder()->hasTable('transport_vehicle_documents'))
+                    \DB::table('transport_vehicle_documents')->where('institute_id', $id)->delete();
+                if (\DB::getSchemaBuilder()->hasTable('transport_driver_documents'))
+                    \DB::table('transport_driver_documents')->where('institute_id', $id)->delete();
                 $routeIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
                 if ($routeIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('route_id', $routeIds)->delete();
                 foreach (['transport_vehicles','transport_routes'] as $tbl) {
@@ -776,13 +777,9 @@ class InstituteController extends Controller
                     $this->streamTableInserts('channel_wallet_transactions', fn($q) => $q->whereIn('channel_wallet_id', $chIds));
             }
 
-            // transport children
-            $vehicleIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
-            if ($vehicleIds->isNotEmpty())
-                $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->whereIn('transport_vehicle_id', $vehicleIds));
-            $driverIds = \DB::table('transport_drivers')->where('institute_id', $id)->pluck('id');
-            if ($driverIds->isNotEmpty())
-                $this->streamTableInserts('transport_driver_documents', fn($q) => $q->whereIn('transport_driver_id', $driverIds));
+            // transport children — both tables have institute_id directly
+            $this->streamTableInserts('transport_vehicle_documents', fn($q) => $q->where('institute_id', $id));
+            $this->streamTableInserts('transport_driver_documents',  fn($q) => $q->where('institute_id', $id));
             $routeIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
             if ($routeIds->isNotEmpty())
                 $this->streamTableInserts('transport_route_stops', fn($q) => $q->whereIn('route_id', $routeIds));
