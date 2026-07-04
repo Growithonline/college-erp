@@ -194,6 +194,242 @@ class InstituteController extends Controller
         return back()->with('success', 'Credentials resent successfully to ' . $user->email);
     }
 
+    public function restoreData(Request $request, Institute $institute)
+    {
+        $request->validate([
+            'backup_file' => ['required', 'file', 'mimes:sql,txt', 'max:102400'], // 100 MB
+        ]);
+
+        $file    = $request->file('backup_file');
+        $content = file_get_contents($file->getPathname());
+
+        // ── Verify backup is for this institute ───────────────────────────
+        $uid = $institute->institute_uid;
+        if (! str_contains($content, "UID: {$uid}") && ! str_contains($content, "institute_id = {$institute->id}")) {
+            return back()->with('error', "Backup file is invalid or belongs to a different institute (expected UID: {$uid}).");
+        }
+
+        // ── Convert INSERT INTO → INSERT IGNORE INTO ─────────────────────
+        // INSERT IGNORE skips rows whose primary key already exists in another
+        // institute's data — safe because we clean THIS institute's rows first.
+        $content = preg_replace('/\bINSERT INTO\b/', 'INSERT IGNORE INTO', $content);
+
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+        try {
+            // ── Step 1: Clean existing data for this institute ────────────
+            $this->runCleanForInstitute($institute->id);
+
+            // ── Step 2: Parse & execute SQL statements ────────────────────
+            $restored = 0;
+            $buffer   = '';
+
+            foreach (explode("\n", $content) as $line) {
+                $trimmed = trim($line);
+
+                // Skip comments and empty lines
+                if ($trimmed === '' || str_starts_with($trimmed, '--')) {
+                    continue;
+                }
+
+                $buffer .= ' ' . $trimmed;
+
+                // Statement complete when line ends with ;
+                if (str_ends_with(rtrim($trimmed), ';')) {
+                    $stmt = trim($buffer);
+                    $buffer = '';
+
+                    if ($stmt === ';' || $stmt === '') {
+                        continue;
+                    }
+
+                    // Only execute data statements — skip SET, CREATE, DROP
+                    if (preg_match('/^(INSERT IGNORE INTO|SET\s+(FOREIGN_KEY_CHECKS|NAMES))/i', $stmt)) {
+                        \DB::statement($stmt);
+                        if (stripos($stmt, 'INSERT') === 0) {
+                            $restored++;
+                        }
+                    }
+                }
+            }
+
+            \DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        } catch (\Throwable $e) {
+            \DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            \Log::error('Institute restore failed', [
+                'institute_id' => $institute->id,
+                'error'        => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Restore failed: ' . $e->getMessage());
+        }
+
+        return back()->with('success',
+            "\"{$institute->name}\" ka data successfully restore ho gaya. " .
+            number_format($restored) . " INSERT statements execute hue."
+        );
+    }
+
+    private function runCleanForInstitute(int $id): void
+    {
+        // Reuse same delete logic as cleanData — inline to avoid duplication via closure
+        $schema = \DB::getSchemaBuilder();
+
+        // Library
+        $libStaffIds = \DB::table('library_staff')->where('institute_id', $id)->pluck('id');
+        if ($libStaffIds->isNotEmpty()) {
+            foreach (['library_staff_activity_logs','library_login_logs','library_staff_permissions'] as $t) {
+                if ($schema->hasTable($t)) \DB::table($t)->whereIn('library_staff_id', $libStaffIds)->delete();
+            }
+        }
+        foreach (['library_fine_payments','library_reservations','library_transactions','library_members',
+                  'library_book_copies','library_books','library_racks','library_rule_sets',
+                  'library_publishers','library_authors','library_categories','library_subjects',
+                  'library_vendors','library_staff'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+
+        // Transport
+        foreach (['transport_payments','transport_monthly_charges','transport_maintenance_logs'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+        $vIds = \DB::table('transport_vehicles')->where('institute_id', $id)->pluck('id');
+        if ($vIds->isNotEmpty()) \DB::table('transport_vehicle_documents')->whereIn('vehicle_id', $vIds)->delete();
+        $dIds = \DB::table('transport_drivers')->where('institute_id', $id)->pluck('id');
+        if ($dIds->isNotEmpty() && $schema->hasTable('transport_driver_documents'))
+            \DB::table('transport_driver_documents')->whereIn('driver_id', $dIds)->delete();
+        $rIds = \DB::table('transport_routes')->where('institute_id', $id)->pluck('id');
+        if ($rIds->isNotEmpty()) \DB::table('transport_route_stops')->whereIn('route_id', $rIds)->delete();
+        foreach (['transport_vehicles','transport_drivers','transport_routes'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+
+        // Finance
+        foreach (['cheque_payments','contra_entries','salary_records','expenses',
+                  'institute_manual_incomes','institute_transactions'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+        $jIds = \DB::table('journal_entries')->where('institute_id', $id)->pluck('id');
+        if ($jIds->isNotEmpty()) \DB::table('journal_entry_lines')->whereIn('journal_entry_id', $jIds)->delete();
+        foreach (['journal_entries','accounts','finance_settings','expense_vendors',
+                  'expense_approval_limits','expense_categories_l2','expense_categories_l1',
+                  'institute_income_categories'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+
+        // Fee Invoices
+        $invIds = \DB::table('fee_invoices')->where('institute_id', $id)->pluck('id');
+        if ($invIds->isNotEmpty()) \DB::table('fee_invoice_items')->whereIn('fee_invoice_id', $invIds)->delete();
+        \DB::table('fee_invoices')->where('institute_id', $id)->delete();
+
+        // Practical tokens
+        $bIds = \DB::table('practical_fee_token_batches')->where('institute_id', $id)->pluck('id');
+        if ($bIds->isNotEmpty()) \DB::table('practical_fee_token_entries')->whereIn('batch_id', $bIds)->delete();
+        if ($schema->hasTable('practical_fee_token_batches'))
+            \DB::table('practical_fee_token_batches')->where('institute_id', $id)->delete();
+
+        // Students
+        $stuIds = \DB::table('students')->where('institute_id', $id)->pluck('id');
+        if ($stuIds->isNotEmpty()) {
+            foreach (['student_education_details','student_subjects','student_transactions',
+                      'student_wallets','student_attendance','certificates','admission_documents',
+                      'student_academic_change_logs','subject_change_logs','promotion_logs'] as $t) {
+                if ($schema->hasTable($t)) \DB::table($t)->whereIn('student_id', $stuIds)->delete();
+            }
+            if ($schema->hasTable('student_academic_identities'))
+                \DB::table('student_academic_identities')->whereIn('student_id', $stuIds)->delete();
+        }
+        \DB::table('students')->where('institute_id', $id)->delete();
+
+        // Staff
+        $stfIds = \DB::table('staff_members')->where('institute_id', $id)->pluck('id');
+        if ($stfIds->isNotEmpty()) {
+            foreach (['staff_attendance','staff_loans','staff_course_permissions',
+                      'staff_fee_collection_permissions','staff_fee_discount_permissions',
+                      'staff_permission_overrides'] as $t) {
+                if ($schema->hasTable($t)) \DB::table($t)->whereIn('staff_member_id', $stfIds)->delete();
+            }
+        }
+        foreach (['staff_members','staff_roles','attendance_lock_records'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+
+        // Centers
+        $cIds = \DB::table('centers')->where('institute_id', $id)->pluck('id');
+        if ($cIds->isNotEmpty()) {
+            $cwIds = \DB::table('center_wallets')->whereIn('center_id', $cIds)->pluck('id');
+            if ($cwIds->isNotEmpty() && $schema->hasTable('center_wallet_transactions'))
+                \DB::table('center_wallet_transactions')->whereIn('center_wallet_id', $cwIds)->delete();
+            foreach (['center_fee_collection_permissions','center_fee_discount_permissions','center_wallets'] as $t) {
+                if ($schema->hasTable($t)) \DB::table($t)->whereIn('center_id', $cIds)->delete();
+            }
+        }
+        \DB::table('centers')->where('institute_id', $id)->delete();
+
+        // Channel Partners
+        $pIds = \DB::table('channel_partners')->where('institute_id', $id)->pluck('id');
+        if ($pIds->isNotEmpty()) {
+            $chIds = \DB::table('channel_wallets')->whereIn('channel_partner_id', $pIds)->pluck('id');
+            if ($chIds->isNotEmpty() && $schema->hasTable('channel_wallet_transactions'))
+                \DB::table('channel_wallet_transactions')->whereIn('channel_wallet_id', $chIds)->delete();
+            if ($schema->hasTable('channel_wallets'))
+                \DB::table('channel_wallets')->whereIn('channel_partner_id', $pIds)->delete();
+            if ($schema->hasTable('partner_commission_entries'))
+                \DB::table('partner_commission_entries')->whereIn('partner_id', $pIds)->delete();
+        }
+        \DB::table('channel_partners')->where('institute_id', $id)->delete();
+
+        // Wallets & Academic
+        foreach (['wallet_extension_requests','institute_wallets'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+        $csIds = \DB::table('courses')->where('institute_id', $id)->pluck('id');
+        if ($csIds->isNotEmpty()) {
+            $streamIds = \DB::table('course_streams')->whereIn('course_id', $csIds)->pluck('id');
+            if ($streamIds->isNotEmpty()) {
+                foreach (['stream_year_subject_rules','course_stream_subjects','stream_session_limits'] as $t) {
+                    if ($schema->hasTable($t)) \DB::table($t)->whereIn('course_stream_id', $streamIds)->delete();
+                }
+                \DB::table('course_streams')->whereIn('course_id', $csIds)->delete();
+            }
+            \DB::table('course_parts')->whereIn('course_id', $csIds)->delete();
+        }
+        if ($schema->hasTable('fee_assignments')) \DB::table('fee_assignments')->where('institute_id', $id)->delete();
+        \DB::table('academic_sessions')->where('institute_id', $id)->delete();
+        $subjIds = \DB::table('subjects')->where('institute_id', $id)->pluck('id');
+        if ($subjIds->isNotEmpty()) {
+            foreach (['subject_components','subject_fee_rules'] as $t) {
+                if ($schema->hasTable($t)) \DB::table($t)->whereIn('subject_id', $subjIds)->delete();
+            }
+        }
+        foreach (['subjects','course_fee_rules','courses','course_types','student_types'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+        $fpIds = \DB::table('fee_plans')->where('institute_id', $id)->pluck('id');
+        if ($fpIds->isNotEmpty()) \DB::table('fee_plan_installments')->whereIn('fee_plan_id', $fpIds)->delete();
+        foreach (['fee_plans','fee_types','payment_mode_permissions','institute_bank_accounts'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+        foreach (['certificate_types','certificate_settings'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+        $dcIds = \DB::table('document_categories')->where('institute_id', $id)->pluck('id');
+        if ($dcIds->isNotEmpty()) {
+            $dtIds = \DB::table('document_types')->whereIn('document_category_id', $dcIds)->pluck('id');
+            if ($dtIds->isNotEmpty()) {
+                \DB::table('document_upload_rules')->whereIn('document_type_id', $dtIds)->delete();
+                \DB::table('document_types')->whereIn('document_category_id', $dcIds)->delete();
+            }
+        }
+        if ($schema->hasTable('document_categories')) \DB::table('document_categories')->where('institute_id', $id)->delete();
+        foreach (['notice_reads','notices','sms_logs','sms_due_reminder_settings',
+                  'sms_provider_settings','admission_form_settings','admission_counters',
+                  'fee_invoice_counters','audit_logs'] as $t) {
+            if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
+        }
+        \DB::table('users')->where('institute_id', $id)->delete();
+    }
+
     public function cleanData(Request $request, Institute $institute)
     {
         $request->validate([

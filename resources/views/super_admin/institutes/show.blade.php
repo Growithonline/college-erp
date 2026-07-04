@@ -322,21 +322,22 @@
     </div>
 </div>
 
-{{-- Data Export --}}
+{{-- Data Backup / Restore --}}
 <div class="row g-3 mt-1">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 pb-0 pt-3">
-                <h6 class="fw-bold mb-0"><i class="bi bi-download text-success me-2"></i>Data Backup / Export</h6>
+                <h6 class="fw-bold mb-0"><i class="bi bi-database text-success me-2"></i>Data Backup / Restore</h6>
             </div>
             <div class="card-body">
-                <div class="d-flex align-items-start gap-3 flex-wrap">
+
+                {{-- Export --}}
+                <div class="d-flex align-items-start gap-3 flex-wrap pb-3 border-bottom">
                     <div class="flex-grow-1">
-                        <p class="fw-semibold mb-1">Institute ka Data .sql File mein Download Karo</p>
+                        <p class="fw-semibold mb-1"><i class="bi bi-download text-success me-1"></i> Data Export (.sql Backup)</p>
                         <p class="text-muted small mb-0">
                             Sirf <strong>{{ $institute->name }}</strong> ka data export hoga — students, courses, fees, staff, centers, partners, library, transport sab.
-                            Dusre institutes ka koi data include nahi hoga.
-                            File directly browser se download hogi, server pe kuch save nahi hoga.
+                            Dusre institutes ka koi data include nahi hoga. File directly download hogi.
                         </p>
                     </div>
                     <div class="flex-shrink-0">
@@ -346,6 +347,39 @@
                         </a>
                     </div>
                 </div>
+
+                {{-- Restore --}}
+                <div class="pt-3">
+                    <p class="fw-semibold mb-1"><i class="bi bi-upload text-warning me-1"></i> Data Restore (Backup se)</p>
+                    <p class="text-muted small mb-2">
+                        Pehle se liya hua <code>.sql</code> backup file upload karo.
+                        <strong class="text-warning">Restore karne se pehle is institute ka current data automatically clean ho jaayega</strong>,
+                        phir backup ka data restore hoga. Sirf is institute (<strong>{{ $institute->name }}</strong>) ka data affect hoga.
+                    </p>
+
+                    <form id="form-restore" method="POST"
+                          action="{{ route('super_admin.institutes.restore-data', $institute->id) }}"
+                          enctype="multipart/form-data">
+                        @csrf
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <input type="file" name="backup_file" id="restoreFile"
+                                   accept=".sql,.txt"
+                                   class="form-control form-control-sm @error('backup_file') is-invalid @enderror"
+                                   style="max-width:340px;">
+                            @error('backup_file')
+                                <div class="text-danger small">{{ $message }}</div>
+                            @enderror
+                            <button type="button" class="btn btn-warning btn-sm fw-semibold px-3"
+                                    onclick="openRestoreConfirm()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Restore Karo
+                            </button>
+                        </div>
+                        <p class="text-muted mt-2 mb-0" style="font-size:11px;">
+                            Max file size: 100 MB &nbsp;|&nbsp; Sirf is institute ka backup file kaam karega (UID: <strong>{{ $institute->institute_uid }}</strong>)
+                        </p>
+                    </form>
+                </div>
+
             </div>
         </div>
     </div>
@@ -425,6 +459,28 @@
 </div>
 
 <script>
+function openRestoreConfirm() {
+    var file = document.getElementById('restoreFile');
+    if (!file.files || !file.files.length) {
+        alert('Pehle .sql backup file select karo.');
+        file.focus();
+        return;
+    }
+    var name = file.files[0].name;
+    openConfirm({
+        formId:       'form-restore',
+        icon:         '♻️',
+        iconBg:       '#fffbeb',
+        iconColor:    '#d97706',
+        title:        'Data Restore Karo?',
+        message:      '<strong>{{ addslashes($institute->name) }}</strong> ka current data pehle delete hoga, phir backup se restore hoga.<br><br>' +
+                      'File: <code>' + name + '</code><br><br>' +
+                      '<span class="text-danger fw-semibold">Yeh action undo nahi ho sakta.</span>',
+        confirmText:  'Haan, Restore Karo',
+        confirmClass: 'btn-warning',
+    });
+}
+
 function openCleanModal() {
     document.getElementById('cleanConfirmInput').value = '';
     document.getElementById('cleanConfirmHidden').value = '';
