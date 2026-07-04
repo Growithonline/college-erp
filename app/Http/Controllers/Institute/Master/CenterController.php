@@ -101,7 +101,6 @@ class CenterController extends Controller
                 // Discount & fee restrictions
                 'can_give_discount'             => $request->boolean('can_give_discount'),
                 'max_discount_pct'              => $request->boolean('can_give_discount') ? ($request->max_discount_pct ?? 0) : 0,
-                'can_waive_fee'                 => $request->boolean('can_waive_fee'),
                 'restrict_fee_collection_types' => $request->boolean('restrict_fee_collection_types'),
                 // Reports
                 'can_download_reports' => $request->boolean('can_download_reports'),
@@ -183,7 +182,6 @@ class CenterController extends Controller
             // Discount & fee restrictions
             'can_give_discount'             => $request->boolean('can_give_discount'),
             'max_discount_pct'              => $request->boolean('can_give_discount') ? ($request->max_discount_pct ?? 0) : 0,
-            'can_waive_fee'                 => $request->boolean('can_waive_fee'),
             'restrict_fee_collection_types' => $request->boolean('restrict_fee_collection_types'),
             // Reports
             'can_download_reports' => $request->boolean('can_download_reports'),

@@ -30,7 +30,7 @@ class Center extends Authenticatable
         'student_scope',
         // Fee controls
         'fee_scope', 'allowed_pay_modes',
-        'can_give_discount', 'max_discount_pct', 'can_waive_fee',
+        'can_give_discount', 'max_discount_pct',
         'restrict_fee_collection_types',
         // Reports
         'can_download_reports',
@@ -48,7 +48,6 @@ class Center extends Authenticatable
         'allowed_pay_modes'    => 'array',
         'can_give_discount'              => 'boolean',
         'max_discount_pct'               => 'decimal:2',
-        'can_waive_fee'                  => 'boolean',
         'restrict_fee_collection_types'  => 'boolean',
         'can_download_reports'           => 'boolean',
     ];

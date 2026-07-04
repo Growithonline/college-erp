@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Mail\PartnerCredentialsMail;
 use App\Models\AcademicSession;
 use App\Models\ChannelPartner;
+use App\Models\ChannelPartnerFeeDiscountPermission;
+use App\Models\ChannelPartnerFeeCollectionPermission;
 use App\Models\Course;
 use App\Models\CourseType;
+use App\Models\FeeType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Services\InstituteMailer;
@@ -35,6 +38,7 @@ class ChannelPartnerController extends Controller
             'sessions' => AcademicSession::where('institute_id', $id)
                             ->orderByDesc('is_active')->orderByDesc('id')->get(['id', 'name', 'is_active']),
             'payModes' => self::PAY_MODES,
+            'feeTypes' => FeeType::where('institute_id', $id)->orderBy('name')->get(['id', 'name']),
         ];
     }
 
@@ -93,13 +97,16 @@ class ChannelPartnerController extends Controller
             // Student & fee scope
             'student_scope'        => $request->student_scope,
             'fee_scope'            => $request->fee_scope,
-            // Discount
-            'can_give_discount'    => $request->boolean('can_give_discount'),
-            'max_discount_pct'     => $request->boolean('can_give_discount') ? ($request->max_discount_pct ?? 0) : 0,
-            'can_waive_fee'        => $request->boolean('can_waive_fee'),
+            // Discount & fee restrictions
+            'can_give_discount'             => $request->boolean('can_give_discount'),
+            'max_discount_pct'              => $request->boolean('can_give_discount') ? ($request->max_discount_pct ?? 0) : 0,
+            'restrict_fee_collection_types' => $request->boolean('restrict_fee_collection_types'),
             // Reports
             'can_download_reports' => $request->boolean('can_download_reports'),
         ]);
+
+        $this->syncChannelPartnerFeeDiscountPermissions($partner, $request);
+        $this->syncChannelPartnerFeeCollectionPermissions($partner, $request);
 
         $credentialsSent = $this->sendCredentialsEmail($partner, $plainPassword);
 
@@ -116,6 +123,7 @@ class ChannelPartnerController extends Controller
     public function edit(ChannelPartner $channelPartner)
     {
         abort_if($channelPartner->institute_id !== $this->instituteId(), 403);
+        $channelPartner->load('feeDiscountPermissions', 'feeCollectionPermissions');
         return view('institute.master.channel-partners.edit', array_merge(
             compact('channelPartner'),
             $this->formData()
@@ -156,10 +164,10 @@ class ChannelPartnerController extends Controller
             // Student & fee scope
             'student_scope'        => $request->student_scope,
             'fee_scope'            => $request->fee_scope,
-            // Discount
-            'can_give_discount'    => $request->boolean('can_give_discount'),
-            'max_discount_pct'     => $request->boolean('can_give_discount') ? ($request->max_discount_pct ?? 0) : 0,
-            'can_waive_fee'        => $request->boolean('can_waive_fee'),
+            // Discount & fee restrictions
+            'can_give_discount'             => $request->boolean('can_give_discount'),
+            'max_discount_pct'              => $request->boolean('can_give_discount') ? ($request->max_discount_pct ?? 0) : 0,
+            'restrict_fee_collection_types' => $request->boolean('restrict_fee_collection_types'),
             // Reports
             'can_download_reports' => $request->boolean('can_download_reports'),
         ];
@@ -171,6 +179,9 @@ class ChannelPartnerController extends Controller
         }
 
         $channelPartner->update($data);
+
+        $this->syncChannelPartnerFeeDiscountPermissions($channelPartner, $request);
+        $this->syncChannelPartnerFeeCollectionPermissions($channelPartner, $request);
 
         $msg = 'Partner updated successfully!';
         if ($newPassword) {
@@ -262,6 +273,48 @@ class ChannelPartnerController extends Controller
         }
 
         return empty($result) ? null : $result;
+    }
+
+    private function syncChannelPartnerFeeDiscountPermissions(ChannelPartner $partner, Request $request): void
+    {
+        if (!$request->boolean('can_give_discount')) {
+            $partner->feeDiscountPermissions()->delete();
+            return;
+        }
+
+        $submitted = $request->input('fee_discount_allowed', []);
+        $allowedIds = collect($submitted)
+            ->filter(fn ($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN))
+            ->keys()
+            ->map('intval')
+            ->filter(fn ($id) => $id > 0)
+            ->all();
+
+        $partner->feeDiscountPermissions()->delete();
+        foreach ($allowedIds as $feeTypeId) {
+            ChannelPartnerFeeDiscountPermission::create(['channel_partner_id' => $partner->id, 'fee_type_id' => $feeTypeId]);
+        }
+    }
+
+    private function syncChannelPartnerFeeCollectionPermissions(ChannelPartner $partner, Request $request): void
+    {
+        if (!$request->boolean('restrict_fee_collection_types')) {
+            $partner->feeCollectionPermissions()->delete();
+            return;
+        }
+
+        $submitted = $request->input('fee_collection_allowed', []);
+        $allowedIds = collect($submitted)
+            ->filter(fn ($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN))
+            ->keys()
+            ->map('intval')
+            ->filter(fn ($id) => $id > 0)
+            ->all();
+
+        $partner->feeCollectionPermissions()->delete();
+        foreach ($allowedIds as $feeTypeId) {
+            ChannelPartnerFeeCollectionPermission::create(['channel_partner_id' => $partner->id, 'fee_type_id' => $feeTypeId]);
+        }
     }
 
     private function sendCredentialsEmail(ChannelPartner $partner, string $plainPassword): bool

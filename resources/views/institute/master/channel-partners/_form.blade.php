@@ -441,28 +441,74 @@
                         </div>
                         <div id="pdiscountPctRow" class="{{ old('can_give_discount', $p->can_give_discount ?? false) ? '' : 'd-none' }}">
                             <label class="form-label small fw-semibold">Maximum Discount %</label>
-                            <div class="input-group" style="max-width:180px;">
+                            <div class="input-group mb-3" style="max-width:180px;">
                                 <input type="number" name="max_discount_pct" min="0" max="100" step="0.5"
                                        value="{{ old('max_discount_pct', $p->max_discount_pct ?? 0) }}"
                                        class="form-control form-control-sm">
                                 <span class="input-group-text">%</span>
                             </div>
-                            <small class="text-muted">Partner cannot exceed this discount</small>
+                            <small class="text-muted d-block mb-2">Partner cannot exceed this discount while collecting fees</small>
+
+                            {{-- Per-item discount permissions --}}
+                            @if(isset($feeTypes) && $feeTypes->isNotEmpty())
+                            @php
+                                $pSavedDiscountIds = old('fee_discount_allowed')
+                                    ? array_keys(array_filter((array) old('fee_discount_allowed')))
+                                    : ($p?->feeDiscountPermissions?->pluck('fee_type_id')->toArray() ?? []);
+                            @endphp
+                            <div class="mt-2">
+                                <label class="form-label small fw-semibold">
+                                    <i class="bi bi-tag me-1 text-warning"></i>Discountable Fee Items
+                                    <span class="text-muted fw-normal">(none selected = all items)</span>
+                                </label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach($feeTypes as $ft)
+                                    <label class="border rounded px-2 py-1 small bg-white d-flex align-items-center gap-1 cursor-pointer">
+                                        <input type="checkbox" class="form-check-input"
+                                               name="fee_discount_allowed[{{ $ft->id }}]" value="1"
+                                               {{ in_array($ft->id, $pSavedDiscountIds, false) ? 'checked' : '' }}>
+                                        {{ $ft->name }}
+                                    </label>
+                                    @endforeach
+                                </div>
+                                <small class="text-muted d-block mt-1">Only checked items will allow discount. Leave all unchecked to allow discount on all items.</small>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
 
+                {{-- Fee type restriction --}}
                 <div class="card border-0 bg-light">
                     <div class="card-body">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="pcanWaive"
-                                   name="can_waive_fee" value="1"
-                                   {{ old('can_waive_fee', $p->can_waive_fee ?? false) ? 'checked' : '' }}>
-                            <label class="form-check-label fw-semibold" for="pcanWaive">
-                                <i class="bi bi-x-circle me-1 text-danger"></i>Can Waive Fee
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="prestrictFeeTypes"
+                                   name="restrict_fee_collection_types" value="1"
+                                   {{ old('restrict_fee_collection_types', $p->restrict_fee_collection_types ?? false) ? 'checked' : '' }}>
+                            <label class="form-check-label fw-semibold" for="prestrictFeeTypes">
+                                <i class="bi bi-tags me-1 text-warning"></i>Allow only selected fee types
                             </label>
                         </div>
-                        <small class="text-muted">Allow this partner to mark a fee as fully waived off</small>
+                        <div id="pfeeTypeRestrictRow" class="{{ old('restrict_fee_collection_types', $p->restrict_fee_collection_types ?? false) ? '' : 'd-none' }}">
+                            @if(isset($feeTypes) && $feeTypes->isNotEmpty())
+                            @php
+                                $pSavedCollectIds = old('fee_collection_allowed')
+                                    ? array_keys(array_filter((array) old('fee_collection_allowed')))
+                                    : ($p?->feeCollectionPermissions?->pluck('fee_type_id')->toArray() ?? []);
+                            @endphp
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                @foreach($feeTypes as $ft)
+                                <label class="border rounded px-2 py-1 small bg-white d-flex align-items-center gap-1 cursor-pointer">
+                                    <input type="checkbox" class="form-check-input"
+                                           name="fee_collection_allowed[{{ $ft->id }}]" value="1"
+                                           {{ in_array($ft->id, $pSavedCollectIds, false) ? 'checked' : '' }}>
+                                    {{ $ft->name }}
+                                </label>
+                                @endforeach
+                            </div>
+                            <small class="text-muted d-block mt-1">The partner can only collect checked fee types. All unchecked = all allowed (keep toggle OFF).</small>
+                            @endif
+                        </div>
                     </div>
                 </div>
 

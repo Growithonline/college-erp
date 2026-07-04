@@ -1248,6 +1248,31 @@ class AdmissionController extends Controller
         return $feeData;
     }
 
+    private function filterFeeDataByPartnerScope(array $feeData): array
+    {
+        $partner = auth()->guard('partner')->user();
+
+        if (!$partner || !$partner->hasRestrictedFeeCollectionTypes()) {
+            return $feeData;
+        }
+
+        $allowedIds = $partner->allowedFeeCollectionTypeIds();
+        $permissionMeta = $this->feeTypePermissionMeta($allowedIds);
+        $isAllowed = fn (array $item): bool => $this->isRestrictedItemAllowed($item, $allowedIds, $permissionMeta['categories'], $permissionMeta['names']);
+
+        if (!empty($feeData['items']) && is_array($feeData['items'])) {
+            $feeData['items'] = array_values(array_filter($feeData['items'], $isAllowed));
+        }
+
+        if (!empty($feeData['grouped_items']) && is_array($feeData['grouped_items'])) {
+            $feeData['grouped_items'] = array_values(array_filter($feeData['grouped_items'], $isAllowed));
+        }
+
+        $feeData['total'] = collect($feeData['items'] ?? [])->sum(fn ($item) => (float) ($item['amount'] ?? 0));
+
+        return $feeData;
+    }
+
     private function buildQuickFeeData(Request $request, AcademicSession $activeSession): array
     {
         $instituteId = $this->instituteId();
@@ -1278,7 +1303,7 @@ class AdmissionController extends Controller
             coursePartId: $selectedPart?->id
         );
 
-        $feeData = $this->filterFeeDataByCenterScope($this->filterFeeDataByStaffScope($feeData));
+        $feeData = $this->filterFeeDataByPartnerScope($this->filterFeeDataByCenterScope($this->filterFeeDataByStaffScope($feeData)));
 
         if (empty($feeData['items'])) {
             $feeData['grouped_items'] = [];
@@ -3773,9 +3798,11 @@ class AdmissionController extends Controller
             }
         }
 
-        if ($totalDiscount > 0 && auth()->guard('center')->check()) {
-            $centerUser = auth()->guard('center')->user();
-            $discAllowed = $centerUser->feeDiscountPermissions()->pluck('fee_type_id')->toArray();
+        if ($totalDiscount > 0 && (auth()->guard('center')->check() || auth()->guard('partner')->check())) {
+            $portalUser = auth()->guard('center')->check()
+                ? auth()->guard('center')->user()
+                : auth()->guard('partner')->user();
+            $discAllowed = $portalUser->feeDiscountPermissions()->pluck('fee_type_id')->toArray();
             $permissionMeta = $this->feeTypePermissionMeta($discAllowed);
 
             if (count($discAllowed) > 0) {
@@ -3793,10 +3820,12 @@ class AdmissionController extends Controller
             }
         }
 
-        if (auth()->guard('center')->check()) {
-            $centerUser = auth()->guard('center')->user();
-            if ($centerUser->hasRestrictedFeeCollectionTypes()) {
-                $allowedTypeIds = $centerUser->allowedFeeCollectionTypeIds();
+        if (auth()->guard('center')->check() || auth()->guard('partner')->check()) {
+            $portalUser = auth()->guard('center')->check()
+                ? auth()->guard('center')->user()
+                : auth()->guard('partner')->user();
+            if ($portalUser->hasRestrictedFeeCollectionTypes()) {
+                $allowedTypeIds = $portalUser->allowedFeeCollectionTypeIds();
                 $permissionMeta = $this->feeTypePermissionMeta($allowedTypeIds);
 
                 foreach ($validItems as $item) {

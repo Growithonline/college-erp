@@ -94,7 +94,7 @@ class FeeCollectionController extends Controller
     {
         $feeState = WalletService::buildPromotionAwareFeeState($student, (int) $student->academic_session_id);
         $feeBreakup = !empty($feeState['items'])
-            ? $this->filterFeeBreakupByCenterScope($this->filterFeeBreakupByStaffScope($feeState))
+            ? $this->filterFeeBreakupByPartnerScope($this->filterFeeBreakupByCenterScope($this->filterFeeBreakupByStaffScope($feeState)))
             : null;
 
         $collectItems = collect($feeBreakup['grouped_items'] ?? $feeBreakup['items'] ?? []);
@@ -238,6 +238,29 @@ class FeeCollectionController extends Controller
         }
 
         $allowedIds = $center->allowedFeeCollectionTypeIds();
+        $permissionMeta = $this->feeTypePermissionMeta($allowedIds);
+
+        $isItemAllowed = fn (array $item): bool => $this->isRestrictedItemAllowed($item, $allowedIds, $permissionMeta['categories'], $permissionMeta['names']);
+        $isGroupedAllowed = fn (array $item): bool => $this->isRestrictedItemAllowed($item, $allowedIds, $permissionMeta['categories'], $permissionMeta['names']);
+
+        $filteredItems = array_values(array_filter($feeBreakup['items'] ?? [], $isItemAllowed));
+
+        $feeBreakup['items']         = $filteredItems;
+        $feeBreakup['grouped_items'] = array_values(array_filter($feeBreakup['grouped_items'] ?? [], $isGroupedAllowed));
+        $feeBreakup['total']         = collect($filteredItems)->sum(fn ($item) => (float) ($item['amount'] ?? 0));
+
+        return $feeBreakup;
+    }
+
+    private function filterFeeBreakupByPartnerScope(?array $feeBreakup): ?array
+    {
+        $partner = auth()->guard('partner')->user();
+
+        if (!$partner || !$partner->hasRestrictedFeeCollectionTypes() || !$feeBreakup) {
+            return $feeBreakup;
+        }
+
+        $allowedIds = $partner->allowedFeeCollectionTypeIds();
         $permissionMeta = $this->feeTypePermissionMeta($allowedIds);
 
         $isItemAllowed = fn (array $item): bool => $this->isRestrictedItemAllowed($item, $allowedIds, $permissionMeta['categories'], $permissionMeta['names']);
@@ -627,7 +650,7 @@ class FeeCollectionController extends Controller
             );
 
             $feeBreakup  = !empty($feeState['items'])
-                ? $this->filterFeeBreakupByCenterScope($this->filterFeeBreakupByStaffScope($feeState))
+                ? $this->filterFeeBreakupByPartnerScope($this->filterFeeBreakupByCenterScope($this->filterFeeBreakupByStaffScope($feeState)))
                 : null;
             if ($feeBreakup) {
                 foreach (['items', 'grouped_items'] as $bucket) {
@@ -744,6 +767,14 @@ class FeeCollectionController extends Controller
             $staffMaxDiscount = $partnerUser->can_give_discount
                 ? (float) ($partnerUser->max_discount_pct ?? 100)
                 : 0;
+            $discPerms = $partnerUser->feeDiscountPermissions()->pluck('fee_type_id');
+            if ($discPerms->isNotEmpty()) {
+                $staffFeeAllowedTypes = $discPerms->toArray();
+            }
+            if ($partnerUser->hasRestrictedFeeCollectionTypes()) {
+                $staffCollectFeeTypeIds = $partnerUser->allowedFeeCollectionTypeIds();
+                $allFeeTypes = $allFeeTypes->whereIn('id', $staffCollectFeeTypeIds)->values();
+            }
             // Build session list for session selector dropdown
             $allSessions = AcademicSession::where('institute_id', $partnerUser->institute_id)
                 ->orderByDesc('id')->get();
@@ -1156,10 +1187,12 @@ class FeeCollectionController extends Controller
             }
         }
 
-        // Per-item discount permission check for center (only specific fee types may get discount)
-        if ($totalDiscount > 0 && auth()->guard('center')->check()) {
-            $centerUser = auth()->guard('center')->user();
-            $discAllowed = $centerUser->feeDiscountPermissions()->pluck('fee_type_id')->toArray();
+        // Per-item discount permission check for center/partner (only specific fee types may get discount)
+        if ($totalDiscount > 0 && (auth()->guard('center')->check() || auth()->guard('partner')->check())) {
+            $portalUser = auth()->guard('center')->check()
+                ? auth()->guard('center')->user()
+                : auth()->guard('partner')->user();
+            $discAllowed = $portalUser->feeDiscountPermissions()->pluck('fee_type_id')->toArray();
             $permissionMeta = $this->feeTypePermissionMeta($discAllowed);
             if (count($discAllowed) > 0) {
                 foreach ($validItems as $item) {
@@ -1174,11 +1207,13 @@ class FeeCollectionController extends Controller
             }
         }
 
-        // Fee type restriction for center
-        if (auth()->guard('center')->check()) {
-            $centerUser = auth()->guard('center')->user();
-            if ($centerUser->hasRestrictedFeeCollectionTypes()) {
-                $allowedTypeIds = $centerUser->allowedFeeCollectionTypeIds();
+        // Fee type restriction for center/partner
+        if (auth()->guard('center')->check() || auth()->guard('partner')->check()) {
+            $portalUser = auth()->guard('center')->check()
+                ? auth()->guard('center')->user()
+                : auth()->guard('partner')->user();
+            if ($portalUser->hasRestrictedFeeCollectionTypes()) {
+                $allowedTypeIds = $portalUser->allowedFeeCollectionTypeIds();
                 $permissionMeta = $this->feeTypePermissionMeta($allowedTypeIds);
                 foreach ($validItems as $item) {
                     if (!$this->isRestrictedItemAllowed($item, $allowedTypeIds, $permissionMeta['categories'], $permissionMeta['names'])) {

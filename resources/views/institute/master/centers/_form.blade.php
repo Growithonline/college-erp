@@ -527,21 +527,6 @@
                     </div>
                 </div>
 
-                {{-- Waive fee --}}
-                <div class="card border-0 bg-light">
-                    <div class="card-body">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="canWaive"
-                                   name="can_waive_fee" value="1"
-                                   {{ old('can_waive_fee', $c->can_waive_fee ?? false) ? 'checked' : '' }}>
-                            <label class="form-check-label fw-semibold" for="canWaive">
-                                <i class="bi bi-x-circle me-1 text-danger"></i>Can Waive Fee
-                            </label>
-                        </div>
-                        <small class="text-muted">Allow this center to mark a fee as fully waived off</small>
-                    </div>
-                </div>
-
             </div>
 
             {{-- ── Tab 4: Access Scope ───────────────────────────────── --}}

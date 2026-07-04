@@ -28,7 +28,8 @@ class ChannelPartner extends Authenticatable
         'student_scope',
         // Fee controls
         'fee_scope', 'allowed_pay_modes',
-        'can_give_discount', 'max_discount_pct', 'can_waive_fee',
+        'can_give_discount', 'max_discount_pct',
+        'restrict_fee_collection_types',
         // Reports
         'can_download_reports',
     ];
@@ -44,10 +45,10 @@ class ChannelPartner extends Authenticatable
         'allowed_courses'      => 'array',
         'allowed_sessions'     => 'array',
         'allowed_pay_modes'    => 'array',
-        'can_give_discount'    => 'boolean',
-        'max_discount_pct'     => 'decimal:2',
-        'can_waive_fee'        => 'boolean',
-        'can_download_reports' => 'boolean',
+        'can_give_discount'              => 'boolean',
+        'max_discount_pct'               => 'decimal:2',
+        'restrict_fee_collection_types'  => 'boolean',
+        'can_download_reports'           => 'boolean',
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────
@@ -60,6 +61,16 @@ class ChannelPartner extends Authenticatable
     public function wallet()
     {
         return $this->hasOne(ChannelWallet::class, 'channel_partner_id');
+    }
+
+    public function feeDiscountPermissions()
+    {
+        return $this->hasMany(ChannelPartnerFeeDiscountPermission::class);
+    }
+
+    public function feeCollectionPermissions()
+    {
+        return $this->hasMany(ChannelPartnerFeeCollectionPermission::class);
     }
 
     public function walletBlockStatus(float $amount = 0): ?array
@@ -218,5 +229,20 @@ class ChannelPartner extends Authenticatable
     public function getMaxDiscountPercent(): float
     {
         return $this->can_give_discount ? (float) $this->max_discount_pct : 0.0;
+    }
+
+    public function hasRestrictedFeeCollectionTypes(): bool
+    {
+        return (bool) $this->restrict_fee_collection_types;
+    }
+
+    public function allowedFeeCollectionTypeIds(): array
+    {
+        return $this->feeCollectionPermissions()->pluck('fee_type_id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function allowedFeeDiscountTypeIds(): array
+    {
+        return $this->feeDiscountPermissions()->pluck('fee_type_id')->map(fn ($id) => (int) $id)->all();
     }
 }
