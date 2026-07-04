@@ -1,6 +1,6 @@
 @extends('institute.layout')
-@section('title', 'Final Outcomes')
-@section('breadcrumb', 'Admissions / Final Outcomes')
+@section('title', 'Promoted Students')
+@section('breadcrumb', 'Admissions / Promoted Students')
 @section('content')
 @php
     $isStaff    = auth()->guard('staff')->check();
@@ -8,13 +8,14 @@
     $rSession   = $_rp . 'session';
     $rReport    = $_rp . 'report';
     $rOutcomes  = $_rp . 'outcomes';
-    $rReadmit   = $_rp . 'readmit';
+    $rPromoted  = $_rp . 'promoted-students';
+    $profileRoute = $isStaff ? 'staff.admissions.show' : 'admissions.show';
 @endphp
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h4 class="mb-0 fw-bold"><i class="bi bi-award me-2 text-dark"></i>Final Outcomes</h4>
-        <small class="text-muted">Consolidated list of passed-out, backlog, failed, and dropped students</small>
+        <h4 class="mb-0 fw-bold"><i class="bi bi-arrow-up-circle me-2 text-dark"></i>Promoted Students</h4>
+        <small class="text-muted">Students jo is session mein the lekin promote hokar aage chale gaye</small>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ request()->fullUrlWithQuery(['export' => 'csv']) }}" class="btn btn-outline-success btn-sm">
@@ -26,8 +27,8 @@
         <a href="{{ route($rReport) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-text me-1"></i> Report
         </a>
-        <a href="{{ route($_rp . 'promoted-students') }}" class="btn btn-outline-info btn-sm">
-            <i class="bi bi-people me-1"></i> Promoted Students
+        <a href="{{ route($rOutcomes) }}" class="btn btn-outline-dark btn-sm">
+            <i class="bi bi-award me-1"></i> Outcomes
         </a>
     </div>
 </div>
@@ -35,10 +36,9 @@
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="GET" class="row g-2 align-items-end">
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold mb-1">Session</label>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">Session (as of)</label>
                 <select name="session_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">All</option>
                     @foreach($sessions as $session)
                         <option value="{{ $session->id }}" {{ (string) $sessionId === (string) $session->id ? 'selected' : '' }}>
                             {{ $session->name }}{{ $session->is_active ? ' *' : '' }}
@@ -46,7 +46,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label small fw-semibold mb-1">Course</label>
                 <select name="course_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Courses</option>
@@ -57,15 +57,6 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-semibold mb-1">Outcome</label>
-                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">All</option>
-                    @foreach(['passed_out' => 'Passed Out', 'backlog' => 'Backlog', 'failed' => 'Failed', 'dropped' => 'Dropped'] as $value => $label)
-                        <option value="{{ $value }}" {{ (string) $status === $value ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold mb-1">Search</label>
                 <input type="text" name="search" value="{{ request('search') }}"
@@ -73,7 +64,7 @@
             </div>
             <div class="col-md-3 d-flex gap-2">
                 <button class="btn btn-primary btn-sm flex-fill"><i class="bi bi-search me-1"></i>Filter</button>
-                <a href="{{ route($rOutcomes) }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                <a href="{{ route($rPromoted) }}" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
         </form>
     </div>
@@ -96,21 +87,14 @@
                         <th style="min-width:85px;">Enroll No</th>
                         <th style="min-width:80px;">UIN No</th>
                         <th>Course</th>
-                        <th>Session</th>
-                        <th>Semester</th>
-                        <th>Outcome</th>
-                        <th class="text-end">Due</th>
-                        <th>Updated By</th>
-                        <th>Date</th>
+                        <th>Year/Sem (As Of)</th>
+                        <th>Status (As Of)</th>
+                        <th>Promoted To</th>
                         <th class="text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($students as $student)
-                        @php
-                            $log = $logs->get($student->id)?->first();
-                            $outcome = $log?->terminal_status ?: $student->status;
-                        @endphp
                         <tr>
                             <td class="ps-3" style="white-space:nowrap;">
                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:10.5px;">
@@ -129,43 +113,37 @@
                                 <div>{{ $student->stream?->course?->name ?? '—' }}</div>
                                 <div class="text-muted" style="font-size:11px;">{{ $student->stream?->name ?? '—' }}</div>
                             </td>
-                            <td>{{ $student->session?->name ?? '—' }}</td>
                             <td>
-                                @if($student->coursePart?->year_label)
-                                    <div>{{ $student->coursePart->year_label }}</div>
+                                @if($student->display_year_label)
+                                    <div>{{ $student->display_year_label }}</div>
                                 @endif
-                                <div class="text-muted" style="font-size:11px;">Sem {{ $student->current_semester ?? '—' }}</div>
+                                <div class="text-muted" style="font-size:11px;">Sem {{ $student->display_semester ?? '—' }}</div>
                             </td>
                             <td>
-                                <span class="badge bg-dark-subtle text-dark border">{{ ucwords(str_replace('_', ' ', $outcome)) }}</span>
-                            </td>
-                            <td class="text-end">
-                                @if((float) ($log?->dues_carried_forward ?? 0) > 0)
-                                    <span class="text-danger fw-semibold">₹ {{ number_format((float) $log->dues_carried_forward, 2) }}</span>
-                                @else
-                                    <span class="text-success">Clear</span>
-                                @endif
+                                <span class="badge bg-secondary-subtle text-secondary border">
+                                    {{ ucfirst($student->display_status ?? '—') }}
+                                </span>
                             </td>
                             <td>
-                                <div>{{ $log?->promoted_by ?? '—' }}</div>
-                                <div class="text-muted" style="font-size:11px;">{{ ucfirst($log?->promoted_by_role ?? '') }}</div>
-                            </td>
-                            <td>
-                                <div>{{ $log?->created_at?->format('d M Y') ?? '—' }}</div>
-                                <div class="text-muted" style="font-size:11px;">{{ $log?->created_at?->format('h:i A') ?? '' }}</div>
+                                <span class="badge bg-success-subtle text-success border" style="white-space:nowrap;">
+                                    <i class="bi bi-arrow-up-circle me-1"></i>{{ $student->session?->name ?? '—' }}
+                                </span>
+                                <div class="text-muted" style="font-size:11px;">
+                                    {{ $student->coursePart?->year_label ?? '—' }} · Sem {{ $student->current_semester ?? '—' }}
+                                </div>
                             </td>
                             <td class="text-center">
-                                <a href="{{ route($rReadmit, $student) }}"
-                                   class="btn btn-xs btn-outline-success"
+                                <a href="{{ route($profileRoute, $student->id) }}"
+                                   class="btn btn-xs btn-outline-primary"
                                    style="font-size:11px;padding:2px 8px;">
-                                    <i class="bi bi-person-check me-1"></i>Re-Admit
+                                    <i class="bi bi-person me-1"></i>Profile
                                 </a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="text-center py-5 text-muted">
-                                <i class="bi bi-inboxes fs-2 d-block mb-2"></i>No final outcome students found
+                            <td colspan="11" class="text-center py-5 text-muted">
+                                <i class="bi bi-inboxes fs-2 d-block mb-2"></i>Is session ke koi promoted students nahi mile
                             </td>
                         </tr>
                     @endforelse

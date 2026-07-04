@@ -3034,4 +3034,109 @@ class PromotionController extends Controller
             'activeSession'
         ));
     }
+
+    /**
+     * Kisi session ke wo students dikhao jo us session mein the lekin baad mein
+     * promote ho kar agle session mein chale gaye (student_academic_identity se).
+     */
+    public function promotedStudents(Request $request)
+    {
+        $this->ensurePromotionAccess();
+        $instituteId = $this->instituteId();
+        $activeSession = AcademicSession::viewSession($instituteId);
+        $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courses = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $sessionId = $request->input('session_id', $activeSession?->id);
+        $courseId = $request->input('course_id');
+
+        $this->ensureStaffCanAccessSession($sessionId ? (int) $sessionId : null);
+        $this->ensureStaffCanAccessCourse($courseId ? (int) $courseId : null);
+
+        $query = Student::with(['stream.course', 'session', 'coursePart'])
+            ->where('institute_id', $instituteId);
+
+        if ($sessionId) {
+            $query->where('academic_session_id', '!=', $sessionId)
+                ->whereHas('academicIdentities', function ($q) use ($sessionId) {
+                    $q->where('academic_session_id', $sessionId)->realOnly();
+                })
+                ->with(['academicIdentities' => function ($q) use ($sessionId) {
+                    $q->where('academic_session_id', $sessionId)->realOnly()->with('coursePart')->orderByDesc('id');
+                }]);
+        }
+
+        $this->applyStudentAccessScope($query);
+
+        if ($courseId) {
+            $query->whereHas('stream', fn($q) => $q->where('course_id', $courseId));
+        }
+        if ($request->search) {
+            $search = $this->escapeLike($request->search);
+            $query->where(function ($inner) use ($search) {
+                $inner->where('name', 'like', "%{$search}%")
+                    ->orWhere('student_uid', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%");
+            });
+        }
+
+        $attachDisplayFields = function ($students) use ($sessionId) {
+            foreach ($students as $student) {
+                $identity = $sessionId ? $student->academicIdentities->first() : null;
+                $student->display_year_label = $identity?->coursePart?->year_label;
+                $student->display_semester   = $identity?->semester_at_time;
+                $student->display_status     = $identity?->student_status_snapshot;
+            }
+        };
+
+        if ($request->export === 'csv') {
+            $all = (clone $query)->orderBy('name')->get();
+            $attachDisplayFields($all);
+
+            $headers = ['#', 'Std ID', 'Name', 'Father Name', 'Mother Name', 'Roll No', 'Enroll No', 'UIN No',
+                        'Course', 'Stream', 'Session (As Of)', 'Year/Sem (As Of)', 'Status (As Of)',
+                        'Promoted To', 'Current Status'];
+
+            $sessionName = $sessions->firstWhere('id', $sessionId)?->name ?? '';
+
+            return response()->stream(function () use ($all, $headers, $sessionName) {
+                $handle = fopen('php://output', 'w');
+                fputcsv($handle, $headers);
+                foreach ($all as $i => $s) {
+                    fputcsv($handle, [
+                        $i + 1,
+                        $s->student_uid ?? '',
+                        $s->name,
+                        $s->father_name ?? '',
+                        $s->mother_name ?? '',
+                        $s->roll_no ?? '',
+                        $s->enrollment_no ?? '',
+                        $s->uin_no ?? '',
+                        $s->stream?->course?->name ?? '',
+                        $s->stream?->name ?? '',
+                        $sessionName,
+                        trim(($s->display_year_label ?? '') . ($s->display_semester ? ' Sem ' . $s->display_semester : '')),
+                        ucfirst($s->display_status ?? ''),
+                        $s->session?->name ?? '',
+                        ucfirst($s->status ?? ''),
+                    ]);
+                }
+                fclose($handle);
+            }, 200, [
+                'Content-Type'        => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="promoted-students.csv"',
+            ]);
+        }
+
+        $students = $query->orderBy('name')->paginate(50)->withQueryString();
+        $attachDisplayFields($students->getCollection());
+
+        return view('institute.admission.promotions.promoted-students', compact(
+            'students',
+            'sessions',
+            'courses',
+            'sessionId',
+            'courseId',
+            'activeSession'
+        ));
+    }
 }

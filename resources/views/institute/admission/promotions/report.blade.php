@@ -24,6 +24,10 @@
         <a href="{{ route('admissions.promote.outcomes') }}" class="btn btn-outline-dark btn-sm">
             <i class="bi bi-award me-1"></i> Outcomes
         </a>
+        <a href="{{ route('admissions.promote.promoted-students', array_filter(['session_id' => request('from_session_id')])) }}"
+           class="btn btn-outline-info btn-sm">
+            <i class="bi bi-people me-1"></i> Promoted Students
+        </a>
     </div>
 </div>
 

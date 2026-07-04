@@ -186,7 +186,7 @@ class PracticalFeeTokenController extends Controller
             ->orderBy('name')
             ->get();
 
-        $entries = PracticalFeeTokenEntry::where('batch_id', $batch->id)->get()->keyBy('student_id');
+        $entries = PracticalFeeTokenEntry::where('batch_id', $batch->id)->with('invoice')->get()->keyBy('student_id');
         $postedAmount = (float) $entries->sum('amount');
         $remainingAmount = max(0, (float) $batch->token_amount - $postedAmount);
 

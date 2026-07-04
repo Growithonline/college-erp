@@ -122,7 +122,7 @@
                             <td>
                                 @if($entry)
                                     <span class="badge bg-success">Posted</span>
-                                    <small class="d-block text-muted">Invoice #{{ $entry->fee_invoice_id }}</small>
+                                    <small class="d-block text-muted">Invoice #{{ $entry->invoice?->invoice_no }}</small>
                                 @elseif($alreadyPaid)
                                     <span class="badge bg-warning text-dark">Already Paid</span>
                                 @else

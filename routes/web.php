@@ -591,6 +591,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('session',                [PromotionController::class, 'sessionPromote'])  ->name('session.do');
         Route::get ('report',                 [PromotionController::class, 'report'])          ->name('report');
         Route::get ('outcomes',               [PromotionController::class, 'outcomesIndex'])   ->name('outcomes');
+        Route::get ('promoted-students',      [PromotionController::class, 'promotedStudents'])->name('promoted-students');
         Route::post('check-status',           [PromotionController::class, 'checkStudentStatus'])->name('check-status');
         // Point 8: Reversal
         Route::post('reverse/{log}',          [PromotionController::class, 'reversePromotion'])->name('reverse');
@@ -1021,6 +1022,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::post('session',                 [PromotionController::class, 'sessionPromote'])      ->name('session.do');
             Route::get ('report',                  [PromotionController::class, 'report'])              ->name('report');
             Route::get ('outcomes',                [PromotionController::class, 'outcomesIndex'])       ->name('outcomes');
+            Route::get ('promoted-students',       [PromotionController::class, 'promotedStudents'])    ->name('promoted-students');
             Route::post('check-status',            [PromotionController::class, 'checkStudentStatus']) ->name('check-status');
             Route::post('reverse/{log}',           [PromotionController::class, 'reversePromotion'])   ->name('reverse');
             Route::get ('identity',                [PromotionController::class, 'identityIndex'])       ->name('identity');

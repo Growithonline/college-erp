@@ -32,6 +32,9 @@
         <a href="{{ route($rReport) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-text me-1"></i>Report
         </a>
+        <a href="{{ route($_rp . 'promoted-students') }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-people me-1"></i>Promoted Students
+        </a>
     </div>
 </div>
 

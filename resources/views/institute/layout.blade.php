@@ -526,6 +526,10 @@
                            href="{{ route('admissions.promote.report') }}">
                         <i class="bi bi-file-earmark-text text-success"></i> Promotion Report
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.promoted-students') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.promoted-students') }}">
+                        <i class="bi bi-arrow-up-circle text-info"></i> Promoted Students
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('admissions.promote.identity*') ? 'active' : '' }}"
                            href="{{ route('admissions.promote.identity') }}">
                         <i class="bi bi-person-badge text-primary"></i> Roll / Form No
