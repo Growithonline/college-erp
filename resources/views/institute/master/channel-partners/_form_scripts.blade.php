@@ -6,6 +6,11 @@ document.getElementById('pcanDiscount')?.addEventListener('change', function () 
     document.getElementById('pdiscountPctRow').classList.toggle('d-none', !this.checked);
 });
 
+// Fee type restriction toggle
+document.getElementById('prestrictFeeTypes')?.addEventListener('change', function () {
+    document.getElementById('pfeeTypeRestrictRow').classList.toggle('d-none', !this.checked);
+});
+
 function checkAll(prefix) {
     document.querySelectorAll('[id^="' + prefix + '"]').forEach(function (cb) { cb.checked = true; });
 }
