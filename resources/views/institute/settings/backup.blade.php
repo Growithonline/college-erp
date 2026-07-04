@@ -4,10 +4,26 @@
 
 @section('content')
 
+{{-- Success Toast --}}
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999;">
+    <div id="downloadToast" class="toast align-items-center text-bg-success border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill fs-5"></i>
+                <div>
+                    <strong id="toastTitle">Download Started</strong>
+                    <div id="toastMessage" class="small opacity-75">Your file is downloading…</div>
+                </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h4 class="mb-1 fw-bold">Backup & Data Export</h4>
-        <small class="text-muted">Sirf aapke institute ka data export hoga — kisi aur institute ka data nahi aayega</small>
+        <small class="text-muted">Only your institute's data will be exported — no other institute's data will be included</small>
     </div>
     <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2" style="font-size:13px;">
         <i class="bi bi-shield-check me-1"></i> {{ $institute->name }}
@@ -19,11 +35,11 @@
     <div class="d-flex gap-2">
         <i class="bi bi-info-circle-fill text-primary mt-1"></i>
         <div style="font-size:13px;color:#1e40af;line-height:1.7;">
-            <strong>Teen tarah ke export available hain:</strong>
+            <strong>Three types of exports are available:</strong>
             <ul class="mb-0 mt-1 ps-3">
-                <li><strong>SQL Backup</strong> — Complete database backup. Disaster recovery ke liye use karo.</li>
-                <li><strong>Student Report (Excel)</strong> — Students + fee history + library + transport, 4 sheets mein.</li>
-                <li><strong>Financial Report (Excel)</strong> — Income, expenses, salary, employees, 5 sheets mein.</li>
+                <li><strong>SQL Backup</strong> — Complete database backup. Use this for disaster recovery.</li>
+                <li><strong>Student Report (Excel)</strong> — Students, fee history, library &amp; transport in 4 sheets.</li>
+                <li><strong>Financial Report (Excel)</strong> — Income, expenses, salary &amp; staff details in 13 sheets.</li>
             </ul>
         </div>
     </div>
@@ -47,29 +63,30 @@
                 </div>
 
                 <p class="small text-muted mb-3" style="line-height:1.6;">
-                    Institute ka poora data ek <code>.sql</code> file mein milega —
-                    students, fees, staff, courses, library, transport sab kuch.
-                    Cyber attack ya data loss hone pe is file se restore kar sakte ho.
+                    Your complete institute data in a single <code>.sql</code> file —
+                    students, fees, staff, courses, library, transport and everything else.
+                    Use this file to restore data in the event of a cyber attack or data loss.
                 </p>
 
                 <div class="mb-4">
-                    <p class="small fw-semibold text-dark mb-2">Ismein shamil hai:</p>
+                    <p class="small fw-semibold text-dark mb-2">Includes:</p>
                     <div class="d-flex flex-wrap gap-1">
                         @foreach(['Students','Fee Invoices','Staff','Courses','Library','Transport','Expenses','Salary','Notices'] as $tag)
                         <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:11px;">{{ $tag }}</span>
                         @endforeach
-                        <span class="badge bg-secondary-subtle text-secondary border" style="font-size:11px;">+ sab kuch</span>
+                        <span class="badge bg-secondary-subtle text-secondary border" style="font-size:11px;">+ everything</span>
                     </div>
                 </div>
 
                 <div class="mt-auto">
                     <a href="{{ route('master.settings.data-export') }}"
                        class="btn btn-success w-100"
-                       target="_blank">
+                       target="_blank"
+                       onclick="showDownloadToast('SQL Backup', 'Full database backup is downloading…')">
                         <i class="bi bi-download me-2"></i>Download .sql Backup
                     </a>
                     <p class="text-muted text-center mt-2 mb-0" style="font-size:11px;">
-                        <i class="bi bi-clock me-1"></i>Large institute ka data lene mein 1-2 minute lag sakte hain
+                        <i class="bi bi-clock me-1"></i>Large institutes may take 1–2 minutes to generate
                     </p>
                 </div>
             </div>
@@ -92,9 +109,9 @@
                 </div>
 
                 <p class="small text-muted mb-3" style="line-height:1.6;">
-                    Har student ki poori detail — personal info se lekar fee history,
-                    library books, aur transport allocation tak. Excel mein open karke
-                    filter, sort, ya print kar sakte ho.
+                    Complete student records — personal details, fee history across all sessions,
+                    library books issued, and transport allocations.
+                    Open in Excel to filter, sort, or print as needed.
                 </p>
 
                 <div class="mb-4">
@@ -106,7 +123,7 @@
                         </div>
                         <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#f0f9ff;">
                             <i class="bi bi-receipt text-primary"></i>
-                            <span><strong>Fee History</strong> — sabhi sessions ki fees</span>
+                            <span><strong>Fee History</strong> — all sessions, all invoices</span>
                         </div>
                         <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#f0f9ff;">
                             <i class="bi bi-book text-primary"></i>
@@ -121,11 +138,12 @@
 
                 <div class="mt-auto">
                     <a href="{{ route('master.settings.backup.students') }}"
-                       class="btn btn-primary w-100">
+                       class="btn btn-primary w-100"
+                       onclick="showDownloadToast('Student Report', 'Student data Excel is downloading…')">
                         <i class="bi bi-file-earmark-excel me-2"></i>Download Student Report
                     </a>
                     <p class="text-muted text-center mt-2 mb-0" style="font-size:11px;">
-                        <i class="bi bi-info-circle me-1"></i>Excel mein 4 alag sheets hongi
+                        <i class="bi bi-info-circle me-1"></i>Excel file with 4 separate sheets
                     </p>
                 </div>
             </div>
@@ -143,50 +161,45 @@
                     </div>
                     <div>
                         <h6 class="mb-0 fw-bold">Financial Report</h6>
-                        <small class="text-muted">Excel (.xlsx) — 5 sheets</small>
+                        <small class="text-muted">Excel (.xlsx) — 13 sheets</small>
                     </div>
                 </div>
 
                 <p class="small text-muted mb-3" style="line-height:1.6;">
-                    Institute ki poori financial picture — session-wise income,
-                    expenses, salary records aur employee details. Accountant ya
-                    management ke saath share karne ke liye best format.
+                    Complete financial and operational overview — session-wise income,
+                    expenses, salary records, staff, transport, centers, channel partners,
+                    and library catalog. Ideal for management and audit purposes.
                 </p>
 
                 <div class="mb-4">
                     <p class="small fw-semibold text-dark mb-2">Sheets:</p>
                     <div class="d-flex flex-column gap-1" style="font-size:12px;">
+                        @foreach([
+                            ['icon'=>'bi-calendar3','label'=>'Sessions Overview','desc'=>'income vs expense summary'],
+                            ['icon'=>'bi-cash-stack','label'=>'Fee Collections','desc'=>'all invoices in detail'],
+                            ['icon'=>'bi-wallet2','label'=>'Expenses','desc'=>'all expense records'],
+                            ['icon'=>'bi-person-badge','label'=>'Salary Records','desc'=>'monthly salary history'],
+                            ['icon'=>'bi-people','label'=>'Staff / Library / Drivers','desc'=>'all personnel'],
+                            ['icon'=>'bi-bus-front','label'=>'Vehicles / Routes / Stops','desc'=>'transport details'],
+                            ['icon'=>'bi-building','label'=>'Centers / Partners / Books','desc'=>'operational data'],
+                        ] as $sheet)
                         <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#faf5ff;">
-                            <i class="bi bi-calendar3" style="color:#7c3aed;"></i>
-                            <span><strong>Sessions Overview</strong> — income vs expense</span>
+                            <i class="bi {{ $sheet['icon'] }}" style="color:#7c3aed;"></i>
+                            <span><strong>{{ $sheet['label'] }}</strong> — {{ $sheet['desc'] }}</span>
                         </div>
-                        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#faf5ff;">
-                            <i class="bi bi-cash-stack" style="color:#7c3aed;"></i>
-                            <span><strong>Fee Collections</strong> — all invoices detail</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#faf5ff;">
-                            <i class="bi bi-wallet2" style="color:#7c3aed;"></i>
-                            <span><strong>Expenses</strong> — all expense records</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#faf5ff;">
-                            <i class="bi bi-person-badge" style="color:#7c3aed;"></i>
-                            <span><strong>Salary Records</strong> — monthly salary</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#faf5ff;">
-                            <i class="bi bi-people" style="color:#7c3aed;"></i>
-                            <span><strong>Employees</strong> — staff list with roles</span>
-                        </div>
+                        @endforeach
                     </div>
                 </div>
 
                 <div class="mt-auto">
                     <a href="{{ route('master.settings.backup.financial') }}"
                        style="background:#7c3aed;border-color:#7c3aed;"
-                       class="btn btn-primary w-100">
+                       class="btn btn-primary w-100"
+                       onclick="showDownloadToast('Financial Report', 'Financial data Excel is downloading…')">
                         <i class="bi bi-file-earmark-excel me-2"></i>Download Financial Report
                     </a>
                     <p class="text-muted text-center mt-2 mb-0" style="font-size:11px;">
-                        <i class="bi bi-info-circle me-1"></i>Excel mein 5 alag sheets hongi
+                        <i class="bi bi-info-circle me-1"></i>Excel file with 13 separate sheets
                     </p>
                 </div>
             </div>
@@ -200,12 +213,22 @@
     <div class="d-flex gap-2 align-items-start">
         <i class="bi bi-shield-lock-fill text-warning mt-1"></i>
         <div style="font-size:13px;color:#92400e;line-height:1.6;">
-            <strong>Privacy Note:</strong>
-            Ye exports sirf aapke institute ({{ $institute->name }}) ka data contain karte hain.
-            Downloads aapke browser mein seedha aate hain — server pe koi file save nahi hoti.
-            Exported files ko secure rakhein aur sharing se pehle sochein.
+            <strong>Privacy Notice:</strong>
+            All exports contain data exclusively belonging to <strong>{{ $institute->name }}</strong>.
+            Files are generated on demand and delivered directly to your browser — nothing is saved on the server.
+            Keep exported files secure and exercise caution before sharing them.
         </div>
     </div>
 </div>
+
+<script>
+function showDownloadToast(title, message) {
+    document.getElementById('toastTitle').textContent   = title + ' — Download Started';
+    document.getElementById('toastMessage').textContent = message;
+    const toastEl = document.getElementById('downloadToast');
+    const toast   = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 });
+    toast.show();
+}
+</script>
 
 @endsection
