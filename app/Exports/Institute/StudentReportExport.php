@@ -58,7 +58,7 @@ class StudentReportExport implements WithMultipleSheets
                         's.father_name', 's.mother_name',
                         's.mobile', 's.email', 's.dob', 's.gender', 's.category',
                         'c.name as course', 'cs.name as stream',
-                        'cp.name as semester_part',
+                        'cp.part_name as semester_part',
                         'ses.name as session',
                         's.admission_date', 's.admission_type',
                         's.student_type', 's.status',
