@@ -16,6 +16,7 @@ class FinancialReportExport implements WithMultipleSheets
             $this->feeCollectionsSheet(),
             $this->expensesSheet(),
             $this->salarySheet(),
+            $this->employeesSheet(),
             $this->staffSheet(),
             $this->libraryStaffSheet(),
             $this->transportDriversSheet(),
@@ -193,25 +194,29 @@ class FinancialReportExport implements WithMultipleSheets
             public function headings(): array
             {
                 return [
-                    'Staff Name', 'Month', 'Year',
-                    'Basic (₹)', 'Allowances (₹)', 'Deductions (₹)',
-                    'Net Payable (₹)', 'Paid (₹)',
+                    'Employee Name', 'Department', 'Designation', 'Month', 'Year',
+                    'Basic (₹)', 'Allowances (₹)', 'Gross (₹)',
+                    'Deductions (₹)', 'Net Salary (₹)',
                     'Payment Date', 'Payment Mode', 'Status',
                 ];
             }
             public function collection()
             {
-                return DB::table('salary_records as sr')
-                    ->join('staff_members as sm', 'sm.id', '=', 'sr.staff_member_id')
-                    ->where('sr.institute_id', $this->id)
-                    ->orderByDesc('sr.salary_year')
-                    ->orderByDesc('sr.salary_month')
+                return DB::table('employee_salary_disbursements as esd')
+                    ->join('employees as e', 'e.id', '=', 'esd.employee_id')
+                    ->leftJoin('employee_departments as dept', 'dept.id', '=', 'e.employee_department_id')
+                    ->leftJoin('employee_designations as desig', 'desig.id', '=', 'e.employee_designation_id')
+                    ->where('esd.institute_id', $this->id)
+                    ->orderByDesc('esd.year')
+                    ->orderByDesc('esd.month')
                     ->select([
-                        'sm.name as staff_name',
-                        'sr.salary_month', 'sr.salary_year',
-                        'sr.basic_salary', 'sr.allowances', 'sr.deductions',
-                        'sr.net_payable', 'sr.paid_amount',
-                        'sr.payment_date', 'sr.payment_mode', 'sr.status',
+                        'e.name as employee_name',
+                        'dept.name as department',
+                        'desig.name as designation',
+                        'esd.month', 'esd.year',
+                        'esd.basic_paid', 'esd.total_allowances', 'esd.gross_salary',
+                        'esd.deductions', 'esd.net_salary',
+                        'esd.payment_date', 'esd.payment_mode', 'esd.status',
                     ])
                     ->get()
                     ->map(fn($r) => array_values((array) $r));
@@ -219,7 +224,51 @@ class FinancialReportExport implements WithMultipleSheets
         };
     }
 
-    // ── 5. Staff Members (Admin Staff) ───────────────────────────────────────
+    // ── 5. All Employees (Unified Employee Registry) ─────────────────────────
+
+    private function employeesSheet(): object
+    {
+        $id = $this->id;
+        return new class($id) implements
+            \Maatwebsite\Excel\Concerns\FromCollection,
+            \Maatwebsite\Excel\Concerns\WithHeadings,
+            \Maatwebsite\Excel\Concerns\WithTitle,
+            \Maatwebsite\Excel\Concerns\ShouldAutoSize
+        {
+            public function __construct(private int $id) {}
+            public function title(): string { return 'All Employees'; }
+            public function headings(): array
+            {
+                return [
+                    'Employee Code', 'Name', 'Father Name', 'DOB', 'Gender',
+                    'Phone', 'Email', 'Department', 'Designation',
+                    'Employment Type', 'Salary Type', 'Basic Salary (₹)',
+                    'Joining Date', 'City', 'State', 'Status',
+                ];
+            }
+            public function collection()
+            {
+                return DB::table('employees as e')
+                    ->leftJoin('employee_departments as dept', 'dept.id', '=', 'e.employee_department_id')
+                    ->leftJoin('employee_designations as desig', 'desig.id', '=', 'e.employee_designation_id')
+                    ->where('e.institute_id', $this->id)
+                    ->orderBy('dept.name')
+                    ->orderBy('e.name')
+                    ->select([
+                        'e.employee_code', 'e.name', 'e.father_name', 'e.dob', 'e.gender',
+                        'e.phone', 'e.email',
+                        'dept.name as department',
+                        'desig.name as designation',
+                        'e.employment_type', 'e.salary_type', 'e.basic_salary',
+                        'e.joining_date', 'e.city', 'e.state', 'e.status',
+                    ])
+                    ->get()
+                    ->map(fn($r) => array_values((array) $r));
+            }
+        };
+    }
+
+    // ── 6. Staff Members (Admin Portal Login Staff) ───────────────────────────
 
     private function staffSheet(): object
     {
