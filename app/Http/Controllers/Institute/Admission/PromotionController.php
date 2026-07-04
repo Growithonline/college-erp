@@ -1282,17 +1282,24 @@ class PromotionController extends Controller
             $student->promotion_due = WalletService::getStudentSummary($student, (int) $student->academic_session_id)['total_due'];
         }
 
-        // Preload subjects by course_part for the backlog subject picker in the view
-        $partIds = $students->pluck('course_part_id')->unique()->filter()->values()->toArray();
-        $subjectsByPart = [];
-        if ($partIds) {
-            $subjectsByPart = Subject::join('course_part_subject', 'course_part_subject.subject_id', '=', 'subjects.id')
-                ->whereIn('course_part_subject.course_part_id', $partIds)
-                ->select('subjects.id', 'subjects.name', 'subjects.code', 'course_part_subject.course_part_id')
-                ->orderBy('subjects.name')
+        // Preload subjects by (course_stream_id, year_number) for the backlog subject picker in the view —
+        // this mirrors syncSubjectsForTargetPart()'s source of truth (course_stream_subjects), not the
+        // unused course_part_subject pivot.
+        $streamIds   = $students->pluck('course_stream_id')->filter()->unique()->values();
+        $yearNumbers = $students->pluck('coursePart.year_number')->filter()->unique()->values();
+        $subjectsByStreamYear = [];
+        if ($streamIds->isNotEmpty() && $yearNumbers->isNotEmpty()) {
+            $subjectsByStreamYear = CourseStreamSubject::with('subject')
+                ->whereIn('course_stream_id', $streamIds)
+                ->whereIn('year_number', $yearNumbers)
+                ->where('is_active', true)
                 ->get()
-                ->groupBy('course_part_id')
-                ->map(fn($g) => $g->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'code' => $s->code ?? ''])->values())
+                ->groupBy(fn($m) => $m->course_stream_id . '_' . $m->year_number)
+                ->map(fn($g) => $g->map(fn($m) => [
+                    'id'   => $m->subject_id,
+                    'name' => $m->subject?->name,
+                    'code' => $m->subject?->code ?? '',
+                ])->values())
                 ->toArray();
         }
 
@@ -1309,7 +1316,7 @@ class PromotionController extends Controller
             'toSessionId',
             'activeSession',
             'courseId',
-            'subjectsByPart'
+            'subjectsByStreamYear'
         ));
     }
 

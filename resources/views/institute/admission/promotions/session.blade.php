@@ -243,7 +243,7 @@
                             $student->stream?->course?->effectiveSemestersPerYear() ?? 0
                         );
                     @endphp
-                    <tr data-part-id="{{ $student->course_part_id ?? '' }}">
+                    <tr data-stream-year="{{ $student->course_stream_id }}_{{ $student->coursePart?->year_number }}">
                         <td class="ps-3">
                             <input type="checkbox" class="form-check-input student-cb"
                                    value="{{ $student->id }}" onchange="onCbChange()">
@@ -308,7 +308,7 @@
 </div>
 
 <script>
-const subjectsByPart = @json($subjectsByPart ?? []);
+const subjectsByStreamYear = @json($subjectsByStreamYear ?? []);
 
 const outcomeHints = {
     '':          '',
@@ -334,22 +334,22 @@ function escHtml(s) {
 }
 
 function refreshBacklogSubjects() {
-    const container = document.getElementById('backlogSubjectsContainer');
-    const checked   = document.querySelectorAll('.student-cb:checked');
-    const partIds   = new Set();
+    const container  = document.getElementById('backlogSubjectsContainer');
+    const checked    = document.querySelectorAll('.student-cb:checked');
+    const streamYears = new Set();
     checked.forEach(cb => {
         const row = cb.closest('tr');
-        if (row && row.dataset.partId) partIds.add(row.dataset.partId);
+        if (row && row.dataset.streamYear) streamYears.add(row.dataset.streamYear);
     });
 
     const subjects = {};
-    partIds.forEach(pid => {
-        (subjectsByPart[pid] || []).forEach(s => { subjects[s.id] = s; });
+    streamYears.forEach(key => {
+        (subjectsByStreamYear[key] || []).forEach(s => { subjects[s.id] = s; });
     });
 
     const list = Object.values(subjects);
     if (list.length === 0) {
-        container.innerHTML = '<span class="text-muted">No subjects mapped for the selected students\' course parts.</span>';
+        container.innerHTML = '<span class="text-muted">No subjects mapped for the selected students\' course/stream/year. Configure them under Master &rarr; Course Subjects.</span>';
         return;
     }
     container.innerHTML = list.map(s =>
