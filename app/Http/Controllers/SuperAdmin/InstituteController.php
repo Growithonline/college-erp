@@ -453,7 +453,7 @@ class InstituteController extends Controller
                   'fee_invoice_counters','audit_logs'] as $t) {
             if ($schema->hasTable($t)) \DB::table($t)->where('institute_id', $id)->delete();
         }
-        \DB::table('users')->where('institute_id', $id)->delete();
+        // Users intentionally NOT deleted — institute login must remain valid after clean.
     }
 
     public function cleanData(Request $request, Institute $institute)
@@ -643,8 +643,7 @@ class InstituteController extends Controller
                     if (\DB::getSchemaBuilder()->hasTable($tbl)) \DB::table($tbl)->where('institute_id', $id)->delete();
                 }
 
-                // Users (institute login only — not super admin)
-                \DB::table('users')->where('institute_id', $id)->delete();
+                // Users intentionally NOT deleted — institute login must remain valid after clean.
             });
 
             \DB::statement('SET FOREIGN_KEY_CHECKS=1');

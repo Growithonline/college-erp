@@ -281,8 +281,7 @@ class CleanInstituteData extends Command
                 // ── 19. Audit Logs ──────────────────────────────────────
                 $this->deleteLine('Audit logs', 'audit_logs', $id);
 
-                // ── 20. Users (Institute login — only non-superadmin) ───
-                $this->deleteLine('Users (institute login)', 'users', $id);
+                // Users table is intentionally NOT deleted — institute login must remain valid after clean.
 
             });
 
