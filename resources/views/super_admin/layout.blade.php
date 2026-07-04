@@ -64,6 +64,9 @@
         <a href="{{ route('super_admin.sms.index') }}" class="{{ request()->routeIs('super_admin.sms.*') ? 'active' : '' }}">
             <i class="bi bi-phone"></i> SMS Management
         </a>
+        <a href="{{ route('super_admin.backup.index') }}" class="{{ request()->routeIs('super_admin.backup.*') ? 'active' : '' }}">
+            <i class="bi bi-database-down"></i> Database Backup
+        </a>
     </div>
     <div class="sa-footer">
         <form method="POST" action="{{ route('super_admin.logout') }}">

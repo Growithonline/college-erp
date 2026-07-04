@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SuperAdmin\Auth\LoginController;
+use App\Http\Controllers\SuperAdmin\BackupController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
 use App\Http\Controllers\SuperAdmin\InstituteController;
 use App\Http\Controllers\SuperAdmin\SmsSettingController;
@@ -26,6 +27,13 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::post('/institutes/{institute}/clean-data',         [InstituteController::class, 'cleanData'])->name('institutes.clean-data');
         Route::get('/institutes/{institute}/export-data',          [InstituteController::class, 'exportData'])->name('institutes.export-data');
         Route::post('/institutes/{institute}/restore-data',        [InstituteController::class, 'restoreData'])->name('institutes.restore-data');
+
+        // Database Backup
+        Route::get('/backup',                   [BackupController::class, 'index'])->name('backup.index');
+        Route::get('/backup/full',              [BackupController::class, 'fullBackup'])->name('backup.full');
+        Route::get('/backup/schema',            [BackupController::class, 'schemaBackup'])->name('backup.schema');
+        Route::get('/backup/download/{file}',   [BackupController::class, 'downloadFile'])->name('backup.download')
+            ->where('file', '[a-zA-Z0-9_\-\.]+');
 
         // SMS Management
         Route::prefix('sms')->name('sms.')->group(function () {
