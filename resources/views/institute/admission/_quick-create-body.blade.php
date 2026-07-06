@@ -1538,8 +1538,8 @@ function renderSubjects(subjects) {
             maxItems: minorMax > 0 ? minorMax : null,
             maxOptions: 100,
             placeholder: 'Select minor subject...',
-            onItemAdd: function() { refreshQuickFeePreview(); },
-            onItemRemove: function() { refreshQuickFeePreview(); },
+            onItemAdd: function() { syncMajorMinorExclusion(); refreshQuickFeePreview(); },
+            onItemRemove: function() { syncMajorMinorExclusion(); refreshQuickFeePreview(); },
         });
         // Restore previously selected minor subjects (edit mode)
         if (preSelectedMinorSubjects.length) {
@@ -1553,19 +1553,34 @@ function renderSubjects(subjects) {
     if (window.majorTS && window.minorTS) syncMajorMinorExclusion();
 }
 
-// Disable subjects selected in Major from Minor options
+// Major aur Minor mein ek hi ('both' role) subject dono taraf select na ho paaye — dono direction se exclude karo
 function syncMajorMinorExclusion() {
     if (!window.majorTS || !window.minorTS) return;
-    const selectedMajors = window.majorTS.getValue(); // array of selected values
-    // Check all Minor options
+
+    // Jo bhi doosri list mein pehle se select hai use is list se hata do (silent removeItem)
+    const currentMajorValues = window.majorTS.getValue();
+    window.minorTS.getValue().forEach(val => {
+        if (currentMajorValues.includes(val)) window.minorTS.removeItem(val, true);
+    });
+
+    const currentMinorValues = window.minorTS.getValue();
+    window.majorTS.getValue().forEach(val => {
+        if (currentMinorValues.includes(val)) window.majorTS.removeItem(val, true);
+    });
+
+    // Removal ke baad final selected values se dono list ke options disable/enable karo
+    const majorsNow = window.majorTS.getValue();
+    const minorsNow = window.minorTS.getValue();
+
     Object.keys(window.minorTS.options).forEach(val => {
-        if (selectedMajors.includes(val)) {
-            window.minorTS.updateOption(val, { ...window.minorTS.options[val], disabled: true });
-        } else {
-            window.minorTS.updateOption(val, { ...window.minorTS.options[val], disabled: false });
-        }
+        window.minorTS.updateOption(val, { ...window.minorTS.options[val], disabled: majorsNow.includes(val) });
     });
     window.minorTS.refreshOptions(false);
+
+    Object.keys(window.majorTS.options).forEach(val => {
+        window.majorTS.updateOption(val, { ...window.majorTS.options[val], disabled: minorsNow.includes(val) });
+    });
+    window.majorTS.refreshOptions(false);
 }
 
 function toggleScholarship(show) {

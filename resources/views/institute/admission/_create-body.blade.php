@@ -1136,11 +1136,13 @@ function renderSubjects(subjects) {
                 updateMinorCount();
                 clearSubjectError();
                 triggerFeePreview();
+                syncMajorMinorExclusion();
             },
             onItemRemove: () => {
                 selectedMinors = new Set([...window.minorTS.getValue()].map(Number));
                 updateMinorCount();
                 triggerFeePreview();
+                syncMajorMinorExclusion();
             },
         });
         // Restore previously selected minor subjects (edit mode)
@@ -1197,26 +1199,37 @@ function onMinorChange(checkbox) {
     triggerFeePreview();
 }
 
-// Major mein selected subjects Minor se exclude karo
+// Major aur Minor mein ek hi ('both' role) subject dono taraf select na ho paaye — dono direction se exclude karo
 function syncMajorMinorExclusion() {
     if (!window.majorTS || !window.minorTS) return;
-    const selectedMajors = window.majorTS.getValue();
 
+    // Jo bhi doosri list mein pehle se select hai use is list se hata do (silent removeItem)
+    const currentMajorValues = window.majorTS.getValue();
     window.minorTS.getValue().forEach(val => {
-        if (selectedMajors.includes(val)) {
-            window.minorTS.removeItem(val, true);
-        }
+        if (currentMajorValues.includes(val)) window.minorTS.removeItem(val, true);
     });
+
+    const currentMinorValues = window.minorTS.getValue();
+    window.majorTS.getValue().forEach(val => {
+        if (currentMinorValues.includes(val)) window.majorTS.removeItem(val, true);
+    });
+
+    // Removal ke baad final selected values se dono list ke options disable/enable karo
+    const majorsNow = window.majorTS.getValue();
+    const minorsNow = window.minorTS.getValue();
 
     Object.keys(window.minorTS.options).forEach(val => {
         const opt = { ...window.minorTS.options[val] };
-        if (selectedMajors.includes(val)) {
-            window.minorTS.updateOption(val, { ...opt, disabled: true });
-        } else {
-            window.minorTS.updateOption(val, { ...opt, disabled: false });
-        }
+        window.minorTS.updateOption(val, { ...opt, disabled: majorsNow.includes(val) });
     });
     window.minorTS.refreshOptions(false);
+
+    Object.keys(window.majorTS.options).forEach(val => {
+        const opt = { ...window.majorTS.options[val] };
+        window.majorTS.updateOption(val, { ...opt, disabled: minorsNow.includes(val) });
+    });
+    window.majorTS.refreshOptions(false);
+
     selectedMinors = new Set([...window.minorTS.getValue()].map(Number));
     updateMinorCount();
 }
