@@ -1420,7 +1420,9 @@ function hideSubjectSection() {
 }
 
 // Previously selected subjects (edit mode restore)
-const preSelectedSubjects = @json(array_map('intval', $qd['selected_subjects'] ?? []));
+const preSelectedSubjects = @json(array_map('intval', old('selected_subjects', $qd['selected_subjects'] ?? [])));
+const preSelectedMajorSubjects = @json(array_map('intval', old('selected_major_subjects', $qd['selected_major_subjects'] ?? [])));
+const preSelectedMinorSubjects = @json(array_map('intval', old('selected_minor_subjects', $qd['selected_minor_subjects'] ?? [])));
 
 function loadSubjects(streamId, yearNumber) {
     document.getElementById('subjectSection').style.display = 'block';
@@ -1486,7 +1488,7 @@ function renderSubjects(subjects) {
                 <i class="bi bi-star-fill me-1"></i>Select Major Subject(s)
                 <span class="fw-normal text-muted">(${majorInfo})</span>
             </label>
-            <select id="majorSelect" name="selected_subjects[]" multiple placeholder="Select major subject...">`;
+            <select id="majorSelect" name="selected_major_subjects[]" multiple placeholder="Select major subject...">`;
         majorSubjects.forEach(s => {
             html += `<option value="${s.id}">${s.name}${s.code ? ' (' + s.code + ')' : ''}${s.has_practical ? ' (Practical)' : ''}</option>`;
         });
@@ -1501,7 +1503,7 @@ function renderSubjects(subjects) {
                 <span class="fw-normal text-muted">(${minorInfo})</span>
             </label>
             <div id="minorCountBadge" class="mb-1"></div>
-            <select id="minorSelect" name="selected_subjects[]" multiple placeholder="Select minor subject...">`;
+            <select id="minorSelect" name="selected_minor_subjects[]" multiple placeholder="Select minor subject...">`;
         minorSubjects.forEach(s => {
             html += `<option value="${s.id}">${s.name}${s.code ? ' (' + s.code + ')' : ''}${s.has_practical ? ' (Practical)' : ''}</option>`;
         });
@@ -1522,9 +1524,9 @@ function renderSubjects(subjects) {
             onItemRemove: function() { syncMajorMinorExclusion(); refreshQuickFeePreview(); },
         });
         // Restore previously selected major subjects (edit mode)
-        if (preSelectedSubjects.length) {
+        if (preSelectedMajorSubjects.length) {
             const majorOptions = majorSubjects.map(s => String(s.id));
-            const toSelect = preSelectedSubjects.filter(id => majorOptions.includes(String(id)));
+            const toSelect = preSelectedMajorSubjects.filter(id => majorOptions.includes(String(id)));
             if (toSelect.length) window.majorTS.setValue(toSelect.map(String));
         }
     }
@@ -1540,9 +1542,9 @@ function renderSubjects(subjects) {
             onItemRemove: function() { refreshQuickFeePreview(); },
         });
         // Restore previously selected minor subjects (edit mode)
-        if (preSelectedSubjects.length) {
+        if (preSelectedMinorSubjects.length) {
             const minorOptions = minorSubjects.map(s => String(s.id));
-            const toSelect = preSelectedSubjects.filter(id => minorOptions.includes(String(id)));
+            const toSelect = preSelectedMinorSubjects.filter(id => minorOptions.includes(String(id)));
             if (toSelect.length) window.minorTS.setValue(toSelect.map(String));
         }
     }
