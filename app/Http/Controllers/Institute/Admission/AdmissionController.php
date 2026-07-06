@@ -3881,13 +3881,19 @@ class AdmissionController extends Controller
             array_filter($request->input('selected_subjects', []), fn($v) => $v !== null && $v !== '')
         ))));
 
+        $quickMajorInput = $request->input('selected_major_subjects', []);
+        $quickMinorInput = $request->input('selected_minor_subjects', []);
+        // Subjects can be skipped entirely in quick registration (added later from student edit page).
+        // But once the user starts picking major/minor subjects, the year rule's min/max must be fully met.
+        $subjectsFullySkipped = empty($quickMajorInput) && empty($quickMinorInput);
+
         $subjectSelection = $this->normalizeSubjectSelection(
             $streamId,
             $yearNumber,
-            $request->input('selected_major_subjects', []),
-            $request->input('selected_minor_subjects', []),
+            $quickMajorInput,
+            $quickMinorInput,
             $rawSubjectIds,
-            true // subjects are optional in quick registration
+            $subjectsFullySkipped
         );
         $selectedSubjectIds = $subjectSelection['subject_ids'];
 
