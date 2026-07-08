@@ -112,7 +112,7 @@
 </div>
 
 {{-- Table --}}
-<div class="card border-0 shadow-sm">
+<div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover table-sm mb-0">
@@ -124,6 +124,10 @@
                         <th class="text-end">Cash</th>
                         <th class="text-end">UPI</th>
                         <th class="text-end">Online</th>
+                        <th class="text-end">Cheque</th>
+                        <th class="text-end">DD</th>
+                        <th class="text-end">NEFT</th>
+                        <th class="text-end">RTGS</th>
                         <th class="text-end pe-3">Total (₹)</th>
                     </tr>
                 </thead>
@@ -142,14 +146,18 @@
                             <span class="badge bg-success-subtle text-success">{{ $row['count'] }}</span>
                             @endif
                         </td>
-                        <td class="text-end">₹{{ number_format($row['cash'], 2) }}</td>
-                        <td class="text-end">₹{{ number_format($row['upi'], 2) }}</td>
-                        <td class="text-end">₹{{ number_format($row['online'], 2) }}</td>
+                        <td class="text-end">{{ $row['cash']   > 0 ? '₹'.number_format($row['cash'], 2)   : '—' }}</td>
+                        <td class="text-end">{{ $row['upi']    > 0 ? '₹'.number_format($row['upi'], 2)    : '—' }}</td>
+                        <td class="text-end">{{ $row['online'] > 0 ? '₹'.number_format($row['online'], 2) : '—' }}</td>
+                        <td class="text-end">{{ $row['cheque'] > 0 ? '₹'.number_format($row['cheque'], 2) : '—' }}</td>
+                        <td class="text-end">{{ $row['dd']     > 0 ? '₹'.number_format($row['dd'], 2)     : '—' }}</td>
+                        <td class="text-end">{{ $row['neft']   > 0 ? '₹'.number_format($row['neft'], 2)   : '—' }}</td>
+                        <td class="text-end">{{ $row['rtgs']   > 0 ? '₹'.number_format($row['rtgs'], 2)   : '—' }}</td>
                         <td class="text-end pe-3 fw-bold text-success">₹{{ number_format($row['total'], 2) }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
+                        <td colspan="11" class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                             No centre collections found for this date range.
                         </td>
@@ -164,6 +172,10 @@
                         <td class="text-end">₹{{ number_format($centreData->sum('cash'), 2) }}</td>
                         <td class="text-end">₹{{ number_format($centreData->sum('upi'), 2) }}</td>
                         <td class="text-end">₹{{ number_format($centreData->sum('online'), 2) }}</td>
+                        <td class="text-end">₹{{ number_format($centreData->sum('cheque'), 2) }}</td>
+                        <td class="text-end">₹{{ number_format($centreData->sum('dd'), 2) }}</td>
+                        <td class="text-end">₹{{ number_format($centreData->sum('neft'), 2) }}</td>
+                        <td class="text-end">₹{{ number_format($centreData->sum('rtgs'), 2) }}</td>
                         <td class="text-end pe-3 text-success">₹{{ number_format($grandTotal, 2) }}</td>
                     </tr>
                 </tfoot>
@@ -172,5 +184,108 @@
         </div>
     </div>
 </div>
+
+{{-- Bank-wise Breakdown --}}
+@if($bankWise->isNotEmpty())
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small"><i class="bi bi-bank me-1 text-info"></i> Bank-wise Collection</span>
+        <span class="text-muted" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Click a bank for centre-wise breakdown</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Bank / Account</th>
+                        <th class="text-center">Receipts</th>
+                        <th class="text-end pe-3">Amount Collected</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($bankWise as $bw)
+                    <tr style="cursor:pointer;" onclick="showBankCentreDetail('{{ addslashes($bw['label']) }}')">
+                        <td class="ps-3 fw-semibold"><i class="bi bi-bank2 me-1 text-info"></i>{{ $bw['label'] }}</td>
+                        <td class="text-center small text-muted">{{ $bw['count'] }}</td>
+                        <td class="text-end pe-3 fw-semibold text-success small">₹{{ number_format($bw['total'], 2) }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="table-light fw-semibold">
+                    <tr>
+                        <td class="ps-3">Total</td>
+                        <td class="text-center">{{ $bankWise->sum('count') }}</td>
+                        <td class="text-end pe-3 text-success">₹{{ number_format($bankWise->sum('total'), 2) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Bank Centre Detail Modal --}}
+<div class="modal fade" id="bankCentreDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title fw-bold" id="bankCentreDetailTitle">Bank Collection Details</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="bankCentreDetailBody"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@php
+    $bankCentreDetailJson = [];
+    foreach ($bankDetailWise as $bankLabel => $rows) {
+        $bankCentreDetailJson[$bankLabel] = $rows->values()->toArray();
+    }
+@endphp
+
+@push('scripts')
+<script>
+const BANK_CENTRE_DETAIL = @json($bankCentreDetailJson);
+
+function showBankCentreDetail(bankLabel) {
+    const rows = BANK_CENTRE_DETAIL[bankLabel] || [];
+    document.getElementById('bankCentreDetailTitle').textContent = bankLabel + ' — Centre-wise Breakdown';
+
+    let html = '<div class="table-responsive"><table class="table table-sm mb-0" style="font-size:13px;">'
+             + '<thead class="table-light"><tr>'
+             + '<th class="ps-3">Centre Name</th>'
+             + '<th class="text-center">Receipts</th>'
+             + '<th class="text-end pe-3">Amount (₹)</th>'
+             + '</tr></thead><tbody>';
+
+    let grandTotal = 0, grandCnt = 0;
+    if (rows.length === 0) {
+        html += '<tr><td colspan="3" class="text-center text-muted py-3">No data</td></tr>';
+    } else {
+        rows.forEach(r => {
+            grandTotal += r.total || 0;
+            grandCnt   += r.count || 0;
+            html += `<tr>
+                <td class="ps-3 fw-semibold">${r.name}</td>
+                <td class="text-center">${r.count}</td>
+                <td class="text-end pe-3 fw-semibold text-success">₹ ${parseFloat(r.total).toLocaleString('en-IN',{maximumFractionDigits:2})}</td>
+            </tr>`;
+        });
+    }
+
+    html += `</tbody><tfoot class="table-dark"><tr>
+        <td class="ps-3 fw-bold">Total</td>
+        <td class="text-center fw-bold">${grandCnt}</td>
+        <td class="text-end pe-3 fw-bold">₹ ${grandTotal.toLocaleString('en-IN',{maximumFractionDigits:2})}</td>
+    </tr></tfoot></table></div>`;
+
+    document.getElementById('bankCentreDetailBody').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('bankCentreDetailModal')).show();
+}
+</script>
+@endpush
 
 @endsection
