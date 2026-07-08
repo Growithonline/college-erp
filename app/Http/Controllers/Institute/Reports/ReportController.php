@@ -2537,7 +2537,7 @@ class ReportController extends Controller
         $staffMembers = StaffMember::where('institute_id', $instituteId)->get();
         $staffNames   = $staffMembers->pluck('name');
 
-        $invoices = FeeInvoice::with(['collectedByStaff', 'student.stream.course', 'items'])
+        $invoices = FeeInvoice::with(['collectedByStaff', 'bankAccount', 'student.stream.course', 'items'])
             ->where('institute_id', $instituteId)
             ->where('is_cancelled', false)
             ->where(fn($q) => $q
@@ -2567,13 +2567,37 @@ class ReportController extends Controller
             'cash'   => (float) $rows->where('payment_mode', 'cash')->sum('paid_amount'),
             'upi'    => (float) $rows->where('payment_mode', 'upi')->sum('paid_amount'),
             'online' => (float) $rows->where('payment_mode', 'online')->sum('paid_amount'),
+            'cheque' => (float) $rows->where('payment_mode', 'cheque')->sum('paid_amount'),
+            'dd'     => (float) $rows->where('payment_mode', 'dd')->sum('paid_amount'),
+            'neft'   => (float) $rows->where('payment_mode', 'neft')->sum('paid_amount'),
+            'rtgs'   => (float) $rows->where('payment_mode', 'rtgs')->sum('paid_amount'),
         ])->sortByDesc('total')->values();
 
         $grandTotal = (float) $invoices->sum('paid_amount');
         $grandCount = $invoices->count();
 
+        // ── Bank-wise breakdown (non-cash payments carrying a bank account/name) ──
+        $bankInvoices = $invoices->filter(fn($inv) => $inv->bank_account_id || $inv->bank_name);
+        $bankGroups   = $bankInvoices->groupBy(fn($inv) => $inv->bank_account_id ? 'acct:' . $inv->bank_account_id : 'name:' . $inv->bank_name);
+
+        $bankWise = $bankGroups->map(fn($rows) => [
+            'label' => $rows->first()->bankAccount?->display_label ?: $rows->first()->bank_name,
+            'count' => $rows->count(),
+            'total' => (float) $rows->sum('paid_amount'),
+        ])->sortByDesc('total')->values();
+
+        $bankDetailWise = $bankGroups->mapWithKeys(function ($rows) {
+            $label     = $rows->first()->bankAccount?->display_label ?: $rows->first()->bank_name;
+            $staffRows = $rows->groupBy('collected_by_staff_id')->map(fn($srows) => [
+                'staff' => $srows->first()->collectedByStaff?->name ?? 'Unknown Staff',
+                'count' => $srows->count(),
+                'total' => (float) $srows->sum('paid_amount'),
+            ])->sortByDesc('total')->values();
+            return [$label => $staffRows];
+        });
+
         if ($request->filled('export')) {
-            $eHeaders = ['#', 'Staff Name', 'Designation', 'Receipts', 'Cash (Rs)', 'UPI (Rs)', 'Online (Rs)', 'Total (Rs)'];
+            $eHeaders = ['#', 'Staff Name', 'Designation', 'Receipts', 'Cash (Rs)', 'UPI (Rs)', 'Online (Rs)', 'Cheque (Rs)', 'DD (Rs)', 'NEFT (Rs)', 'RTGS (Rs)', 'Total (Rs)'];
             $eRows    = $staffData->values()->map(fn($row, $i) => [
                 $i + 1,
                 $row['staff']?->name ?? 'Unknown',
@@ -2582,20 +2606,41 @@ class ReportController extends Controller
                 number_format($row['cash'], 2),
                 number_format($row['upi'], 2),
                 number_format($row['online'], 2),
+                number_format($row['cheque'], 2),
+                number_format($row['dd'], 2),
+                number_format($row['neft'], 2),
+                number_format($row['rtgs'], 2),
                 number_format($row['total'], 2),
             ])->toArray();
+
+            // Append bank-wise / staff breakdown rows after the staff list
+            $eRows[] = [];
+            $eRows[] = ['Bank-wise Collection — Staff Breakdown'];
+            $eRows[] = ['Bank / Account', 'Staff Name', 'Receipts', 'Amount (Rs)'];
+            foreach ($bankWise as $bw) {
+                $eRows[] = [$bw['label'], '', $bw['count'], number_format($bw['total'], 2)];
+                foreach ($bankDetailWise[$bw['label']] ?? [] as $sr) {
+                    $eRows[] = ['', $sr['staff'], $sr['count'], number_format($sr['total'], 2)];
+                }
+            }
+            if ($bankWise->isNotEmpty()) {
+                $eRows[] = ['Grand Total', '', $bankWise->sum('count'), number_format($bankWise->sum('total'), 2)];
+            }
+
             $eTitle = 'Staff Collection Report | ' . $dateFrom . ' to ' . $dateTo;
             if ($request->export === 'csv')   return $this->exportCsv($eHeaders, $eRows, 'staff-collection.csv');
             if ($request->export === 'excel') return $this->exportSimpleExcel($eTitle, $eHeaders, $eRows, 'staff-collection.xlsx');
             if ($request->export === 'pdf') {
                 $instituteName = Institute::find($instituteId)?->name ?? 'Institute';
-                $entityData = $staffData->map(fn($r) => ['name' => $r['staff']?->name ?? 'Unknown', 'sub' => $r['staff']?->designation ?? '', 'count' => $r['count'], 'cash' => $r['cash'], 'upi' => $r['upi'], 'online' => $r['online'], 'total' => $r['total']]);
-                return view('institute.reports.collection-summary-print', compact('instituteName', 'entityData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo') + ['entityType' => 'Staff Collection Report']);
+                return view('institute.reports.staff-collection-print', compact(
+                    'instituteName', 'staffData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo', 'bankWise', 'bankDetailWise'
+                ));
             }
         }
 
         return view('institute.reports.staff-collection', compact(
-            'staffData', 'sessions', 'sessionId', 'dateFrom', 'dateTo', 'grandTotal', 'grandCount'
+            'staffData', 'sessions', 'sessionId', 'dateFrom', 'dateTo', 'grandTotal', 'grandCount',
+            'bankWise', 'bankDetailWise'
         ));
     }
 
