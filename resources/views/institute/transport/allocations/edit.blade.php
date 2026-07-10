@@ -21,11 +21,12 @@
             @csrf @method('PUT')
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label">Stop</label>
-                    <select class="form-select" name="transport_route_stop_id">
+                    <label class="form-label">Stop <small class="text-muted">(fee auto-fills below)</small></label>
+                    <select class="form-select" name="transport_route_stop_id" id="stopSelect" data-route-fee="{{ (float) ($allocation->route?->fee_amount ?? 0) }}">
                         <option value="">No specific stop</option>
                         @foreach($stops as $stop)
                             <option value="{{ $stop->id }}"
+                                data-fee="{{ (float) $stop->fee_amount }}"
                                 @selected(old('transport_route_stop_id', $allocation->transport_route_stop_id) == $stop->id)>
                                 {{ $stop->stop_name }}{{ $stop->fee_amount > 0 ? ' — ₹' . number_format($stop->fee_amount, 2) : '' }}
                             </option>
@@ -52,9 +53,9 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Fee Amount Override</label>
-                    <input type="number" step="0.01" min="0" name="fee_amount"
+                    <input type="number" step="0.01" min="0" name="fee_amount" id="feeAmountInput"
                         class="form-control" value="{{ old('fee_amount', $allocation->fee_amount) }}">
-                    <div class="form-text">Change only if needed. Currently: ₹{{ number_format($allocation->fee_amount, 2) }}</div>
+                    <div class="form-text">Auto-fills when Stop changes above. Change only if needed. Currently: ₹{{ number_format($allocation->fee_amount, 2) }}</div>
                 </div>
                 <div class="col-md-9">
                     <label class="form-label">Remarks</label>
@@ -68,4 +69,31 @@
         </form>
     </div>
 </div>
+
+<script>
+(() => {
+    // Same stop -> fee auto-fill pattern as the New Allocation form — picking a
+    // different stop here used to leave the Fee Amount Override untouched, silently
+    // saving whatever stale value was in the box instead of the newly selected stop's
+    // price.
+    const stopSelect = document.getElementById('stopSelect');
+    const feeInput    = document.getElementById('feeAmountInput');
+
+    if (!stopSelect || !feeInput) return;
+
+    stopSelect.addEventListener('change', () => {
+        const selectedStop = stopSelect.options[stopSelect.selectedIndex];
+        const stopFee = parseFloat(selectedStop?.dataset?.fee ?? 0);
+
+        if (stopFee > 0) {
+            feeInput.value = stopFee.toFixed(2);
+            return;
+        }
+
+        // No specific stop, or a zero-fee stop — fall back to the route's own base fee.
+        const routeFee = parseFloat(stopSelect.dataset.routeFee ?? 0);
+        feeInput.value = routeFee.toFixed(2);
+    });
+})();
+</script>
 @endsection

@@ -108,6 +108,7 @@ class TransportAllocationController extends TransportBaseController
         if (!empty($data['transport_route_stop_id'])) {
             $stop = TransportRouteStop::where('transport_route_id', $route->id)->findOrFail($data['transport_route_stop_id']);
         }
+        $this->assertStopSelectedIfRequired($route->id, $stop?->id);
 
         if (!empty($data['transport_vehicle_id'])) {
             $vehicle = TransportVehicle::where('institute_id', $this->instituteId())->findOrFail($data['transport_vehicle_id']);
@@ -360,8 +361,14 @@ class TransportAllocationController extends TransportBaseController
             'remarks'                 => ['nullable', 'string'],
         ]);
 
+        $resolvedStopId = $data['transport_route_stop_id'] ?? $allocation->transport_route_stop_id;
+        $this->assertStopSelectedIfRequired(
+            (int) $allocation->transport_route_id,
+            $resolvedStopId ? (int) $resolvedStopId : null
+        );
+
         $allocation->update([
-            'transport_route_stop_id' => $data['transport_route_stop_id'] ?? $allocation->transport_route_stop_id,
+            'transport_route_stop_id' => $resolvedStopId,
             // LOW-4: preserve existing vehicle/driver if not submitted (don't silently null them)
             'transport_vehicle_id'    => array_key_exists('transport_vehicle_id', $data) ? $data['transport_vehicle_id'] : $allocation->transport_vehicle_id,
             'transport_driver_id'     => array_key_exists('transport_driver_id', $data) ? $data['transport_driver_id'] : $allocation->transport_driver_id,
@@ -392,6 +399,7 @@ class TransportAllocationController extends TransportBaseController
         if (!empty($data['transport_route_stop_id'])) {
             $stop = TransportRouteStop::where('transport_route_id', $newRoute->id)->findOrFail($data['transport_route_stop_id']);
         }
+        $this->assertStopSelectedIfRequired($newRoute->id, $stop?->id);
 
         $setting = InstituteTransportSetting::forInstitute($this->instituteId());
 
@@ -504,6 +512,7 @@ class TransportAllocationController extends TransportBaseController
         $stop   = !empty($data['transport_route_stop_id'])
             ? TransportRouteStop::where('transport_route_id', $route->id)->find($data['transport_route_stop_id'])
             : null;
+        $this->assertStopSelectedIfRequired($route->id, $stop?->id);
 
         $feeAmount = (float) ($data['fee_amount'] ?? ($stop?->fee_amount > 0 ? $stop->fee_amount : $route->fee_amount));
         $count = 0;
@@ -556,5 +565,25 @@ class TransportAllocationController extends TransportBaseController
         }
 
         return redirect()->route('transport.allocations.index')->with('success', $msg);
+    }
+
+    /**
+     * A route with priced stops but no stop selected silently resolves to the route's
+     * own base fee (often 0 for stop-priced routes), so a forgotten stop selection can
+     * create a zero-fee allocation with no warning. Block that specific case — a route
+     * with no priced stops at all is unaffected, since its base fee is the real price.
+     */
+    private function assertStopSelectedIfRequired(int $routeId, ?int $stopId): void
+    {
+        if ($stopId) {
+            return;
+        }
+
+        $hasPricedStops = TransportRouteStop::where('transport_route_id', $routeId)
+            ->where('status', true)
+            ->where('fee_amount', '>', 0)
+            ->exists();
+
+        abort_if($hasPricedStops, 422, 'This route has priced stops — please select a stop so the correct fee is charged.');
     }
 }
