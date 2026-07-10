@@ -367,14 +367,27 @@ class TransportAllocationController extends TransportBaseController
             $resolvedStopId ? (int) $resolvedStopId : null
         );
 
-        $allocation->update([
-            'transport_route_stop_id' => $resolvedStopId,
-            // LOW-4: preserve existing vehicle/driver if not submitted (don't silently null them)
-            'transport_vehicle_id'    => array_key_exists('transport_vehicle_id', $data) ? $data['transport_vehicle_id'] : $allocation->transport_vehicle_id,
-            'transport_driver_id'     => array_key_exists('transport_driver_id', $data) ? $data['transport_driver_id'] : $allocation->transport_driver_id,
-            'fee_amount'              => isset($data['fee_amount']) ? (float) $data['fee_amount'] : $allocation->fee_amount,
-            'remarks'                 => $data['remarks'] ?? null,
-        ]);
+        $newFeeAmount = isset($data['fee_amount']) ? (float) $data['fee_amount'] : (float) $allocation->fee_amount;
+
+        DB::transaction(function () use ($allocation, $data, $resolvedStopId, $newFeeAmount) {
+            $allocation->update([
+                'transport_route_stop_id' => $resolvedStopId,
+                // LOW-4: preserve existing vehicle/driver if not submitted (don't silently null them)
+                'transport_vehicle_id'    => array_key_exists('transport_vehicle_id', $data) ? $data['transport_vehicle_id'] : $allocation->transport_vehicle_id,
+                'transport_driver_id'     => array_key_exists('transport_driver_id', $data) ? $data['transport_driver_id'] : $allocation->transport_driver_id,
+                'fee_amount'              => $newFeeAmount,
+                'remarks'                 => $data['remarks'] ?? null,
+            ]);
+
+            // fee_amount alone is just the reference price — if this allocation was
+            // already billed, charged_amount (what's actually owed on the wallet) needs
+            // to move too, or Fee Collection / Due Report keep showing the old amount.
+            WalletService::adjustTransportAllocationCharge(
+                $allocation,
+                $newFeeAmount,
+                'Fee correction — allocation edited (' . ($allocation->route?->name ?? 'Route') . ')'
+            );
+        });
 
         return redirect()->route('transport.allocations.show', $allocation)->with('success', 'Allocation updated.');
     }

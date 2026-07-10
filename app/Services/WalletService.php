@@ -636,6 +636,70 @@ class WalletService
     }
 
     /**
+     * Reconciles charged_amount (and the wallet) after staff edits an already-billed
+     * allocation's fee — e.g. correcting the stop, which changes the price. Adjusts by
+     * exactly the difference between what was charged and what should now be owed,
+     * rather than re-charging the full new amount (which would double-debit the
+     * wallet) or leaving charged_amount stale (which is the bug this fixes). A no-op
+     * if the allocation was never billed — charged_amount is still null, so there is
+     * nothing to reconcile until it actually gets charged.
+     */
+    public static function adjustTransportAllocationCharge(TransportAllocation $allocation, float $newFeeAmount, string $reason): void
+    {
+        DB::transaction(function () use ($allocation, $newFeeAmount, $reason) {
+            $locked = TransportAllocation::where('id', $allocation->id)->lockForUpdate()->first();
+            if (!$locked || $locked->charged_amount === null) {
+                return;
+            }
+
+            $newFeeAmount = round(max(0, $newFeeAmount), 2);
+            $diff = round($newFeeAmount - $locked->effective_charged, 2);
+
+            if (abs($diff) < 0.01) {
+                return;
+            }
+
+            if ($diff < 0) {
+                self::creditTransportAllocation($locked, abs($diff), $reason);
+                return;
+            }
+
+            // Fee increased — debit the wallet for the difference only, not the full new amount.
+            $wallet = StudentWallet::where('student_id', $locked->student_id)
+                ->where('academic_session_id', $locked->academic_session_id)
+                ->lockForUpdate()
+                ->first();
+            if (!$wallet) {
+                return;
+            }
+
+            $opBal = (float) $wallet->main_b;
+            $clBal = round($opBal - $diff, 2);
+
+            self::createStudentTransaction([
+                'student_id'              => $locked->student_id,
+                'institute_id'            => $locked->institute_id,
+                'academic_session_id'     => $locked->academic_session_id,
+                'des'                     => $reason,
+                'credit'                  => 0.00,
+                'debit'                   => $diff,
+                'type'                    => StudentTransaction::DEBIT,
+                'date'                    => now()->toDateString(),
+                'op_bal'                  => $opBal,
+                'cl_bal'                  => $clBal,
+                'transport_allocation_id' => $locked->id,
+                'by_user_id'              => self::resolveActorId(),
+            ]);
+
+            $wallet->main_b = $clBal;
+            $wallet->save();
+
+            $locked->charged_amount = $newFeeAmount;
+            $locked->save();
+        });
+    }
+
+    /**
      * Apply a credit note to a transport allocation when a student transfers routes.
      * Reduces charged_amount on the old allocation and credits the student wallet ledger.
      */
