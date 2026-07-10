@@ -32,9 +32,13 @@ class TransportBillingController extends TransportBaseController
             ->whereHas('route', fn ($q) => $q->where('billing_frequency', 'semester'))
             ->get();
 
-        // already_billed = charged_amount > 0 (semester is charged once per session)
+        // already_billed = charged_amount has been resolved (semester is charged once per
+        // session). charged_amount is null until billing has actually run for this
+        // allocation; a resolved value of exactly 0 still counts as "already billed" —
+        // it means billing ran and determined nothing was owed, not that billing is
+        // still pending.
         $allocations = $allocations->map(function ($a) {
-            $a->already_billed = (float) $a->charged_amount > 0;
+            $a->already_billed = $a->charged_amount !== null;
             return $a;
         });
 
@@ -89,7 +93,7 @@ class TransportBillingController extends TransportBaseController
                     ->with('route:id,name')
                     ->first();
 
-                if (!$locked || (float) $locked->charged_amount > 0) {
+                if (!$locked || $locked->charged_amount !== null) {
                     $skipped++;
                     continue;
                 }

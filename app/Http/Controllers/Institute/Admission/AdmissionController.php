@@ -321,7 +321,6 @@ class AdmissionController extends Controller
             'transport_vehicle_id' => $vehicle?->id,
             'transport_driver_id' => $driver?->id,
             'fee_amount' => (float) ($formData['transport_fee_amount'] ?? $route->fee_amount),
-            'charged_amount' => 0,
             'paid_amount' => 0,
             'start_date' => $formData['transport_start_date'] ?? now()->toDateString(),
             'status' => 'active',

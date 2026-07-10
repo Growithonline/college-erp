@@ -17,15 +17,17 @@ class TransportSettingController extends TransportBaseController
     public function update(Request $request)
     {
         $data = $request->validate([
-            'on_route_transfer'        => ['required', 'in:full_charge,no_charge,prorated_charge'],
-            'yearly_fee_cross_session' => ['nullable', 'boolean'],
+            'on_route_transfer'         => ['required', 'in:full_charge,no_charge,prorated_charge'],
+            'yearly_fee_cross_session'  => ['nullable', 'boolean'],
+            'semester_duration_months'  => ['required', 'integer', 'min:1', 'max:12'],
         ]);
 
         InstituteTransportSetting::updateOrCreate(
             ['institute_id' => $this->instituteId()],
             [
-                'on_route_transfer'        => $data['on_route_transfer'],
-                'yearly_fee_cross_session' => $request->boolean('yearly_fee_cross_session'),
+                'on_route_transfer'         => $data['on_route_transfer'],
+                'yearly_fee_cross_session'  => $request->boolean('yearly_fee_cross_session'),
+                'semester_duration_months'  => $data['semester_duration_months'],
             ]
         );
 

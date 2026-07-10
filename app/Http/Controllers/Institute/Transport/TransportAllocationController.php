@@ -142,7 +142,6 @@ class TransportAllocationController extends TransportBaseController
                 'transport_vehicle_id' => $data['transport_vehicle_id'] ?? null,
                 'transport_driver_id' => $data['transport_driver_id'] ?? null,
                 'fee_amount' => (float) ($data['fee_amount'] ?? ($stop?->fee_amount > 0 ? $stop->fee_amount : $route->fee_amount)),
-                'charged_amount' => 0,
                 'paid_amount' => 0,
                 'start_date' => $data['start_date'],
                 'status' => 'active',
@@ -165,6 +164,7 @@ class TransportAllocationController extends TransportBaseController
 
         $payments = $allocation->payments()->latest('id')->get();
         $routes   = TransportRoute::where('institute_id', $this->instituteId())->where('status', true)->orderBy('name')->get();
+        $setting  = InstituteTransportSetting::forInstitute($this->instituteId());
 
         // Full route change history for this student
         $history = TransportAllocation::with(['route:id,name,route_code', 'stop:id,transport_route_id,stop_name', 'session:id,name'])
@@ -174,7 +174,7 @@ class TransportAllocationController extends TransportBaseController
             ->orderBy('id')
             ->get();
 
-        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes', 'history'));
+        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes', 'history', 'setting'));
     }
 
     public function pdf(TransportAllocation $allocation)
@@ -283,17 +283,54 @@ class TransportAllocationController extends TransportBaseController
         return back()->with('success', 'Transport payment recorded successfully.');
     }
 
-    public function close(TransportAllocation $allocation)
+    public function close(Request $request, TransportAllocation $allocation)
     {
         $this->assertInstituteModel($allocation);
 
-        $allocation->update([
-            'is_active' => false,
-            'status'    => 'closed',
-            'end_date'  => now()->toDateString(),
+        $outstanding = max(0, round((float) $allocation->balance, 2));
+
+        $data = $request->validate([
+            'cancellation_date' => [
+                'required',
+                'date',
+                'after_or_equal:' . ($allocation->start_date?->toDateString() ?? '1900-01-01'),
+                'before_or_equal:today',
+            ],
+            'credit_amount' => ['nullable', 'numeric', 'min:0', 'max:' . $outstanding],
         ]);
 
-        return back()->with('success', 'Transport allocation closed.');
+        $requestedCredit = round((float) ($data['credit_amount'] ?? 0), 2);
+        $routeName       = $allocation->route?->name ?? 'Route';
+
+        DB::transaction(function () use ($allocation, $data, $requestedCredit, $routeName) {
+            // Lock the allocation row and re-derive the outstanding balance fresh —
+            // guards against a double-submit / concurrent-cancel race applying two
+            // credit notes (or closing an already-closed allocation) against the same row.
+            $locked = TransportAllocation::where('id', $allocation->id)->lockForUpdate()->first();
+
+            if (!$locked || !$locked->is_active) {
+                return;
+            }
+
+            $liveOutstanding = max(0, round((float) $locked->balance, 2));
+            $creditAmount    = min($requestedCredit, $liveOutstanding);
+
+            if ($creditAmount > 0) {
+                WalletService::creditTransportAllocation(
+                    $locked,
+                    $creditAmount,
+                    'Transport cancellation credit — ' . $routeName
+                );
+            }
+
+            $locked->update([
+                'is_active' => false,
+                'status'    => 'closed',
+                'end_date'  => $data['cancellation_date'],
+            ]);
+        });
+
+        return back()->with('success', 'Transport allocation cancelled successfully.');
     }
 
     // ── EDIT ────────────────────────────────────────────────────────────────
@@ -409,7 +446,6 @@ class TransportAllocationController extends TransportBaseController
                 'transport_vehicle_id'    => $vehicleId,
                 'transport_driver_id'     => $driverId,
                 'fee_amount'              => $baseFee,   // original fee stored for future billing
-                'charged_amount'          => 0,
                 'paid_amount'             => 0,
                 'start_date'              => $data['start_date'],
                 'status'                  => 'active',
@@ -503,7 +539,6 @@ class TransportAllocationController extends TransportBaseController
                     'transport_vehicle_id'    => $data['transport_vehicle_id'] ?? null,
                     'transport_driver_id'     => $data['transport_driver_id'] ?? null,
                     'fee_amount'              => $feeAmount,
-                    'charged_amount'          => 0,
                     'paid_amount'             => 0,
                     'start_date'              => $data['start_date'],
                     'status'                  => 'active',

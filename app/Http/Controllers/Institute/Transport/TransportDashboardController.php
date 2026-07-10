@@ -22,9 +22,14 @@ class TransportDashboardController extends TransportBaseController
             'allocations'      => TransportAllocation::where('institute_id', $instituteId)->count(),
             'active_allocations' => TransportAllocation::where('institute_id', $instituteId)->where('is_active', true)->count(),
             'payments'         => TransportPayment::where('institute_id', $instituteId)->where('is_reversed', false)->count(),
+            // Use the actual charged_amount (falling back to fee_amount only while a row is
+            // still unbilled), not fee_amount directly — otherwise an allocation already
+            // resolved to owe nothing (yearly cross-session skip, full credit note) would
+            // still be counted as fully due here. GREATEST(...,0) floors any single
+            // allocation's balance at zero so an overpaid row can't reduce the total.
             'total_due'        => (float) TransportAllocation::where('institute_id', $instituteId)
                 ->where('is_active', true)
-                ->selectRaw('COALESCE(SUM(fee_amount - paid_amount), 0) as due')
+                ->selectRaw('COALESCE(SUM(GREATEST(COALESCE(charged_amount, fee_amount) - paid_amount, 0)), 0) as due')
                 ->value('due'),
             'total_collected'  => (float) TransportPayment::where('institute_id', $instituteId)
                 ->where('is_reversed', false)

@@ -55,6 +55,22 @@
 
                     <hr>
 
+                    {{-- Semester Duration --}}
+                    <div class="mb-4">
+                        <label for="semesterDurationMonths" class="form-label fw-semibold">Semester Duration (months) <span class="text-danger">*</span></label>
+                        <small class="d-block text-muted mb-2">
+                            Reference length of one semester, used to suggest a prorated credit when a student
+                            transfers routes or cancels transport mid-semester. Staff can always edit the
+                            suggested amount before confirming.
+                        </small>
+                        <input type="number" min="1" max="12" step="1" id="semesterDurationMonths"
+                               name="semester_duration_months" class="form-control" style="max-width: 160px;"
+                               value="{{ old('semester_duration_months', $setting->semester_duration_months ?? 6) }}" required>
+                        @error('semester_duration_months') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                    </div>
+
+                    <hr>
+
                     {{-- Yearly Fee Cross Session --}}
                     <div class="mb-4">
                         <div class="form-check form-switch">

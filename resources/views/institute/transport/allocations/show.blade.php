@@ -15,11 +15,7 @@
         @if($allocation->is_active)
         <a href="{{ route('transport.allocations.edit', $allocation) }}" class="btn btn-outline-primary btn-sm">Edit</a>
         <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#transferModal">Change Route</button>
-        <form method="POST" action="{{ route('transport.allocations.close', $allocation) }}"
-            onsubmit="return confirm('Close this allocation?')">
-            @csrf
-            <button class="btn btn-outline-secondary btn-sm">Close</button>
-        </form>
+        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#cancelModal">Cancel Transport</button>
         @endif
     </div>
 </div>
@@ -140,23 +136,18 @@
 {{-- Route Transfer Modal --}}
 @if($allocation->is_active)
 @php
-    $oldBalance     = (float) $allocation->balance;
-    $oldFee         = (float) $allocation->fee_amount;
-    $oldCharged     = (float) $allocation->charged_amount ?: $oldFee;
-    $oldPaid        = (float) $allocation->paid_amount;
-    $allocStart     = $allocation->start_date;
-    $sessionEnd     = $allocation->session?->end_date;
-    $today          = now()->startOfDay();
+    $oldBalance      = (float) $allocation->balance;
+    $oldCharged      = $allocation->effective_charged;
+    $oldPaid         = (float) $allocation->paid_amount;
+    $allocStart      = $allocation->start_date;
+    $today           = now()->startOfDay();
 
-    // Prorated suggestion: unused portion of charged fee
-    $suggestedCredit = 0.0;
-    if ($allocStart && $sessionEnd && $oldBalance > 0 && $oldCharged > 0) {
-        $totalDays     = max(1, $allocStart->diffInDays($sessionEnd));
-        $usedDays      = min($totalDays, $allocStart->diffInDays($today));
-        $remainingDays = max(0, $totalDays - $usedDays);
-        $prorated      = round(($remainingDays / $totalDays) * $oldCharged, 2);
-        $suggestedCredit = min($oldBalance, $prorated);
-    }
+    // Prorated suggestion: unused portion of charged fee, based on the institute's
+    // configured semester length (NOT the academic session's dates — a session spans
+    // an entire academic year, not a single semester).
+    $semesterMonths  = max(1, (int) $setting->semester_duration_months);
+    $semesterEnd     = $allocStart ? $allocStart->copy()->addMonths($semesterMonths) : null;
+    $suggestedCredit = $setting->proratedUnusedAmount($allocation, $today);
 @endphp
 <div class="modal fade" id="transferModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -169,69 +160,12 @@
                 @csrf
                 <div class="modal-body">
 
-                    {{-- Old Allocation Summary --}}
-                    <div class="card border-0 bg-light rounded mb-3 p-3" style="font-size:13px;">
-                        <div class="fw-semibold text-muted mb-2" style="font-size:11px; letter-spacing:.05em; text-transform:uppercase;">Current Allocation</div>
-                        <div class="row g-2">
-                            <div class="col-4">
-                                <div class="text-muted">Route</div>
-                                <div class="fw-semibold">{{ $allocation->route?->name ?? '—' }}</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-muted">Fee Charged</div>
-                                <div class="fw-semibold">₹{{ number_format($oldCharged, 2) }}</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-muted">Paid / Outstanding</div>
-                                <div>
-                                    <span class="text-success fw-semibold">₹{{ number_format($oldPaid, 2) }}</span>
-                                    <span class="text-muted mx-1">/</span>
-                                    <span class="text-danger fw-semibold">₹{{ number_format($oldBalance, 2) }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    @include('institute.transport.allocations._allocation-summary')
 
-                    {{-- Credit Note Section --}}
-                    @if($oldBalance > 0)
-                    <div class="card border border-success-subtle rounded mb-3 p-3" style="font-size:13px;">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-semibold text-success" style="font-size:12px; text-transform:uppercase; letter-spacing:.05em;">
-                                <i class="bi bi-receipt me-1"></i>Credit Note on Old Route
-                            </span>
-                            <span class="text-muted" style="font-size:11px;">Max: ₹{{ number_format($oldBalance, 2) }}</span>
-                        </div>
-                        <div class="row g-2 align-items-end">
-                            <div class="col-8">
-                                <label class="form-label text-muted mb-1" style="font-size:11px;">Credit Amount (₹) — unused portion to write off</label>
-                                <input type="number" step="0.01" min="0" max="{{ $oldBalance }}"
-                                       name="credit_amount" id="creditAmountInput"
-                                       class="form-control form-control-sm"
-                                       value="{{ number_format($suggestedCredit, 2, '.', '') }}"
-                                       placeholder="0.00">
-                            </div>
-                            <div class="col-4">
-                                <button type="button" class="btn btn-sm btn-outline-secondary w-100"
-                                        onclick="document.getElementById('creditAmountInput').value = '{{ number_format($oldBalance, 2, '.', '') }}'">
-                                    Full Credit
-                                </button>
-                            </div>
-                        </div>
-                        @if($suggestedCredit > 0 && $sessionEnd)
-                        <div class="text-muted mt-2" style="font-size:11px;">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Suggested ₹{{ number_format($suggestedCredit, 2) }} = prorated unused days
-                            ({{ $allocStart->format('d M') }} → {{ $today->format('d M') }} used,
-                             {{ $today->format('d M') }} → {{ $sessionEnd->format('d M Y') }} remaining).
-                            You can adjust this amount.
-                        </div>
-                        @endif
-                        <div class="text-muted mt-1" style="font-size:11px;">
-                            <i class="bi bi-lightbulb me-1 text-warning"></i>
-                            Enter <strong>0</strong> to carry forward the full outstanding balance to the student's ledger.
-                        </div>
-                    </div>
-                    @endif
+                    @include('institute.transport.allocations._credit-note', [
+                        'heading' => 'Credit Note on Old Route',
+                        'inputId' => 'creditAmountInput',
+                    ])
 
                     <hr class="my-3">
 
@@ -295,6 +229,50 @@
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-warning px-5">
                         <i class="bi bi-arrow-left-right me-1"></i> Confirm Transfer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Cancel Transport Modal --}}
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-semibold"><i class="bi bi-x-circle me-2 text-danger"></i>Cancel Transport</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('transport.allocations.close', $allocation) }}">
+                @csrf
+                <div class="modal-body">
+
+                    @include('institute.transport.allocations._allocation-summary')
+
+                    <div class="mb-3">
+                        <label class="form-label">Cancellation Date <span class="text-danger">*</span></label>
+                        <input type="date" name="cancellation_date" id="cancelDateInput" class="form-control"
+                               value="{{ $today->toDateString() }}"
+                               min="{{ $allocStart?->toDateString() }}"
+                               max="{{ $today->toDateString() }}" required>
+                        <small class="text-muted">The last day this student actually used the route. Can be backdated.</small>
+                    </div>
+
+                    @include('institute.transport.allocations._credit-note', [
+                        'heading' => 'Credit Note',
+                        'inputId' => 'cancelCreditAmountInput',
+                    ])
+
+                    <div class="alert alert-warning py-2 px-3 mb-0" style="font-size:12px;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        This allocation will be closed and no further transport fee will be charged against it.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Back</button>
+                    <button type="submit" class="btn btn-danger px-5">
+                        <i class="bi bi-x-circle me-1"></i> Confirm Cancellation
                     </button>
                 </div>
             </form>

@@ -1025,6 +1025,18 @@
                         $initCollect   = 0;
                         $initFine      = 0; // Never pre-fill: pendingFine is already-charged; chargeFineItems adds new charges only
                         $initBalance   = $remaining;
+                        // Fine/Discount on a transport row represent a usage adjustment (extra
+                        // days used beyond what was billed, or unused days written off) — not a
+                        // late-payment penalty or a fee waiver. Shown as a tooltip only; the
+                        // underlying ledger mechanism is intentionally shared with every other
+                        // fee type, so this is a labeling hint, not a behavioural difference.
+                        $isTransportItem = ($item['type'] ?? null) === 'transport';
+                        $fineHint = $isTransportItem
+                            ? 'Transport usage adjustment: extra days used beyond what was originally charged — not a late-payment penalty.'
+                            : null;
+                        $discHint = $isTransportItem
+                            ? 'Transport usage adjustment: unused days to write off from the charged fee — not a fee waiver.'
+                            : null;
                     @endphp
                     @if($isBlocked)
                         @php $idx++; @endphp
@@ -1105,6 +1117,7 @@
                                        min="0" step="1"
                                        style="max-width:72px;border-color:#f87171;font-weight:600;color:#dc2626;"
                                        {{ !$isChecked ? 'disabled' : '' }}
+                                       title="{{ $fineHint }}"
                                        oninput="onFineChange({{ $idx }})"
                                        onblur="normalizeRowValues({{ $idx }})">
                             </div>
@@ -1120,6 +1133,7 @@
                                        min="0" step="1"
                                        style="max-width:72px;border-color:#f59e0b;font-weight:600;color:#d97706;{{ $itemMaxDisc <= 0 ? 'background:#f1f5f9;cursor:not-allowed;' : '' }}"
                                        {{ (!$isChecked || $itemMaxDisc <= 0) ? 'disabled' : '' }}
+                                       title="{{ $discHint }}"
                                        oninput="onDiscChange({{ $idx }})"
                                        onblur="normalizeRowValues({{ $idx }})">
                             </div>

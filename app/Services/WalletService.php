@@ -73,9 +73,13 @@ class WalletService
     {
         $allocation->paid_amount = round((float) $allocation->paid_amount + $paidAmount, 2);
 
+        // Compare against effective_charged, not the nominal fee_amount — once
+        // charged_amount has been reduced by a discount (or a credit note), a student who
+        // has paid in full relative to what is actually owed must show as 'paid', not
+        // stay stuck on 'partial' forever because they never paid the original fee_amount.
         if ((float) $allocation->paid_amount <= 0) {
             $allocation->status = 'active';
-        } elseif ((float) $allocation->paid_amount + 0.01 < (float) $allocation->fee_amount) {
+        } elseif ((float) $allocation->paid_amount + 0.01 < $allocation->effective_charged) {
             $allocation->status = 'partial';
         } else {
             $allocation->status = 'paid';
@@ -251,7 +255,9 @@ class WalletService
                     (int) $tItem['transport_allocation_id'],
                     (float) ($tItem['amount'] ?? 0),
                     $invoice->id,
-                    self::resolveActorId()
+                    self::resolveActorId(),
+                    (float) ($tItem['fine'] ?? 0),
+                    (float) ($tItem['discount'] ?? 0)
                 );
             }
         }
@@ -563,20 +569,46 @@ class WalletService
         });
     }
 
+    /**
+     * @param  float  $fine  Extra amount to add on top of the allocation's charged_amount
+     *                       (e.g. usage beyond what was originally billed). Never capped.
+     * @param  float  $discount  Amount to write off the allocation's charged_amount. Capped
+     *                           so it can never pull charged_amount below what has already
+     *                           been paid — a discount can waive what is still outstanding,
+     *                           it cannot manufacture a refund of cash already collected.
+     */
     public static function settleTransportFromInvoice(
         int $allocationId,
         float $amount,
         int $invoiceId,
-        ?int $actorId = null
+        ?int $actorId = null,
+        float $fine = 0.0,
+        float $discount = 0.0
     ): void {
-        DB::transaction(function () use ($allocationId, $amount, $invoiceId, $actorId) {
+        DB::transaction(function () use ($allocationId, $amount, $invoiceId, $actorId, $fine, $discount) {
             $allocation = TransportAllocation::where('id', $allocationId)->lockForUpdate()->first();
             if (!$allocation) {
                 return;
             }
 
+            $fine = max(0.0, round($fine, 2));
+            $discount = max(0.0, round($discount, 2));
+
+            if ($fine > 0 || $discount > 0) {
+                $allocation->charged_amount = round(
+                    max((float) $allocation->paid_amount, $allocation->effective_charged - $discount) + $fine,
+                    2
+                );
+            }
+
             $amount = min(round($amount, 2), max(0, round((float) $allocation->balance, 2)));
+
             if ($amount <= 0) {
+                // Nothing collected this time, but a fine/discount adjustment still needs
+                // to be persisted so the allocation's balance reflects it going forward.
+                if ($fine > 0 || $discount > 0) {
+                    $allocation->save();
+                }
                 return;
             }
 
@@ -611,7 +643,7 @@ class WalletService
     {
         DB::transaction(function () use ($allocation, $creditAmount, $reason) {
             // Cap credit to the actual outstanding balance (can't credit more than owed)
-            $outstanding = max(0, round((float) $allocation->charged_amount - (float) $allocation->paid_amount, 2));
+            $outstanding = max(0, round($allocation->effective_charged - (float) $allocation->paid_amount, 2));
             $creditAmount = min(round($creditAmount, 2), $outstanding);
 
             if ($creditAmount <= 0) {
@@ -648,13 +680,91 @@ class WalletService
             $wallet->main_b = $clBal;
             $wallet->save();
 
-            // Reduce charged_amount — the billed amount shrinks by the credited portion
+            // Reduce charged_amount — the billed amount shrinks by the credited portion.
+            // This also resolves charged_amount to a definitive value for the first time
+            // if it was still null (never billed) — a credit note settles the question of
+            // what is owed either way.
             $allocation->charged_amount = round(
-                max((float) $allocation->paid_amount, (float) $allocation->charged_amount - $creditAmount),
+                max((float) $allocation->paid_amount, $allocation->effective_charged - $creditAmount),
                 2
             );
             $allocation->save();
         });
+    }
+
+    /**
+     * Called when a student is promoted to the next semester within the same academic
+     * session (PromotionController::semesterPromote() — the session itself does not
+     * change, only current_semester does). If the student currently has an active
+     * semester-frequency transport allocation, it is closed — crediting back any unused
+     * portion of the previous semester's charge — and a fresh allocation opens on the
+     * same route/stop/vehicle/driver for the new semester, charged in full.
+     *
+     * Yearly and one-time routes are deliberately left untouched: a semester promotion
+     * never crosses the academic-year boundary those billing frequencies are scoped to,
+     * and re-running this against a yearly allocation would fight the cross-session
+     * skip check in chargeTransportAllocation() and risk a double charge. A student who
+     * is not continuing transport into the new semester is expected to already have had
+     * their allocation closed via the Transport module before promotion runs — this
+     * method only ever acts on an allocation that is still active at promotion time.
+     */
+    public static function carryForwardSemesterTransport(Student $student, int $sessionId): void
+    {
+        $old = TransportAllocation::where('student_id', $student->id)
+            ->where('academic_session_id', $sessionId)
+            ->where('is_active', true)
+            ->whereHas('route', fn ($q) => $q->where('billing_frequency', 'semester'))
+            ->lockForUpdate()
+            ->first();
+
+        if (!$old) {
+            return;
+        }
+
+        $old->loadMissing(['route', 'stop']);
+        $today = now()->startOfDay();
+        $setting = InstituteTransportSetting::forInstitute((int) $old->institute_id);
+
+        $creditAmount = $setting->proratedUnusedAmount($old, $today);
+        if ($creditAmount > 0) {
+            self::creditTransportAllocation(
+                $old,
+                $creditAmount,
+                'Semester promotion — unused portion of previous semester'
+            );
+        }
+
+        $old->update([
+            'is_active' => false,
+            'status'    => 'closed',
+            'end_date'  => $today->toDateString(),
+        ]);
+
+        // Re-resolve the fee from the route/stop's current pricing rather than reusing
+        // the old allocation's frozen fee_amount — if the institute has since changed
+        // the route's price, the new semester should bill at the current rate.
+        $feeAmount = (float) (
+            ($old->stop && (float) $old->stop->fee_amount > 0 ? $old->stop->fee_amount : $old->route?->fee_amount)
+            ?? $old->fee_amount
+        );
+
+        $new = TransportAllocation::create([
+            'student_id'              => $old->student_id,
+            'institute_id'            => $old->institute_id,
+            'academic_session_id'     => $old->academic_session_id,
+            'transport_route_id'      => $old->transport_route_id,
+            'transport_route_stop_id' => $old->transport_route_stop_id,
+            'transport_vehicle_id'    => $old->transport_vehicle_id,
+            'transport_driver_id'     => $old->transport_driver_id,
+            'fee_amount'              => $feeAmount,
+            'paid_amount'             => 0,
+            'start_date'              => $today->toDateString(),
+            'status'                  => 'active',
+            'is_active'               => true,
+            'remarks'                 => 'Auto-continued from semester promotion',
+        ]);
+
+        self::chargeTransportAllocation($new);
     }
 
     public static function resolveAcademicContext(Student $student, int $sessionId): array
@@ -932,7 +1042,7 @@ class WalletService
             if ($ta->stop) {
                 $tLabel .= ' / ' . $ta->stop->stop_name;
             }
-            $feeAmt  = round((float) ($ta->charged_amount ?: $ta->fee_amount), 2);
+            $feeAmt  = round($ta->effective_charged, 2);
             $paidAmt = round((float) $ta->paid_amount, 2);
             $transportTotal += $balance;
             $items[] = [

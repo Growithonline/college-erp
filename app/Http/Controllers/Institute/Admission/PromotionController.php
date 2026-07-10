@@ -669,8 +669,8 @@ class PromotionController extends Controller
             $student->coursePart?->year_number
         );
 
-        // Semester promotion pe yearly fees (semester=0) already Sem 1 mein charge ho chuki hain
-        // Session promotion pe naya saal shuru hota hai, isliye yearly fees dobara lagte hain
+        // Semester promotion: yearly fees (semester=0) were already charged in Sem 1.
+        // Session promotion: a new academic year starts, so yearly fees apply again.
         $includeYearlyFees = $log->promotion_type === 'session';
 
         $spy = $this->semestersPerYear($student);
@@ -1206,6 +1206,13 @@ class PromotionController extends Controller
 
                     $this->upsertCurrentIdentity($student, $sessionId, StudentAcademicIdentity::SOURCE_PROMOTION);
                     $this->applyPromotionFee($student, $sessionId, $toSemester, $log);
+
+                    // Carry forward semester-frequency transport to the new semester for
+                    // students who are still riding an active route. A student who is
+                    // stopping is expected to already have had their allocation closed
+                    // via the Transport module before promotion runs; this is a no-op
+                    // for anyone with no active semester-frequency allocation.
+                    WalletService::carryForwardSemesterTransport($student, $sessionId);
 
                     $promoted++;
                 });
@@ -2117,7 +2124,7 @@ class PromotionController extends Controller
                     ->exists();
 
                 if ($exists) {
-                    $errors[] = "Roll No {$rollNo} duplicate hai, skip kiya gaya";
+                    $errors[] = "Roll No {$rollNo} is a duplicate, skipped";
                     continue;
                 }
             }
@@ -2131,7 +2138,7 @@ class PromotionController extends Controller
                     ->exists();
 
                 if ($exists) {
-                    $errors[] = "Form No {$formNo} duplicate hai, skip kiya gaya";
+                    $errors[] = "Form No {$formNo} is a duplicate, skipped";
                     continue;
                 }
             }
@@ -3043,8 +3050,8 @@ class PromotionController extends Controller
     }
 
     /**
-     * Kisi session ke wo students dikhao jo us session mein the lekin baad mein
-     * promote ho kar agle session mein chale gaye (student_academic_identity se).
+     * Show students who were in a given session but were later promoted and moved on
+     * to the next session (sourced from student_academic_identity).
      */
     public function promotedStudents(Request $request)
     {

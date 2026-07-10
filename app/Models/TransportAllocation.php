@@ -74,13 +74,24 @@ class TransportAllocation extends Model
         return $this->hasMany(TransportPayment::class);
     }
 
-    public function getBalanceAttribute(): float
+    /**
+     * charged_amount is null until this allocation has actually been billed, or has been
+     * explicitly resolved to a definitive amount (including a literal 0 — e.g. a yearly
+     * cross-session skip, or a fully credited/written-off allocation). Only fall back to
+     * the nominal fee_amount as a "what this will cost" preview while nothing has been
+     * charged yet; once a value has been set, even zero, trust it. This is the single
+     * definition of "what this allocation owes" — every balance/credit/proration
+     * calculation in the transport module reads it from here rather than re-deriving it.
+     */
+    public function getEffectiveChargedAttribute(): float
     {
-        // charged_amount = fee_amount set on allocation creation (or on semester charge generation).
-        $charged = (float) $this->charged_amount > 0
+        return $this->charged_amount !== null
             ? (float) $this->charged_amount
             : (float) $this->fee_amount;
+    }
 
-        return round($charged - (float) $this->paid_amount, 2);
+    public function getBalanceAttribute(): float
+    {
+        return round($this->effective_charged - (float) $this->paid_amount, 2);
     }
 }
