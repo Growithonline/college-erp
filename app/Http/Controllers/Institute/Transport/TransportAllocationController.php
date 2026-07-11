@@ -194,7 +194,7 @@ class TransportAllocationController extends TransportBaseController
         return $pdf->download($filename);
     }
 
-    public function pass(TransportAllocation $allocation)
+    public function pass(Request $request, TransportAllocation $allocation)
     {
         $this->assertInstituteModel($allocation);
         $allocation->load(['student', 'route', 'stop', 'vehicle', 'driver']);
@@ -204,10 +204,13 @@ class TransportAllocationController extends TransportBaseController
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.transport.allocations.pass', compact(
             'allocation', 'institute', 'qrSvg'
-        ))->setPaper([0, 0, 243, 153], 'landscape'); // ~85.6mm x 54mm (ID-1 card size) in points
+        ))->setPaper([0, 0, 243, 153]); // ~85.6mm x 54mm (ID-1 card size) in points, already landscape-shaped
 
         $filename = 'transport-pass-' . ($allocation->student?->roll_no ?? $allocation->id) . '.pdf';
-        return $pdf->download($filename);
+
+        // ?view=1 opens inline in the browser instead of forcing a download — lets
+        // staff preview a pass without saving/printing it every single time.
+        return $request->boolean('view') ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
     public function bulkPass(Request $request)
@@ -240,17 +243,24 @@ class TransportAllocationController extends TransportBaseController
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.transport.allocations.pass-bulk', compact(
             'passes', 'institute'
-        ))->setPaper([0, 0, 243, 153], 'landscape');
+        ))->setPaper([0, 0, 243, 153]);
 
-        return $pdf->download('transport-passes-' . now()->format('Ymd-His') . '.pdf');
+        $filename = 'transport-passes-' . now()->format('Ymd-His') . '.pdf';
+
+        return $request->boolean('view') ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
     /**
      * QR payload is only student_id + institute_id (HMAC-signed via SignedPublicLink)
      * — never a specific allocation — so scanning always resolves whatever is
      * currently active at scan time. A printed card stays valid across route changes
-     * without needing to be reprinted. SVG, not PNG: pure PHP via bacon/bacon-qr-code,
-     * no Imagick dependency to worry about on the deploy server.
+     * without needing to be reprinted. SVG, not PNG: PNG needs the Imagick extension
+     * (confirmed not installed here — bacon/bacon-qr-code throws without it), while
+     * SVG renders through pure PHP.
+     *
+     * Returns raw SVG markup (XML declaration stripped) for direct inline embedding
+     * in the Blade template — not a data: URI. DomPDF does not reliably render
+     * data:image/svg+xml inside an <img> tag; it does render an inline <svg> element.
      */
     private function generatePassQr(int $studentId): string
     {
@@ -261,9 +271,9 @@ class TransportAllocationController extends TransportBaseController
             'transport'
         );
 
-        return base64_encode(
-            \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(180)->margin(1)->generate($verifyUrl)
-        );
+        $svg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(180)->margin(1)->generate($verifyUrl);
+
+        return preg_replace('/<\?xml.*?\?>/', '', $svg);
     }
 
     public function collectPayment(Request $request, TransportAllocation $allocation)

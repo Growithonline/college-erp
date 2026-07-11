@@ -43,5 +43,5 @@ body { width: 243pt; }
     width: 46pt;
     height: 46pt;
 }
-.qr img { width: 46pt; height: 46pt; }
+.qr svg { width: 46pt; height: 46pt; }
 .page-break { page-break-after: always; }

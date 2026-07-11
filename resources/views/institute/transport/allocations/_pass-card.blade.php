@@ -20,6 +20,10 @@
         </div>
     </div>
     <div class="qr">
-        <img src="data:image/svg+xml;base64,{{ $qrSvg }}">
+        {{-- Raw SVG markup, not a data: URI — DomPDF does not reliably render
+             data:image/svg+xml inside an <img> tag, but does render an inline <svg>
+             element directly. $qrSvg is server-generated (never user input), so
+             unescaped output here is safe. --}}
+        {!! $qrSvg !!}
     </div>
 </div>

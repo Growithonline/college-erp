@@ -12,6 +12,9 @@
         <a href="{{ route('transport.allocations.pdf', $allocation) }}" class="btn btn-outline-danger btn-sm" target="_blank">
             <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
         </a>
+        <a href="{{ route('transport.allocations.pass', ['allocation' => $allocation, 'view' => 1]) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+            <i class="bi bi-eye me-1"></i>View Pass
+        </a>
         <a href="{{ route('transport.allocations.pass', $allocation) }}" class="btn btn-outline-primary btn-sm" target="_blank">
             <i class="bi bi-qr-code me-1"></i>Print Pass
         </a>
