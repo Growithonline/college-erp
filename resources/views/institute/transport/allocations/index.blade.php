@@ -9,6 +9,9 @@
         <small class="text-muted">{{ $allocations->total() }} allocation(s)</small>
     </div>
     <div class="d-flex gap-2">
+        <a href="{{ route('transport.allocations.pass.bulk', request()->only('route_id', 'session_id')) }}" class="btn btn-outline-secondary" target="_blank">
+            <i class="bi bi-qr-code me-1"></i>Print Passes
+        </a>
         <a href="{{ route('transport.allocations.bulk-create') }}" class="btn btn-outline-primary"><i class="bi bi-people me-1"></i>Bulk Allocate</a>
         <a href="{{ route('transport.allocations.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New Allocation</a>
     </div>

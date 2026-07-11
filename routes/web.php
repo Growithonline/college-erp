@@ -131,6 +131,9 @@ Route::get('/session-expired', function (\Illuminate\Http\Request $request) {
 Route::get('/receipt/balance', [\App\Http\Controllers\PublicReceiptController::class, 'balance'])->name('receipt.balance')->middleware('throttle:30,1');
 Route::get('/receipt/record',  [\App\Http\Controllers\PublicReceiptController::class, 'record'])->name('receipt.record')->middleware('throttle:30,1');
 
+// ── Public transport pass viewer (QR code scan — no auth required) ────
+Route::get('/transport/pass-status', [\App\Http\Controllers\TransportPassController::class, 'status'])->name('transport.pass.status')->middleware('throttle:30,1');
+
 Route::get('/login',       [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login',      [LoginController::class, 'login'])->name('login.submit')->middleware('throttle:5,1');
 Route::get('/otp-verify',  [LoginController::class, 'showOtpForm'])->name('otp.form');
@@ -803,6 +806,8 @@ Route::middleware('auth:web,staff,center,partner')->prefix('transport')->name('t
     Route::post('allocations/{allocation}/close', [TransportAllocationController::class, 'close'])->name('allocations.close');
     Route::post('allocations/{allocation}/transfer', [TransportAllocationController::class, 'transfer'])->name('allocations.transfer');
     Route::get('allocations/{allocation}/pdf', [TransportAllocationController::class, 'pdf'])->name('allocations.pdf');
+    Route::get('allocations/{allocation}/pass', [TransportAllocationController::class, 'pass'])->name('allocations.pass');
+    Route::get('allocations/passes/bulk', [TransportAllocationController::class, 'bulkPass'])->name('allocations.pass.bulk');
 
     Route::get('maintenance', [TransportMaintenanceController::class, 'index'])->name('maintenance.index');
     Route::get('maintenance/create', [TransportMaintenanceController::class, 'create'])->name('maintenance.create');

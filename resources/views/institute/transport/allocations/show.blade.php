@@ -12,6 +12,9 @@
         <a href="{{ route('transport.allocations.pdf', $allocation) }}" class="btn btn-outline-danger btn-sm" target="_blank">
             <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
         </a>
+        <a href="{{ route('transport.allocations.pass', $allocation) }}" class="btn btn-outline-primary btn-sm" target="_blank">
+            <i class="bi bi-qr-code me-1"></i>Print Pass
+        </a>
         @if($allocation->is_active)
         <a href="{{ route('transport.allocations.edit', $allocation) }}" class="btn btn-outline-primary btn-sm">Edit</a>
         <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#transferModal">Change Route</button>

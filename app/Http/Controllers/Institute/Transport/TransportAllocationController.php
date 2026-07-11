@@ -194,6 +194,78 @@ class TransportAllocationController extends TransportBaseController
         return $pdf->download($filename);
     }
 
+    public function pass(TransportAllocation $allocation)
+    {
+        $this->assertInstituteModel($allocation);
+        $allocation->load(['student', 'route', 'stop', 'vehicle', 'driver']);
+
+        $institute = \App\Models\Institute::findOrFail($this->instituteId());
+        $qrSvg = $this->generatePassQr($allocation->student_id);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.transport.allocations.pass', compact(
+            'allocation', 'institute', 'qrSvg'
+        ))->setPaper([0, 0, 243, 153], 'landscape'); // ~85.6mm x 54mm (ID-1 card size) in points
+
+        $filename = 'transport-pass-' . ($allocation->student?->roll_no ?? $allocation->id) . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    public function bulkPass(Request $request)
+    {
+        $data = $request->validate([
+            'route_id'   => ['nullable', Rule::exists('transport_routes', 'id')->where('institute_id', $this->instituteId())],
+            'session_id' => ['nullable', Rule::exists('academic_sessions', 'id')->where('institute_id', $this->instituteId())],
+        ]);
+
+        $query = TransportAllocation::where('institute_id', $this->instituteId())
+            ->where('is_active', true)
+            ->with(['student', 'route', 'stop', 'vehicle', 'driver']);
+
+        if (!empty($data['route_id'])) {
+            $query->where('transport_route_id', $data['route_id']);
+        }
+        if (!empty($data['session_id'])) {
+            $query->where('academic_session_id', $data['session_id']);
+        }
+
+        $allocations = $query->orderBy('student_id')->get();
+        abort_if($allocations->isEmpty(), 404, 'No active allocations found for the selected filters.');
+
+        $institute = \App\Models\Institute::findOrFail($this->instituteId());
+
+        $passes = $allocations->map(fn (TransportAllocation $a) => [
+            'allocation' => $a,
+            'qrSvg'      => $this->generatePassQr($a->student_id),
+        ]);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.transport.allocations.pass-bulk', compact(
+            'passes', 'institute'
+        ))->setPaper([0, 0, 243, 153], 'landscape');
+
+        return $pdf->download('transport-passes-' . now()->format('Ymd-His') . '.pdf');
+    }
+
+    /**
+     * QR payload is only student_id + institute_id (HMAC-signed via SignedPublicLink)
+     * — never a specific allocation — so scanning always resolves whatever is
+     * currently active at scan time. A printed card stays valid across route changes
+     * without needing to be reprinted. SVG, not PNG: pure PHP via bacon/bacon-qr-code,
+     * no Imagick dependency to worry about on the deploy server.
+     */
+    private function generatePassQr(int $studentId): string
+    {
+        $verifyUrl = \App\Support\SignedPublicLink::url(
+            '/transport/pass-status',
+            $studentId,
+            $this->instituteId(),
+            'transport'
+        );
+
+        return base64_encode(
+            \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(180)->margin(1)->generate($verifyUrl)
+        );
+    }
+
     public function collectPayment(Request $request, TransportAllocation $allocation)
     {
         $this->assertInstituteModel($allocation);
