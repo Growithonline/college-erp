@@ -258,9 +258,17 @@ class TransportAllocationController extends TransportBaseController
      * (confirmed not installed here — bacon/bacon-qr-code throws without it), while
      * SVG renders through pure PHP.
      *
-     * Returns raw SVG markup (XML declaration stripped) for direct inline embedding
-     * in the Blade template — not a data: URI. DomPDF does not reliably render
-     * data:image/svg+xml inside an <img> tag; it does render an inline <svg> element.
+     * Returns a `data:image/svg+xml;base64,...` URI for use as a plain <img src="">.
+     *
+     * This dompdf install (v3.1.5, checked directly in vendor/) has no frame/renderer
+     * for a bare inline <svg> element at all — its only SVG support is treating an
+     * SVG document as an *image* (via php-svg-lib), the same as any <img> or
+     * background-image. Embedding the raw <svg>...</svg> markup straight into the
+     * card's HTML — as this used to do — silently rendered nothing: no error, no
+     * fallback, just an empty cell where the QR should be. A base64 data URI on an
+     * <img> tag is the path dompdf actually supports, and also means the image
+     * scales via ordinary <img> width/height like any other image, so there's no
+     * need to strip the SVG's own width/height attributes anymore.
      */
     private function generatePassQr(int $studentId): string
     {
@@ -273,7 +281,7 @@ class TransportAllocationController extends TransportBaseController
 
         $svg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(180)->margin(1)->generate($verifyUrl);
 
-        return preg_replace('/<\?xml.*?\?>/', '', $svg);
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
     public function collectPayment(Request $request, TransportAllocation $allocation)
