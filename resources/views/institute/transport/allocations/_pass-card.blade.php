@@ -85,6 +85,15 @@
     $vehicleDriver = trim(implode(' · ', array_filter([$allocation->vehicle?->vehicle_no, $allocation->driver?->name])));
     $vehicleDriver = $wordSafeLimit($vehicleDriver !== '' ? $vehicleDriver : '—', 22);
 
+    // Route-strip labels — the reference design's start/end transit graphic. Start is
+    // the institute's own city (the same locality already printed in the header, since
+    // that's where the route effectively originates), end is the student's drop-off
+    // stop, falling back to the route name if no stop is recorded. Capped tighter (12
+    // chars) than the info-rows values above — each label sits in a fixed 52pt column
+    // (see .route-label in the stylesheet) with no room to spare next to its dot.
+    $routeStripStart = $wordSafeLimit($institute->city ?: ($institute->short_name ?: 'Institute'), 12);
+    $routeStripEnd = $wordSafeLimit($allocation->stop?->stop_name ?: ($allocation->route?->name ?? '—'), 12);
+
     // Validity shown in the footer: an explicit end date is the clearest "expires on"
     // signal, falling back to the academic session label when an allocation has no
     // end date yet (open-ended transport allocations are common mid-session).
@@ -164,6 +173,26 @@
             <td class="qr-cell">
                 <div class="qr-frame"><img src="{{ $qrSvg }}" alt="QR"></div>
                 <div class="qr-caption">Scan for status</div>
+            </td>
+        </tr>
+        <tr class="route-row">
+            <td colspan="3">
+                <table class="route-table" cellpadding="0" cellspacing="0">
+                    <colgroup>
+                        <col style="width: 10pt;">
+                        <col style="width: 52pt;">
+                        <col style="width: 101pt;">
+                        <col style="width: 52pt;">
+                        <col style="width: 10pt;">
+                    </colgroup>
+                    <tr>
+                        <td class="route-dot-cell"><span class="route-dot"></span></td>
+                        <td class="route-label route-label-start">{{ $routeStripStart }}</td>
+                        <td><div class="route-line"></div></td>
+                        <td class="route-label route-label-end">{{ $routeStripEnd }}</td>
+                        <td class="route-dot-cell"><span class="route-dot route-dot--end"></span></td>
+                    </tr>
+                </table>
             </td>
         </tr>
         <tr class="footer-row">
