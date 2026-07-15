@@ -34,17 +34,23 @@ body { width: 243pt; }
    card, pushing content clean off the page. Reusing the outer table's own three
    columns (see .card-table's <colgroup>) for the header row too avoids nesting a
    table inside a colspan cell entirely. */
-.header-row td { background: #1746c9; padding: 3pt 6pt; vertical-align: middle; }
+.header-row td { background: #1746c9; vertical-align: middle; }
 /* Seal sits on the left of the header with the institute name right after it, matching
    the reference ID card's layout — so it takes the photo-cell's own column. The name
    cell spans the other two columns (colspan="2" in _pass-card.blade.php) instead of
    leaving the third one as an empty blue block next to it — that blank strip is what
-   made the header look lopsided once the seal moved off the right side. */
-.header-logo-cell { border-top-left-radius: 5pt; border-bottom-left-radius: 5pt; text-align: center; }
+   made the header look lopsided once the seal moved off the right side. Padding is set
+   per-cell (not on the shared `.header-row td` rule above) so the logo and name can sit
+   close together — a single shared padding value left a visible gap between the ring
+   and the name text that didn't read as intentional. */
+.header-logo-cell { padding: 3pt; border-top-left-radius: 5pt; border-bottom-left-radius: 5pt; text-align: center; }
 /* The ring is what reads as an embossed "seal" rather than a flat logo swap — a plain
    circle looked like a placeholder icon rather than part of the card's identity. A
    styled div, not a nested table (see .header-fill-cell comment above for why nested
-   tables in this header row are avoided). */
+   tables in this header row are avoided). The image is sized to the ring's own inner
+   diameter (ring width minus its border on both sides) so it fills the ring edge to
+   edge — sized noticeably smaller than that, it read as floating in the middle of a
+   mostly-white circle instead of as a seal. */
 .seal-ring {
     display: inline-block;
     width: 21pt;
@@ -54,12 +60,12 @@ body { width: 243pt; }
     border-radius: 50%;
     text-align: center;
     line-height: 18.5pt;
+    overflow: hidden;
 }
 .logo-fallback { color: #1746c9; font-size: 7pt; font-weight: bold; }
-.logo-img { width: 17pt; height: 17pt; border-radius: 50%; vertical-align: middle; }
+.logo-img { width: 18.5pt; height: 18.5pt; border-radius: 50%; vertical-align: middle; }
 .header-name-cell {
-    padding-left: 5pt;
-    padding-right: 6pt;
+    padding: 3pt 6pt 3pt 3pt;
     border-top-right-radius: 5pt;
     border-bottom-right-radius: 5pt;
 }
@@ -110,7 +116,11 @@ body { width: 243pt; }
 }
 
 .body-row td { padding-top: 2pt; vertical-align: top; }
-.photo-cell { width: 46pt; }
+/* Matches .photo-frame's own width exactly (was 46pt against a 42pt frame) — that 4pt
+   mismatch left a visible gap between the photo and the student details next to it,
+   since a table cell with no explicit padding still left-aligns its content and leaves
+   any leftover column width as blank space on the right. */
+.photo-cell { width: 42pt; }
 .photo-frame {
     width: 42pt;
     height: 42pt;

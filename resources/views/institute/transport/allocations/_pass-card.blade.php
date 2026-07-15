@@ -101,7 +101,7 @@
 <div class="card">
     <table class="card-table" cellpadding="0" cellspacing="0">
         <colgroup>
-            <col style="width: 46pt;">
+            <col style="width: 42pt;">
             <col>
             <col style="width: 48pt;">
         </colgroup>
