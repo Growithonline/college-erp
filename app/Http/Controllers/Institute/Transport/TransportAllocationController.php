@@ -197,7 +197,7 @@ class TransportAllocationController extends TransportBaseController
     public function pass(Request $request, TransportAllocation $allocation)
     {
         $this->assertInstituteModel($allocation);
-        $allocation->load(['student', 'route', 'stop', 'vehicle', 'driver']);
+        $allocation->load(['student', 'route', 'stop', 'vehicle', 'driver', 'session']);
 
         $institute = \App\Models\Institute::findOrFail($this->instituteId());
         $qrSvg = $this->generatePassQr($allocation->student_id);
@@ -222,7 +222,7 @@ class TransportAllocationController extends TransportBaseController
 
         $query = TransportAllocation::where('institute_id', $this->instituteId())
             ->where('is_active', true)
-            ->with(['student', 'route', 'stop', 'vehicle', 'driver']);
+            ->with(['student', 'route', 'stop', 'vehicle', 'driver', 'session']);
 
         if (!empty($data['route_id'])) {
             $query->where('transport_route_id', $data['route_id']);
