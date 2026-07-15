@@ -34,6 +34,13 @@
             <col style="width: 50pt;">
         </colgroup>
         <tr class="header-row">
+            <td class="header-fill-cell"></td>
+            <td class="header-name-cell">
+                <div class="inst-name">{{ $instituteName }}</div>
+                @if($addressLine)
+                    <div class="inst-address">{{ $addressLine }}</div>
+                @endif
+            </td>
             <td class="header-logo-cell">
                 @if($logoUrl)
                     <img src="{{ $logoUrl }}" alt="Logo" class="logo-img">
@@ -41,13 +48,6 @@
                     <div class="logo-fallback">{{ $initials }}</div>
                 @endif
             </td>
-            <td class="header-name-cell">
-                <div class="inst-name">{{ $instituteName }}</div>
-                @if($addressLine)
-                    <div class="inst-address">{{ $addressLine }}</div>
-                @endif
-            </td>
-            <td class="header-fill-cell"></td>
         </tr>
         <tr class="body-row">
             <td class="photo-cell">
@@ -81,6 +81,9 @@
                 <div class="qr"><img src="{{ $qrSvg }}" alt="QR"></div>
                 <div class="qr-caption">Scan for status</div>
             </td>
+        </tr>
+        <tr class="footer-row">
+            <td colspan="3" class="footer-cell">Student Transport Pass</td>
         </tr>
     </table>
 </div>
