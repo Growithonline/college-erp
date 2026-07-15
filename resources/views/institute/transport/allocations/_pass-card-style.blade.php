@@ -16,27 +16,77 @@ body { width: 243pt; }
     width: 243pt;
     border: 1pt solid #cbd5e1;
     border-radius: 8pt;
-    padding: 8pt 10pt;
+    padding: 6pt 10pt;
 }
 /* table-layout: fixed + an explicit <colgroup> (see _pass-card.blade.php) stop the
    info column's auto-width from growing to fit its content — without it, dompdf
    sized the table wider than the 223pt content area, pushing the QR cell off the
    right edge of the card entirely. */
 .card-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.header-cell {
-    font-size: 8pt;
-    font-weight: bold;
+
+/* Colored header row — institute logo, name, address, and a card-type label, the
+   same information hierarchy a real institutional ID/pass carries. Deliberately NOT
+   a nested sub-table: an earlier version put a width:100% table inside a colspan="3"
+   cell, and dompdf mis-resolved that nested percentage width against something far
+   wider than the card, pushing "Transport Pass" clean off the page. Reusing the
+   outer table's own three columns (see .card-table's <colgroup>) for the header row
+   too avoids nesting a table inside a colspan cell entirely. */
+.header-row td { background: #1d4ed8; padding: 4pt 6pt; vertical-align: middle; }
+.header-logo-cell { border-top-left-radius: 5pt; border-bottom-left-radius: 5pt; text-align: center; }
+/* A styled inline-block, not a nested table (see .header-fill-cell comment above for
+   why nested tables in this header row are avoided) — line-height equal to the box's
+   own height is a simple, reliable way to vertically center the single-line initials
+   text without another table. */
+.logo-fallback {
+    display: inline-block;
+    width: 20pt;
+    height: 20pt;
+    line-height: 20pt;
+    background: #ffffff;
+    border-radius: 4pt;
     color: #1d4ed8;
-    text-transform: uppercase;
-    letter-spacing: 0.5pt;
-    border-bottom: 1pt solid #e2e8f0;
-    padding-bottom: 4pt;
+    font-size: 7pt;
+    font-weight: bold;
+    text-align: center;
 }
-.body-row td { padding-top: 7pt; vertical-align: top; }
+.logo-img { width: 20pt; height: 20pt; border-radius: 4pt; }
+.header-name-cell { padding-left: 4pt; }
+/* The card-type label lives here, stacked under the address in the wide middle
+   column, instead of squeezed into the narrow right column (matching the qr-cell's
+   50pt width) — "Transport Pass" doesn't fit there at any font size that's still
+   legible, and kept overflowing off the actual page edge. */
+.header-fill-cell { border-top-right-radius: 5pt; border-bottom-right-radius: 5pt; }
+/* max-height + overflow:hidden, not just the server-side Str::limit in
+   _pass-card.blade.php — truncating by character count can't guarantee a line
+   count, since word-wrapping is uneven (a name that measures well under the char
+   cap can still wrap to 3 lines if its words happen to break awkwardly, which is
+   exactly what put this card back onto a phantom second page after the first
+   truncation attempt). Clipping to a hard-coded 2-line pixel height is what
+   actually guarantees the header's total height regardless of name length. */
+.inst-name {
+    font-size: 8pt;
+    line-height: 9pt;
+    max-height: 18pt;
+    overflow: hidden;
+    font-weight: bold;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.2pt;
+}
+/* Address and the card-type label share one line and one plain style (see
+   _pass-card.blade.php) rather than stacking as separate lines or separately-styled
+   spans — this header's height budget doesn't have room for a 3rd/4th line once a
+   long institute name has already wrapped to two, and nesting styled spans inside
+   this cell was, empirically, forcing one of them onto its own line in dompdf for
+   reasons that didn't reduce to any single CSS property. One plain text node avoids
+   the problem entirely. */
+.inst-meta { font-size: 6pt; color: #cbdafe; letter-spacing: 0.2pt; margin-top: 1.5pt; }
+
+.body-row td { padding-top: 5pt; vertical-align: top; }
 .photo-cell { width: 48pt; }
 .photo-frame {
     width: 44pt;
-    height: 56pt;
+    height: 48pt;
     border: 1pt solid #cbd5e1;
 }
 .photo-frame td {
@@ -45,7 +95,7 @@ body { width: 243pt; }
     font-size: 6pt;
     color: #94a3b8;
 }
-.photo-frame img { width: 44pt; height: 56pt; }
+.photo-frame img { width: 44pt; height: 48pt; }
 .info-cell { padding-right: 6pt; }
 .student-name { font-size: 9.5pt; font-weight: bold; margin-bottom: 1pt; }
 .student-roll { font-size: 7pt; color: #64748b; margin-bottom: 5pt; }
