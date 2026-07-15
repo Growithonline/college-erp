@@ -83,6 +83,14 @@ jobs:
             php artisan view:cache
             php artisan event:cache
 
+            # Reload PHP-FPM so its opcache picks up the newly deployed code —
+            # without this, workers keep serving bytecode compiled from the previous
+            # deploy until they happen to recycle on their own (opcache.validate_timestamps
+            # is off in production, so PHP never notices the files changed on disk).
+            # `reload`, not `restart`: existing workers finish in-flight requests before
+            # being replaced, so this doesn't drop any live connections.
+            sudo systemctl reload php8.2-fpm || true
+
             # Restart queue worker via Supervisor
             php artisan queue:restart
             sudo cp /var/www/bmc.gtsaas.in/supervisor.conf /etc/supervisor/conf.d/college-erp-worker.conf
