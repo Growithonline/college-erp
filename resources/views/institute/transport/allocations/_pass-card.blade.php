@@ -100,9 +100,16 @@
 @endphp
 <div class="card">
     <table class="card-table" cellpadding="0" cellspacing="0">
+        {{-- All three columns get an explicit pt width (225pt = 42+135+48, matching the
+             card's 225pt content width) instead of leaving the middle one as bare `<col>`
+             (auto). An auto column here was silently rendering wider than its content,
+             leaving the photo flush left in a too-wide first column and pushing the
+             student name/details column start well to the right of the photo — a large
+             dead gap between the photo and the text next to it. Locking all three widths
+             is what pins the middle column's left edge to the photo's actual right edge. --}}
         <colgroup>
             <col style="width: 42pt;">
-            <col>
+            <col style="width: 135pt;">
             <col style="width: 48pt;">
         </colgroup>
         <tr class="header-row">

@@ -42,8 +42,14 @@ body { width: 243pt; }
    made the header look lopsided once the seal moved off the right side. Padding is set
    per-cell (not on the shared `.header-row td` rule above) so the logo and name can sit
    close together — a single shared padding value left a visible gap between the ring
-   and the name text that didn't read as intentional. */
-.header-logo-cell { padding: 3pt; border-top-left-radius: 5pt; border-bottom-left-radius: 5pt; text-align: center; }
+   and the name text that didn't read as intentional. `text-align: right` (not center)
+   is what actually pins the ring — the 21pt ring inside a 42pt-wide column has slack
+   room either way; centering it split that slack evenly on both sides, leaving several
+   points of dead space between the ring's right edge and the name text no matter how
+   low the cell padding was pushed. Right-aligning collapses all the slack onto the
+   ring's left side (against the card's own border, which is meant to have breathing
+   room) instead of between the ring and the name. */
+.header-logo-cell { padding: 3pt 1pt 3pt 3pt; border-top-left-radius: 5pt; border-bottom-left-radius: 5pt; text-align: right; }
 /* The ring is what reads as an embossed "seal" rather than a flat logo swap — a plain
    circle looked like a placeholder icon rather than part of the card's identity. A
    styled div, not a nested table (see .header-fill-cell comment above for why nested
@@ -65,7 +71,7 @@ body { width: 243pt; }
 .logo-fallback { color: #1746c9; font-size: 7pt; font-weight: bold; }
 .logo-img { width: 18.5pt; height: 18.5pt; border-radius: 50%; vertical-align: middle; }
 .header-name-cell {
-    padding: 3pt 6pt 3pt 3pt;
+    padding: 3pt 6pt 3pt 1pt;
     border-top-right-radius: 5pt;
     border-bottom-right-radius: 5pt;
 }
