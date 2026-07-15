@@ -24,13 +24,13 @@ body { width: 243pt; }
    right edge of the card entirely. */
 .card-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
-/* Colored header row — institute logo, name, address, and a card-type label, the
-   same information hierarchy a real institutional ID/pass carries. Deliberately NOT
-   a nested sub-table: an earlier version put a width:100% table inside a colspan="3"
-   cell, and dompdf mis-resolved that nested percentage width against something far
-   wider than the card, pushing "Transport Pass" clean off the page. Reusing the
-   outer table's own three columns (see .card-table's <colgroup>) for the header row
-   too avoids nesting a table inside a colspan cell entirely. */
+/* Colored header row — institute logo, name and address, the same identity strip a
+   real institutional ID card carries. Deliberately NOT a nested sub-table: an
+   earlier version put a width:100% table inside a colspan="3" cell, and dompdf
+   mis-resolved that nested percentage width against something far wider than the
+   card, pushing content clean off the page. Reusing the outer table's own three
+   columns (see .card-table's <colgroup>) for the header row too avoids nesting a
+   table inside a colspan cell entirely. */
 .header-row td { background: #1d4ed8; padding: 4pt 6pt; vertical-align: middle; }
 .header-logo-cell { border-top-left-radius: 5pt; border-bottom-left-radius: 5pt; text-align: center; }
 /* A styled inline-block, not a nested table (see .header-fill-cell comment above for
@@ -51,10 +51,6 @@ body { width: 243pt; }
 }
 .logo-img { width: 20pt; height: 20pt; border-radius: 4pt; }
 .header-name-cell { padding-left: 4pt; }
-/* The card-type label lives here, stacked under the address in the wide middle
-   column, instead of squeezed into the narrow right column (matching the qr-cell's
-   50pt width) — "Transport Pass" doesn't fit there at any font size that's still
-   legible, and kept overflowing off the actual page edge. */
 .header-fill-cell { border-top-right-radius: 5pt; border-bottom-right-radius: 5pt; }
 /* max-height + overflow:hidden, not just the server-side Str::limit in
    _pass-card.blade.php — truncating by character count can't guarantee a line
@@ -73,14 +69,18 @@ body { width: 243pt; }
     text-transform: uppercase;
     letter-spacing: 0.2pt;
 }
-/* Address and the card-type label share one line and one plain style (see
-   _pass-card.blade.php) rather than stacking as separate lines or separately-styled
-   spans — this header's height budget doesn't have room for a 3rd/4th line once a
-   long institute name has already wrapped to two, and nesting styled spans inside
-   this cell was, empirically, forcing one of them onto its own line in dompdf for
-   reasons that didn't reduce to any single CSS property. One plain text node avoids
-   the problem entirely. */
-.inst-meta { font-size: 6pt; color: #cbdafe; letter-spacing: 0.2pt; margin-top: 1.5pt; }
+/* Clamped to one line the same way .inst-name is clamped to two — a real
+   institute's city/state can run long enough to wrap on its own, and this header's
+   height budget is fixed regardless of how long that text turns out to be. */
+.inst-address {
+    font-size: 6pt;
+    line-height: 7pt;
+    max-height: 7pt;
+    overflow: hidden;
+    color: #cbdafe;
+    letter-spacing: 0.2pt;
+    margin-top: 1.5pt;
+}
 
 .body-row td { padding-top: 5pt; vertical-align: top; }
 .photo-cell { width: 48pt; }

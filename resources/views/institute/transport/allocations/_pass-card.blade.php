@@ -4,8 +4,13 @@
     // Same logo-resolution pattern used by the other institute PDF exports (student
     // list, fee export): prefer the storage-disk path, fall back to a public path,
     // and fall back further to institute initials if no logo file actually exists.
+    // Also requires the gd extension: dompdf's PDF adapter embeds JPEG/PNG via
+    // imagecreatefromjpeg()/imagecreatefrompng(), which are gd functions — without
+    // gd it fails silently and prints the <img>'s alt text ("Logo") in the PDF
+    // instead of the picture. Skipping straight to the initials fallback when gd
+    // isn't loaded avoids ever showing that broken-looking placeholder.
     $logoUrl = null;
-    if (!empty($institute->image)) {
+    if (!empty($institute->image) && extension_loaded('gd')) {
         if (file_exists(public_path('storage/' . $institute->image))) {
             $logoUrl = asset('storage/' . $institute->image);
         } elseif (file_exists(public_path($institute->image))) {
@@ -38,7 +43,9 @@
             </td>
             <td class="header-name-cell">
                 <div class="inst-name">{{ $instituteName }}</div>
-                <div class="inst-meta">@if($addressLine){{ $addressLine }} &bull; @endif TRANSPORT PASS</div>
+                @if($addressLine)
+                    <div class="inst-address">{{ $addressLine }}</div>
+                @endif
             </td>
             <td class="header-fill-cell"></td>
         </tr>
