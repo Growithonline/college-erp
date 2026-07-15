@@ -58,9 +58,12 @@
     // budget on a fixed-size card, and an institute name long enough to wrap past two
     // lines (real coaching-institute names run long) pushed the whole card onto a
     // phantom second page. Truncating server-side keeps the header height predictable
-    // regardless of how long the name actually is.
-    $instituteName = $wordSafeLimit($institute->name, 34);
-    $addressLine = $wordSafeLimit($addressLine, 32);
+    // regardless of how long the name actually is. Raised 34 -> 44 / 32 -> 42: the
+    // header's name cell is now pinned to an explicit 191pt (see .header-name-cell)
+    // instead of being handed roughly two-thirds of an evenly-split table, so there is
+    // measurably more painted width to spend before anything reaches the card's edge.
+    $instituteName = $wordSafeLimit($institute->name, 44);
+    $addressLine = $wordSafeLimit($addressLine, 42);
 
     $studentName = $wordSafeLimit($allocation->student?->name ?? '—', 22);
     $studentUid = $wordSafeLimit($allocation->student?->roll_no ?? $allocation->student?->student_uid ?? '—', 24);
@@ -71,28 +74,37 @@
     // naturally read together (a route always implies a stop; a vehicle always implies
     // its driver) costs nothing in clarity while halving the row count of the old
     // one-field-per-row layout.
+    //
+    // Caps raised 22 -> 28. These are painted-width guards, not business rules, and the
+    // width they were guarding changed: pinning column 1 to the photo's real 42pt (see
+    // .card-table in the stylesheet) handed the info column ~33pt it was previously
+    // losing to a dead gap, so a value cell now paints ~103pt instead of ~70pt. At
+    // 6.5pt Helvetica Bold that is ~28 characters before the text would reach the QR
+    // frame. 28 is what stops "Bachelor of Arts" and "UP-58-T-7565 · Kapil Yadav" from
+    // rendering with an ellipsis on a pass a conductor has to actually read.
     $courseYear = trim(implode(' · ', array_filter([
         $allocation->student?->stream?->course?->name,
         $allocation->student?->coursePart?->year_label,
     ])));
-    $courseYear = $courseYear !== '' ? $wordSafeLimit($courseYear, 22) : null;
+    $courseYear = $courseYear !== '' ? $wordSafeLimit($courseYear, 28) : null;
     $fatherName = $allocation->student?->father_name;
-    $fatherName = $fatherName ? $wordSafeLimit($fatherName, 22) : null;
+    $fatherName = $fatherName ? $wordSafeLimit($fatherName, 28) : null;
     $mobile = $allocation->student?->mobile;
     $mobile = $mobile ? $wordSafeLimit($mobile, 16) : null;
     $routeStop = trim(implode(' · ', array_filter([$allocation->route?->name, $allocation->stop?->stop_name])));
-    $routeStop = $wordSafeLimit($routeStop !== '' ? $routeStop : '—', 22);
+    $routeStop = $wordSafeLimit($routeStop !== '' ? $routeStop : '—', 28);
     $vehicleDriver = trim(implode(' · ', array_filter([$allocation->vehicle?->vehicle_no, $allocation->driver?->name])));
-    $vehicleDriver = $wordSafeLimit($vehicleDriver !== '' ? $vehicleDriver : '—', 22);
+    $vehicleDriver = $wordSafeLimit($vehicleDriver !== '' ? $vehicleDriver : '—', 28);
 
     // Route-strip labels — the reference design's start/end transit graphic. Start is
     // the institute's own city (the same locality already printed in the header, since
     // that's where the route effectively originates), end is the student's drop-off
-    // stop, falling back to the route name if no stop is recorded. Capped tighter (12
-    // chars) than the info-rows values above — each label sits in a fixed 52pt column
-    // (see .route-label in the stylesheet) with no room to spare next to its dot.
-    $routeStripStart = $wordSafeLimit($institute->city ?: ($institute->short_name ?: 'Institute'), 12);
-    $routeStripEnd = $wordSafeLimit($allocation->stop?->stop_name ?: ($allocation->route?->name ?? '—'), 12);
+    // stop, falling back to the route name if no stop is recorded. Still capped tighter
+    // (16 chars) than the info-rows values above — each label sits in a fixed 60pt cell
+    // (see .route-label-start / .route-label-end) with the dashed line needing whatever
+    // is left over. Raised 12 -> 16 alongside the cell widening from 52pt to 60pt.
+    $routeStripStart = $wordSafeLimit($institute->city ?: ($institute->short_name ?: 'Institute'), 16);
+    $routeStripEnd = $wordSafeLimit($allocation->stop?->stop_name ?: ($allocation->route?->name ?? '—'), 16);
 
     // Validity shown in the footer: an explicit end date is the clearest "expires on"
     // signal, falling back to the academic session label when an allocation has no
@@ -109,17 +121,17 @@
 @endphp
 <div class="card">
     <table class="card-table" cellpadding="0" cellspacing="0">
-        {{-- All three columns get an explicit pt width (225pt = 42+135+48, matching the
-             card's 225pt content width) instead of leaving the middle one as bare `<col>`
-             (auto). An auto column here was silently rendering wider than its content,
-             leaving the photo flush left in a too-wide first column and pushing the
-             student name/details column start well to the right of the photo — a large
-             dead gap between the photo and the text next to it. Locking all three widths
-             is what pins the middle column's left edge to the photo's actual right edge. --}}
+        {{-- Kept as a statement of intent only — this dompdf build parses <colgroup> but
+             never applies its widths, which is what left column 1 rendering at 225/3 =
+             75pt (three equal columns) no matter what these values said, stranding the
+             photo in a column nearly twice its own width. The widths that actually bind
+             live on the <td> rules in _pass-card-style.blade.php, and specifically on
+             this first row's cells, since `table-layout: fixed` resolves every column
+             from row one. Totals here mirror those: 50 + 135 + 56 = 241pt. --}}
         <colgroup>
-            <col style="width: 42pt;">
+            <col style="width: 50pt;">
             <col style="width: 135pt;">
-            <col style="width: 48pt;">
+            <col style="width: 56pt;">
         </colgroup>
         <tr class="header-row">
             <td class="header-logo-cell">
@@ -178,19 +190,23 @@
         <tr class="route-row">
             <td colspan="3">
                 <table class="route-table" cellpadding="0" cellspacing="0">
+                    {{-- Same story as the outer table's colgroup: documentation, not
+                         binding. Without widths on these tds the strip rendered as five
+                         equal 45pt columns, which shrank the dashed line to a stub and
+                         pushed both dots away from the labels they belong to. --}}
                     <colgroup>
-                        <col style="width: 10pt;">
-                        <col style="width: 52pt;">
-                        <col style="width: 101pt;">
-                        <col style="width: 52pt;">
-                        <col style="width: 10pt;">
+                        <col style="width: 7pt;">
+                        <col style="width: 60pt;">
+                        <col style="width: 91pt;">
+                        <col style="width: 60pt;">
+                        <col style="width: 7pt;">
                     </colgroup>
                     <tr>
                         <td class="route-dot-cell"><span class="route-dot"></span></td>
                         <td class="route-label route-label-start">{{ $routeStripStart }}</td>
-                        <td><div class="route-line"></div></td>
+                        <td class="route-line-cell"><div class="route-line"></div></td>
                         <td class="route-label route-label-end">{{ $routeStripEnd }}</td>
-                        <td class="route-dot-cell"><span class="route-dot route-dot--end"></span></td>
+                        <td class="route-dot-cell route-dot-cell--end"><span class="route-dot route-dot--end"></span></td>
                     </tr>
                 </table>
             </td>
@@ -198,6 +214,10 @@
         <tr class="footer-row">
             <td colspan="3">
                 <table class="footer-table" cellpadding="0" cellspacing="0">
+                    <colgroup>
+                        <col style="width: 120pt;">
+                        <col style="width: 121pt;">
+                    </colgroup>
                     <tr>
                         <td class="footer-left">
                             <div class="footer-value">{{ $validityValue ?? 'Ongoing' }}</div>
