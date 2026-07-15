@@ -25,25 +25,45 @@
     }
     $initials = strtoupper(substr($institute->short_name ?: $institute->name, 0, 2));
     $addressLine = implode(', ', array_filter([$institute->city, $institute->state]));
+
+    // Word-safe truncation for every value below that's capped server-side rather than
+    // by CSS: Str::limit() cuts at a raw character count, which sliced straight through
+    // the middle of a word ("1st Year" → "1st...", "Kapil Muni" → "Kapil M..."). Backing
+    // off to the last whole space before the limit keeps every truncated value ending on
+    // a full word instead. `white-space: nowrap` in the stylesheet is a separate,
+    // necessary guard alongside this — it stops a long value from wrapping to a second
+    // line (which is what actually blows the fixed-height card onto a phantom second
+    // page) — but this dompdf build doesn't clip nowrap text at the box edge, it just
+    // paints the overflow into the neighbouring cell instead (confirmed by rendering the
+    // card with deliberately long values — the text visibly bled into the QR column
+    // rather than being cut off). $wordSafeLimit bounds the painted width itself so
+    // there's nothing left to bleed.
+    $wordSafeLimit = function (?string $value, int $limit): string {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+        if (mb_strlen($value) <= $limit) {
+            return $value;
+        }
+        $cut = mb_substr($value, 0, $limit);
+        $lastSpace = mb_strrpos($cut, ' ');
+        if ($lastSpace !== false && $lastSpace > 0) {
+            $cut = mb_substr($cut, 0, $lastSpace);
+        }
+        return rtrim($cut, " ·") . '…';
+    };
+
     // Hard-capped, not left to wrap naturally: this header row has a fixed height
     // budget on a fixed-size card, and an institute name long enough to wrap past two
     // lines (real coaching-institute names run long) pushed the whole card onto a
     // phantom second page. Truncating server-side keeps the header height predictable
     // regardless of how long the name actually is.
-    $instituteName = \Illuminate\Support\Str::limit($institute->name, 34);
-    $addressLine = \Illuminate\Support\Str::limit($addressLine, 32);
+    $instituteName = $wordSafeLimit($institute->name, 34);
+    $addressLine = $wordSafeLimit($addressLine, 32);
 
-    // Every value below is capped server-side, the same way $instituteName is above —
-    // not with CSS. `white-space: nowrap` on these cells does stop a long value from
-    // wrapping to a second line (which is what actually blows the fixed-height card
-    // onto a phantom second page), but a value still wider than its column doesn't get
-    // cropped there: this dompdf build doesn't clip nowrap text at the box edge, it
-    // just paints the overflow into the neighbouring cell instead (confirmed by
-    // rendering the card with deliberately long route/stop/driver names — the text
-    // visibly bled into the QR column rather than being cut off). Str::limit bounds
-    // the painted width itself so there's nothing left to bleed.
-    $studentName = \Illuminate\Support\Str::limit($allocation->student?->name ?? '—', 20);
-    $studentUid = \Illuminate\Support\Str::limit($allocation->student?->roll_no ?? $allocation->student?->student_uid ?? '—', 22);
+    $studentName = $wordSafeLimit($allocation->student?->name ?? '—', 22);
+    $studentUid = $wordSafeLimit($allocation->student?->roll_no ?? $allocation->student?->student_uid ?? '—', 24);
 
     // Course + year, and route + stop / vehicle + driver, are each folded into a single
     // row (rather than one row per field) — the card only has room for five info rows
@@ -55,15 +75,15 @@
         $allocation->student?->stream?->course?->name,
         $allocation->student?->coursePart?->year_label,
     ])));
-    $courseYear = $courseYear !== '' ? \Illuminate\Support\Str::limit($courseYear, 22) : null;
+    $courseYear = $courseYear !== '' ? $wordSafeLimit($courseYear, 22) : null;
     $fatherName = $allocation->student?->father_name;
-    $fatherName = $fatherName ? \Illuminate\Support\Str::limit($fatherName, 20) : null;
+    $fatherName = $fatherName ? $wordSafeLimit($fatherName, 22) : null;
     $mobile = $allocation->student?->mobile;
-    $mobile = $mobile ? \Illuminate\Support\Str::limit($mobile, 16) : null;
+    $mobile = $mobile ? $wordSafeLimit($mobile, 16) : null;
     $routeStop = trim(implode(' · ', array_filter([$allocation->route?->name, $allocation->stop?->stop_name])));
-    $routeStop = \Illuminate\Support\Str::limit($routeStop !== '' ? $routeStop : '—', 22);
+    $routeStop = $wordSafeLimit($routeStop !== '' ? $routeStop : '—', 22);
     $vehicleDriver = trim(implode(' · ', array_filter([$allocation->vehicle?->vehicle_no, $allocation->driver?->name])));
-    $vehicleDriver = \Illuminate\Support\Str::limit($vehicleDriver !== '' ? $vehicleDriver : '—', 22);
+    $vehicleDriver = $wordSafeLimit($vehicleDriver !== '' ? $vehicleDriver : '—', 22);
 
     // Validity shown in the footer: an explicit end date is the clearest "expires on"
     // signal, falling back to the academic session label when an allocation has no
@@ -95,14 +115,13 @@
                     @endif
                 </div>
             </td>
-            <td class="header-name-cell">
+            <td class="header-name-cell" colspan="2">
                 <div class="pass-kicker">Transport Pass</div>
                 <div class="inst-name">{{ $instituteName }}</div>
                 @if($addressLine)
                     <div class="inst-address">{{ $addressLine }}</div>
                 @endif
             </td>
-            <td class="header-fill-cell"></td>
         </tr>
         <tr class="body-row">
             <td class="photo-cell">

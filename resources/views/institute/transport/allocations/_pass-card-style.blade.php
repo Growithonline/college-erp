@@ -36,8 +36,10 @@ body { width: 243pt; }
    table inside a colspan cell entirely. */
 .header-row td { background: #1746c9; padding: 3pt 6pt; vertical-align: middle; }
 /* Seal sits on the left of the header with the institute name right after it, matching
-   the reference ID card's layout — so it takes the photo-cell's own column, and
-   header-fill-cell (the qr-cell's column) is the blank one instead. */
+   the reference ID card's layout — so it takes the photo-cell's own column. The name
+   cell spans the other two columns (colspan="2" in _pass-card.blade.php) instead of
+   leaving the third one as an empty blue block next to it — that blank strip is what
+   made the header look lopsided once the seal moved off the right side. */
 .header-logo-cell { border-top-left-radius: 5pt; border-bottom-left-radius: 5pt; text-align: center; }
 /* The ring is what reads as an embossed "seal" rather than a flat logo swap — a plain
    circle looked like a placeholder icon rather than part of the card's identity. A
@@ -55,8 +57,12 @@ body { width: 243pt; }
 }
 .logo-fallback { color: #1746c9; font-size: 7pt; font-weight: bold; }
 .logo-img { width: 17pt; height: 17pt; border-radius: 50%; vertical-align: middle; }
-.header-name-cell { padding-left: 5pt; padding-right: 4pt; }
-.header-fill-cell { border-top-right-radius: 5pt; border-bottom-right-radius: 5pt; }
+.header-name-cell {
+    padding-left: 5pt;
+    padding-right: 6pt;
+    border-top-right-radius: 5pt;
+    border-bottom-right-radius: 5pt;
+}
 /* Small identity kicker so the card reads as a transport pass at a glance even before
    the eye reaches the footer band. Fixed copy (not data-driven), but still needs
    `nowrap` — without it, dompdf wrapped this short line to two anyway, which grew the
@@ -134,14 +140,14 @@ body { width: 243pt; }
    2-line wrap that threatens page height; Str::limit keeps the painted width in
    bounds so there's nothing left to clip or bleed. */
 .student-name {
-    font-size: 8.5pt;
+    font-size: 9pt;
     font-weight: bold;
     white-space: nowrap;
     margin-bottom: 1.5pt;
 }
 .student-uid {
     display: inline-block;
-    font-size: 5.5pt;
+    font-size: 6pt;
     font-weight: bold;
     color: #1746c9;
     background: #e8eefc;
@@ -153,12 +159,11 @@ body { width: 243pt; }
 }
 /* A table, not inline-block spans — the label column's width wasn't being reliably
    respected as inline-block, letting a wide label ("Vehicle", "Course") eat into the
-   value's space and wrap short values that should fit on one line. Up to 5 rows now
-   (Course, Father, Mobile, Route, Vehicle) instead of the original 4, so font-size and
-   padding are trimmed slightly from the first pass to keep the card on one page. */
+   value's space and wrap short values that should fit on one line. 5 rows (Course,
+   Father, Mobile, Route, Vehicle) instead of the original 4 one-field-per-row list. */
 .info-rows { width: 100%; border-collapse: collapse; }
-.info-rows td { font-size: 5.5pt; padding: 1pt 0; vertical-align: top; }
-.info-rows td.rlabel { width: 22pt; color: #64748b; }
+.info-rows td { font-size: 6.5pt; padding: 1.2pt 0; vertical-align: top; }
+.info-rows td.rlabel { width: 24pt; color: #64748b; }
 .info-rows td.rvalue { font-weight: bold; color: #0f172a; white-space: nowrap; }
 .qr-cell { width: 48pt; text-align: center; vertical-align: top; }
 .qr-frame {
