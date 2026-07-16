@@ -122,25 +122,31 @@
             <col style="width: 54pt;">
         </colgroup>
         <tr class="header-row">
-            <td class="header-logo-cell">
-                <div class="seal-ring">
-                    @if($logoUrl)
-                        <img src="{{ $logoUrl }}" alt="Logo" class="logo-img">
-                    @else
-                        <span class="logo-fallback">{{ $initials }}</span>
-                    @endif
-                </div>
-            </td>
-            <td class="header-name-cell" colspan="2">
-                <div class="pass-kicker">Transport Pass</div>
-                <div class="inst-name">{{ $instituteName }}</div>
-                @if($addressLine)
-                    <div class="inst-address">{{ $addressLine }}</div>
-                @endif
+            <td class="header-cell" colspan="3">
+                <table class="header-table" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="header-logo-cell" width="30">
+                            <div class="seal-ring">
+                                @if($logoUrl)
+                                    <img src="{{ $logoUrl }}" alt="Logo" class="logo-img">
+                                @else
+                                    <span class="logo-fallback">{{ $initials }}</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="header-name-cell">
+                            <div class="pass-kicker">Transport Pass</div>
+                            <div class="inst-name">{{ $instituteName }}</div>
+                            @if($addressLine)
+                                <div class="inst-address">{{ $addressLine }}</div>
+                            @endif
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
         <tr class="body-row">
-            <td class="photo-cell">
+            <td class="photo-cell" width="42">
                 <table class="photo-frame" cellpadding="0" cellspacing="0">
                     <tr>
                         <td>
@@ -153,7 +159,7 @@
                     </tr>
                 </table>
             </td>
-            <td class="info-cell">
+            <td class="info-cell" width="135">
                 <div class="student-name">{{ $studentName }}</div>
                 <div class="student-uid">{{ $studentUid }}</div>
                 <table class="info-rows" cellpadding="0" cellspacing="0">
@@ -170,7 +176,7 @@
                     <tr><td class="rlabel">Vehicle</td><td class="rvalue">{{ $vehicleDriver }}</td></tr>
                 </table>
             </td>
-            <td class="qr-cell">
+            <td class="qr-cell" width="54">
                 <div class="qr-frame"><img src="{{ $qrSvg }}" alt="QR"></div>
                 <div class="qr-caption">Scan for status</div>
             </td>

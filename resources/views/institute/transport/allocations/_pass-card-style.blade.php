@@ -5,9 +5,10 @@ body { width: 243pt; }
 .card { width: 243pt; padding: 4pt; border: 1pt solid #d9e1ef; border-radius: 7pt; background: #ffffff; }
 .card-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
-.header-row td { height: 25pt; vertical-align: middle; background: #153b86; }
-.header-logo-cell { padding: 3pt 2pt 3pt 5pt; text-align: center; border-radius: 5pt 0 0 5pt; }
-.header-name-cell { padding: 3pt 6pt 3pt 2pt; border-radius: 0 5pt 5pt 0; }
+.header-row > td.header-cell { height: 25pt; padding: 0; vertical-align: middle; background: #153b86; border-radius: 5pt; }
+.header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.header-logo-cell { width: 30pt; padding: 3pt 1pt 3pt 4pt; text-align: center; vertical-align: middle; }
+.header-name-cell { padding: 3pt 6pt 3pt 1pt; vertical-align: middle; }
 .seal-ring { display: inline-block; width: 19pt; height: 19pt; overflow: hidden; line-height: 16pt; text-align: center; border: 1pt solid #efbb4e; border-radius: 50%; background: #ffffff; }
 .logo-img { width: 16pt; height: 16pt; vertical-align: middle; border-radius: 50%; }
 .logo-fallback { color: #153b86; font-size: 6pt; font-weight: bold; }
@@ -15,7 +16,7 @@ body { width: 243pt; }
 .inst-name { max-height: 11pt; overflow: hidden; color: #ffffff; font-size: 7.6pt; line-height: 8.2pt; font-weight: bold; }
 .inst-address { margin-top: .4pt; color: #d5e1f9; font-size: 4.7pt; line-height: 5.2pt; white-space: nowrap; }
 
-.body-row td { padding-top: 3pt; vertical-align: top; }
+.body-row > td { padding-top: 3pt; vertical-align: top; }
 .photo-cell { width: 42pt; }
 .photo-frame { width: 40pt; height: 52pt; border: 1pt solid #dce4f0; border-radius: 3pt; background: #f4f6fa; }
 .photo-frame td { padding: 2pt; color: #6c7890; font-size: 4pt; text-align: center; vertical-align: middle; text-transform: uppercase; }
