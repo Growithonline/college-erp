@@ -2,18 +2,18 @@
 @page { margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: Helvetica, Arial, sans-serif; }
 body { width: 243pt; }
-.card { position: relative; width: 243pt; height: 145pt; padding: 4pt; border: 1pt solid #d8dde7; background: #ffffff; }
+.card { position: relative; width: 243pt; height: 145pt; padding: 4pt; overflow: hidden; border: 1pt solid #d8dde7; border-radius: 9pt; background: #ffffff; }
 
 .brand-table, .identity-table, .footer-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.brand-table td { height: 30pt; background: #a93631; vertical-align: middle; }
-.brand-copy { padding: 3pt 4pt 3pt 7pt; }
-.brand-kicker { color: #f6d7d4; font-size: 4pt; font-weight: bold; letter-spacing: .55pt; text-transform: uppercase; white-space: nowrap; }
-.brand-name { color: #ffffff; font-size: 7.8pt; font-weight: bold; line-height: 8.5pt; }
-.brand-address { color: #ffffff; font-size: 4.3pt; line-height: 5pt; white-space: nowrap; }
-.brand-mark { padding: 3pt 5pt 3pt 1pt; text-align: center; }
-.seal-ring { display: inline-block; width: 24pt; height: 24pt; overflow: hidden; line-height: 21pt; text-align: center; border: 1pt solid #ffffff; border-radius: 50%; background: #ffffff; }
-.logo-img { width: 20pt; height: 20pt; vertical-align: middle; border-radius: 50%; }
-.logo-fallback { color: #a93631; font-size: 5pt; font-weight: bold; }
+.brand-table td { height: 34pt; background: #123b7a; vertical-align: middle; }
+.brand-copy { padding: 4pt 4pt 4pt 7pt; border-radius: 5pt 0 0 0; }
+.brand-kicker { color: #c9d9f4; font-size: 4.2pt; line-height: 5.4pt; font-weight: bold; letter-spacing: .55pt; text-transform: uppercase; white-space: nowrap; }
+.brand-name { color: #ffffff; font-size: 8.2pt; font-weight: bold; line-height: 10.2pt; }
+.brand-address { color: #d8e5fa; font-size: 4.6pt; line-height: 6.8pt; white-space: nowrap; }
+.brand-mark { padding: 3pt 4pt 3pt 1pt; text-align: center; border-radius: 0 5pt 0 0; }
+.seal-ring { display: inline-block; width: 28pt; height: 28pt; overflow: hidden; line-height: 25pt; text-align: center; border: 1pt solid #ffffff; border-radius: 50%; background: #ffffff; }
+.logo-img { width: 25pt; height: 25pt; vertical-align: middle; border-radius: 50%; }
+.logo-fallback { color: #123b7a; font-size: 5pt; font-weight: bold; }
 
 .identity-table { margin-top: 4pt; }
 .identity-table td { vertical-align: top; }
@@ -36,8 +36,8 @@ body { width: 243pt; }
 .footer-spacer { display: none; }
 .footer-table { position: absolute; left: 4pt; bottom: 4pt; width: 231pt; }
 .footer-table td { padding: 2pt 4pt; background: #eef0f3; vertical-align: middle; text-align: center; }
-.footer-valid { border-top: 1pt solid #d7dce4; }
-.footer-authority { border-top: 1pt solid #d7dce4; border-left: 1pt solid #d7dce4; }
+.footer-valid { border-top: 1pt solid #d7dce4; border-radius: 0 0 0 5pt; }
+.footer-authority { border-top: 1pt solid #d7dce4; border-left: 1pt solid #d7dce4; border-radius: 0 0 5pt 0; }
 .footer-value { color: #20242b; font-size: 5pt; font-weight: bold; line-height: 6pt; white-space: nowrap; }
 .footer-label { color: #596170; font-size: 3.4pt; font-weight: bold; letter-spacing: .4pt; text-transform: uppercase; white-space: nowrap; }
 .footer-authority .footer-value { height: 5.5pt; border-bottom: 1pt solid #9aa3b0; }
