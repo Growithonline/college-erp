@@ -202,7 +202,7 @@ class TransportAllocationController extends TransportBaseController
         $institute = \App\Models\Institute::findOrFail($this->instituteId());
         $qrSvg = $this->generatePassQr($allocation->student_id);
 
-        return view('institute.transport.allocations.pass-preview', compact('allocation', 'institute', 'qrSvg'));
+        return view('institute.transport.allocations.pass-preview', compact('allocation', 'institute', 'qrSvg') + ['browserPreview' => true]);
     }
 
     public function bulkPass(Request $request)

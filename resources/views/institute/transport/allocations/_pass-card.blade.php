@@ -63,6 +63,13 @@
     $addressLine = $wordSafeLimit($addressLine, 32);
 
     $studentName = $wordSafeLimit($allocation->student?->name ?? 'â€”', 22);
+    $studentPhotoUrl = null;
+    if (!empty($allocation->student?->photo)) {
+        $studentPhotoUrl = $browserPreview
+            ? asset('storage/' . ltrim((string) $allocation->student->photo, '/'))
+            : public_path('storage/' . $allocation->student->photo);
+    }
+
     $studentUid = $wordSafeLimit($allocation->student?->roll_no ?? $allocation->student?->student_uid ?? 'â€”', 24);
 
     // Course + year, and route + stop / vehicle + driver, are each folded into a single
@@ -128,7 +135,7 @@
         <tr>
             <td class="portrait-cell">
                 <table class="photo-frame" cellpadding="0" cellspacing="0"><tr><td>
-                    @if($allocation->student?->photo)<img src="{{ public_path('storage/' . $allocation->student->photo) }}" alt="Student photo">
+                    @if($studentPhotoUrl)<img src="{{ $studentPhotoUrl }}" alt="Student photo">
                     @else No Photo @endif
                 </td></tr></table>
             </td>
