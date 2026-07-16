@@ -2,7 +2,7 @@
 @page { margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: Helvetica, Arial, sans-serif; }
 body { width: 243pt; }
-.card { width: 243pt; height: 145pt; padding: 4pt; border: 1pt solid #d8dde7; background: #ffffff; }
+.card { position: relative; width: 243pt; height: 145pt; padding: 4pt; border: 1pt solid #d8dde7; background: #ffffff; }
 
 .brand-table, .identity-table, .footer-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .brand-table td { height: 26pt; background: #a93631; vertical-align: middle; }
@@ -33,7 +33,8 @@ body { width: 243pt; }
 .qr-frame img { display: block; width: 29pt; height: 29pt; }
 .qr-caption { margin-top: .6pt; color: #7b838f; font-size: 3.2pt; letter-spacing: .2pt; text-transform: uppercase; white-space: nowrap; }
 
-.footer-spacer { height: 16pt; }
+.footer-spacer { display: none; }
+.footer-table { position: absolute; left: 4pt; bottom: 4pt; width: 231pt; }
 .footer-table td { padding: 2pt 4pt; background: #eef0f3; vertical-align: middle; text-align: center; }
 .footer-valid { border-top: 1pt solid #d7dce4; }
 .footer-authority { border-top: 1pt solid #d7dce4; border-left: 1pt solid #d7dce4; }

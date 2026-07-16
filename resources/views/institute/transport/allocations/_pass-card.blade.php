@@ -15,12 +15,24 @@
     // logo was rendering as the same broken "Logo" alt-text fallback while the student
     // photo below (already loaded via a direct public_path(), never asset()) rendered
     // fine. Matching the photo's approach fixed it.
+    $browserPreview = $browserPreview ?? false;
     $logoUrl = null;
     if (!empty($institute->image) && extension_loaded('gd')) {
         if (file_exists(public_path('storage/' . $institute->image))) {
             $logoUrl = public_path('storage/' . $institute->image);
         } elseif (file_exists(public_path($institute->image))) {
             $logoUrl = public_path($institute->image);
+        }
+    }
+    if ($browserPreview && !empty($institute->image)) {
+        $storedImage = ltrim((string) $institute->image, '/');
+        $storageImage = str_starts_with($storedImage, 'storage/') ? substr($storedImage, 8) : $storedImage;
+        if (file_exists(public_path('storage/' . $storageImage))) {
+            $logoUrl = asset('storage/' . $storageImage);
+        } elseif (file_exists(public_path($storedImage))) {
+            $logoUrl = asset($storedImage);
+        } else {
+            $logoUrl = null;
         }
     }
     $initials = strtoupper(substr($institute->short_name ?: $institute->name, 0, 2));

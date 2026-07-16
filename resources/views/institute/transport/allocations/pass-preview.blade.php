@@ -20,7 +20,7 @@
             @page { size: A4 portrait; margin: 10mm; }
             body { background: #fff; }
             .no-print { display: none !important; }
-            .preview-stage { display: block; padding: 0; }
+            .preview-stage { display: flex; align-items: center; justify-content: center; height: 277mm; padding: 0; }
             .pass-preview { width: 486pt; height: 290pt; box-shadow: none; }
             .pass-preview .card { transform: scale(2); transform-origin: top left; }
         }
