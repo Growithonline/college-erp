@@ -4,12 +4,12 @@
     // Prefer the storage-disk path, fall back to a public path, and fall back further
     // to institute initials if no logo file actually exists. Also requires the gd
     // extension: dompdf's PDF adapter embeds JPEG/PNG via imagecreatefromjpeg()/
-    // imagecreatefrompng(), which are gd functions â€” without gd it fails silently and
+    // imagecreatefrompng(), which are gd functions - without gd it fails silently and
     // prints the <img>'s alt text ("Logo") in the PDF instead of the picture. Skipping
     // straight to the initials fallback when gd isn't loaded avoids ever showing that
     // broken-looking placeholder.
     //
-    // The path itself is a direct public_path() filesystem path, not asset() â€” an
+    // The path itself is a direct public_path() filesystem path, not asset() - an
     // asset() URL needs either a live HTTP round-trip (isRemoteEnabled) or dompdf's own
     // chroot-based local resolution to line up with APP_URL, and in production that
     // logo was rendering as the same broken "Logo" alt-text fallback while the student
@@ -43,11 +43,11 @@
     // the middle of a word ("1st Year" â†’ "1st...", "Kapil Muni" â†’ "Kapil M..."). Backing
     // off to the last whole space before the limit keeps every truncated value ending on
     // a full word instead. `white-space: nowrap` in the stylesheet is a separate,
-    // necessary guard alongside this â€” it stops a long value from wrapping to a second
+    // necessary guard alongside this - it stops a long value from wrapping to a second
     // line (which is what actually blows the fixed-height card onto a phantom second
-    // page) â€” but this dompdf build doesn't clip nowrap text at the box edge, it just
+    // page) - but this dompdf build doesn't clip nowrap text at the box edge, it just
     // paints the overflow into the neighbouring cell instead (confirmed by rendering the
-    // card with deliberately long values â€” the text visibly bled into the QR column
+    // card with deliberately long values - the text visibly bled into the QR column
     // rather than being cut off). $wordSafeLimit bounds the painted width itself so
     // there's nothing left to bleed.
     $wordSafeLimit = function (?string $value, int $limit): string {
@@ -74,7 +74,7 @@
     $instituteName = $wordSafeLimit($institute->name, 34);
     $addressLine = $wordSafeLimit($addressLine, 32);
 
-    $studentName = $wordSafeLimit($allocation->student?->name ?? 'â€”', 22);
+    $studentName = $wordSafeLimit($allocation->student?->name ?? '-', 22);
     $studentPhotoUrl = null;
     if (!empty($allocation->student?->photo)) {
         $studentPhotoUrl = $browserPreview
@@ -82,10 +82,10 @@
             : public_path('storage/' . $allocation->student->photo);
     }
 
-    $studentUid = $wordSafeLimit($allocation->student?->roll_no ?? $allocation->student?->student_uid ?? 'â€”', 24);
+    $studentUid = $wordSafeLimit($allocation->student?->roll_no ?? $allocation->student?->student_uid ?? '-', 24);
 
     // Course + year, and route + stop / vehicle + driver, are each folded into a single
-    // row (rather than one row per field) â€” the card only has room for five info rows
+    // row (rather than one row per field) - the card only has room for five info rows
     // before the text starts crowding the QR column, and pairing values that are
     // naturally read together (a route always implies a stop; a vehicle always implies
     // its driver) costs nothing in clarity while halving the row count of the old
@@ -100,18 +100,18 @@
     $mobile = $allocation->student?->mobile;
     $mobile = $mobile ? $wordSafeLimit($mobile, 16) : null;
     $routeStop = trim(implode(' - ', array_filter([$allocation->route?->name, $allocation->stop?->stop_name])));
-    $routeStop = $wordSafeLimit($routeStop !== '' ? $routeStop : 'â€”', 22);
-    $vehicleNumber = $wordSafeLimit($allocation->vehicle?->vehicle_no ?: 'â€”', 20);
+    $routeStop = $wordSafeLimit($routeStop !== '' ? $routeStop : '-', 22);
+    $vehicleNumber = $wordSafeLimit($allocation->vehicle?->vehicle_no ?: '-', 20);
     $driverName = $allocation->driver?->name ? $wordSafeLimit($allocation->driver->name, 28) : null;
 
-    // Route-strip labels â€” the reference design's start/end transit graphic. Start is
+    // Route-strip labels - the reference design's start/end transit graphic. Start is
     // the institute's own city (the same locality already printed in the header, since
     // that's where the route effectively originates), end is the student's drop-off
     // stop, falling back to the route name if no stop is recorded. Capped tighter (12
-    // chars) than the info-rows values above â€” each label sits in a fixed 52pt column
+    // chars) than the info-rows values above - each label sits in a fixed 52pt column
     // (see .route-label in the stylesheet) with no room to spare next to its dot.
     $routeStripStart = $wordSafeLimit($institute->city ?: ($institute->short_name ?: 'Institute'), 12);
-    $routeStripEnd = $wordSafeLimit($allocation->stop?->stop_name ?: ($allocation->route?->name ?? 'â€”'), 12);
+    $routeStripEnd = $wordSafeLimit($allocation->stop?->stop_name ?: ($allocation->route?->name ?? '-'), 12);
 
     // Validity shown in the footer: an explicit end date is the clearest "expires on"
     // signal, falling back to the academic session label when an allocation has no

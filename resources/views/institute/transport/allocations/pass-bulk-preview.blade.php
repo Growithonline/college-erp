@@ -13,7 +13,8 @@
         .toolbar button { background: #153b86; color: #fff; }
         .toolbar a { background: #fff; color: #344054; border: 1px solid #d0d5dd; }
         .print-note { margin: 0 auto 18px; max-width: 660px; color: #475467; font: 13px Arial, sans-serif; text-align: center; }
-        .bulk-stage { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; padding: 12px 24px 36px; }
+        .bulk-stage { padding: 12px 24px 36px; }
+        .bulk-sheet { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; width: 100%; margin-bottom: 24px; }
         .bulk-pass { width: 292pt; height: 174pt; background: #fff; box-shadow: 0 8px 25px rgba(16, 24, 40, .18); }
         .bulk-pass .card { transform: scale(1.2); transform-origin: top left; }
         @media print {
@@ -21,7 +22,7 @@
             body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
             .bulk-stage { display: block; padding: 0; }
-            .bulk-sheet { height: 277mm; display: flex; flex-direction: column; align-items: center; justify-content: space-around; page-break-after: always; }
+            .bulk-sheet { height: 277mm; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center; justify-content: space-around; margin: 0; page-break-after: always; }
             .bulk-sheet:last-child { page-break-after: auto; }
             .bulk-pass { width: 401pt; height: 239pt; box-shadow: none; }
             .bulk-pass .card { transform: scale(1.65); transform-origin: top left; }
