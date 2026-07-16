@@ -202,15 +202,7 @@ class TransportAllocationController extends TransportBaseController
         $institute = \App\Models\Institute::findOrFail($this->instituteId());
         $qrSvg = $this->generatePassQr($allocation->student_id);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.transport.allocations.pass', compact(
-            'allocation', 'institute', 'qrSvg'
-        ))->setPaper([0, 0, 243, 153]); // ~85.6mm x 54mm (ID-1 card size) in points, already landscape-shaped
-
-        $filename = 'transport-pass-' . ($allocation->student?->roll_no ?? $allocation->id) . '.pdf';
-
-        // ?view=1 opens inline in the browser instead of forcing a download — lets
-        // staff preview a pass without saving/printing it every single time.
-        return $request->boolean('view') ? $pdf->stream($filename) : $pdf->download($filename);
+        return view('institute.transport.allocations.pass-preview', compact('allocation', 'institute', 'qrSvg'));
     }
 
     public function bulkPass(Request $request)
