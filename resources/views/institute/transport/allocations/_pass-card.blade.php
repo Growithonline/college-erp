@@ -1,4 +1,4 @@
-﻿{{-- Shared by pass.blade.php (single) and pass-bulk.blade.php (multi-page). Expects
+{{-- Shared by pass.blade.php (single) and pass-bulk.blade.php (multi-page). Expects
      $institute, $allocation, $qrSvg in scope. --}}
 @php
     // Prefer the storage-disk path, fall back to a public path, and fall back further
