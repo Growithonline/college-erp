@@ -233,13 +233,7 @@ class TransportAllocationController extends TransportBaseController
             'qrSvg'      => $this->generatePassQr($a->student_id),
         ]);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.transport.allocations.pass-bulk', compact(
-            'passes', 'institute'
-        ))->setPaper([0, 0, 243, 153]);
-
-        $filename = 'transport-passes-' . now()->format('Ymd-His') . '.pdf';
-
-        return $request->boolean('view') ? $pdf->stream($filename) : $pdf->download($filename);
+        return view('institute.transport.allocations.pass-bulk-preview', compact('passes', 'institute') + ['browserPreview' => true]);
     }
 
     /**

@@ -11,8 +11,8 @@ body { width: 243pt; }
 .brand-name { color: #ffffff; font-size: 8.2pt; font-weight: bold; line-height: 10.2pt; }
 .brand-address { color: #d8e5fa; font-size: 4.6pt; line-height: 6.8pt; white-space: nowrap; }
 .brand-mark { padding: 3pt 4pt 3pt 1pt; text-align: center; border-radius: 0 5pt 0 0; }
-.seal-ring { display: inline-block; width: 28pt; height: 28pt; overflow: hidden; line-height: 25pt; text-align: center; border: 1pt solid #ffffff; border-radius: 50%; background: #ffffff; }
-.logo-img { width: 25pt; height: 25pt; vertical-align: middle; border-radius: 50%; }
+.seal-ring { display: inline-block; width: 28pt; height: 28pt; overflow: hidden; line-height: 28pt; text-align: center; border: 0; border-radius: 50%; background: transparent; }
+.logo-img { width: 28pt; height: 28pt; display: block; border-radius: 50%; }
 .logo-fallback { color: #123b7a; font-size: 5pt; font-weight: bold; }
 
 .identity-table { margin-top: 4pt; }
