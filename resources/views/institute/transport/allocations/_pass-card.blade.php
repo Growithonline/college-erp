@@ -117,9 +117,9 @@
              dead gap between the photo and the text next to it. Locking all three widths
              is what pins the middle column's left edge to the photo's actual right edge. --}}
         <colgroup>
-            <col style="width: 42pt;">
-            <col style="width: 135pt;">
-            <col style="width: 48pt;">
+            <col style="width: 46pt;">
+            <col style="width: 126pt;">
+            <col style="width: 59pt;">
         </colgroup>
         <tr class="header-row">
             <td class="header-logo-cell">
@@ -180,9 +180,9 @@
                 <table class="route-table" cellpadding="0" cellspacing="0">
                     <colgroup>
                         <col style="width: 10pt;">
-                        <col style="width: 52pt;">
-                        <col style="width: 101pt;">
-                        <col style="width: 52pt;">
+                        <col style="width: 54pt;">
+                        <col style="width: 103pt;">
+                        <col style="width: 54pt;">
                         <col style="width: 10pt;">
                     </colgroup>
                     <tr>

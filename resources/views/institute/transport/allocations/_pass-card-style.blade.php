@@ -280,4 +280,31 @@ body { width: 243pt; }
     white-space: nowrap;
 }
 
+/* Final visual refinements: fixed vertical rhythm and balanced photo / QR columns. */
+.card { height: 153pt; padding: 5pt; border-color: #dce2ef; }
+.header-row td { height: 32pt; background: #18377e; }
+.header-logo-cell { padding: 3pt 3pt 3pt 5pt; text-align: center; }
+.header-name-cell { padding: 4pt 7pt 4pt 2pt; }
+.seal-ring { width: 24pt; height: 24pt; line-height: 21pt; border-color: #e4b34d; }
+.logo-img { width: 21pt; height: 21pt; }
+.pass-kicker { font-size: 4.8pt; letter-spacing: .65pt; }
+.inst-name { font-size: 8.8pt; line-height: 9.5pt; }
+.body-row td { padding-top: 4pt; }
+.photo-cell { width: 46pt; }
+.photo-frame { width: 44pt; height: 58pt; }
+.photo-frame img { width: 40pt; height: 54pt; }
+.info-cell { padding: 0 4pt 0 2pt; }
+.student-name { font-size: 10pt; line-height: 11pt; }
+.info-rows { table-layout: fixed; }
+.info-rows td { padding: .75pt 0; font-size: 6.3pt; line-height: 7.4pt; }
+.info-rows td.rlabel { width: 26pt; }
+.qr-cell { width: 59pt; padding-left: 1pt; }
+.qr-frame { padding: 2.5pt; }
+.qr-frame img { width: 42pt; height: 42pt; }
+.qr-caption { margin-top: 1.5pt; }
+.route-row td, .footer-row td { padding-top: 3pt; }
+.footer-table { table-layout: fixed; }
+.footer-table td { padding: 2.5pt 6pt; }
+.footer-value { height: 8pt; line-height: 8pt; color: #15295e; }
+.footer-rule { margin: 1.2pt 3pt 1.3pt; }
 .page-break { page-break-after: always; }
