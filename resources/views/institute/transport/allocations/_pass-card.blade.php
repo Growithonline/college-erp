@@ -75,7 +75,7 @@
         $allocation->student?->stream?->course?->name,
         $allocation->student?->coursePart?->year_label,
     ])));
-    $courseYear = $courseYear !== '' ? $wordSafeLimit($courseYear, 22) : null;
+    $courseYear = $courseYear !== '' ? $wordSafeLimit($courseYear, 28) : null;
     $fatherName = $allocation->student?->father_name;
     $fatherName = $fatherName ? $wordSafeLimit($fatherName, 22) : null;
     $mobile = $allocation->student?->mobile;
@@ -117,9 +117,9 @@
              dead gap between the photo and the text next to it. Locking all three widths
              is what pins the middle column's left edge to the photo's actual right edge. --}}
         <colgroup>
-            <col style="width: 46pt;">
-            <col style="width: 126pt;">
-            <col style="width: 59pt;">
+            <col style="width: 42pt;">
+            <col style="width: 135pt;">
+            <col style="width: 54pt;">
         </colgroup>
         <tr class="header-row">
             <td class="header-logo-cell">
@@ -195,6 +195,7 @@
                 </table>
             </td>
         </tr>
+        <tr class="pass-spacer"><td colspan="3"></td></tr>
         <tr class="footer-row">
             <td colspan="3">
                 <table class="footer-table" cellpadding="0" cellspacing="0">
