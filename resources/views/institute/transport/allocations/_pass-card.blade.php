@@ -101,8 +101,8 @@
     $mobile = $mobile ? $wordSafeLimit($mobile, 16) : null;
     $routeStop = trim(implode(' - ', array_filter([$allocation->route?->name, $allocation->stop?->stop_name])));
     $routeStop = $wordSafeLimit($routeStop !== '' ? $routeStop : 'â€”', 22);
-    $vehicleDriver = trim(implode(' - ', array_filter([$allocation->vehicle?->vehicle_no, $allocation->driver?->name])));
-    $vehicleDriver = $wordSafeLimit($vehicleDriver !== '' ? $vehicleDriver : 'â€”', 22);
+    $vehicleNumber = $wordSafeLimit($allocation->vehicle?->vehicle_no ?: 'â€”', 20);
+    $driverName = $allocation->driver?->name ? $wordSafeLimit($allocation->driver->name, 28) : null;
 
     // Route-strip labels â€” the reference design's start/end transit graphic. Start is
     // the institute's own city (the same locality already printed in the header, since
@@ -159,7 +159,8 @@
                     @if($fatherName)<tr><td class="label">Father</td><td class="value">{{ $fatherName }}</td></tr>@endif
                     @if($mobile)<tr><td class="label">Mobile</td><td class="value">{{ $mobile }}</td></tr>@endif
                     <tr><td class="label">Route</td><td class="value">{{ $routeStop }}</td></tr>
-                    <tr><td class="label">Vehicle</td><td class="value">{{ $vehicleDriver }}</td></tr>
+                    <tr><td class="label">Vehicle</td><td class="value">{{ $vehicleNumber }}</td></tr>
+                    @if($driverName)<tr><td class="label">Driver</td><td class="value">{{ $driverName }}</td></tr>@endif
                 </table>
             </td>
             <td class="qr-cell"><span class="qr-frame"><img src="{{ $qrSvg }}" alt="Pass QR"></span><div class="qr-caption">Scan to verify</div></td>

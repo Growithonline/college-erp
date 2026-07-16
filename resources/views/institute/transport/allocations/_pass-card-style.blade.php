@@ -5,14 +5,14 @@ body { width: 243pt; }
 .card { position: relative; width: 243pt; height: 145pt; padding: 4pt; border: 1pt solid #d8dde7; background: #ffffff; }
 
 .brand-table, .identity-table, .footer-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.brand-table td { height: 26pt; background: #a93631; vertical-align: middle; }
+.brand-table td { height: 30pt; background: #a93631; vertical-align: middle; }
 .brand-copy { padding: 3pt 4pt 3pt 7pt; }
 .brand-kicker { color: #f6d7d4; font-size: 4pt; font-weight: bold; letter-spacing: .55pt; text-transform: uppercase; white-space: nowrap; }
 .brand-name { color: #ffffff; font-size: 7.8pt; font-weight: bold; line-height: 8.5pt; }
 .brand-address { color: #ffffff; font-size: 4.3pt; line-height: 5pt; white-space: nowrap; }
 .brand-mark { padding: 3pt 5pt 3pt 1pt; text-align: center; }
-.seal-ring { display: inline-block; width: 18pt; height: 18pt; overflow: hidden; line-height: 15pt; text-align: center; border: 1pt solid #ffffff; border-radius: 50%; background: #ffffff; }
-.logo-img { width: 15pt; height: 15pt; vertical-align: middle; border-radius: 50%; }
+.seal-ring { display: inline-block; width: 24pt; height: 24pt; overflow: hidden; line-height: 21pt; text-align: center; border: 1pt solid #ffffff; border-radius: 50%; background: #ffffff; }
+.logo-img { width: 20pt; height: 20pt; vertical-align: middle; border-radius: 50%; }
 .logo-fallback { color: #a93631; font-size: 5pt; font-weight: bold; }
 
 .identity-table { margin-top: 4pt; }
@@ -25,7 +25,7 @@ body { width: 243pt; }
 .holder-name { color: #161616; font-family: Georgia, 'Times New Roman', serif; font-size: 7.8pt; font-weight: bold; line-height: 8.5pt; text-transform: uppercase; white-space: nowrap; }
 .holder-id { margin: 1pt 0 1.5pt; color: #8d2e2a; font-size: 4.7pt; font-weight: bold; white-space: nowrap; }
 .detail-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.detail-table td { padding: .35pt 0; font-size: 5pt; line-height: 5.8pt; vertical-align: top; }
+.detail-table td { padding: .8pt 0; font-size: 5pt; line-height: 7.2pt; vertical-align: top; }
 .detail-table .label { width: 21pt; color: #626b7a; }
 .detail-table .value { color: #161616; font-weight: bold; white-space: nowrap; }
 .qr-cell { padding-right: 3pt; text-align: center; }

@@ -6,7 +6,7 @@
     <title>Transport Pass — {{ $allocation->student?->name ?? 'Student' }}</title>
     <style>
         @include('institute.transport.allocations._pass-card-style')
-        html, body { min-height: 100%; }
+        html, body { min-height: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body { background: #edf1f7; color: #1f2937; }
         .toolbar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 18px 18px 8px; }
         .toolbar button, .toolbar a { border: 0; border-radius: 6px; padding: 9px 14px; font: 600 14px Arial, sans-serif; text-decoration: none; cursor: pointer; }
@@ -18,7 +18,7 @@
         .pass-preview .card { transform: scale(2); transform-origin: top left; }
         @media print {
             @page { size: A4 portrait; margin: 10mm; }
-            body { background: #fff; }
+            body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
             .preview-stage { display: flex; align-items: center; justify-content: center; height: 277mm; padding: 0; }
             .pass-preview { width: 486pt; height: 290pt; box-shadow: none; }
@@ -31,7 +31,7 @@
         <button type="button" onclick="window.print()">Print Pass</button>
         <a href="{{ route('transport.allocations.show', $allocation) }}">Back</a>
     </div>
-    <p class="print-note no-print">Print settings: choose <strong>A4</strong>, use <strong>Default</strong> scale, and turn <strong>Headers and footers</strong> off under More settings.</p>
+    <p class="print-note no-print">Print settings: choose <strong>A4</strong>, use <strong>Default</strong> scale, and turn <strong>Headers and footers</strong> off and <strong>Background graphics</strong> on under More settings.</p>
     <main class="preview-stage"><div class="pass-preview">@include('institute.transport.allocations._pass-card', ['browserPreview' => true])</div></main>
 </body>
 </html>
