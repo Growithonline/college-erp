@@ -51,7 +51,7 @@
         if ($lastSpace !== false && $lastSpace > 0) {
             $cut = mb_substr($cut, 0, $lastSpace);
         }
-        return rtrim($cut, " Â·") . 'â€¦';
+        return rtrim($cut, " -") . '...';
     };
 
     // Hard-capped, not left to wrap naturally: this header row has a fixed height
@@ -71,7 +71,7 @@
     // naturally read together (a route always implies a stop; a vehicle always implies
     // its driver) costs nothing in clarity while halving the row count of the old
     // one-field-per-row layout.
-    $courseYear = trim(implode(' Â· ', array_filter([
+    $courseYear = trim(implode(' - ', array_filter([
         $allocation->student?->stream?->course?->name,
         $allocation->student?->coursePart?->year_label,
     ])));
@@ -80,9 +80,9 @@
     $fatherName = $fatherName ? $wordSafeLimit($fatherName, 22) : null;
     $mobile = $allocation->student?->mobile;
     $mobile = $mobile ? $wordSafeLimit($mobile, 16) : null;
-    $routeStop = trim(implode(' Â· ', array_filter([$allocation->route?->name, $allocation->stop?->stop_name])));
+    $routeStop = trim(implode(' - ', array_filter([$allocation->route?->name, $allocation->stop?->stop_name])));
     $routeStop = $wordSafeLimit($routeStop !== '' ? $routeStop : 'â€”', 22);
-    $vehicleDriver = trim(implode(' Â· ', array_filter([$allocation->vehicle?->vehicle_no, $allocation->driver?->name])));
+    $vehicleDriver = trim(implode(' - ', array_filter([$allocation->vehicle?->vehicle_no, $allocation->driver?->name])));
     $vehicleDriver = $wordSafeLimit($vehicleDriver !== '' ? $vehicleDriver : 'â€”', 22);
 
     // Route-strip labels â€” the reference design's start/end transit graphic. Start is
@@ -108,36 +108,28 @@
     }
 @endphp
 <div class="card">
-    <table class="pass-shell" cellpadding="0" cellspacing="0">
-        <colgroup>
-            <col style="width: 43pt;">
-            <col style="width: 145pt;">
-            <col style="width: 43pt;">
-        </colgroup>
-        <tr class="brand-row">
-            <td class="brand-copy" colspan="2">
+    <table class="brand-table" cellpadding="0" cellspacing="0">
+        <colgroup><col style="width: 185pt;"><col style="width: 46pt;"></colgroup>
+        <tr>
+            <td class="brand-copy">
                 <div class="brand-kicker">Official Student Transport Pass</div>
                 <div class="brand-name">{{ $instituteName }}</div>
                 @if($addressLine)<div class="brand-address">{{ $addressLine }}</div>@endif
             </td>
-            <td class="brand-mark">
-                <span class="seal-ring">
-                    @if($logoUrl)
-                        <img src="{{ $logoUrl }}" alt="Logo" class="logo-img">
-                    @else
-                        <span class="logo-fallback">{{ $initials }}</span>
-                    @endif
-                </span>
-            </td>
+            <td class="brand-mark"><span class="seal-ring">
+                @if($logoUrl)<img src="{{ $logoUrl }}" alt="Logo" class="logo-img">
+                @else<span class="logo-fallback">{{ $initials }}</span>@endif
+            </span></td>
         </tr>
-        <tr class="identity-row">
+    </table>
+
+    <table class="identity-table" cellpadding="0" cellspacing="0">
+        <colgroup><col style="width: 43pt;"><col style="width: 145pt;"><col style="width: 43pt;"></colgroup>
+        <tr>
             <td class="portrait-cell">
                 <table class="photo-frame" cellpadding="0" cellspacing="0"><tr><td>
-                    @if($allocation->student?->photo)
-                        <img src="{{ public_path('storage/' . $allocation->student->photo) }}" alt="Student photo">
-                    @else
-                        No Photo
-                    @endif
+                    @if($allocation->student?->photo)<img src="{{ public_path('storage/' . $allocation->student->photo) }}" alt="Student photo">
+                    @else No Photo @endif
                 </td></tr></table>
             </td>
             <td class="holder-cell">
@@ -151,20 +143,15 @@
                     <tr><td class="label">Vehicle</td><td class="value">{{ $vehicleDriver }}</td></tr>
                 </table>
             </td>
-            <td class="qr-cell">
-                <span class="qr-frame"><img src="{{ $qrSvg }}" alt="Pass QR"></span>
-                <div class="qr-caption">Scan to verify</div>
-            </td>
+            <td class="qr-cell"><span class="qr-frame"><img src="{{ $qrSvg }}" alt="Pass QR"></span><div class="qr-caption">Scan to verify</div></td>
         </tr>
-        <tr class="footer-row">
-            <td class="footer-valid" colspan="2">
-                <div class="footer-value">{{ $validityValue ?? 'Ongoing' }}</div>
-                <div class="footer-label">Pass validity</div>
-            </td>
-            <td class="footer-authority">
-                <div class="footer-value">&nbsp;</div>
-                <div class="footer-label">Authorised by</div>
-            </td>
+    </table>
+
+    <div class="footer-spacer"></div>
+    <table class="footer-table" cellpadding="0" cellspacing="0">
+        <tr>
+            <td class="footer-valid"><div class="footer-value">{{ $validityValue ?? 'Ongoing' }}</div><div class="footer-label">Pass validity</div></td>
+            <td class="footer-authority"><div class="footer-value">&nbsp;</div><div class="footer-label">Authorised by</div></td>
         </tr>
     </table>
 </div>
