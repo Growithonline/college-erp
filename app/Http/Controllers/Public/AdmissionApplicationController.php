@@ -175,9 +175,17 @@ class AdmissionApplicationController extends Controller
         $firstPart = CoursePart::where('course_id', $stream->course_id)
             ->orderBy('year_number')->orderBy('id')->first();
 
-        $feePlanId = FeePlan::where('course_id', $stream->course_id)
+        // Prefer a plan configured specifically for this course; fall back to an
+        // institute-wide "All Courses" plan (course_id null) — same matching the
+        // staff admission form's fee-plan dropdown uses (FeePlanController::forCourse()).
+        $feePlanId = FeePlan::where('institute_id', $institute->id)
             ->where('is_active', true)
-            ->value('id');
+            ->where('course_id', $stream->course_id)
+            ->value('id')
+            ?? FeePlan::where('institute_id', $institute->id)
+                ->where('is_active', true)
+                ->whereNull('course_id')
+                ->value('id');
 
         $year = StudentIdService::getYearFromSession($activeSession->name);
         $studentData = $this->extractStudentData($request, $validated, $formConfig);
