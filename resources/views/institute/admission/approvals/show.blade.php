@@ -453,6 +453,7 @@
             $paymentVerifyRoute = $isStaff ? 'staff.payment-claims.verify' : 'payment-claims.verify';
             $paymentRejectRoute = $isStaff ? 'staff.payment-claims.reject' : 'payment-claims.reject';
             $paymentRecordRoute = $isStaff ? 'staff.payment-claims.record' : 'payment-claims.record';
+            $paymentResendRoute = $isStaff ? 'staff.payment-claims.resend-link' : 'payment-claims.resend-link';
         @endphp
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-white border-bottom py-2 d-flex align-items-center gap-2">
@@ -470,6 +471,12 @@
 
                     @if(!$paymentClaim)
                         <div class="alert alert-warning small py-2 mb-3">No payment claim submitted yet.</div>
+                        <form method="POST" action="{{ route($paymentResendRoute, $student) }}" class="mb-3">
+                            @csrf
+                            <button class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-envelope me-1"></i>Resend Payment Link to Student
+                            </button>
+                        </form>
                     @elseif($paymentClaim->isApproved())
                         <div class="alert alert-success small py-2 mb-2">
                             <i class="bi bi-check-circle me-1"></i> Verified — Rs {{ number_format($paymentClaim->amount_claimed, 2) }}
@@ -478,6 +485,12 @@
                     @else
                         @if($paymentClaim->isRejected())
                             <div class="alert alert-danger small py-2 mb-2">Rejected: {{ $paymentClaim->rejection_reason }}</div>
+                            <form method="POST" action="{{ route($paymentResendRoute, $student) }}" class="mb-3">
+                                @csrf
+                                <button class="btn btn-outline-primary btn-sm w-100">
+                                    <i class="bi bi-envelope me-1"></i>Resend Payment Link to Student
+                                </button>
+                            </form>
                         @endif
 
                         @if($paymentClaim->isPending())

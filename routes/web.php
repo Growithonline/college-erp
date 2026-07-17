@@ -611,6 +611,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('{claim}/verify', [PaymentClaimController::class, 'verify'])->name('verify');
         Route::post('{claim}/reject', [PaymentClaimController::class, 'reject'])->name('reject');
         Route::post('{student}/record', [PaymentClaimController::class, 'recordManual'])->name('record');
+        Route::post('{student}/resend-link', [PaymentClaimController::class, 'resendLink'])->name('resend-link');
     });
 
     // ── New Promotion Routes ──────────────────────────────────────────
@@ -1049,6 +1050,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::post('{claim}/verify', [PaymentClaimController::class, 'verify'])->name('verify');
             Route::post('{claim}/reject', [PaymentClaimController::class, 'reject'])->name('reject');
             Route::post('{student}/record', [PaymentClaimController::class, 'recordManual'])->name('record');
+            Route::post('{student}/resend-link', [PaymentClaimController::class, 'resendLink'])->name('resend-link');
         });
 
         Route::get('admissions/{student}/success', [StaffAdmissionController::class, 'quickSuccess'])->name('admissions.quick-success');

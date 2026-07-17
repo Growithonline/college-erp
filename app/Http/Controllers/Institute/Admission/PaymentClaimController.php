@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Institute\Admission;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PaymentLinkMail;
 use App\Mail\PaymentRejectedMail;
 use App\Mail\PaymentVerifiedMail;
 use App\Models\FeeInvoice;
@@ -46,6 +47,15 @@ class PaymentClaimController extends Controller
         return $this->actorGuard() === 'staff' ? $this->actorUser()->id : null;
     }
 
+    private function paymentUrl(Student $student): string
+    {
+        return URL::temporarySignedRoute(
+            'public.application.payment.show',
+            now()->addDays(30),
+            ['shortName' => strtolower($student->institute->short_name), 'student' => $student->id]
+        );
+    }
+
     private function notifyVerified(Student $student, float $amount): void
     {
         if (!$student->email) {
@@ -59,12 +69,7 @@ class PaymentClaimController extends Controller
         if (!$student->email) {
             return;
         }
-        $paymentUrl = URL::temporarySignedRoute(
-            'public.application.payment.show',
-            now()->addDays(30),
-            ['shortName' => strtolower($student->institute->short_name), 'student' => $student->id]
-        );
-        InstituteMailer::send($student->institute_id, $student->email, new PaymentRejectedMail($student, $reason, $paymentUrl));
+        InstituteMailer::send($student->institute_id, $student->email, new PaymentRejectedMail($student, $reason, $this->paymentUrl($student)));
     }
 
     private function settle(PaymentClaim $claim, float $amount, string $invoicePaymentMode): void
@@ -214,5 +219,25 @@ class PaymentClaimController extends Controller
         $this->notifyVerified($student, (float) $validated['amount']);
 
         return back()->with('success', 'Payment recorded.');
+    }
+
+    public function resendLink(Student $student)
+    {
+        abort_if($student->institute_id !== $this->instituteId(), 403);
+        abort_unless($this->canApprove(), 403, 'Fee approval permission required.');
+        abort_unless($student->admitted_by_type === 'online', 422);
+        abort_unless($student->email, 422, 'This student has no email on file.');
+
+        $dueAmount = $student->feePlan?->dueNowAmount($student) ?? 0.0;
+        abort_if($dueAmount <= 0, 422, 'No payment is due for this student.');
+
+        InstituteMailer::send($student->institute_id, $student->email, new PaymentLinkMail($student, $dueAmount, $this->paymentUrl($student)));
+
+        AuditLogService::log($this->instituteId(), 'payment_claim', 'link_resent',
+            "Payment link resent to {$student->name}", $student, [
+                'student_id' => $student->id,
+            ]);
+
+        return back()->with('success', 'Payment link sent to ' . $student->email . '.');
     }
 }
