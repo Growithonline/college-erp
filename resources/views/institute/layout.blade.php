@@ -496,6 +496,10 @@
                            href="{{ route('admissions.online') }}">
                         <i class="bi bi-globe text-info"></i> Online Admission
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('enquiries.*') ? 'active' : '' }}"
+                           href="{{ route('enquiries.index') }}">
+                        <i class="bi bi-chat-left-text text-primary"></i> Online Enquiries
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('admissions.bulk-import.*') ? 'active' : '' }}"
                            href="{{ route('admissions.bulk-import.index') }}">
                         <i class="bi bi-file-earmark-arrow-up text-success"></i> Bulk Import (Excel)

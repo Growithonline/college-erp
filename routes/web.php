@@ -23,6 +23,7 @@ use App\Http\Controllers\Institute\Master\ChannelPartnerController;
 use App\Http\Controllers\Institute\Master\StaffRoleController;
 use App\Http\Controllers\Institute\Master\StaffMemberController;
 use App\Http\Controllers\Institute\Admission\AdmissionController;
+use App\Http\Controllers\Institute\Admission\EnquiryController;
 use App\Http\Controllers\Institute\Admission\StudentBulkImportController;
 use App\Http\Controllers\Institute\Admission\StudentPromoteController;
 use App\Http\Controllers\Institute\Admission\PromotionController;
@@ -133,6 +134,12 @@ Route::get('/receipt/record',  [\App\Http\Controllers\PublicReceiptController::c
 
 // ── Public transport pass viewer (QR code scan — no auth required) ────
 Route::get('/transport/pass-status', [\App\Http\Controllers\TransportPassController::class, 'status'])->name('transport.pass.status')->middleware('throttle:30,1');
+
+// ── Public admission enquiry form (per-institute, no auth required) ───
+Route::get ('/apply/{shortName}',           [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'show'])->name('public.admission.show')->middleware('throttle:30,1');
+Route::post('/apply/{shortName}/send-otp',  [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'sendOtp'])->name('public.admission.send-otp')->middleware('throttle:5,1');
+Route::post('/apply/{shortName}/verify-otp',[\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'verifyOtp'])->name('public.admission.verify-otp')->middleware('throttle:10,1');
+Route::post('/apply/{shortName}',           [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'store'])->name('public.admission.store')->middleware('throttle:10,1');
 
 Route::get('/login',       [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login',      [LoginController::class, 'login'])->name('login.submit')->middleware('throttle:5,1');
@@ -646,6 +653,15 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('{document}',                   [AdmissionDocumentController::class, 'destroy'])->name('destroy');
         Route::get('{document}',                      [AdmissionDocumentController::class, 'show'])->name('show');
         Route::get('for-course',                      [AdmissionDocumentController::class, 'getForCourse'])->name('for-course');
+    });
+
+    // Online Enquiries
+    Route::prefix('enquiries')->name('enquiries.')->group(function () {
+        Route::get('/',                    [EnquiryController::class, 'index'])->name('index');
+        Route::get('{id}',                 [EnquiryController::class, 'show'])->name('show');
+        Route::post('{id}/status',         [EnquiryController::class, 'updateStatus'])->name('update-status');
+        Route::post('{id}/assign',         [EnquiryController::class, 'assign'])->name('assign');
+        Route::post('{id}/follow-up',      [EnquiryController::class, 'storeFollowUp'])->name('follow-up.store');
     });
 
     // Certificates
