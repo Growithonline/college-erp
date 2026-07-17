@@ -9,7 +9,7 @@ class Enquiry extends Model
     protected $fillable = [
         'institute_id', 'name', 'mobile', 'email', 'course_id', 'city',
         'status', 'source', 'utm_source', 'utm_medium', 'utm_campaign',
-        'assigned_staff_id', 'email_verified_at',
+        'assigned_staff_id', 'email_verified_at', 'converted_student_id',
     ];
 
     protected $casts = [
@@ -20,6 +20,7 @@ class Enquiry extends Model
     public function course()        { return $this->belongsTo(Course::class); }
     public function assignedStaff() { return $this->belongsTo(StaffMember::class, 'assigned_staff_id'); }
     public function followUps()     { return $this->hasMany(EnquiryFollowUp::class)->latest(); }
+    public function convertedStudent() { return $this->belongsTo(Student::class, 'converted_student_id'); }
 
     public function scopeForInstitute($query, int $instituteId)
     {

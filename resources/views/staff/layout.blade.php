@@ -154,6 +154,10 @@
                            href="{{ route('staff.students.search') }}">
                         <i class="bi bi-search"></i> Global Search
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('staff.enquiries.*') ? 'active' : '' }}"
+                           href="{{ route('staff.enquiries.index') }}">
+                        <i class="bi bi-chat-left-text" style="color:#2563EB;"></i> Online Enquiries
+                    </a></li>
                     @if($authUser->hasPermission('student_promote'))
                     <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.*') ? 'active' : '' }}"
                            href="{{ route('staff.admissions.promote.index') }}">

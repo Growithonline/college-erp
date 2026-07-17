@@ -3008,6 +3008,11 @@ class AdmissionController extends Controller
         $student->load('educationDetails');
         StudentAcademicChangeService::syncCurrentIdentity($student);
 
+        // Online self-service applicants get no portal credentials until a human actually approves them
+        if ($student->admitted_by_type === 'online' && !$student->password) {
+            $this->sendStudentCredentials($student);
+        }
+
         AuditLogService::log($this->instituteId(), 'admission', 'admission_approved', 'Admission approved after verification.', $student, [
             'student_id' => $student->id,
             'student_uid' => $student->student_uid,
@@ -3055,6 +3060,11 @@ class AdmissionController extends Controller
         }
 
         $student->update($updates);
+
+        // Online self-service applicants get no portal credentials until a human actually approves them
+        if ($validated['action'] === 'approve' && $student->admitted_by_type === 'online' && !$student->password) {
+            $this->sendStudentCredentials($student);
+        }
 
         $actionLabels = [
             'approve'  => 'approved',

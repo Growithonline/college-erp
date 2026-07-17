@@ -141,6 +141,14 @@ Route::post('/apply/{shortName}/send-otp',  [\App\Http\Controllers\Public\Admiss
 Route::post('/apply/{shortName}/verify-otp',[\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'verifyOtp'])->name('public.admission.verify-otp')->middleware('throttle:10,1');
 Route::post('/apply/{shortName}',           [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'store'])->name('public.admission.store')->middleware('throttle:10,1');
 
+// ── Public admission application (signed link, emailed after enquiry is marked Interested) ───
+Route::middleware('signed')->group(function () {
+    Route::get ('/apply/{shortName}/application/{enquiry}',           [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'show'])->name('public.application.show')->middleware('throttle:30,1');
+    Route::post('/apply/{shortName}/application/{enquiry}',           [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'store'])->name('public.application.store')->middleware('throttle:10,1');
+    Route::get ('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsShow'])->name('public.application.documents.show')->middleware('throttle:30,1');
+    Route::post('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsUpload'])->name('public.application.documents.upload')->middleware('throttle:20,1');
+});
+
 Route::get('/login',       [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login',      [LoginController::class, 'login'])->name('login.submit')->middleware('throttle:5,1');
 Route::get('/otp-verify',  [LoginController::class, 'showOtpForm'])->name('otp.form');
@@ -662,6 +670,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('{id}/status',         [EnquiryController::class, 'updateStatus'])->name('update-status');
         Route::post('{id}/assign',         [EnquiryController::class, 'assign'])->name('assign');
         Route::post('{id}/follow-up',      [EnquiryController::class, 'storeFollowUp'])->name('follow-up.store');
+        Route::post('{id}/send-application-link', [EnquiryController::class, 'sendApplicationLink'])->name('send-application-link');
     });
 
     // Certificates
@@ -1070,6 +1079,16 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::delete('{document}',         [AdmissionDocumentController::class, 'destroy'])->name('destroy');
             Route::get('for-course',            [AdmissionDocumentController::class, 'getForCourse'])->name('for-course');
             Route::get('{document}',            [AdmissionDocumentController::class, 'show'])->name('show');
+        });
+
+        // Online Enquiries (view scope checked inside controller — enquiry_view_all permission)
+        Route::prefix('enquiries')->name('enquiries.')->group(function () {
+            Route::get('/',                    [EnquiryController::class, 'index'])->name('index');
+            Route::get('{id}',                 [EnquiryController::class, 'show'])->name('show');
+            Route::post('{id}/status',         [EnquiryController::class, 'updateStatus'])->name('update-status');
+            Route::post('{id}/assign',         [EnquiryController::class, 'assign'])->name('assign');
+            Route::post('{id}/follow-up',      [EnquiryController::class, 'storeFollowUp'])->name('follow-up.store');
+            Route::post('{id}/send-application-link', [EnquiryController::class, 'sendApplicationLink'])->name('send-application-link');
         });
 
         // Fee (permission: fee_collect)

@@ -12,6 +12,7 @@ class StaffRole extends Model
             'admission_approve' => 'Approve Admission',
             'admission_delete' => 'Delete Admission',
             'admission_reports' => 'Admission Reports',
+            'enquiry_view_all' => 'View All Online Enquiries (not just assigned to me)',
         ],
         'Students' => [
             'student_view' => 'View Students',

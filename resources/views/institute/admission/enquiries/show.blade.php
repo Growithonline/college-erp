@@ -1,14 +1,16 @@
-@extends('institute.layout')
+@extends($layout ?? 'institute.layout')
 @section('title', 'Enquiry Detail')
 @section('breadcrumb', 'Admissions / Online Enquiries / ' . $enquiry->name)
 
 @section('content')
 
+@php($routePrefix = $routePrefix ?? '')
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0 fw-bold">
         <i class="bi bi-person-lines-fill text-primary me-2"></i> {{ $enquiry->name }}
     </h4>
-    <a href="{{ route('enquiries.index') }}" class="btn btn-outline-secondary btn-sm">
+    <a href="{{ route($routePrefix.'enquiries.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back to List
     </a>
 </div>
@@ -40,7 +42,7 @@
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
                 <h6 class="fw-bold mb-3">Status</h6>
-                <form method="POST" action="{{ route('enquiries.update-status', $enquiry) }}" class="d-flex gap-2">
+                <form method="POST" action="{{ route($routePrefix.'enquiries.update-status', $enquiry) }}" class="d-flex gap-2">
                     @csrf
                     <select name="status" class="form-select form-select-sm">
                         @foreach(['new', 'contacted', 'interested', 'not_interested', 'junk'] as $status)
@@ -54,10 +56,10 @@
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
                 <h6 class="fw-bold mb-3">Assign To</h6>
-                <form method="POST" action="{{ route('enquiries.assign', $enquiry) }}" class="d-flex gap-2">
+                <form method="POST" action="{{ route($routePrefix.'enquiries.assign', $enquiry) }}" class="d-flex gap-2">
                     @csrf
                     <select name="assigned_staff_id" class="form-select form-select-sm">
                         <option value="">Unassigned</option>
@@ -71,13 +73,34 @@
                 </form>
             </div>
         </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3">Application</h6>
+                @if($enquiry->converted_student_id)
+                    <div class="text-success small">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Converted to Student ({{ $enquiry->convertedStudent?->student_uid }})
+                    </div>
+                @elseif($enquiry->status === 'interested')
+                    <form method="POST" action="{{ route($routePrefix.'enquiries.send-application-link', $enquiry) }}">
+                        @csrf
+                        <button class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-send me-1"></i> Send Application Link
+                        </button>
+                    </form>
+                @else
+                    <div class="small text-muted">Mark this enquiry as "Interested" to send the application link.</div>
+                @endif
+            </div>
+        </div>
     </div>
 
     <div class="col-md-8">
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
                 <h6 class="fw-bold mb-3">Add Follow-up</h6>
-                <form method="POST" action="{{ route('enquiries.follow-up.store', $enquiry) }}">
+                <form method="POST" action="{{ route($routePrefix.'enquiries.follow-up.store', $enquiry) }}">
                     @csrf
                     <div class="row g-2">
                         <div class="col-md-3">

@@ -1,4 +1,4 @@
-@extends('institute.layout')
+@extends($layout ?? 'institute.layout')
 @section('title', 'Online Enquiries')
 @section('breadcrumb', 'Admissions / Online Enquiries')
 
@@ -68,6 +68,7 @@
                     @endforeach
                 </select>
             </div>
+            @if($canViewAll ?? true)
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Assigned To</label>
                 <select name="assigned_staff_id" class="form-select form-select-sm">
@@ -79,6 +80,7 @@
                     @endforeach
                 </select>
             </div>
+            @endif
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Date From</label>
                 <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control form-control-sm">
@@ -89,7 +91,7 @@
             </div>
             <div class="col-auto d-flex gap-2">
                 <button class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i>Filter</button>
-                <a href="{{ route('enquiries.index') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                <a href="{{ route(($routePrefix ?? '').'enquiries.index') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
         </form>
     </div>
@@ -129,7 +131,7 @@
                         <td class="small">{{ $enquiry->assignedStaff?->name ?? '-' }}</td>
                         <td class="small">{{ $enquiry->created_at?->format('d M Y, h:i A') }}</td>
                         <td>
-                            <a href="{{ route('enquiries.show', $enquiry) }}"
+                            <a href="{{ route(($routePrefix ?? '').'enquiries.show', $enquiry) }}"
                                class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:11px">
                                 View
                             </a>
