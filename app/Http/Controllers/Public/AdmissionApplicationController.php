@@ -16,6 +16,7 @@ use App\Models\Enquiry;
 use App\Models\Institute;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
+use App\Models\StudentType;
 use App\Services\InstituteMailer;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
@@ -122,12 +123,14 @@ class AdmissionApplicationController extends Controller
             ->with(['streams' => fn ($q) => $q->where('status', true)])
             ->orderBy('name')
             ->get();
+        $studentTypes = StudentType::forInstitute($institute->id)->active()->orderBy('sort_order')->get();
 
         return view('public.admission.application', [
-            'institute'  => $institute,
-            'enquiry'    => $enquiry,
-            'formConfig' => $formConfig,
-            'courses'    => $courses,
+            'institute'    => $institute,
+            'enquiry'      => $enquiry,
+            'formConfig'   => $formConfig,
+            'courses'      => $courses,
+            'studentTypes' => $studentTypes,
         ]);
     }
 
@@ -260,8 +263,15 @@ class AdmissionApplicationController extends Controller
         ];
 
         foreach (array_keys(self::FIELD_RULES) as $key) {
-            if ($this->isFieldEnabled($formConfig, $key)) {
-                $data[$key] = $validated[$key] ?? null;
+            if (!$this->isFieldEnabled($formConfig, $key)) {
+                continue;
+            }
+            $value = $validated[$key] ?? null;
+            // Leave the key out entirely when empty so the column's own DB default applies —
+            // some columns (student_type, nationality, marital_status) are NOT NULL and MySQL
+            // only falls back to the default when the column is omitted, not when it's given NULL.
+            if ($value !== null && $value !== '') {
+                $data[$key] = $value;
             }
         }
 
