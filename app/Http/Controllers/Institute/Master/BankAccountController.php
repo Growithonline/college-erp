@@ -118,6 +118,22 @@ class BankAccountController extends Controller
         return back()->with('success', 'Status updated!');
     }
 
+    // ── Set as the account used for the online admission payment QR ────
+    // Only one account per institute can be the online-payment default at a time.
+    public function setOnlineDefault(InstituteBankAccount $bankAccount)
+    {
+        abort_if($bankAccount->institute_id !== $this->instituteId(), 403);
+        abort_unless($bankAccount->upi_id, 422, 'This account has no UPI ID set.');
+
+        InstituteBankAccount::where('institute_id', $this->instituteId())
+            ->where('id', '!=', $bankAccount->id)
+            ->update(['is_online_payment_account' => false]);
+
+        $bankAccount->update(['is_online_payment_account' => true]);
+
+        return back()->with('success', 'This account will now be used for online admission payments.');
+    }
+
     // ── Delete ────────────────────────────────────────────────────────
     public function destroy(InstituteBankAccount $bankAccount)
     {

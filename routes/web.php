@@ -81,6 +81,7 @@ use App\Http\Controllers\Institute\Master\DocumentRuleController;
 use App\Http\Controllers\Institute\Master\SmsSettingController as InstituteSmsSettingController;
 use App\Http\Controllers\Institute\Master\SmsDueReminderController;
 use App\Http\Controllers\Institute\Admission\AdmissionDocumentController;
+use App\Http\Controllers\Institute\Admission\PaymentClaimController;
 use App\Http\Controllers\Institute\Transport\TransportAllocationController;
 use App\Http\Controllers\Institute\Transport\TransportDashboardController;
 use App\Http\Controllers\Institute\Transport\TransportDriverController;
@@ -147,6 +148,9 @@ Route::middleware('signed')->group(function () {
     Route::post('/apply/{shortName}/application/{enquiry}',           [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'store'])->name('public.application.store')->middleware('throttle:10,1');
     Route::get ('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsShow'])->name('public.application.documents.show')->middleware('throttle:30,1');
     Route::post('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsUpload'])->name('public.application.documents.upload')->middleware('throttle:20,1');
+    Route::get ('/apply/{shortName}/application/{student}/next-steps', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'nextStepsShow'])->name('public.application.next-steps')->middleware('throttle:30,1');
+    Route::get ('/apply/{shortName}/application/{student}/payment',    [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'paymentShow'])->name('public.application.payment.show')->middleware('throttle:30,1');
+    Route::post('/apply/{shortName}/application/{student}/payment',    [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'paymentSubmit'])->name('public.application.payment.submit')->middleware('throttle:10,1');
 });
 
 Route::get('/login',       [LoginController::class, 'showLoginForm'])->name('login');
@@ -255,6 +259,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('bank-accounts/{bankAccount}/edit',     [BankAccountController::class, 'edit'])->name('bank-accounts.edit');
         Route::patch('bank-accounts/{bankAccount}',        [BankAccountController::class, 'update'])->name('bank-accounts.update');
         Route::patch('bank-accounts/{bankAccount}/toggle', [BankAccountController::class, 'toggle'])->name('bank-accounts.toggle');
+        Route::patch('bank-accounts/{bankAccount}/set-online-default', [BankAccountController::class, 'setOnlineDefault'])->name('bank-accounts.set-online-default');
         Route::delete('bank-accounts/{bankAccount}',       [BankAccountController::class, 'destroy'])->name('bank-accounts.destroy');
 
         Route::get('forms',         [AdmissionFormController::class, 'index'])->name('forms.index');
@@ -600,6 +605,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('admissions/approvals/{student}', [AdmissionController::class, 'approvalShow'])->name('admissions.approvals.show');
     Route::post('admissions/approvals/{student}/approve', [AdmissionController::class, 'approveAdmission'])->name('admissions.approvals.approve');
     Route::post('admissions/approvals/{student}/status', [AdmissionController::class, 'updateApprovalStatus'])->name('admissions.approvals.status');
+
+    // Application Payment Verification (online admissions)
+    Route::prefix('payment-claims')->name('payment-claims.')->group(function () {
+        Route::post('{claim}/verify', [PaymentClaimController::class, 'verify'])->name('verify');
+        Route::post('{claim}/reject', [PaymentClaimController::class, 'reject'])->name('reject');
+        Route::post('{student}/record', [PaymentClaimController::class, 'recordManual'])->name('record');
+    });
 
     // ── New Promotion Routes ──────────────────────────────────────────
     Route::prefix('admissions/promote')->name('admissions.promote.')->group(function () {
@@ -1031,6 +1043,14 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('admissions/approvals/{student}', [StaffAdmissionController::class, 'approvalShow'])->name('admissions.approvals.show');
         Route::post('admissions/approvals/{student}/approve', [StaffAdmissionController::class, 'approveAdmission'])->name('admissions.approvals.approve');
         Route::post('admissions/approvals/{student}/status', [StaffAdmissionController::class, 'updateApprovalStatus'])->name('admissions.approvals.status');
+
+        // Application Payment Verification (online admissions)
+        Route::prefix('payment-claims')->name('payment-claims.')->group(function () {
+            Route::post('{claim}/verify', [PaymentClaimController::class, 'verify'])->name('verify');
+            Route::post('{claim}/reject', [PaymentClaimController::class, 'reject'])->name('reject');
+            Route::post('{student}/record', [PaymentClaimController::class, 'recordManual'])->name('record');
+        });
+
         Route::get('admissions/{student}/success', [StaffAdmissionController::class, 'quickSuccess'])->name('admissions.quick-success');
         Route::get('admissions/{student}/upload-documents', [AdmissionDocumentController::class, 'uploadPage'])->name('admissions.upload-documents');
         Route::get('admissions/{student}/fee-payment', [StaffAdmissionController::class, 'feePayment'])->name('admissions.fee-payment');

@@ -10,10 +10,12 @@ class InstituteBankAccount extends Model
         'institute_id', 'bank_name', 'account_name', 'account_no',
         'ifsc_code', 'branch', 'upi_id', 'display_label',
         'allowed_payment_modes', 'is_active', 'sort_order', 'gl_account_id',
+        'is_online_payment_account',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'                 => 'boolean',
+        'is_online_payment_account' => 'boolean',
     ];
 
     public function institute()

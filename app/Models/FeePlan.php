@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WalletService;
 use Illuminate\Database\Eloquent\Model;
 
 class FeePlan extends Model
@@ -54,6 +55,26 @@ class FeePlan extends Model
         }
 
         return $amounts;
+    }
+
+    // Sum of installments that are due right now (currently: only 'at_admission', which is
+    // always due — 'semester_start'/'months_after' installments never apply at admission time)
+    public function dueNowAmount(Student $student): float
+    {
+        $totalFee = WalletService::getOriginalFeeCharged($student->id, (int) $student->academic_session_id);
+        if ($totalFee <= 0) {
+            return 0.0;
+        }
+
+        $amounts = $this->installmentAmounts($totalFee);
+        $due = 0.0;
+        foreach ($this->installments as $installment) {
+            if ($installment->due_trigger === 'at_admission') {
+                $due += $amounts[$installment->installment_number] ?? 0;
+            }
+        }
+
+        return round($due, 2);
     }
 
     public function scopeActive($q)

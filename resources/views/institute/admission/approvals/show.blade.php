@@ -13,6 +13,9 @@
         'paid'     => ['label' => 'Paid / Cleared', 'class' => 'bg-success'],
     ];
     $feeBadge = $feeStatusMap[$feeStatus] ?? ['label' => ucfirst($feeStatus), 'class' => 'bg-secondary'];
+    $canVerifyDocs = $isStaff ? auth()->guard('staff')->user()->hasPermission('document_verify') : true;
+    $docVerifyRoute = $isStaff ? 'staff.admission.documents.verify' : 'admission.documents.verify';
+    $docRejectRoute = $isStaff ? 'staff.admission.documents.reject' : 'admission.documents.reject';
 @endphp
 @extends($layout)
 @section('title', 'Admission Review')
@@ -337,12 +340,33 @@
                                             <i class="bi bi-download me-1"></i>Download
                                         </a>
                                     </div>
-                                    @if($doc->verification_status === 'verified')
+                                    @if($doc->verification_status === 'approved')
                                         <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>Verified</div>
                                     @elseif($doc->verification_status === 'rejected')
-                                        <div class="small text-danger mt-1"><i class="bi bi-x-circle me-1"></i>Rejected</div>
+                                        <div class="small text-danger mt-1 mb-1"><i class="bi bi-x-circle me-1"></i>Rejected</div>
+                                        @if($doc->rejection_reason)
+                                            <div class="small text-muted mb-1">{{ $doc->rejection_reason }}</div>
+                                        @endif
                                     @else
-                                        <div class="small text-warning mt-1"><i class="bi bi-clock me-1"></i>Pending verification</div>
+                                        <div class="small text-warning mt-1 mb-1"><i class="bi bi-clock me-1"></i>Pending verification</div>
+                                    @endif
+
+                                    @if($canVerifyDocs && $doc->verification_status !== 'approved')
+                                        <div class="d-flex gap-1 mt-1">
+                                            <form method="POST" action="{{ route($docVerifyRoute, $doc) }}" class="flex-fill">
+                                                @csrf
+                                                <button class="btn btn-success btn-sm w-100 py-0" style="font-size:11px;">Verify</button>
+                                            </form>
+                                            <button type="button" class="btn btn-outline-danger btn-sm flex-fill py-0" style="font-size:11px;"
+                                                    onclick="document.getElementById('rejectDocForm{{ $doc->id }}').classList.toggle('d-none')">
+                                                Reject
+                                            </button>
+                                        </div>
+                                        <form id="rejectDocForm{{ $doc->id }}" method="POST" action="{{ route($docRejectRoute, $doc) }}" class="d-none mt-1">
+                                            @csrf
+                                            <input type="text" name="rejection_reason" class="form-control form-control-sm mb-1" placeholder="Reason" required maxlength="500">
+                                            <button class="btn btn-outline-danger btn-sm w-100 py-0" style="font-size:11px;">Confirm Reject</button>
+                                        </form>
                                     @endif
                                 </div>
                             </div>
@@ -422,6 +446,99 @@
                 @endif
             </div>
         </div>
+
+        {{-- Application Payment (online admissions only) --}}
+        @if($student->admitted_by_type === 'online')
+        @php
+            $paymentVerifyRoute = $isStaff ? 'staff.payment-claims.verify' : 'payment-claims.verify';
+            $paymentRejectRoute = $isStaff ? 'staff.payment-claims.reject' : 'payment-claims.reject';
+            $paymentRecordRoute = $isStaff ? 'staff.payment-claims.record' : 'payment-claims.record';
+        @endphp
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom py-2 d-flex align-items-center gap-2">
+                <i class="bi bi-credit-card text-primary"></i>
+                <h6 class="mb-0 fw-semibold">Application Payment</h6>
+            </div>
+            <div class="card-body py-3">
+                @if($dueAmount <= 0)
+                    <div class="text-muted small">No payment was due at admission for this course.</div>
+                @else
+                    <div class="d-flex justify-content-between mb-2 small">
+                        <span class="text-muted">Due at Admission</span>
+                        <span class="fw-semibold">Rs {{ number_format($dueAmount, 2) }}</span>
+                    </div>
+
+                    @if(!$paymentClaim)
+                        <div class="alert alert-warning small py-2 mb-3">No payment claim submitted yet.</div>
+                    @elseif($paymentClaim->isApproved())
+                        <div class="alert alert-success small py-2 mb-2">
+                            <i class="bi bi-check-circle me-1"></i> Verified — Rs {{ number_format($paymentClaim->amount_claimed, 2) }}
+                            ({{ $paymentClaim->payment_mode === 'pay_at_institute' ? 'Pay at Institute' : 'UPI/NEFT' }})
+                        </div>
+                    @else
+                        @if($paymentClaim->isRejected())
+                            <div class="alert alert-danger small py-2 mb-2">Rejected: {{ $paymentClaim->rejection_reason }}</div>
+                        @endif
+
+                        @if($paymentClaim->isPending())
+                            <div class="small mb-2">
+                                <div>Claimed: <strong>Rs {{ number_format($paymentClaim->amount_claimed, 2) }}</strong>
+                                    @if((float) $paymentClaim->amount_claimed < $dueAmount)
+                                        <span class="badge bg-warning text-dark ms-1">Below due amount</span>
+                                    @endif
+                                </div>
+                                <div>Mode: {{ $paymentClaim->payment_mode === 'pay_at_institute' ? 'Pay at Institute' : 'UPI/NEFT' }}</div>
+                                @if($paymentClaim->transaction_ref)
+                                    <div>Ref: {{ $paymentClaim->transaction_ref }}</div>
+                                @endif
+                                @if($paymentClaim->screenshot_path)
+                                    <a href="{{ asset('storage/' . $paymentClaim->screenshot_path) }}" target="_blank" class="d-inline-block mt-1">
+                                        <i class="bi bi-image me-1"></i>View Screenshot
+                                    </a>
+                                @endif
+                            </div>
+
+                            <form method="POST" action="{{ route($paymentVerifyRoute, $paymentClaim) }}" class="d-flex gap-1 mb-2">
+                                @csrf
+                                <input type="number" step="0.01" name="confirmed_amount" class="form-control form-control-sm" value="{{ $paymentClaim->amount_claimed }}" style="max-width:110px;">
+                                <button class="btn btn-success btn-sm">Verify</button>
+                            </form>
+                            <form method="POST" action="{{ route($paymentRejectRoute, $paymentClaim) }}" class="d-flex gap-1">
+                                @csrf
+                                <input type="text" name="rejection_reason" class="form-control form-control-sm" placeholder="Reason" required maxlength="500">
+                                <button class="btn btn-outline-danger btn-sm">Reject</button>
+                            </form>
+                        @endif
+                    @endif
+
+                    @if(!$paymentClaim || !$paymentClaim->isApproved())
+                        <div class="border-top pt-2 mt-3">
+                            <div class="small fw-semibold mb-1">Record Payment Manually</div>
+                            <form method="POST" action="{{ route($paymentRecordRoute, $student) }}" class="row g-1">
+                                @csrf
+                                <div class="col-6">
+                                    <input type="number" step="0.01" name="amount" class="form-control form-control-sm" placeholder="Amount" value="{{ $dueAmount }}" required>
+                                </div>
+                                <div class="col-6">
+                                    <select name="payment_mode" class="form-select form-select-sm" required>
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="neft">NEFT</option>
+                                        <option value="rtgs">RTGS</option>
+                                        <option value="cheque">Cheque</option>
+                                        <option value="dd">DD</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 mt-1">
+                                    <button class="btn btn-outline-success btn-sm w-100">Record</button>
+                                </div>
+                            </form>
+                        </div>
+                    @endif
+                @endif
+            </div>
+        </div>
+        @endif
 
         {{-- Approval / Status Action --}}
         <div class="card border-0 shadow-sm">

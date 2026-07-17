@@ -9,26 +9,26 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ApplicationDocumentsLinkMail extends Mailable
+class PaymentVerifiedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
         public Student $student,
-        public string $url,
+        public float $amount,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Next Steps for Your Admission',
+            subject: 'Payment Verified',
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.application-documents-link',
+            view: 'emails.payment-verified',
         );
     }
 

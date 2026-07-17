@@ -13,7 +13,10 @@ use App\Models\CoursePart;
 use App\Models\CourseStream;
 use App\Models\DocumentType;
 use App\Models\Enquiry;
+use App\Models\FeePlan;
 use App\Models\Institute;
+use App\Models\InstituteBankAccount;
+use App\Models\PaymentClaim;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
 use App\Models\StudentType;
@@ -96,6 +99,24 @@ class AdmissionApplicationController extends Controller
         );
     }
 
+    private function nextStepsUrl(Student $student, string $shortName): string
+    {
+        return URL::temporarySignedRoute(
+            'public.application.next-steps',
+            now()->addDays(30),
+            ['shortName' => $shortName, 'student' => $student->id]
+        );
+    }
+
+    private function paymentUrl(Student $student, string $shortName): string
+    {
+        return URL::temporarySignedRoute(
+            'public.application.payment.show',
+            now()->addDays(30),
+            ['shortName' => $shortName, 'student' => $student->id]
+        );
+    }
+
     private function isFieldEnabled(array $formConfig, string $key): bool
     {
         return (bool) (($formConfig[$key]['enabled'] ?? false) && ($formConfig[$key]['section_enabled'] ?? true));
@@ -114,7 +135,7 @@ class AdmissionApplicationController extends Controller
         abort_if($enquiry->institute_id !== $institute->id, 404);
 
         if ($enquiry->converted_student_id) {
-            return redirect($this->documentsUrl($enquiry->convertedStudent, $shortName));
+            return redirect($this->nextStepsUrl($enquiry->convertedStudent, $shortName));
         }
 
         $formConfig = AdmissionFormController::getActiveConfig($institute->id, 'online');
@@ -154,12 +175,16 @@ class AdmissionApplicationController extends Controller
         $firstPart = CoursePart::where('course_id', $stream->course_id)
             ->orderBy('year_number')->orderBy('id')->first();
 
+        $feePlanId = FeePlan::where('course_id', $stream->course_id)
+            ->where('is_active', true)
+            ->value('id');
+
         $year = StudentIdService::getYearFromSession($activeSession->name);
         $studentData = $this->extractStudentData($request, $validated, $formConfig);
         $educationRows = $this->extractEducationRows($validated, $formConfig);
 
         $student = DB::transaction(function () use (
-            $studentData, $educationRows, $institute, $enquiry, $stream, $activeSession, $firstPart, $year
+            $studentData, $educationRows, $institute, $enquiry, $stream, $activeSession, $firstPart, $feePlanId, $year
         ) {
             $studentUid = StudentIdService::generateStudentId($institute->id, $year);
 
@@ -170,6 +195,7 @@ class AdmissionApplicationController extends Controller
                 'course_stream_id'     => $stream->id,
                 'course_type_id'       => $stream->course->course_type_id,
                 'course_part_id'       => $firstPart?->id,
+                'fee_plan_id'          => $feePlanId,
                 'current_semester'     => 1,
                 'admission_type'       => 'new',
                 'admission_date'       => now()->toDateString(),
@@ -209,12 +235,12 @@ class AdmissionApplicationController extends Controller
             return $student;
         });
 
-        $docsUrl = $this->documentsUrl($student, $shortName);
+        $nextStepsUrl = $this->nextStepsUrl($student, $shortName);
         if ($student->email) {
-            InstituteMailer::send($institute->id, $student->email, new ApplicationDocumentsLinkMail($student, $docsUrl));
+            InstituteMailer::send($institute->id, $student->email, new ApplicationDocumentsLinkMail($student, $nextStepsUrl));
         }
 
-        return redirect($docsUrl);
+        return redirect($nextStepsUrl);
     }
 
     private function buildRules(array $formConfig): array
@@ -299,13 +325,196 @@ class AdmissionApplicationController extends Controller
         return $rows;
     }
 
-    // ── Document upload ──────────────────────────────────────────────────
-
     private function ensureOnlinePendingStudent(Student $student, Institute $institute): void
     {
         abort_if($student->institute_id !== $institute->id, 404);
         abort_unless($student->admission_source === 'online' && $student->status === 'pending', 404);
     }
+
+    // ── Next steps hub ───────────────────────────────────────────────────
+
+    public function nextStepsShow(Request $request, string $shortName, Student $student)
+    {
+        $institute = $this->resolveInstitute($shortName);
+        $this->ensureOnlinePendingStudent($student, $institute);
+
+        $dueAmount = $student->feePlan?->dueNowAmount($student) ?? 0.0;
+        $latestClaim = PaymentClaim::where('student_id', $student->id)->latest()->first();
+
+        $student->load('stream.course');
+        $courseId = $student->stream?->course_id;
+        $required = $courseId
+            ? AdmissionDocumentController::getRequiredDocumentTypes($courseId, 'online', $institute->id)
+            : [];
+        $uploaded = AdmissionDocument::where('student_id', $student->id)->get();
+        $documentsComplete = collect($required)
+            ->every(fn ($item) => $uploaded->firstWhere('document_type_id', $item['document_type']->id));
+
+        return view('public.admission.next-steps', [
+            'institute'          => $institute,
+            'student'            => $student,
+            'dueAmount'          => $dueAmount,
+            'latestClaim'        => $latestClaim,
+            'documentsUrl'       => $this->documentsUrl($student, $shortName),
+            'paymentUrl'         => $dueAmount > 0 ? $this->paymentUrl($student, $shortName) : null,
+            'documentsComplete'  => $documentsComplete,
+            'requiredDocsCount'  => count($required),
+            'uploadedDocsCount'  => $uploaded->count(),
+        ]);
+    }
+
+    // ── Payment ───────────────────────────────────────────────────────────
+
+    private function resolveOnlinePaymentAccount(Institute $institute): ?InstituteBankAccount
+    {
+        $preferred = InstituteBankAccount::where('institute_id', $institute->id)
+            ->where('is_active', true)
+            ->whereNotNull('upi_id')
+            ->where('is_online_payment_account', true)
+            ->first();
+
+        if ($preferred) {
+            return $preferred;
+        }
+
+        // No account explicitly designated yet — fall back to the first active one with a UPI ID.
+        return InstituteBankAccount::where('institute_id', $institute->id)
+            ->where('is_active', true)
+            ->whereNotNull('upi_id')
+            ->orderBy('sort_order')
+            ->first();
+    }
+
+    private function buildUpiQrDataUri(InstituteBankAccount $account, float $amount, string $studentUid): string
+    {
+        $upiString = 'upi://pay?pa=' . urlencode($account->upi_id)
+            . '&pn=' . urlencode($account->account_name ?? 'Institute')
+            . '&am=' . number_format($amount, 2, '.', '')
+            . '&cu=INR&tn=' . urlencode('Admission Fee - ' . $studentUid);
+
+        $svg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(220)->margin(1)->generate($upiString);
+
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    private function validateProofFile($file): ?string
+    {
+        if (!$file) {
+            return 'Please upload a payment screenshot.';
+        }
+
+        $sizeKb = (int) ceil($file->getSize() / 1024);
+        if ($sizeKb > 5120) {
+            return "File size {$sizeKb} KB exceeds the maximum allowed 5120 KB.";
+        }
+
+        $ext = strtolower($file->getClientOriginalExtension());
+        $allowed = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+        if (!in_array($ext, $allowed)) {
+            return "Format .$ext is not allowed. Allowed formats: jpg, jpeg, png, webp, pdf.";
+        }
+
+        $permittedMimes = array_merge(...array_map(fn ($e) => self::DOCUMENT_MIME_MAP[$e], $allowed));
+        if (!in_array($file->getMimeType(), $permittedMimes, true)) {
+            return 'File content does not match the allowed formats. Upload was rejected.';
+        }
+
+        return null;
+    }
+
+    public function paymentShow(Request $request, string $shortName, Student $student)
+    {
+        $institute = $this->resolveInstitute($shortName);
+        $this->ensureOnlinePendingStudent($student, $institute);
+
+        $dueAmount = $student->feePlan?->dueNowAmount($student) ?? 0.0;
+        if ($dueAmount <= 0) {
+            return redirect($this->nextStepsUrl($student, $shortName));
+        }
+
+        $latestClaim = PaymentClaim::where('student_id', $student->id)->latest()->first();
+        $bankAccount = $this->resolveOnlinePaymentAccount($institute);
+        $qrDataUri = $bankAccount ? $this->buildUpiQrDataUri($bankAccount, $dueAmount, $student->student_uid) : null;
+
+        return view('public.admission.payment', [
+            'institute'   => $institute,
+            'student'     => $student,
+            'dueAmount'   => $dueAmount,
+            'latestClaim' => $latestClaim,
+            'bankAccount' => $bankAccount,
+            'qrDataUri'   => $qrDataUri,
+        ]);
+    }
+
+    public function paymentSubmit(Request $request, string $shortName, Student $student)
+    {
+        $institute = $this->resolveInstitute($shortName);
+        $this->ensureOnlinePendingStudent($student, $institute);
+
+        $dueAmount = $student->feePlan?->dueNowAmount($student) ?? 0.0;
+        abort_if($dueAmount <= 0, 404);
+
+        $blocked = PaymentClaim::where('student_id', $student->id)
+            ->whereIn('verification_status', ['pending', 'approved'])
+            ->exists();
+        abort_if($blocked, 409, 'A payment claim has already been submitted for this admission.');
+
+        $validated = $request->validate([
+            'payment_mode'    => ['required', 'in:upi_neft,pay_at_institute'],
+            'amount_claimed'  => ['required_if:payment_mode,upi_neft', 'nullable', 'numeric', 'min:1'],
+            'transaction_ref' => ['required_if:payment_mode,upi_neft', 'nullable', 'string', 'max:100'],
+            'screenshot'      => ['required_if:payment_mode,upi_neft', 'nullable', 'file'],
+        ]);
+
+        if ($validated['payment_mode'] === 'pay_at_institute') {
+            PaymentClaim::create([
+                'institute_id'         => $institute->id,
+                'student_id'           => $student->id,
+                'amount_due'           => $dueAmount,
+                'amount_claimed'       => $dueAmount,
+                'payment_mode'         => 'pay_at_institute',
+                'verification_status'  => 'pending',
+            ]);
+
+            return redirect($this->nextStepsUrl($student, $shortName))
+                ->with('success', 'Noted — please pay this amount at the institute. Staff will confirm it once received.');
+        }
+
+        $ref = trim($validated['transaction_ref']);
+        $duplicate = PaymentClaim::where('institute_id', $institute->id)
+            ->where('transaction_ref', $ref)
+            ->whereIn('verification_status', ['pending', 'approved'])
+            ->exists();
+        if ($duplicate) {
+            return back()->withErrors(['transaction_ref' => 'This transaction reference has already been submitted. Please check and try again.'])->withInput();
+        }
+
+        $proofError = $this->validateProofFile($request->file('screenshot'));
+        if ($proofError) {
+            return back()->withErrors(['screenshot' => $proofError])->withInput();
+        }
+
+        $bankAccount = $this->resolveOnlinePaymentAccount($institute);
+
+        $path = $request->file('screenshot')->store("payment-proofs/{$institute->id}/{$student->id}", 'public');
+
+        PaymentClaim::create([
+            'institute_id'        => $institute->id,
+            'student_id'          => $student->id,
+            'amount_due'          => $dueAmount,
+            'amount_claimed'      => $validated['amount_claimed'],
+            'payment_mode'        => 'upi_neft',
+            'transaction_ref'     => $ref,
+            'screenshot_path'     => $path,
+            'bank_account_id'     => $bankAccount?->id,
+            'verification_status' => 'pending',
+        ]);
+
+        return redirect($this->nextStepsUrl($student, $shortName))
+            ->with('success', 'Payment proof submitted. Staff will verify it shortly.');
+    }
+
+    // ── Document upload ──────────────────────────────────────────────────
 
     public function documentsShow(Request $request, string $shortName, Student $student)
     {

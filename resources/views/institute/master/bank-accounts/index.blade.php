@@ -101,6 +101,20 @@
                     </div>
                     @endif
                 </div>
+
+                @if($acc->upi_id)
+                <hr class="my-3">
+                @if($acc->is_online_payment_account)
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Used for Online Admission Payments</span>
+                @else
+                    <form method="POST" action="{{ route('master.bank-accounts.set-online-default', $acc) }}">
+                        @csrf @method('PATCH')
+                        <button class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-qr-code me-1"></i>Use for Online Admission Payments
+                        </button>
+                    </form>
+                @endif
+                @endif
             </div>
         </div>
     </div>

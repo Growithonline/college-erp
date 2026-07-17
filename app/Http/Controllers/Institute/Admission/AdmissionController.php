@@ -2976,13 +2976,42 @@ class AdmissionController extends Controller
             $admissionSourceName = ChannelPartner::find($student->admission_source_id)?->name;
         }
 
+        $dueAmount = 0.0;
+        $paymentClaim = null;
+        if ($student->admitted_by_type === 'online') {
+            $dueAmount = $student->feePlan?->dueNowAmount($student) ?? 0.0;
+            $paymentClaim = \App\Models\PaymentClaim::where('student_id', $student->id)->latest()->first();
+        }
+
         return view('institute.admission.approvals.show', compact(
             'student',
             'feeSummary',
             'feeStatus',
             'recentInvoices',
-            'admissionSourceName'
+            'admissionSourceName',
+            'dueAmount',
+            'paymentClaim'
         ));
+    }
+
+    // Online self-service applicants must have a verified payment claim (if any amount was due
+    // at admission) before staff can approve them — every other admission source is unaffected.
+    private function ensurePaymentVerifiedIfOnline(Student $student): void
+    {
+        if ($student->admitted_by_type !== 'online') {
+            return;
+        }
+
+        $dueAmount = $student->feePlan?->dueNowAmount($student) ?? 0.0;
+        if ($dueAmount <= 0) {
+            return;
+        }
+
+        $verified = \App\Models\PaymentClaim::where('student_id', $student->id)
+            ->where('verification_status', 'approved')
+            ->exists();
+
+        abort_unless($verified, 422, 'Payment must be verified before this admission can be approved.');
     }
 
     public function approveAdmission(Request $request, Student $student)
@@ -2990,6 +3019,7 @@ class AdmissionController extends Controller
         $this->ensureAdmissionApprovalAccess();
         abort_if($student->institute_id !== $this->instituteId(), 403);
         $this->ensureStaffCanReviewStudent($student);
+        $this->ensurePaymentVerifiedIfOnline($student);
 
         $validated = $request->validate([
             'approval_notes' => 'nullable|string|max:1000',
@@ -3036,6 +3066,10 @@ class AdmissionController extends Controller
                 \Illuminate\Validation\Rule::requiredIf(fn() => in_array($request->action, ['reject', 'cancel']))
             ],
         ]);
+
+        if ($validated['action'] === 'approve') {
+            $this->ensurePaymentVerifiedIfOnline($student);
+        }
 
         $statusMap = [
             'approve'  => 'active',
