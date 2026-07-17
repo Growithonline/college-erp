@@ -75,13 +75,14 @@ class PaymentClaimController extends Controller
     private function settle(PaymentClaim $claim, float $amount, string $invoicePaymentMode): void
     {
         $student = $claim->student;
+        $sessionId = (int) $student->academic_session_id;
         $year = (int) now()->format('Y');
         $invoiceNo = StudentIdService::generateInvoiceId($this->instituteId(), $year);
 
         $invoice = FeeInvoice::create([
             'institute_id'          => $this->instituteId(),
             'student_id'            => $student->id,
-            'academic_session_id'   => $student->academic_session_id,
+            'academic_session_id'   => $sessionId,
             'semester'               => $student->current_semester ?? 1,
             'invoice_no'             => $invoiceNo,
             'total_amount'           => $amount,
@@ -98,19 +99,53 @@ class PaymentClaimController extends Controller
             'approval_status'        => FeeInvoice::STATUS_APPROVED,
         ]);
 
-        WalletService::settleApprovedInvoice($invoice, [[
-            'fee_type_id' => null,
-            'fee_name'    => 'Admission / Registration Fee',
-            'amount'      => $amount,
-            'discount'    => 0,
-            'fine'        => 0,
-            'total_fee'   => $amount,
-            'item_type'   => 'admission_payment',
-        ]]);
+        WalletService::settleApprovedInvoice($invoice, $this->buildDistributedInvoiceItems($student, $sessionId, $amount));
 
         $claim->update([
             'fee_invoice_id' => $invoice->id,
         ]);
+    }
+
+    // Fills pending items in hierarchy order (buildPendingRows is pre-sorted) using their real fee_name labels, so getAlreadyPaidByFeeName() can match this payment to the actual charges.
+    private function buildDistributedInvoiceItems(Student $student, int $sessionId, float $amount): array
+    {
+        $remaining = $amount;
+        $items = [];
+
+        foreach (WalletService::buildPendingRows($student, $sessionId) as $row) {
+            if ($remaining <= 0) {
+                break;
+            }
+            $pending = (float) $row['pending'];
+            if ($pending <= 0) {
+                continue;
+            }
+            $portion = min($remaining, $pending);
+            $items[] = [
+                'fee_type_id' => null,
+                'fee_name'    => $row['name'],
+                'amount'      => $portion,
+                'discount'    => 0,
+                'fine'        => 0,
+                'total_fee'   => $portion,
+                'item_type'   => null,
+            ];
+            $remaining -= $portion;
+        }
+
+        if ($remaining > 0) {
+            $items[] = [
+                'fee_type_id' => null,
+                'fee_name'    => 'Advance Payment',
+                'amount'      => $remaining,
+                'discount'    => 0,
+                'fine'        => 0,
+                'total_fee'   => $remaining,
+                'item_type'   => null,
+            ];
+        }
+
+        return $items;
     }
 
     public function verify(Request $request, PaymentClaim $claim)
