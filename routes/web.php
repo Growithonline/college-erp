@@ -137,20 +137,25 @@ Route::get('/receipt/record',  [\App\Http\Controllers\PublicReceiptController::c
 Route::get('/transport/pass-status', [\App\Http\Controllers\TransportPassController::class, 'status'])->name('transport.pass.status')->middleware('throttle:30,1');
 
 // ── Public admission enquiry form (per-institute, no auth required) ───
-Route::get ('/apply/{shortName}',           [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'show'])->name('public.admission.show')->middleware('throttle:30,1');
-Route::post('/apply/{shortName}/send-otp',  [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'sendOtp'])->name('public.admission.send-otp')->middleware('throttle:5,1');
-Route::post('/apply/{shortName}/verify-otp',[\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'verifyOtp'])->name('public.admission.verify-otp')->middleware('throttle:10,1');
-Route::post('/apply/{shortName}',           [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'store'])->name('public.admission.store')->middleware('throttle:10,1');
+// Wrapped in 'embed.cookies' so the session/CSRF cookies work when this form
+// is embedded via iframe on an institute's own website (SameSite=None, scoped
+// only to this group — every other guard keeps the default SameSite=Lax).
+Route::middleware('embed.cookies')->group(function () {
+    Route::get ('/apply/{shortName}',           [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'show'])->name('public.admission.show')->middleware('throttle:30,1');
+    Route::post('/apply/{shortName}/send-otp',  [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'sendOtp'])->name('public.admission.send-otp')->middleware('throttle:5,1');
+    Route::post('/apply/{shortName}/verify-otp',[\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'verifyOtp'])->name('public.admission.verify-otp')->middleware('throttle:10,1');
+    Route::post('/apply/{shortName}',           [\App\Http\Controllers\Public\AdmissionEnquiryController::class, 'store'])->name('public.admission.store')->middleware('throttle:10,1');
 
-// ── Public admission application (signed link, emailed after enquiry is marked Interested) ───
-Route::middleware('signed')->group(function () {
-    Route::get ('/apply/{shortName}/application/{enquiry}',           [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'show'])->name('public.application.show')->middleware('throttle:30,1');
-    Route::post('/apply/{shortName}/application/{enquiry}',           [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'store'])->name('public.application.store')->middleware('throttle:10,1');
-    Route::get ('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsShow'])->name('public.application.documents.show')->middleware('throttle:30,1');
-    Route::post('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsUpload'])->name('public.application.documents.upload')->middleware('throttle:20,1');
-    Route::get ('/apply/{shortName}/application/{student}/next-steps', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'nextStepsShow'])->name('public.application.next-steps')->middleware('throttle:30,1');
-    Route::get ('/apply/{shortName}/application/{student}/payment',    [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'paymentShow'])->name('public.application.payment.show')->middleware('throttle:30,1');
-    Route::post('/apply/{shortName}/application/{student}/payment',    [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'paymentSubmit'])->name('public.application.payment.submit')->middleware('throttle:10,1');
+    // ── Public admission application (signed link, emailed after enquiry is marked Interested) ───
+    Route::middleware('signed')->group(function () {
+        Route::get ('/apply/{shortName}/application/{enquiry}',           [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'show'])->name('public.application.show')->middleware('throttle:30,1');
+        Route::post('/apply/{shortName}/application/{enquiry}',           [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'store'])->name('public.application.store')->middleware('throttle:10,1');
+        Route::get ('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsShow'])->name('public.application.documents.show')->middleware('throttle:30,1');
+        Route::post('/apply/{shortName}/application/{student}/documents', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'documentsUpload'])->name('public.application.documents.upload')->middleware('throttle:20,1');
+        Route::get ('/apply/{shortName}/application/{student}/next-steps', [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'nextStepsShow'])->name('public.application.next-steps')->middleware('throttle:30,1');
+        Route::get ('/apply/{shortName}/application/{student}/payment',    [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'paymentShow'])->name('public.application.payment.show')->middleware('throttle:30,1');
+        Route::post('/apply/{shortName}/application/{student}/payment',    [\App\Http\Controllers\Public\AdmissionApplicationController::class, 'paymentSubmit'])->name('public.application.payment.submit')->middleware('throttle:10,1');
+    });
 });
 
 Route::get('/login',       [LoginController::class, 'showLoginForm'])->name('login');

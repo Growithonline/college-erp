@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'lib.staff.session'  => \App\Http\Middleware\LibraryStaffSession::class,
             'center.wallet'      => \App\Http\Middleware\CheckCenterWallet::class,
             'channel.wallet'     => \App\Http\Middleware\CheckChannelWallet::class,
+            'embed.cookies'      => \App\Http\Middleware\AllowPublicAdmissionEmbed::class,
         ]);
 
         // Redirect guests to session-expired page (shows portal-specific message & login button)
