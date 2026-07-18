@@ -16,12 +16,13 @@ class ApplicationDocumentsLinkMail extends Mailable
     public function __construct(
         public Student $student,
         public string $url,
+        public bool $isWaitlisted = false,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Next Steps for Your Admission',
+            subject: $this->isWaitlisted ? 'Your Application is on the Waitlist' : 'Next Steps for Your Admission',
         );
     }
 

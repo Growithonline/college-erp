@@ -28,6 +28,15 @@
                 </a>
             </div>
             <small class="text-muted">Share this link or embed it on your website — students use it to submit enquiries.</small>
+
+            <label class="form-label small fw-semibold mb-1 mt-3">Embed on Your Website</label>
+            <div class="input-group">
+                <textarea id="embedCodeInput" class="form-control form-control-sm" rows="2" readonly style="font-family: monospace; font-size: 12px;">&lt;iframe src="{{ $publicUrl }}" style="width:100%;height:800px;border:0;" title="Admission Enquiry"&gt;&lt;/iframe&gt;</textarea>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="copyEmbedCode()">
+                    <i class="bi bi-clipboard me-1"></i> Copy
+                </button>
+            </div>
+            <small class="text-muted">Paste this code into your own website's HTML to embed the enquiry form directly.</small>
         @else
             <div class="text-warning small">
                 <i class="bi bi-exclamation-triangle me-1"></i>
@@ -161,6 +170,12 @@
 <script>
     function copyPublicUrl() {
         const input = document.getElementById('publicUrlInput');
+        input.select();
+        navigator.clipboard.writeText(input.value);
+    }
+
+    function copyEmbedCode() {
+        const input = document.getElementById('embedCodeInput');
         input.select();
         navigator.clipboard.writeText(input.value);
     }

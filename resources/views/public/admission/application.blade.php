@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    @include('public.admission.partials._brand-style')
     <style>
         body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
         .application-card { max-width: 760px; margin: 40px auto; }
@@ -102,6 +103,7 @@
                                 <option value="">Select a stream</option>
                             </select>
                             @error('course_stream_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <div id="seatHint" class="small mt-1"></div>
                         </div>
                     </div>
 
@@ -258,6 +260,7 @@
     <script>
         const coursesData = @json($courses->map(fn ($c) => ['id' => $c->id, 'streams' => $c->streams->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])]));
         const oldStreamId = @json(old('course_stream_id') ? (int) old('course_stream_id') : null);
+        const seatAvailability = @json($seatAvailability);
 
         function populateStreams() {
             const courseId = parseInt(document.getElementById('courseSelect').value, 10);
@@ -268,13 +271,31 @@
             course.streams.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
-                opt.textContent = s.name;
+                const seat = seatAvailability[s.id];
+                opt.textContent = seat ? (seat.available ? `${s.name} (${seat.remaining} seats left)` : `${s.name} (Full — Waitlist)`) : s.name;
                 if (oldStreamId === s.id) opt.selected = true;
                 streamSelect.appendChild(opt);
             });
+            updateSeatHint();
+        }
+
+        function updateSeatHint() {
+            const streamId = parseInt(document.getElementById('streamSelect').value, 10);
+            const hint = document.getElementById('seatHint');
+            const seat = seatAvailability[streamId];
+            if (!seat) {
+                hint.textContent = '';
+            } else if (seat.available) {
+                hint.className = 'small mt-1 text-success';
+                hint.textContent = `${seat.remaining} seat(s) available.`;
+            } else {
+                hint.className = 'small mt-1 text-warning';
+                hint.textContent = 'This stream is full. Your application will be placed on the waitlist.';
+            }
         }
 
         document.getElementById('courseSelect').addEventListener('change', populateStreams);
+        document.getElementById('streamSelect').addEventListener('change', updateSeatHint);
         populateStreams();
 
         // ── Auto-uppercase all free-text inputs (matches the staff admission form) ──

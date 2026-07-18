@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    @include('public.admission.partials._brand-style')
     <style>
         body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
         .steps-card { max-width: 680px; margin: 40px auto; }
@@ -29,6 +30,13 @@
                 @if(session('success'))
                     <div class="alert alert-success">{{ session('success') }}</div>
                 @endif
+
+                @if($waitlisted)
+                    <div class="alert alert-warning">
+                        <i class="bi bi-hourglass-split me-1"></i>
+                        <strong>You're on the waitlist.</strong> The stream you applied for was full at the time of submission. We'll email you as soon as a seat opens up and your application moves forward to documents and payment.
+                    </div>
+                @else
 
                 <p class="text-muted small">Your application has been received and is <strong>pending review</strong>. Complete the steps below — you can do them in any order, and come back to this page anytime.</p>
 
@@ -76,6 +84,7 @@
                 </div>
 
                 <p class="text-muted small mb-0 mt-3">Once both steps are complete, the institute will review and approve your admission. You'll receive your student ID and login details by email once approved.</p>
+                @endif
             </div>
         </div>
     </div>

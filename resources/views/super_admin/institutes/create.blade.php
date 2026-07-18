@@ -75,6 +75,10 @@
                 <label class="form-label fw-semibold small">Institute Logo</label>
                 <input type="file" name="image" class="form-control form-control-sm" accept="image/*">
             </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small">Brand Color</label>
+                <input type="color" name="primary_color" class="form-control form-control-sm form-control-color" value="{{ old('primary_color', '#2563EB') }}">
+            </div>
         </div>
     </div>
 </div>

@@ -320,6 +320,41 @@
             </div>
         </div>
     </div>
+
+    {{-- Branding --}}
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pb-0 pt-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-palette text-primary me-2"></i>Branding</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('super_admin.institutes.branding', $institute->id) }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Brand Color</label>
+                            <input type="color" name="primary_color" class="form-control form-control-sm form-control-color"
+                                   value="{{ $institute->primary_color ?? '#2563EB' }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Logo</label>
+                            <input type="file" name="image" class="form-control form-control-sm" accept="image/*">
+                        </div>
+                        @if($institute->image)
+                            <div class="col-12">
+                                <img src="{{ asset('storage/' . $institute->image) }}" alt="Current logo" style="max-height:48px;max-width:160px;object-fit:contain;">
+                            </div>
+                        @endif
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-check2 me-1"></i> Save Branding
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Data Backup / Restore --}}

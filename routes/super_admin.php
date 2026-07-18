@@ -22,6 +22,7 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::post('/institutes',       [InstituteController::class, 'store'])->name('institutes.store');
         Route::get('/institutes/{institute}',       [InstituteController::class, 'show'])->name('institutes.show');
         Route::patch('/institutes/{institute}/toggle', [InstituteController::class, 'toggle'])->name('institutes.toggle');
+        Route::post('/institutes/{institute}/branding', [InstituteController::class, 'updateBranding'])->name('institutes.branding');
         Route::post('/institutes/{institute}/reset-password', [InstituteController::class, 'resetPassword'])->name('institutes.reset-password');
         Route::post('/institutes/{institute}/resend-credentials', [InstituteController::class, 'resendCredentials'])->name('institutes.resend-credentials');
         Route::post('/institutes/{institute}/clean-data',         [InstituteController::class, 'cleanData'])->name('institutes.clean-data');

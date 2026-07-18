@@ -7,11 +7,12 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    @include('public.admission.partials._brand-style')
     <style>
         body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
         .payment-card { max-width: 620px; margin: 40px auto; }
         .institute-logo { max-height: 64px; max-width: 200px; object-fit: contain; }
-        .due-amount { font-size: 32px; font-weight: 800; color: #2563EB; }
+        .due-amount { font-size: 32px; font-weight: 800; color: {{ $institute->primary_color ?: '#2563EB' }}; }
         .qr-box { text-align: center; padding: 16px; border: 1px solid #e2e8f0; border-radius: 10px; }
     </style>
 </head>

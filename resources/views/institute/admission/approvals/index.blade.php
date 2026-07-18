@@ -111,7 +111,7 @@
                 <label class="form-label small fw-semibold mb-1">Status</label>
                 <select name="status" class="form-select form-select-sm auto-filter">
                     <option value="">All</option>
-                    @foreach(['pending', 'active', 'inactive', 'detained', 'cancelled', 'passed_out', 'transferred'] as $status)
+                    @foreach(['pending', 'waitlisted', 'active', 'inactive', 'detained', 'cancelled', 'passed_out', 'transferred'] as $status)
                         <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
                             {{ ucwords(str_replace('_', ' ', $status)) }}
                         </option>
@@ -253,12 +253,13 @@
                             $admittedBy = 'Admin';
                         }
                         $statusClass = match($student->status) {
-                            'pending' => 'bg-warning text-dark',
-                            'active'  => 'bg-success',
-                            default   => 'bg-secondary',
+                            'pending'    => 'bg-warning text-dark',
+                            'waitlisted' => 'bg-info text-dark',
+                            'active'     => 'bg-success',
+                            default      => 'bg-secondary',
                         };
                     @endphp
-                    <tr class="{{ $student->status === 'pending' ? 'table-warning bg-opacity-10' : '' }}">
+                    <tr class="{{ in_array($student->status, ['pending', 'waitlisted']) ? 'table-warning bg-opacity-10' : '' }}">
                         <td class="ps-3 text-muted">{{ $students->firstItem() + $i }}</td>
                         <td>
                             <div class="fw-semibold">{{ $student->name }}</div>

@@ -2845,7 +2845,7 @@ class AdmissionController extends Controller
             }
         }
 
-        $sortedQuery = fn($q) => $q->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+        $sortedQuery = fn($q) => $q->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'waitlisted' THEN 1 ELSE 2 END")
             ->orderByDesc('admission_date');
 
         if (in_array($request->export, ['csv', 'pdf'], true)) {
@@ -3052,6 +3052,42 @@ class AdmissionController extends Controller
         return redirect()
             ->route($this->admissionRoute('approvals.show'), $student->id)
             ->with('success', $student->name . '\'s admission has been approved and is now active.');
+    }
+
+    public function promoteFromWaitlist(Student $student)
+    {
+        $this->ensureAdmissionApprovalAccess();
+        abort_if($student->institute_id !== $this->instituteId(), 403);
+        $this->ensureStaffCanReviewStudent($student);
+        abort_unless($student->status === 'waitlisted', 422, 'This student is not on the waitlist.');
+
+        $seatCheck = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
+            (int) $student->course_stream_id, (int) $student->academic_session_id
+        );
+        if (!$seatCheck['available']) {
+            return back()->with('error', 'No seat is available yet for this stream — still full.');
+        }
+
+        $student->update(['status' => 'pending']);
+        WalletService::onAdmission($student);
+
+        AuditLogService::log($this->instituteId(), 'admission', 'waitlist_promoted',
+            "{$student->name} promoted from waitlist to pending review.", $student, [
+                'student_id' => $student->id,
+            ]);
+
+        if ($student->email) {
+            $nextStepsUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                'public.application.next-steps',
+                now()->addDays(30),
+                ['shortName' => strtolower($student->institute->short_name), 'student' => $student->id]
+            );
+            InstituteMailer::send($this->instituteId(), $student->email, new \App\Mail\ApplicationDocumentsLinkMail($student, $nextStepsUrl));
+        }
+
+        return redirect()
+            ->route($this->admissionRoute('approvals.show'), $student->id)
+            ->with('success', $student->name . ' has been promoted from the waitlist and can now complete documents/payment.');
     }
 
     public function updateApprovalStatus(Request $request, Student $student)

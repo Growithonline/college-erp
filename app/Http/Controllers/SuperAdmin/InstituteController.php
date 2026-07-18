@@ -36,6 +36,23 @@ class InstituteController extends Controller
         return back()->with('success', 'Institute status updated.');
     }
 
+    public function updateBranding(Request $request, Institute $institute)
+    {
+        $request->validate([
+            'primary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'image'         => ['nullable', 'file', 'max:2048', 'extensions:jpg,jpeg,png'],
+        ]);
+
+        $data = ['primary_color' => $request->primary_color];
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('institutes/images', 'public');
+        }
+
+        $institute->update($data);
+
+        return back()->with('success', 'Branding updated.');
+    }
+
     public function resetPassword(Request $request, Institute $institute)
     {
         $request->validate([
@@ -92,6 +109,7 @@ class InstituteController extends Controller
                 'mobile'               => $request->mobile,
                 'email'                => $request->email,
                 'image'                => $imagePath,
+                'primary_color'        => $request->primary_color,
                 'address'              => $request->address,
                 'city'                 => $request->city,
                 'state'                => $request->state,

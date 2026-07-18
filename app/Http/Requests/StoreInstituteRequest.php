@@ -21,6 +21,7 @@ class StoreInstituteRequest extends FormRequest
             'email' => 'required|email|unique:institutes,email',
 
             'image' => 'nullable|file|max:2048|extensions:jpg,jpeg,png',
+            'primary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
 
             'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',

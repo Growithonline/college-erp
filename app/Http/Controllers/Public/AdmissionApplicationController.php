@@ -146,12 +146,29 @@ class AdmissionApplicationController extends Controller
             ->get();
         $studentTypes = StudentType::forInstitute($institute->id)->active()->orderBy('sort_order')->get();
 
+        $activeSession = AcademicSession::where('institute_id', $institute->id)
+            ->where('is_active', true)
+            ->first();
+
+        $seatAvailability = [];
+        if ($activeSession) {
+            foreach ($courses->pluck('streams')->flatten() as $stream) {
+                $seatCheck = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
+                    $stream->id, $activeSession->id
+                );
+                if ($seatCheck['limit'] !== null) {
+                    $seatAvailability[$stream->id] = $seatCheck;
+                }
+            }
+        }
+
         return view('public.admission.application', [
-            'institute'    => $institute,
-            'enquiry'      => $enquiry,
-            'formConfig'   => $formConfig,
-            'courses'      => $courses,
-            'studentTypes' => $studentTypes,
+            'institute'        => $institute,
+            'enquiry'          => $enquiry,
+            'formConfig'       => $formConfig,
+            'courses'          => $courses,
+            'studentTypes'     => $studentTypes,
+            'seatAvailability' => $seatAvailability,
         ]);
     }
 
@@ -194,6 +211,11 @@ class AdmissionApplicationController extends Controller
         $student = DB::transaction(function () use (
             $studentData, $educationRows, $institute, $enquiry, $stream, $activeSession, $firstPart, $feePlanId, $year
         ) {
+            $seatCheck = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
+                $stream->id, $activeSession->id
+            );
+            $isWaitlisted = !$seatCheck['available'];
+
             $studentUid = StudentIdService::generateStudentId($institute->id, $year);
 
             $student = Student::create(array_merge($studentData, [
@@ -208,7 +230,7 @@ class AdmissionApplicationController extends Controller
                 'admission_type'       => 'new',
                 'admission_date'       => now()->toDateString(),
                 'submitted_date'       => now()->toDateString(),
-                'status'               => 'pending',
+                'status'               => $isWaitlisted ? 'waitlisted' : 'pending',
                 'admission_source'     => 'online',
                 'admitted_by_type'     => 'online',
                 'admitted_by_staff_id' => null,
@@ -218,7 +240,11 @@ class AdmissionApplicationController extends Controller
                 $student->educationDetails()->create($edu);
             }
 
-            WalletService::onAdmission($student);
+            // A waitlisted student has no confirmed seat yet — fee is only charged once
+            // staff promotes them to 'pending' after a seat actually opens up.
+            if (!$isWaitlisted) {
+                WalletService::onAdmission($student);
+            }
 
             $student->load('educationDetails');
             StudentAcademicIdentity::firstOrCreate(
@@ -245,7 +271,7 @@ class AdmissionApplicationController extends Controller
 
         $nextStepsUrl = $this->nextStepsUrl($student, $shortName);
         if ($student->email) {
-            InstituteMailer::send($institute->id, $student->email, new ApplicationDocumentsLinkMail($student, $nextStepsUrl));
+            InstituteMailer::send($institute->id, $student->email, new ApplicationDocumentsLinkMail($student, $nextStepsUrl, $student->status === 'waitlisted'));
         }
 
         return redirect($nextStepsUrl);
@@ -333,10 +359,16 @@ class AdmissionApplicationController extends Controller
         return $rows;
     }
 
-    private function ensureOnlinePendingStudent(Student $student, Institute $institute): void
+    private function ensureOnlineStudent(Student $student, Institute $institute): void
     {
         abort_if($student->institute_id !== $institute->id, 404);
-        abort_unless($student->admission_source === 'online' && $student->status === 'pending', 404);
+        abort_unless($student->admission_source === 'online', 404);
+    }
+
+    private function ensureOnlinePendingStudent(Student $student, Institute $institute): void
+    {
+        $this->ensureOnlineStudent($student, $institute);
+        abort_unless($student->status === 'pending', 404);
     }
 
     // ── Next steps hub ───────────────────────────────────────────────────
@@ -344,7 +376,16 @@ class AdmissionApplicationController extends Controller
     public function nextStepsShow(Request $request, string $shortName, Student $student)
     {
         $institute = $this->resolveInstitute($shortName);
-        $this->ensureOnlinePendingStudent($student, $institute);
+        $this->ensureOnlineStudent($student, $institute);
+        abort_unless(in_array($student->status, ['pending', 'waitlisted'], true), 404);
+
+        if ($student->status === 'waitlisted') {
+            return view('public.admission.next-steps', [
+                'institute'   => $institute,
+                'student'     => $student,
+                'waitlisted'  => true,
+            ]);
+        }
 
         $dueAmount = $student->feePlan?->dueNowAmount($student) ?? 0.0;
         $latestClaim = PaymentClaim::where('student_id', $student->id)->latest()->first();
@@ -361,6 +402,7 @@ class AdmissionApplicationController extends Controller
         return view('public.admission.next-steps', [
             'institute'          => $institute,
             'student'            => $student,
+            'waitlisted'         => false,
             'dueAmount'          => $dueAmount,
             'latestClaim'        => $latestClaim,
             'documentsUrl'       => $this->documentsUrl($student, $shortName),

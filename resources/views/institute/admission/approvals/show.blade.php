@@ -553,7 +553,27 @@
         </div>
         @endif
 
+        {{-- Waitlist Promotion --}}
+        @if($student->status === 'waitlisted')
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom py-2 d-flex align-items-center gap-2">
+                <i class="bi bi-hourglass-split text-info"></i>
+                <h6 class="mb-0 fw-semibold">Waitlisted</h6>
+            </div>
+            <div class="card-body py-3">
+                <p class="small text-muted mb-3">This applicant's stream was full at submission time. No fee has been charged yet. Promote once a seat is available — this re-checks capacity and moves the student to Pending (documents/payment).</p>
+                <form method="POST" action="{{ route($isStaff ? 'staff.admissions.approvals.promote-waitlist' : 'admissions.approvals.promote-waitlist', $student) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-success btn-sm w-100">
+                        <i class="bi bi-arrow-up-circle me-1"></i>Promote from Waitlist
+                    </button>
+                </form>
+            </div>
+        </div>
+        @endif
+
         {{-- Approval / Status Action --}}
+        @unless($student->status === 'waitlisted')
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-bottom py-2 d-flex align-items-center gap-2">
                 @if($student->status === 'pending')
@@ -652,6 +672,7 @@
                 </form>
             </div>
         </div>
+        @endunless
 
     </div>
 </div>

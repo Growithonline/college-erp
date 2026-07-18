@@ -1125,6 +1125,14 @@
             </a>
         </li>
 
+        {{-- Branding --}}
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('master.settings.branding*') ? 'active' : '' }}"
+               href="{{ route('master.settings.branding') }}">
+                <i class="bi bi-palette"></i> Branding
+            </a>
+        </li>
+
         {{-- Data Backup --}}
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('master.settings.backup*') ? 'active' : '' }}"

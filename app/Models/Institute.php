@@ -16,6 +16,7 @@ class Institute extends Model
         'mobile',
         'email',
         'image',
+        'primary_color',
         'address',
         'city',
         'state',

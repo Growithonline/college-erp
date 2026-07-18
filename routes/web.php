@@ -307,6 +307,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('settings/email/test',       [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'testConnection'])->name('settings.email.test');
         Route::post('settings/email/disconnect', [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'disconnect'])->name('settings.email.disconnect');
 
+        // Branding (public admission form color)
+        Route::get('settings/branding',       [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'index'])->name('settings.branding');
+        Route::post('settings/branding/save', [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'save'])->name('settings.branding.save');
+
         // Data Export / Backup
         Route::get('settings/data-export', [\App\Http\Controllers\Institute\Settings\DataExportController::class, 'download'])->name('settings.data-export');
         Route::get('settings/backup',                    [\App\Http\Controllers\Institute\Settings\BackupController::class, 'index'])->name('settings.backup');
@@ -605,6 +609,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('admissions/approvals/{student}', [AdmissionController::class, 'approvalShow'])->name('admissions.approvals.show');
     Route::post('admissions/approvals/{student}/approve', [AdmissionController::class, 'approveAdmission'])->name('admissions.approvals.approve');
     Route::post('admissions/approvals/{student}/status', [AdmissionController::class, 'updateApprovalStatus'])->name('admissions.approvals.status');
+    Route::post('admissions/approvals/{student}/promote-waitlist', [AdmissionController::class, 'promoteFromWaitlist'])->name('admissions.approvals.promote-waitlist');
 
     // Application Payment Verification (online admissions)
     Route::prefix('payment-claims')->name('payment-claims.')->group(function () {
@@ -1044,6 +1049,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('admissions/approvals/{student}', [StaffAdmissionController::class, 'approvalShow'])->name('admissions.approvals.show');
         Route::post('admissions/approvals/{student}/approve', [StaffAdmissionController::class, 'approveAdmission'])->name('admissions.approvals.approve');
         Route::post('admissions/approvals/{student}/status', [StaffAdmissionController::class, 'updateApprovalStatus'])->name('admissions.approvals.status');
+        Route::post('admissions/approvals/{student}/promote-waitlist', [StaffAdmissionController::class, 'promoteFromWaitlist'])->name('admissions.approvals.promote-waitlist');
 
         // Application Payment Verification (online admissions)
         Route::prefix('payment-claims')->name('payment-claims.')->group(function () {
