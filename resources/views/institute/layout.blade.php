@@ -1079,6 +1079,10 @@
                            href="{{ route('reports.admission') }}">
                         <i class="bi bi-person-plus"></i> Admission Report
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.admission-analytics') ? 'active' : '' }}"
+                           href="{{ route('reports.admission-analytics') }}">
+                        <i class="bi bi-graph-up-arrow"></i> Admission Analytics
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('reports.custom-student') ? 'active' : '' }}"
                            href="{{ route('reports.custom-student') }}">
                         <i class="bi bi-table"></i> Custom Report

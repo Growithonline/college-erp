@@ -552,6 +552,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/fee-collection',      [ReportController::class, 'feeCollectionReport'])->name('fee-collection');
         Route::get('/cancelled-fee',       [ReportController::class, 'cancelledFeeReport'])->name('cancelled-fee');
         Route::get('/admission',           [ReportController::class, 'admissionReport'])->name('admission');
+        Route::get('/admission-analytics', [ReportController::class, 'admissionAnalytics'])->name('admission-analytics');
         Route::get('/daily-collection',    [ReportController::class, 'dailyReport'])->name('daily-collection');
         Route::get('/semester-wise',       [ReportController::class, 'semesterReport'])->name('semester-wise');
         Route::get('/custom-student',      [ReportController::class, 'customStudentReport'])->name('custom-student');
@@ -1276,6 +1277,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::get('/fee-collection',      [ReportController::class, 'feeCollectionReport'])->name('fee-collection');
             Route::get('/cancelled-fee',       [ReportController::class, 'cancelledFeeReport'])->name('cancelled-fee');
             Route::get('/admission',           [ReportController::class, 'admissionReport'])->name('admission');
+            Route::get('/admission-analytics', [ReportController::class, 'admissionAnalytics'])->name('admission-analytics');
             Route::get('/daily-collection',    [ReportController::class, 'dailyReport'])->name('daily-collection');
             Route::get('/semester-wise',       [ReportController::class, 'semesterReport'])->name('semester-wise');
             Route::get('/custom-student',      [ReportController::class, 'customStudentReport'])->name('custom-student');

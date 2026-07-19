@@ -467,6 +467,10 @@
                            href="{{ route('staff.reports.admission') }}">
                         <i class="bi bi-bar-chart-line"></i> Admission Report
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('staff.reports.admission-analytics') ? 'active' : '' }}"
+                           href="{{ route('staff.reports.admission-analytics') }}">
+                        <i class="bi bi-graph-up-arrow"></i> Admission Analytics
+                    </a></li>
                     @endif
                 </ul>
             </div>

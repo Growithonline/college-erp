@@ -10,9 +10,11 @@ use App\Models\ChannelPartner;
 use App\Models\Course;
 use App\Models\CourseStream;
 use App\Models\CourseType;
+use App\Models\Enquiry;
 use App\Models\FeeInvoice;
 use App\Models\FeeInvoiceItem;
 use App\Models\Institute;
+use App\Models\PaymentClaim;
 use App\Models\PracticalFeeTokenBatch;
 use App\Models\StaffMember;
 use App\Models\Student;
@@ -1139,6 +1141,129 @@ class ReportController extends Controller
             'staffWise'
         ));
     }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  ADMISSION ANALYTICS — online funnel, source-wise & counselor conversion
+    // ════════════════════════════════════════════════════════════════════
+    public function admissionAnalytics(Request $request)
+    {
+        $this->authorizeReportAccess('admission');
+        $this->ensureReportExportPermission($request);
+        $instituteId = $this->instituteId();
+
+        $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $activeSession = AcademicSession::viewSession($instituteId);
+        $sessionId = $request->session_id ?? $activeSession?->id;
+        $sessionObj = AcademicSession::find($sessionId);
+
+        // Enquiries don't carry a session of their own — default the date range to
+        // the selected session's dates, but let explicit date_from/date_to override.
+        $dateFrom = $request->date_from ?: $sessionObj?->start_date?->toDateString();
+        $dateTo = $request->date_to ?: $sessionObj?->end_date?->toDateString();
+
+        $baseQuery = Enquiry::where('enquiries.institute_id', $instituteId)
+            ->when($dateFrom, fn ($q) => $q->whereDate('enquiries.created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('enquiries.created_at', '<=', $dateTo));
+
+        // Course-restricted staff only see the funnel for courses they're allowed to access.
+        if (($staff = $this->currentStaff()) && $staff->hasRestrictedCourseAccess()) {
+            $baseQuery->whereIn('enquiries.course_id', $staff->allowedCourseIds() ?: [-1]);
+        }
+
+        // ── Funnel ────────────────────────────────────────────────────────
+        $totalEnquiries = (clone $baseQuery)->count();
+        $convertedStudentIds = (clone $baseQuery)->whereNotNull('converted_student_id')->pluck('converted_student_id');
+        $totalApplications = $convertedStudentIds->count();
+
+        $approvedPaymentStudentIds = PaymentClaim::whereIn('student_id', $convertedStudentIds)
+            ->where('verification_status', 'approved')
+            ->pluck('student_id');
+
+        $totalPayments = Student::whereIn('id', $convertedStudentIds)
+            ->where(function ($q) use ($approvedPaymentStudentIds) {
+                $q->where('status', 'active')->orWhereIn('id', $approvedPaymentStudentIds);
+            })->count();
+
+        $totalAdmissions = Student::whereIn('id', $convertedStudentIds)->where('status', 'active')->count();
+        $totalWaitlisted = Student::whereIn('id', $convertedStudentIds)->where('status', 'waitlisted')->count();
+
+        // ── Source-wise conversion (utm_source) ─────────────────────────────
+        $sourceStats = (clone $baseQuery)
+            ->leftJoin('students', 'students.id', '=', 'enquiries.converted_student_id')
+            ->selectRaw("COALESCE(NULLIF(enquiries.utm_source, ''), 'Direct / Unknown') as source_label")
+            ->selectRaw('COUNT(DISTINCT enquiries.id) as enquiries')
+            ->selectRaw('SUM(CASE WHEN enquiries.converted_student_id IS NOT NULL THEN 1 ELSE 0 END) as applications')
+            ->selectRaw("SUM(CASE WHEN students.status = 'active' THEN 1 ELSE 0 END) as admissions")
+            ->groupBy('source_label')
+            ->orderByDesc('enquiries')
+            ->get();
+
+        // ── Counselor performance ────────────────────────────────────────
+        $counselorStats = (clone $baseQuery)
+            ->leftJoin('students', 'students.id', '=', 'enquiries.converted_student_id')
+            ->leftJoin('staff_members', 'staff_members.id', '=', 'enquiries.assigned_staff_id')
+            ->selectRaw("COALESCE(staff_members.name, 'Unassigned') as staff_name")
+            ->selectRaw('COUNT(DISTINCT enquiries.id) as enquiries')
+            ->selectRaw('SUM(CASE WHEN enquiries.converted_student_id IS NOT NULL THEN 1 ELSE 0 END) as applications')
+            ->selectRaw("SUM(CASE WHEN students.status = 'active' THEN 1 ELSE 0 END) as admissions")
+            ->groupBy('staff_name')
+            ->orderByDesc('enquiries')
+            ->get();
+
+        if ($request->export === 'csv') {
+            return $this->exportAdmissionAnalyticsCsv(
+                $sessionObj, $totalEnquiries, $totalApplications, $totalPayments, $totalAdmissions, $totalWaitlisted,
+                $sourceStats, $counselorStats
+            );
+        }
+
+        return view('institute.reports.admission-analytics', compact(
+            'sessions', 'sessionObj', 'sessionId', 'dateFrom', 'dateTo',
+            'totalEnquiries', 'totalApplications', 'totalPayments', 'totalAdmissions', 'totalWaitlisted',
+            'sourceStats', 'counselorStats'
+        ));
+    }
+
+    private function exportAdmissionAnalyticsCsv(
+        ?AcademicSession $sessionObj, int $totalEnquiries, int $totalApplications, int $totalPayments,
+        int $totalAdmissions, int $totalWaitlisted, $sourceStats, $counselorStats
+    ): \Symfony\Component\HttpFoundation\StreamedResponse {
+        $filename = 'admission-analytics-' . now()->format('Ymd') . '.csv';
+
+        return response()->streamDownload(function () use (
+            $sessionObj, $totalEnquiries, $totalApplications, $totalPayments, $totalAdmissions, $totalWaitlisted,
+            $sourceStats, $counselorStats
+        ) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($out, ['Admission Analytics', $sessionObj?->name ?? 'All Sessions']);
+            fputcsv($out, []);
+            fputcsv($out, ['FUNNEL SUMMARY']);
+            fputcsv($out, ['Enquiries', 'Applications', 'Payments Done', 'Admissions Approved', 'Waitlisted']);
+            fputcsv($out, [$totalEnquiries, $totalApplications, $totalPayments, $totalAdmissions, $totalWaitlisted]);
+            fputcsv($out, []);
+
+            fputcsv($out, ['SOURCE-WISE CONVERSION']);
+            fputcsv($out, ['Source', 'Enquiries', 'Applications', 'Admissions']);
+            foreach ($sourceStats as $row) {
+                fputcsv($out, [$row->source_label, $row->enquiries, $row->applications, $row->admissions]);
+            }
+            fputcsv($out, []);
+
+            fputcsv($out, ['COUNSELOR PERFORMANCE']);
+            fputcsv($out, ['Staff', 'Enquiries', 'Applications', 'Admissions']);
+            foreach ($counselorStats as $row) {
+                fputcsv($out, [$row->staff_name, $row->enquiries, $row->applications, $row->admissions]);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
     // ── AJAX: Course ke streams fetch karo ──────────────────────────────
     public function customStudentReport(Request $request)
     {
