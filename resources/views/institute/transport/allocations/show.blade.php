@@ -288,12 +288,43 @@
 
 <script>
 (() => {
+    const proratedCreditUrl = '{{ route('transport.allocations.prorated-credit', $allocation) }}';
+
+    // The suggested credit note is only correct for whatever date it was computed
+    // against. Cancellation Date / Transfer Start Date can be backdated, so re-fetch
+    // the suggestion from the server (single source of truth: proratedUnusedAmount())
+    // whenever the date changes, instead of leaving it pinned to page-load's "today".
+    function refreshSuggestedCredit(asOfDate, inputEl, onDone) {
+        if (!asOfDate || !inputEl) return;
+        fetch(`${proratedCreditUrl}?as_of=${encodeURIComponent(asOfDate)}`, {
+            headers: { 'Accept': 'application/json' },
+        })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                inputEl.value = Number(data.suggested_credit).toFixed(2);
+                if (onDone) onDone();
+            })
+            .catch(() => {});
+    }
+
+    const cancelDateInput   = document.getElementById('cancelDateInput');
+    const cancelCreditInput = document.getElementById('cancelCreditAmountInput');
+    cancelDateInput?.addEventListener('change', () => {
+        refreshSuggestedCredit(cancelDateInput.value, cancelCreditInput);
+    });
+
     const routeSel    = document.getElementById('transferRouteSelect');
     const stopSel     = document.getElementById('transferStopSelect');
     const feeInput    = document.getElementById('transferFeeInput');
     const creditInput = document.getElementById('creditAmountInput');
     const summary     = document.getElementById('transferSummary');
+    const transferStartDate = document.getElementById('transferStartDate');
     const oldBalance  = {{ $oldBalance }};
+
+    transferStartDate?.addEventListener('change', () => {
+        refreshSuggestedCredit(transferStartDate.value, creditInput, updateSummary);
+    });
 
     if (!routeSel) return;
 

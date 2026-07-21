@@ -410,6 +410,32 @@ class TransportAllocationController extends TransportBaseController
         return back()->with('success', 'Transport allocation cancelled successfully.');
     }
 
+    /**
+     * Recalculates the suggested credit note for the Cancel/Transfer modals against
+     * a caller-supplied "used until" date, instead of the wall-clock date the page
+     * happened to load on. The date the credit note was actually being suggested
+     * for (cancellation_date, or the transfer's new start_date) can be backdated,
+     * so the suggestion must move with it rather than staying pinned to today.
+     */
+    public function proratedCredit(Request $request, TransportAllocation $allocation)
+    {
+        $this->assertInstituteModel($allocation);
+
+        $data = $request->validate([
+            'as_of' => [
+                'required',
+                'date',
+                'after_or_equal:' . ($allocation->start_date?->toDateString() ?? '1900-01-01'),
+                'before_or_equal:today',
+            ],
+        ]);
+
+        $setting = InstituteTransportSetting::forInstitute($this->instituteId());
+        $suggested = $setting->proratedUnusedAmount($allocation, Carbon::parse($data['as_of']));
+
+        return response()->json(['suggested_credit' => round($suggested, 2)]);
+    }
+
     // ── EDIT ────────────────────────────────────────────────────────────────
     public function edit(TransportAllocation $allocation)
     {

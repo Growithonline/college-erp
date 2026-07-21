@@ -854,6 +854,7 @@ Route::middleware('auth:web,staff,center,partner')->prefix('transport')->name('t
     Route::post('allocations/{allocation}/collect-payment', [TransportAllocationController::class, 'collectPayment'])->name('allocations.collect-payment');
     Route::post('allocations/{allocation}/close', [TransportAllocationController::class, 'close'])->name('allocations.close');
     Route::post('allocations/{allocation}/transfer', [TransportAllocationController::class, 'transfer'])->name('allocations.transfer');
+    Route::get('allocations/{allocation}/prorated-credit', [TransportAllocationController::class, 'proratedCredit'])->name('allocations.prorated-credit');
     Route::get('allocations/{allocation}/pdf', [TransportAllocationController::class, 'pdf'])->name('allocations.pdf');
     Route::get('allocations/{allocation}/pass', [TransportAllocationController::class, 'pass'])->name('allocations.pass');
     Route::get('allocations/passes/bulk', [TransportAllocationController::class, 'bulkPass'])->name('allocations.pass.bulk');
