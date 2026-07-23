@@ -268,9 +268,13 @@ class TransportAllocationController extends TransportBaseController
         $rows = [];
         $cursor = $start->copy();
         while ($cursor->lte($countedUntil)) {
-            $monthEnd = $cursor->copy()->endOfMonth();
+            // endOfMonth() leaves the time at 23:59:59.999999 — diffing that against a
+            // midnight-aligned cursor/countedUntil produces a value like 24.999999999988
+            // instead of a clean 25, since it's a fraction of a day short. Re-normalize
+            // to midnight so every boundary in this loop is day-aligned.
+            $monthEnd = $cursor->copy()->endOfMonth()->startOfDay();
             $segmentEnd = $monthEnd->lt($countedUntil) ? $monthEnd : $countedUntil->copy();
-            $days = $cursor->diffInDays($segmentEnd) + 1;
+            $days = (int) round($cursor->diffInDays($segmentEnd)) + 1;
 
             $rows[] = [
                 'label'  => $cursor->format('M Y'),
