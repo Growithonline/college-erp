@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Institute\Transport;
 
 use App\Models\AcademicSession;
+use App\Models\Course;
+use App\Models\CourseStream;
+use App\Models\CourseType;
 use App\Models\FeeInvoice;
 use App\Models\FeeInvoiceItem;
 use App\Models\InstituteTransportSetting;
@@ -58,10 +61,16 @@ class TransportAllocationController extends TransportBaseController
 
     public function create()
     {
-        $students = Student::where('institute_id', $this->instituteId())
-            ->where('status', '!=', 'pending')
+        // Student picker is a Course Type -> Course -> Stream -> Semester cascade (all
+        // preloaded, filtered client-side — same technique as the Student Directory
+        // page) feeding a live AJAX search, instead of one giant <select> of every
+        // student in the institute.
+        $courseTypes = CourseType::where('institute_id', $this->instituteId())->orderBy('name')->get();
+        $courses     = Course::where('institute_id', $this->instituteId())->orderBy('name')->get();
+        $streams     = CourseStream::whereHas('course', fn ($q) => $q->where('institute_id', $this->instituteId()))
             ->orderBy('name')
-            ->get(['id', 'name', 'roll_no']);
+            ->get();
+
         $routes = TransportRoute::with('stops')
             ->where('institute_id', $this->instituteId())
             ->where('status', true)
@@ -78,7 +87,54 @@ class TransportAllocationController extends TransportBaseController
         $drivers = TransportDriver::where('institute_id', $this->instituteId())->where('status', true)->orderBy('name')->get();
         $sessions = AcademicSession::where('institute_id', $this->instituteId())->orderByDesc('id')->get();
 
-        return view('institute.transport.allocations.create', compact('students', 'routes', 'stops', 'vehicles', 'drivers', 'sessions'));
+        return view('institute.transport.allocations.create', compact('courseTypes', 'courses', 'streams', 'routes', 'stops', 'vehicles', 'drivers', 'sessions'));
+    }
+
+    /**
+     * Live student search for the New Allocation form's picker. Mirrors
+     * StudentDirectoryController::ajaxSearch()'s JSON shape (name + student_uid +
+     * father/mother name shown together), but lives here instead because transport
+     * routes accept staff/center/partner guards too (routes/web.php:825) while the
+     * directory controller's instituteId() only resolves the plain web guard.
+     */
+    public function searchStudents(Request $request)
+    {
+        $q = trim((string) $request->input('q'));
+
+        $students = Student::where('institute_id', $this->instituteId())
+            ->where('status', '!=', 'pending')
+            ->when($request->filled('id'), fn ($b) => $b->where('id', (int) $request->id))
+            ->when($request->filled('course_type_id'), fn ($b) => $b->where('course_type_id', (int) $request->course_type_id))
+            ->when($request->filled('course_id'), fn ($b) => $b->whereHas('stream', fn ($s) => $s->where('course_id', (int) $request->course_id)))
+            ->when($request->filled('course_stream_id'), fn ($b) => $b->where('course_stream_id', (int) $request->course_stream_id))
+            ->when($request->filled('current_semester'), fn ($b) => $b->where('current_semester', (int) $request->current_semester))
+            ->when($q !== '', function ($b) use ($q) {
+                $b->where(function ($inner) use ($q) {
+                    $inner->where('name', 'like', "%{$q}%")
+                        ->orWhere('father_name', 'like', "%{$q}%")
+                        ->orWhere('mother_name', 'like', "%{$q}%")
+                        ->orWhere('mobile', 'like', "%{$q}%")
+                        ->orWhere('student_uid', 'like', "%{$q}%")
+                        ->orWhere('roll_no', 'like', "%{$q}%")
+                        ->orWhere('enrollment_no', 'like', "%{$q}%");
+                });
+            })
+            ->with('stream.course')
+            ->orderBy('name')
+            ->limit(15)
+            ->get();
+
+        return response()->json($students->map(fn ($s) => [
+            'id'          => $s->id,
+            'name'        => $s->name,
+            'student_uid' => $s->student_uid,
+            'roll_no'     => $s->roll_no,
+            'father_name' => $s->father_name,
+            'mother_name' => $s->mother_name,
+            'course'      => $s->stream?->course?->name ?? '',
+            'stream'      => $s->stream?->name ?? '',
+            'semester'    => $s->current_semester,
+        ]));
     }
 
     public function store(Request $request)

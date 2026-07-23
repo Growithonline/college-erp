@@ -847,6 +847,7 @@ Route::middleware('auth:web,staff,center,partner')->prefix('transport')->name('t
     // Bulk routes BEFORE resource (avoids {allocation} capturing "bulk")
     Route::get('allocations/bulk/create', [TransportAllocationController::class, 'bulkCreate'])->name('allocations.bulk-create');
     Route::post('allocations/bulk', [TransportAllocationController::class, 'bulkStore'])->name('allocations.bulk-store');
+    Route::get('allocations/search-students', [TransportAllocationController::class, 'searchStudents'])->name('allocations.search-students');
 
     Route::resource('allocations', TransportAllocationController::class)->only(['index', 'create', 'store', 'show']);
     Route::get('allocations/{allocation}/edit', [TransportAllocationController::class, 'edit'])->name('allocations.edit');

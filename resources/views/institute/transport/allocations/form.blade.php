@@ -1,13 +1,69 @@
-<div class="row g-3">
-    <div class="col-md-4">
-        <label class="form-label">Student *</label>
-        <select class="form-select" name="student_id" required>
-            <option value="">Select Student</option>
-            @foreach($students as $student)
-                <option value="{{ $student->id }}" @selected(old('student_id') == $student->id)>{{ $student->name }}{{ $student->roll_no ? ' (' . $student->roll_no . ')' : '' }}</option>
-            @endforeach
-        </select>
+<div class="card border-0 bg-light mb-4">
+    <div class="card-body p-3">
+        <div class="fw-semibold text-muted mb-2" style="font-size:11px; letter-spacing:.05em; text-transform:uppercase;">Find Student</div>
+        <div class="row g-2 mb-2">
+            <div class="col-md-3">
+                <label class="form-label" style="font-size:12px;">Course Type</label>
+                <select class="form-select form-select-sm" id="pickerCourseType">
+                    <option value="">All Types</option>
+                    @foreach($courseTypes as $ct)
+                        <option value="{{ $ct->id }}">{{ $ct->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" style="font-size:12px;">Course</label>
+                <select class="form-select form-select-sm" id="pickerCourse">
+                    <option value="">All Courses</option>
+                    @foreach($courses as $course)
+                        <option value="{{ $course->id }}" data-type="{{ $course->course_type_id }}">{{ $course->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" style="font-size:12px;">Stream</label>
+                <select class="form-select form-select-sm" id="pickerStream">
+                    <option value="">All Streams</option>
+                    @foreach($streams as $stream)
+                        <option value="{{ $stream->id }}" data-course="{{ $stream->course_id }}">{{ $stream->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" style="font-size:12px;">Semester</label>
+                <select class="form-select form-select-sm" id="pickerSemester">
+                    <option value="">All Sem</option>
+                    @for($s = 1; $s <= 10; $s++)
+                        <option value="{{ $s }}">Sem {{ $s }}</option>
+                    @endfor
+                </select>
+            </div>
+        </div>
+
+        <label class="form-label" style="font-size:12px;">Search Student *</label>
+        <div class="position-relative">
+            <input type="text" id="studentSearchInput" class="form-control"
+                   placeholder="Name, Father, Mother, Mobile, Roll No, Student ID..." autocomplete="off">
+            <div id="studentSearchResults" class="list-group position-absolute w-100 shadow"
+                 style="z-index:1050; display:none; max-height:280px; overflow-y:auto; top:100%; margin-top:4px;"></div>
+        </div>
+        <input type="hidden" name="student_id" id="studentIdInput" value="{{ old('student_id') }}" required>
+
+        <div id="selectedStudentCard" class="mt-2 p-2 rounded border border-primary-subtle bg-white {{ old('student_id') ? '' : 'd-none' }}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="fw-semibold" id="selectedStudentName" style="font-size:13px;"></div>
+                    <div class="text-muted" id="selectedStudentMeta" style="font-size:11px;"></div>
+                    <div class="text-secondary" id="selectedStudentParents" style="font-size:11px;"></div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.clearSelectedStudent()">Change</button>
+            </div>
+        </div>
+        @error('student_id') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
     </div>
+</div>
+
+<div class="row g-3">
     <div class="col-md-4">
         <label class="form-label">Academic Session *</label>
         <select class="form-select" name="academic_session_id" required>
@@ -154,6 +210,146 @@
     // On page load — restore old selections (validation failure redirect)
     if (oldRouteId) {
         loadStops(oldRouteId, oldStopId);
+    }
+})();
+
+(() => {
+    const searchUrl = '{{ route('transport.allocations.search-students') }}';
+
+    const typeSel   = document.getElementById('pickerCourseType');
+    const courseSel = document.getElementById('pickerCourse');
+    const streamSel = document.getElementById('pickerStream');
+    const semSel    = document.getElementById('pickerSemester');
+    const input     = document.getElementById('studentSearchInput');
+    const results    = document.getElementById('studentSearchResults');
+    const idInput    = document.getElementById('studentIdInput');
+    const card       = document.getElementById('selectedStudentCard');
+    const nameEl     = document.getElementById('selectedStudentName');
+    const metaEl     = document.getElementById('selectedStudentMeta');
+    const parentsEl  = document.getElementById('selectedStudentParents');
+
+    if (!input) return;
+
+    // Course Type -> hide/disable non-matching Course options (same technique as the
+    // Student Directory filter bar), then cascade the same narrowing down to Stream.
+    function filterOptions(select, dataAttr, value) {
+        let stillVisible = false;
+        Array.from(select.options).forEach(opt => {
+            if (opt.value === '') return;
+            const match = !value || opt.dataset[dataAttr] === String(value);
+            opt.hidden = !match;
+            opt.disabled = !match;
+            if (match && opt.selected) stillVisible = true;
+        });
+        if (!stillVisible) select.value = '';
+    }
+
+    typeSel?.addEventListener('change', () => {
+        filterOptions(courseSel, 'type', typeSel.value);
+        filterOptions(streamSel, 'course', '');
+        runSearch();
+    });
+    courseSel?.addEventListener('change', () => {
+        filterOptions(streamSel, 'course', courseSel.value);
+        runSearch();
+    });
+    streamSel?.addEventListener('change', runSearch);
+    semSel?.addEventListener('change', runSearch);
+
+    function renderResults(students) {
+        if (!students.length) {
+            results.innerHTML = '<div class="list-group-item text-muted text-center py-3">'
+                + '<i class="bi bi-search me-2"></i>No student found</div>';
+            results.style.display = 'block';
+            return;
+        }
+
+        results.innerHTML = students.map(s => {
+            const parents = [
+                s.father_name ? `Father: <strong>${s.father_name}</strong>` : '',
+                s.mother_name ? `Mother: <strong>${s.mother_name}</strong>` : '',
+            ].filter(Boolean).join(' &nbsp;|&nbsp; ');
+
+            return `
+            <button type="button" class="list-group-item list-group-item-action py-2 px-3"
+                    data-student='${JSON.stringify(s).replace(/'/g, "&#39;")}'>
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div style="min-width:0;">
+                        <div class="fw-semibold" style="font-size:13px;">${s.name}</div>
+                        <div class="text-muted" style="font-size:11px;">
+                            ${s.student_uid ?? ''}${s.roll_no ? ' &nbsp;•&nbsp; Roll ' + s.roll_no : ''}${s.course ? ' &nbsp;•&nbsp; ' + s.course : ''}${s.stream ? ' &nbsp;•&nbsp; ' + s.stream : ''}
+                        </div>
+                        ${parents ? `<div class="text-secondary" style="font-size:11px;">${parents}</div>` : ''}
+                    </div>
+                </div>
+            </button>`;
+        }).join('');
+        results.style.display = 'block';
+
+        results.querySelectorAll('[data-student]').forEach(btn => {
+            btn.addEventListener('click', () => selectStudent(JSON.parse(btn.dataset.student)));
+        });
+    }
+
+    function selectStudent(s) {
+        idInput.value = s.id;
+        nameEl.textContent = s.name;
+        metaEl.textContent = [s.student_uid, s.roll_no ? 'Roll ' + s.roll_no : '', s.course, s.stream].filter(Boolean).join(' • ');
+        const parents = [
+            s.father_name ? `Father: ${s.father_name}` : '',
+            s.mother_name ? `Mother: ${s.mother_name}` : '',
+        ].filter(Boolean).join(' | ');
+        parentsEl.textContent = parents;
+        card.classList.remove('d-none');
+        input.value = '';
+        results.style.display = 'none';
+    }
+
+    window.clearSelectedStudent = function () {
+        idInput.value = '';
+        card.classList.add('d-none');
+        input.value = '';
+        input.focus();
+    };
+
+    let timer;
+    function runSearch() {
+        const q = input.value.trim();
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            const params = new URLSearchParams({
+                q,
+                course_type_id: typeSel?.value ?? '',
+                course_id: courseSel?.value ?? '',
+                course_stream_id: streamSel?.value ?? '',
+                current_semester: semSel?.value ?? '',
+            });
+            fetch(`${searchUrl}?${params.toString()}`)
+                .then(r => r.json())
+                .then(renderResults);
+        }, 300);
+    }
+
+    input.addEventListener('input', () => {
+        if (input.value.trim().length < 1 && !typeSel?.value && !courseSel?.value && !streamSel?.value && !semSel?.value) {
+            results.style.display = 'none';
+            return;
+        }
+        runSearch();
+    });
+    input.addEventListener('focus', () => { if (results.innerHTML) results.style.display = 'block'; });
+
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !results.contains(e.target)) {
+            results.style.display = 'none';
+        }
+    });
+
+    // On page load — restore old selection (validation failure redirect)
+    if (idInput.value) {
+        fetch(`${searchUrl}?id=${encodeURIComponent(idInput.value)}`)
+            .then(r => r.json())
+            .then(students => { if (students.length) selectStudent(students[0]); });
     }
 })();
 </script>
