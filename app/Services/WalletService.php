@@ -1114,7 +1114,12 @@ class WalletService
                 'fee_type_id'             => null,
                 'label'                   => $tLabel,
                 'subject_id'              => null,
-                'amount'                  => $balance,
+                // Full charged fee, not the balance — the Fee Collection "Collect Fee
+                // Now" table (FeeCollectionController::create()) reads this as "the
+                // total fee for this row" for its Total column and its own
+                // remaining/fine math. buildPendingRows() below derives the balance
+                // itself from fee_amount/paid_amount instead of reusing this field.
+                'amount'                  => $feeAmt,
                 'transport_allocation_id' => $ta->id,
                 'fee_amount'              => $feeAmt,
                 'paid_amount'             => $paidAmt,
@@ -1172,8 +1177,11 @@ class WalletService
             $label   = $item['label'] ?? 'Fee';
             $charged = (float) ($item['amount'] ?? 0);
 
-            // Transport: 'amount' is the pending balance. Use fee_amount/paid_amount for display so
-            // Charged shows the actual allocated fee and Cash Paid shows what was actually collected.
+            // Transport: 'amount' is the full charged fee here (shared with the Fee
+            // Collection page's own math — see buildPromotionAwareFeeState()), so pending
+            // must be derived directly from fee_amount/paid_amount rather than reused from
+            // 'amount', or a partially-paid allocation would show its full charge as still
+            // pending instead of charged-minus-paid.
             if (($item['type'] ?? '') === 'transport') {
                 $feeAmount  = (float) ($item['fee_amount'] ?? $charged);
                 $paidAmount = (float) ($item['paid_amount'] ?? 0.0);
@@ -1184,7 +1192,7 @@ class WalletService
                     'discount'   => 0.0,
                     'fine'       => 0.0,
                     'paid'       => $paidAmount,
-                    'pending'    => $charged,   // $charged = balance (passed as 'amount')
+                    'pending'    => max(0, round($feeAmount - $paidAmount, 2)),
                 ];
             }
 
