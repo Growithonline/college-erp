@@ -57,7 +57,12 @@
                         class="form-control" value="{{ old('fee_amount', $allocation->fee_amount) }}">
                     <div class="form-text">Auto-fills when Stop changes above. Change only if needed. Currently: ₹{{ number_format($allocation->fee_amount, 2) }}</div>
                 </div>
-                <div class="col-md-9">
+                <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" class="form-control"
+                        value="{{ old('start_date', $allocation->start_date?->toDateString()) }}" required>
+                </div>
+                <div class="col-md-6">
                     <label class="form-label">Remarks</label>
                     <input type="text" name="remarks" class="form-control" value="{{ old('remarks', $allocation->remarks) }}">
                 </div>

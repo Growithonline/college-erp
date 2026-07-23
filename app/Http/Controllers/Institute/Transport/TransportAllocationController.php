@@ -569,6 +569,7 @@ class TransportAllocationController extends TransportBaseController
             'transport_vehicle_id'    => ['nullable', Rule::exists('transport_vehicles', 'id')->where('institute_id', $this->instituteId())],
             'transport_driver_id'     => ['nullable', Rule::exists('transport_drivers', 'id')->where('institute_id', $this->instituteId())],
             'fee_amount'              => ['nullable', 'numeric', 'min:0'],
+            'start_date'              => ['required', 'date'],
             'remarks'                 => ['nullable', 'string'],
         ]);
 
@@ -587,6 +588,7 @@ class TransportAllocationController extends TransportBaseController
                 'transport_vehicle_id'    => array_key_exists('transport_vehicle_id', $data) ? $data['transport_vehicle_id'] : $allocation->transport_vehicle_id,
                 'transport_driver_id'     => array_key_exists('transport_driver_id', $data) ? $data['transport_driver_id'] : $allocation->transport_driver_id,
                 'fee_amount'              => $newFeeAmount,
+                'start_date'              => $data['start_date'],
                 'remarks'                 => $data['remarks'] ?? null,
             ]);
 
