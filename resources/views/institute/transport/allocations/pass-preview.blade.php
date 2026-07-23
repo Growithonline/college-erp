@@ -33,5 +33,8 @@
     </div>
     <p class="print-note no-print">Print settings: choose <strong>A4</strong>, use <strong>Default</strong> scale, and turn <strong>Headers and footers</strong> off and <strong>Background graphics</strong> on under More settings.</p>
     <main class="preview-stage"><div class="pass-preview">@include('institute.transport.allocations._pass-card', ['browserPreview' => true])</div></main>
+    @if($autoPrint ?? false)
+    <script>window.addEventListener('load', () => window.print());</script>
+    @endif
 </body>
 </html>

@@ -12,10 +12,10 @@
         <a href="{{ route('transport.allocations.pdf', $allocation) }}" class="btn btn-outline-danger btn-sm" target="_blank">
             <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
         </a>
-        <a href="{{ route('transport.allocations.pass', ['allocation' => $allocation, 'view' => 1]) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+        <a href="{{ route('transport.allocations.pass', $allocation) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
             <i class="bi bi-eye me-1"></i>View Pass
         </a>
-        <a href="{{ route('transport.allocations.pass', $allocation) }}" class="btn btn-outline-primary btn-sm" target="_blank">
+        <a href="{{ route('transport.allocations.pass', ['allocation' => $allocation, 'print' => 1]) }}" class="btn btn-outline-primary btn-sm" target="_blank">
             <i class="bi bi-qr-code me-1"></i>Print Pass
         </a>
         @if($allocation->is_active)
@@ -31,24 +31,29 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white fw-semibold">Allocation Info</div>
             <div class="card-body small">
-                <div class="mb-2"><span class="text-muted">Fee:</span> ₹{{ number_format((float) $allocation->fee_amount, 2) }}</div>
+                <div class="mb-2"><span class="text-muted">Session:</span> {{ $allocation->session?->name ?? '—' }}</div>
+                <div class="mb-2"><span class="text-muted">Start Date:</span> {{ $allocation->start_date?->format('d M Y') ?? '—' }}</div>
+                <div class="mb-2"><span class="text-muted">Billing:</span> {{ $allocation->route?->billing_frequency ? ucfirst(str_replace('_', ' ', $allocation->route->billing_frequency)) : '—' }}</div>
+                <div class="mb-2"><span class="text-muted">Fee:</span> ₹{{ number_format($allocation->effective_charged, 2) }}</div>
                 <div class="mb-2"><span class="text-muted">Paid:</span> ₹{{ number_format((float) $allocation->paid_amount, 2) }}</div>
                 <div class="mb-2"><span class="text-muted">Due:</span> ₹{{ number_format($allocation->balance, 2) }}</div>
                 <div class="mb-2"><span class="text-muted">Vehicle:</span> {{ $allocation->vehicle?->vehicle_no ?? '—' }}</div>
                 <div class="mb-2"><span class="text-muted">Driver:</span> {{ $allocation->driver?->name ?? '—' }}</div>
                 <div class="mb-2"><span class="text-muted">Status:</span> {{ ucfirst($allocation->status) }}</div>
+                @if($allocation->remarks)
+                <div class="mb-0"><span class="text-muted">Remarks:</span> {{ $allocation->remarks }}</div>
+                @endif
             </div>
         </div>
 
         @if($allocation->balance > 0)
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <div class="alert alert-info mb-0 small">
-                    <strong>To collect the transport fee,</strong> use the Fee Collection page.<br>
-                    Search for the student — the transport fee will appear automatically as a line item.
-                </div>
-                <a href="{{ route('fee.create', ['student_id' => $allocation->student_id]) }}" class="btn btn-primary w-100 mt-2">
-                    Go to Fee Collection
+                <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#collectPaymentModal">
+                    <i class="bi bi-cash-coin me-1"></i>Collect Payment (₹{{ number_format($allocation->balance, 2) }} due)
+                </button>
+                <a href="{{ route('fee.create', ['student_id' => $allocation->student_id]) }}" class="btn btn-link btn-sm w-100 mt-1">
+                    or collect together with other dues via Fee Collection
                 </a>
             </div>
         </div>
@@ -135,6 +140,59 @@
                 @endforeach
             </tbody>
         </table>
+    </div>
+</div>
+@endif
+
+{{-- Collect Payment Modal — works for closed allocations with a residual due too, so it
+     lives outside the is_active guard that wraps the Transfer/Cancel modals below. --}}
+@if($allocation->balance > 0)
+<div class="modal fade" id="collectPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-semibold"><i class="bi bi-cash-coin me-2 text-primary"></i>Collect Transport Payment</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('transport.allocations.collect-payment', $allocation) }}">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Amount (₹) — Max ₹{{ number_format($allocation->balance, 2) }}</label>
+                        <input type="number" step="0.01" min="0.01" max="{{ $allocation->balance }}" name="amount"
+                               class="form-control" value="{{ number_format($allocation->balance, 2, '.', '') }}" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Payment Date</label>
+                        <input type="date" name="payment_date" class="form-control"
+                               value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Payment Mode</label>
+                        <select name="payment_mode" class="form-select" required>
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="online">Online</option>
+                            <option value="cheque">Cheque</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Reference No (optional)</label>
+                        <input type="text" name="reference_no" class="form-control" maxlength="100">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Note (optional)</label>
+                        <textarea name="note" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-5">
+                        <i class="bi bi-cash-coin me-1"></i> Collect Payment
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endif
