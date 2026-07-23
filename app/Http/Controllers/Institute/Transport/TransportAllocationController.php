@@ -8,6 +8,7 @@ use App\Models\CourseStream;
 use App\Models\CourseType;
 use App\Models\FeeInvoice;
 use App\Models\FeeInvoiceItem;
+use App\Models\InstituteBankAccount;
 use App\Models\InstituteTransportSetting;
 use App\Models\Student;
 use App\Models\TransportAllocation;
@@ -233,7 +234,16 @@ class TransportAllocationController extends TransportBaseController
 
         $monthlyFeeBreakdown = $this->buildMonthlyFeeBreakdown($allocation, $setting);
 
-        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes', 'history', 'setting', 'monthlyFeeBreakdown'));
+        // Same "which bank did this non-cash payment land in" picker as the main Fee
+        // Collection page, so Collect Payment here creates an equally traceable
+        // FeeInvoice/ChequePayment record instead of leaving bank_account_id/bank_name
+        // null on the invoice.
+        $bankAccounts = InstituteBankAccount::where('institute_id', $this->instituteId())
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes', 'history', 'setting', 'monthlyFeeBreakdown', 'bankAccounts'));
     }
 
     /**
@@ -390,13 +400,18 @@ class TransportAllocationController extends TransportBaseController
         $balance = max(0, round((float) $allocation->balance, 2));
 
         $data = $request->validate([
-            'amount'       => ['required', 'numeric', 'min:0.01', 'max:' . $balance],
-            'payment_date' => ['required', 'date'],
-            'payment_mode' => ['required', 'in:cash,upi,online,cheque'],
-            'reference_no' => ['nullable', 'string', 'max:100'],
-            'note'         => ['nullable', 'string'],
+            'amount'          => ['required', 'numeric', 'min:0.01', 'max:' . $balance],
+            'payment_date'    => ['required', 'date'],
+            'payment_mode'    => ['required', 'in:cash,upi,online,cheque'],
+            'bank_account_id' => ['required_unless:payment_mode,cash', 'nullable',
+                Rule::exists('institute_bank_accounts', 'id')->where('institute_id', $this->instituteId())],
+            'bank_name'       => ['nullable', 'string', 'max:120'],
+            'reference_no'    => ['required_unless:payment_mode,cash', 'nullable', 'string', 'max:100'],
+            'note'            => ['nullable', 'string'],
         ], [
-            'amount.max' => "Amount cannot exceed balance ₹{$balance}.",
+            'amount.max'                   => "Amount cannot exceed balance ₹{$balance}.",
+            'bank_account_id.required_unless' => 'Please select the bank account this payment was received into.',
+            'reference_no.required_unless'    => 'Transaction Ref / UTR / Cheque No. is required for non-cash payments.',
         ]);
 
         abort_if($balance <= 0, 422, 'No pending balance on this allocation.');
@@ -438,6 +453,8 @@ class TransportAllocationController extends TransportBaseController
                 'discount'              => 0,
                 'paid_amount'           => $amount,
                 'payment_mode'          => $data['payment_mode'],
+                'bank_account_id'       => $data['bank_account_id'] ?? null,
+                'bank_name'             => $data['bank_name'] ?? null,
                 'transaction_ref'       => $data['reference_no'] ?? null,
                 'payment_date'          => $data['payment_date'],
                 'payment_datetime'      => now(),

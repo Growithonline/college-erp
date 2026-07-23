@@ -248,16 +248,31 @@
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Payment Mode</label>
-                        <select name="payment_mode" class="form-select" required>
+                        <select name="payment_mode" id="collectPaymentMode" class="form-select" required>
                             <option value="cash">Cash</option>
                             <option value="upi">UPI</option>
                             <option value="online">Online</option>
                             <option value="cheque">Cheque</option>
                         </select>
                     </div>
+                    <div class="mb-2" id="collectBankAccountWrap" style="display:none;">
+                        <label class="form-label">Bank Account</label>
+                        <select name="bank_account_id" id="collectBankAccountSelect" class="form-select">
+                            <option value="">Select Bank Account</option>
+                            @foreach($bankAccounts as $ba)
+                                <option value="{{ $ba->id }}" data-modes="{{ $ba->allowed_payment_modes }}">
+                                    {{ $ba->display_label ?? ($ba->bank_name . ' — ' . $ba->account_no) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-2" id="collectBankNameWrap" style="display:none;">
+                        <label class="form-label">Drawee Bank (cheque)</label>
+                        <input type="text" name="bank_name" class="form-control" maxlength="120">
+                    </div>
                     <div class="mb-2">
-                        <label class="form-label">Reference No (optional)</label>
-                        <input type="text" name="reference_no" class="form-control" maxlength="100">
+                        <label class="form-label" id="collectReferenceLabel">Reference No (optional)</label>
+                        <input type="text" name="reference_no" id="collectReferenceInput" class="form-control" maxlength="100">
                     </div>
                     <div class="mb-0">
                         <label class="form-label">Note (optional)</label>
@@ -274,6 +289,42 @@
         </div>
     </div>
 </div>
+<script>
+(() => {
+    // Mirrors the main Fee Collection page's non-cash behavior (bank account + cheque
+    // drawee bank fields, required reference number) so a transport payment collected
+    // here is just as traceable in the cheque clearance tracker / bank reconciliation.
+    const modeSelect   = document.getElementById('collectPaymentMode');
+    const bankWrap     = document.getElementById('collectBankAccountWrap');
+    const bankSelect   = document.getElementById('collectBankAccountSelect');
+    const bankNameWrap = document.getElementById('collectBankNameWrap');
+    const refLabel     = document.getElementById('collectReferenceLabel');
+    const refInput      = document.getElementById('collectReferenceInput');
+
+    if (!modeSelect) return;
+
+    function toggle() {
+        const mode = modeSelect.value;
+        const isNonCash = mode !== 'cash';
+
+        bankWrap.style.display = isNonCash ? '' : 'none';
+        bankSelect.required = isNonCash;
+        Array.from(bankSelect.options).forEach(opt => {
+            if (!opt.value) return;
+            const modes = (opt.dataset.modes ?? '').split(',').map(m => m.trim());
+            opt.hidden = isNonCash && modes.length && modes[0] !== '' && !modes.includes(mode);
+        });
+
+        bankNameWrap.style.display = mode === 'cheque' ? '' : 'none';
+
+        refInput.required = isNonCash;
+        refLabel.textContent = mode === 'cheque' ? 'Cheque No *' : (isNonCash ? 'Transaction Ref / UTR *' : 'Reference No (optional)');
+    }
+
+    modeSelect.addEventListener('change', toggle);
+    toggle();
+})();
+</script>
 @endif
 
 {{-- Route Transfer Modal --}}
