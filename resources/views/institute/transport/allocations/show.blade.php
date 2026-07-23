@@ -29,20 +29,57 @@
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white fw-semibold">Allocation Info</div>
-            <div class="card-body small">
-                <div class="mb-2"><span class="text-muted">Session:</span> {{ $allocation->session?->name ?? '—' }}</div>
-                <div class="mb-2"><span class="text-muted">Start Date:</span> {{ $allocation->start_date?->format('d M Y') ?? '—' }}</div>
-                <div class="mb-2"><span class="text-muted">Billing:</span> {{ $allocation->route?->billing_frequency ? ucfirst(str_replace('_', ' ', $allocation->route->billing_frequency)) : '—' }}</div>
-                <div class="mb-2"><span class="text-muted">Fee:</span> ₹{{ number_format($allocation->effective_charged, 2) }}</div>
-                <div class="mb-2"><span class="text-muted">Paid:</span> ₹{{ number_format((float) $allocation->paid_amount, 2) }}</div>
-                <div class="mb-2"><span class="text-muted">Due:</span> ₹{{ number_format($allocation->balance, 2) }}</div>
-                <div class="mb-2"><span class="text-muted">Vehicle:</span> {{ $allocation->vehicle?->vehicle_no ?? '—' }}</div>
-                <div class="mb-2"><span class="text-muted">Driver:</span> {{ $allocation->driver?->name ?? '—' }}</div>
-                <div class="mb-2"><span class="text-muted">Status:</span> {{ ucfirst($allocation->status) }}</div>
-                @if($allocation->remarks)
-                <div class="mb-0"><span class="text-muted">Remarks:</span> {{ $allocation->remarks }}</div>
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                <span>Allocation Info</span>
+                @if($allocation->is_active)
+                    <span class="badge bg-success">Active</span>
+                @elseif($allocation->status === 'closed')
+                    <span class="badge bg-secondary">Closed</span>
+                @else
+                    <span class="badge bg-warning text-dark">{{ ucfirst($allocation->status) }}</span>
                 @endif
+            </div>
+            <div class="card-body small">
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                    <span class="text-muted">Session</span>
+                    <span class="fw-semibold">{{ $allocation->session?->name ?? '—' }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                    <span class="text-muted">Start Date</span>
+                    <span class="fw-semibold">{{ $allocation->start_date?->format('d M Y') ?? '—' }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                    <span class="text-muted">Billing</span>
+                    <span class="fw-semibold">{{ $allocation->route?->billing_frequency ? ucfirst(str_replace('_', ' ', $allocation->route->billing_frequency)) : '—' }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                    <span class="text-muted">Vehicle</span>
+                    <span class="fw-semibold">{{ $allocation->vehicle?->vehicle_no ?? '—' }}</span>
+                </div>
+                <div class="d-flex justify-content-between {{ $allocation->remarks ? 'border-bottom pb-2 mb-2' : 'mb-0' }}">
+                    <span class="text-muted">Driver</span>
+                    <span class="fw-semibold">{{ $allocation->driver?->name ?? '—' }}</span>
+                </div>
+                @if($allocation->remarks)
+                <div class="text-muted fst-italic mb-0" style="font-size:12px;">{{ $allocation->remarks }}</div>
+                @endif
+
+                <div class="rounded p-3 mt-3 {{ $allocation->balance > 0 ? 'bg-danger-subtle' : 'bg-success-subtle' }}">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Fee Charged</span>
+                        <span class="fw-semibold">₹{{ number_format($allocation->effective_charged, 2) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Paid</span>
+                        <span class="fw-semibold text-success">₹{{ number_format((float) $allocation->paid_amount, 2) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between pt-1 border-top">
+                        <span class="fw-bold">Due</span>
+                        <span class="fw-bold {{ $allocation->balance > 0 ? 'text-danger' : 'text-success' }}" style="font-size:16px;">
+                            ₹{{ number_format($allocation->balance, 2) }}
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
 
