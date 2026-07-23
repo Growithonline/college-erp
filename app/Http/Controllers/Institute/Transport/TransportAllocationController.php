@@ -175,7 +175,59 @@ class TransportAllocationController extends TransportBaseController
             ->orderBy('id')
             ->get();
 
-        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes', 'history', 'setting'));
+        $monthlyFeeBreakdown = $this->buildMonthlyFeeBreakdown($allocation, $setting);
+
+        return view('institute.transport.allocations.show', compact('allocation', 'payments', 'routes', 'history', 'setting', 'monthlyFeeBreakdown'));
+    }
+
+    /**
+     * Explanatory month-wise split of the accrued fee so far, for semester/yearly
+     * allocations — e.g. "you've used 2 months of transport, here's what each month
+     * comes to" for a staff member talking a student through their due amount. This is
+     * a day-weighted read of the SAME total (effective_charged) already billed as one
+     * lump sum at allocation time — it does not represent separate monthly charges in
+     * the ledger, so it must never be summed into the wallet or fee collection totals.
+     * One-time routes have no period to split, so they're skipped entirely.
+     */
+    private function buildMonthlyFeeBreakdown(TransportAllocation $allocation, InstituteTransportSetting $setting): array
+    {
+        $frequency = $allocation->route?->billing_frequency;
+        if (!in_array($frequency, ['semester', 'yearly'], true) || !$allocation->start_date) {
+            return [];
+        }
+
+        $start = $allocation->start_date->copy()->startOfDay();
+        $months = $frequency === 'yearly' ? 12 : max(1, (int) $setting->semester_duration_months);
+        $periodEnd = $start->copy()->addMonths($months);
+
+        $today = now()->startOfDay();
+        $countedUntil = $today->lt($periodEnd) ? $today : $periodEnd->copy()->subDay();
+        if ($countedUntil->lt($start)) {
+            return [];
+        }
+
+        $totalDays = max(1, $start->diffInDays($periodEnd));
+        $dailyRate = (float) $allocation->effective_charged / $totalDays;
+
+        $rows = [];
+        $cursor = $start->copy();
+        while ($cursor->lte($countedUntil)) {
+            $monthEnd = $cursor->copy()->endOfMonth();
+            $segmentEnd = $monthEnd->lt($countedUntil) ? $monthEnd : $countedUntil->copy();
+            $days = $cursor->diffInDays($segmentEnd) + 1;
+
+            $rows[] = [
+                'label'  => $cursor->format('M Y'),
+                'from'   => $cursor->format('d M'),
+                'to'     => $segmentEnd->format('d M'),
+                'days'   => $days,
+                'amount' => round($days * $dailyRate, 2),
+            ];
+
+            $cursor = $monthEnd->copy()->addDay()->startOfDay();
+        }
+
+        return $rows;
     }
 
     public function pdf(TransportAllocation $allocation)

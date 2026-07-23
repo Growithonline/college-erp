@@ -126,6 +126,48 @@
         </div>
     </div>
 </div>
+
+{{-- Month-wise Fee Breakdown — explanatory only. This splits the SAME lump-sum
+     effective_charged amount (already billed in one shot at allocation time) into a
+     day-weighted per-month view, so staff can tell a student "you've used 2 months,
+     here's what each comes to". It is not a separate monthly charge. --}}
+@if(!empty($monthlyFeeBreakdown))
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-calendar-month me-2 text-primary"></i>Month-wise Fee Breakdown
+        <span class="text-muted fw-normal" style="font-size:11px;">(based on days used so far)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Month</th>
+                    <th>Period</th>
+                    <th class="text-center">Days</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($monthlyFeeBreakdown as $row)
+                <tr>
+                    <td>{{ $row['label'] }}</td>
+                    <td><small class="text-muted">{{ $row['from'] }} – {{ $row['to'] }}</small></td>
+                    <td class="text-center">{{ $row['days'] }}</td>
+                    <td class="text-end fw-semibold">₹{{ number_format($row['amount'], 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr class="table-light">
+                    <th colspan="3" class="text-end">Total accrued so far</th>
+                    <th class="text-end">₹{{ number_format(collect($monthlyFeeBreakdown)->sum('amount'), 2) }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+@endif
+
 {{-- Route Change History --}}
 @if($history->count() > 1)
 <div class="card border-0 shadow-sm mt-4">
