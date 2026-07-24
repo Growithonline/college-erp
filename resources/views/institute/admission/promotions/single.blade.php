@@ -514,6 +514,9 @@ document.getElementById('singleStudentSearch')?.addEventListener('input', functi
                                 <span class="text-muted fw-normal ms-1" style="font-size:10px;">${escHtml(s.student_uid ?? '')}</span></div>
                             <div class="text-muted" style="font-size:11px;">
                                 ${escHtml(s.course)}${s.stream ? ' · ' + escHtml(s.stream) : ''} &bull; Sem ${s.sem ?? '-'} &bull; ${escHtml(s.session)}</div>
+                            ${(s.father_name || s.mother_name) ? `<div class="text-muted" style="font-size:10px;">
+                                ${s.father_name ? 'F: ' + escHtml(s.father_name) : ''}${s.father_name && s.mother_name ? ' &bull; ' : ''}${s.mother_name ? 'M: ' + escHtml(s.mother_name) : ''}
+                            </div>` : ''}
                         </a>`).join('');
             });
     }, 300);

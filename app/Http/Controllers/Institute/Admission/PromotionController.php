@@ -1754,6 +1754,8 @@ class PromotionController extends Controller
             'name'        => $st->name,
             'student_uid' => $st->student_uid,
             'mobile'      => $st->mobile,
+            'father_name' => $st->father_name,
+            'mother_name' => $st->mother_name,
             'course'      => $st->stream?->course?->name ?? '',
             'stream'      => $st->stream?->name ?? '',
             'session'     => $st->session?->name ?? '',
