@@ -623,6 +623,11 @@ class WalletService
                 'institute_id'            => $allocation->institute_id,
                 'academic_session_id'     => $allocation->academic_session_id,
                 'amount'                  => $amount,
+                // Recorded on this specific payment row so the allocation's payment
+                // history can show what fine/discount was applied at collection time,
+                // not just the cumulative effect already folded into charged_amount above.
+                'fine'                    => $fine,
+                'discount'                => $discount,
                 'payment_date'            => $invoice?->payment_date ?? now()->toDateString(),
                 'payment_mode'            => $invoice?->payment_mode ?? 'invoice',
                 'reference_no'            => $invoice?->transaction_ref,

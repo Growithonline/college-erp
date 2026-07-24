@@ -106,7 +106,9 @@
                             <th>Date</th>
                             <th>Mode</th>
                             <th>Reference</th>
-                            <th>Amount</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-end">Fine</th>
+                            <th class="text-end">Discount</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -115,10 +117,24 @@
                                 <td>{{ $payment->payment_date?->format('d M Y') }}</td>
                                 <td>{{ ucfirst($payment->payment_mode) }}</td>
                                 <td>{{ $payment->reference_no ?? '—' }}</td>
-                                <td class="fw-semibold text-success">₹{{ number_format((float) $payment->amount, 2) }}</td>
+                                <td class="text-end fw-semibold text-success">₹{{ number_format((float) $payment->amount, 2) }}</td>
+                                <td class="text-end">
+                                    @if((float) $payment->fine > 0)
+                                        <span class="text-danger">₹{{ number_format((float) $payment->fine, 2) }}</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td class="text-end">
+                                    @if((float) $payment->discount > 0)
+                                        <span class="text-warning">₹{{ number_format((float) $payment->discount, 2) }}</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="text-center py-4 text-muted">No payments recorded yet.</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">No payments recorded yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

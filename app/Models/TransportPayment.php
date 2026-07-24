@@ -12,6 +12,8 @@ class TransportPayment extends Model
         'institute_id',
         'academic_session_id',
         'amount',
+        'fine',
+        'discount',
         'payment_date',
         'payment_mode',
         'reference_no',
@@ -24,6 +26,8 @@ class TransportPayment extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'fine' => 'decimal:2',
+        'discount' => 'decimal:2',
         'payment_date' => 'date',
     ];
 
