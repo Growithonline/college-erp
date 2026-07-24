@@ -603,12 +603,7 @@ class WalletService
 
             $amount = min(round($amount, 2), max(0, round((float) $allocation->balance, 2)));
 
-            if ($amount <= 0) {
-                // Nothing collected this time, but a fine/discount adjustment still needs
-                // to be persisted so the allocation's balance reflects it going forward.
-                if ($fine > 0 || $discount > 0) {
-                    $allocation->save();
-                }
+            if ($amount <= 0 && $fine <= 0 && $discount <= 0) {
                 return;
             }
 
@@ -617,15 +612,16 @@ class WalletService
             // not a generic "invoice" bucket.
             $invoice = FeeInvoice::find($invoiceId);
 
+            // A fine/discount-only adjustment (no cash collected alongside it) still gets
+            // its own zero-amount row here — otherwise the allocation's payment history has
+            // no trace of it at all, even though the wallet ledger and charged_amount above
+            // already reflect it.
             TransportPayment::create([
                 'transport_allocation_id' => $allocation->id,
                 'student_id'              => $allocation->student_id,
                 'institute_id'            => $allocation->institute_id,
                 'academic_session_id'     => $allocation->academic_session_id,
                 'amount'                  => $amount,
-                // Recorded on this specific payment row so the allocation's payment
-                // history can show what fine/discount was applied at collection time,
-                // not just the cumulative effect already folded into charged_amount above.
                 'fine'                    => $fine,
                 'discount'                => $discount,
                 'payment_date'            => $invoice?->payment_date ?? now()->toDateString(),
@@ -636,7 +632,12 @@ class WalletService
                 'by_user_id'              => $actorId ?? self::resolveActorId(),
             ]);
 
-            self::updateTransportAllocationBalance($allocation, $amount);
+            if ($amount > 0) {
+                self::updateTransportAllocationBalance($allocation, $amount);
+            } else {
+                // No cash moved, but charged_amount was adjusted above — persist it.
+                $allocation->save();
+            }
         });
     }
 
@@ -1186,16 +1187,22 @@ class WalletService
             // Collection page's own math — see buildPromotionAwareFeeState()), so pending
             // must be derived directly from fee_amount/paid_amount rather than reused from
             // 'amount', or a partially-paid allocation would show its full charge as still
-            // pending instead of charged-minus-paid.
+            // pending instead of charged-minus-paid. Fine/discount, however, use the exact
+            // same $fineByFee / $alreadyPaid lookups every other fee type already uses below
+            // — chargeFineItems()/settleApprovedInvoice() write "Fine charged: {label} -
+            // Invoice: ..." and FeeInvoiceItem.discount under this item's own label
+            // regardless of type, so there was never a reason for transport to hardcode 0
+            // here instead of reading them like everything else does.
             if (($item['type'] ?? '') === 'transport') {
                 $feeAmount  = (float) ($item['fee_amount'] ?? $charged);
                 $paidAmount = (float) ($item['paid_amount'] ?? 0.0);
+                $paidData   = $alreadyPaid->get($label);
                 return [
                     'name'       => $label,
                     'charged'    => $feeAmount,
                     'collection' => $paidAmount,
-                    'discount'   => 0.0,
-                    'fine'       => 0.0,
+                    'discount'   => (float) ($paidData?->discount_total ?? 0),
+                    'fine'       => (float) ($fineByFee[$label] ?? 0),
                     'paid'       => $paidAmount,
                     'pending'    => max(0, round($feeAmount - $paidAmount, 2)),
                 ];
