@@ -526,6 +526,10 @@
                            href="{{ route('admissions.promote.session') }}">
                         <i class="bi bi-calendar-arrow-up text-warning"></i> Session Promotion
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.single*') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.single') }}">
+                        <i class="bi bi-person-check text-primary"></i> Single Student Promotion
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('admissions.promote.report') ? 'active' : '' }}"
                            href="{{ route('admissions.promote.report') }}">
                         <i class="bi bi-file-earmark-text text-success"></i> Promotion Report

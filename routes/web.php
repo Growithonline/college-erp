@@ -631,6 +631,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('semester',               [PromotionController::class, 'semesterPromote']) ->name('semester.do');
         Route::get ('session',                [PromotionController::class, 'sessionIndex'])    ->name('session');
         Route::post('session',                [PromotionController::class, 'sessionPromote'])  ->name('session.do');
+        // Single-student session promotion (search-first, one student at a time)
+        Route::get ('single',                 [PromotionController::class, 'singleIndex'])         ->name('single');
+        Route::get ('single/search',          [PromotionController::class, 'singleSearchStudents'])->name('single.search');
         Route::get ('report',                 [PromotionController::class, 'report'])          ->name('report');
         Route::get ('outcomes',               [PromotionController::class, 'outcomesIndex'])   ->name('outcomes');
         Route::get ('promoted-students',      [PromotionController::class, 'promotedStudents'])->name('promoted-students');
@@ -1086,6 +1089,9 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::post('semester',                [PromotionController::class, 'semesterPromote'])     ->name('semester.do');
             Route::get ('session',                 [PromotionController::class, 'sessionIndex'])        ->name('session');
             Route::post('session',                 [PromotionController::class, 'sessionPromote'])      ->name('session.do');
+            // Single-student session promotion (search-first, one student at a time)
+            Route::get ('single',                  [PromotionController::class, 'singleIndex'])         ->name('single');
+            Route::get ('single/search',           [PromotionController::class, 'singleSearchStudents'])->name('single.search');
             Route::get ('report',                  [PromotionController::class, 'report'])              ->name('report');
             Route::get ('outcomes',                [PromotionController::class, 'outcomesIndex'])       ->name('outcomes');
             Route::get ('promoted-students',       [PromotionController::class, 'promotedStudents'])    ->name('promoted-students');

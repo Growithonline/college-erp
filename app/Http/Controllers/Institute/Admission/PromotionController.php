@@ -1602,6 +1602,133 @@ class PromotionController extends Controller
         return back()->with(($promoted || $completed) ? 'success' : 'warning', trim($msg) ?: 'No changes were made.');
     }
 
+    // ── Single-student session promotion (search-first) ────────────────────
+    // Same filters/eligibility/promotion logic as sessionIndex()/sessionPromote() —
+    // this just adds a one-student-at-a-time review screen in front of them.
+    // The promote form on this page still submits to the existing session.do route.
+
+    public function singleIndex(Request $request)
+    {
+        $this->ensurePromotionAccess();
+        $instituteId   = $this->instituteId();
+        $activeSession = AcademicSession::viewSession($instituteId);
+        $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $fromSessionId = $request->from_session_id ?? $activeSession?->id;
+        $courseId      = $request->course_id;
+
+        $this->ensureStaffCanAccessSession($fromSessionId ? (int) $fromSessionId : null);
+        $this->ensureStaffCanAccessCourse($courseId ? (int) $courseId : null);
+
+        $student         = null;
+        $check           = null;
+        $partMissing     = false;
+        $walletDue       = 0.0;
+        $feeSummary      = null;
+        $subjectsForPart = [];
+        $promotionLogs   = collect();
+
+        if ($request->filled('student_id')) {
+            // Not filtered to status='active' — after a promotion the status becomes
+            // terminal, but sessionPromote()'s back() redirect returns here and the
+            // page must still render the (now-updated) student.
+            $student = Student::with([
+                    'stream.course', 'coursePart', 'session',
+                    'activeTransportAllocation.route', 'activeTransportAllocation.stop',
+                    'activeTransportAllocation.vehicle', 'activeTransportAllocation.driver',
+                    'transportAllocations.route', 'transportAllocations.stop',
+                ])
+                ->where('institute_id', $instituteId)
+                ->findOrFail($request->student_id);
+
+            $this->ensureStaffCanAccessStudent($student);
+
+            $partMissing = !$student->coursePart;
+            if (!$partMissing) {
+                $check = $this->checkNextPart($student);
+            }
+
+            $walletDue  = $this->getWalletDue($student, (int) $student->academic_session_id);
+            $feeSummary = WalletService::getStudentSummary($student, (int) $student->academic_session_id);
+
+            if ($student->course_stream_id && $student->coursePart?->year_number) {
+                $subjectsForPart = CourseStreamSubject::with('subject')
+                    ->where('course_stream_id', $student->course_stream_id)
+                    ->where('year_number', $student->coursePart->year_number)
+                    ->where('is_active', true)
+                    ->get()
+                    ->map(fn($m) => [
+                        'id'   => $m->subject_id,
+                        'name' => $m->subject?->name,
+                        'code' => $m->subject?->code ?? '',
+                    ])
+                    ->values();
+            }
+
+            $promotionLogs = PromotionLog::with(['fromSession', 'toSession'])
+                ->where('institute_id', $instituteId)
+                ->where('student_id', $student->id)
+                ->orderByDesc('id')
+                ->get();
+        }
+
+        return view('institute.admission.promotions.single', compact(
+            'student', 'check', 'partMissing', 'walletDue', 'feeSummary',
+            'subjectsForPart', 'promotionLogs', 'sessions', 'courses',
+            'fromSessionId', 'courseId', 'activeSession'
+        ));
+    }
+
+    public function singleSearchStudents(Request $request)
+    {
+        $this->ensurePromotionAccess();
+        $instituteId = $this->instituteId();
+
+        $fromSessionId = $request->from_session_id;
+        $courseId      = $request->course_id;
+        $search        = trim((string) $request->q);
+
+        $this->ensureStaffCanAccessSession($fromSessionId ? (int) $fromSessionId : null);
+        $this->ensureStaffCanAccessCourse($courseId ? (int) $courseId : null);
+
+        if (mb_strlen($search) < 2) {
+            return response()->json([]);
+        }
+
+        // Not restricted to promotion-eligible students — staff should be able to find
+        // and open any active student matching the filters; the detail page's eligibility
+        // banner explains why promotion is or isn't available for that student right now.
+        $query = Student::with(['stream.course', 'coursePart', 'session'])
+            ->where('institute_id', $instituteId)
+            ->where('status', 'active');
+        $this->applyStudentAccessScope($query);
+
+        if ($fromSessionId) {
+            $query->where('academic_session_id', $fromSessionId);
+        }
+        if ($courseId) {
+            $query->whereHas('stream', fn($q) => $q->where('course_id', $courseId));
+        }
+
+        $s = $this->escapeLike($search);
+        $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")
+            ->orWhere('student_uid', 'like', "%{$s}%")
+            ->orWhere('mobile', 'like', "%{$s}%"));
+
+        $students = $query->orderBy('name')->limit(15)->get();
+
+        return response()->json($students->map(fn($st) => [
+            'id'          => $st->id,
+            'name'        => $st->name,
+            'student_uid' => $st->student_uid,
+            'mobile'      => $st->mobile,
+            'course'      => $st->stream?->course?->name ?? '',
+            'stream'      => $st->stream?->name ?? '',
+            'session'     => $st->session?->name ?? '',
+            'sem'         => $st->current_semester,
+        ]));
+    }
+
     public function reversePromotion(Request $request, PromotionLog $log)
     {
         $this->ensurePromotionAccess();
