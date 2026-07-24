@@ -159,10 +159,38 @@
                         <i class="bi bi-chat-left-text" style="color:#2563EB;"></i> Online Enquiries
                     </a></li>
                     @if($authUser->hasPermission('student_promote'))
-                    <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.*') ? 'active' : '' }}"
-                           href="{{ route('staff.admissions.promote.index') }}">
-                        <i class="bi bi-arrow-up-circle"></i> Promote Students
-                    </a></li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('staff.admissions.promote.*') ? 'active' : '' }} d-flex"
+                           data-bs-toggle="collapse" href="#staffPromotionMenu" role="button"
+                           aria-expanded="{{ request()->routeIs('staff.admissions.promote.*') ? 'true' : 'false' }}">
+                            <i class="bi bi-arrow-up-circle"></i> Promote Students
+                            <i class="bi bi-chevron-down collapse-arrow"></i>
+                        </a>
+                        <div class="collapse {{ request()->routeIs('staff.admissions.promote.*') ? 'show' : '' }}" id="staffPromotionMenu">
+                            <ul class="nav flex-column sub-menu">
+                                <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.semester*') ? 'active' : '' }}"
+                                       href="{{ route('staff.admissions.promote.semester') }}">
+                                    <i class="bi bi-arrow-up-circle text-info"></i> Semester Promotion
+                                </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.session*') ? 'active' : '' }}"
+                                       href="{{ route('staff.admissions.promote.session') }}">
+                                    <i class="bi bi-calendar-arrow-up text-warning"></i> Session Promotion
+                                </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.report') ? 'active' : '' }}"
+                                       href="{{ route('staff.admissions.promote.report') }}">
+                                    <i class="bi bi-file-earmark-text text-success"></i> Promotion Report
+                                </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.promoted-students') ? 'active' : '' }}"
+                                       href="{{ route('staff.admissions.promote.promoted-students') }}">
+                                    <i class="bi bi-arrow-up-circle text-info"></i> Promoted Students
+                                </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.identity*') ? 'active' : '' }}"
+                                       href="{{ route('staff.admissions.promote.identity') }}">
+                                    <i class="bi bi-person-badge text-primary"></i> Roll / Form No
+                                </a></li>
+                            </ul>
+                        </div>
+                    </li>
                     @endif
                     @endif
                     @endif

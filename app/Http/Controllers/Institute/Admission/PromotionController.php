@@ -1486,6 +1486,7 @@ class PromotionController extends Controller
                             'promoted_by_role'     => $this->promotedByRole(),
                         ]);
 
+                        $this->syncSubjectsForTargetPart($student, $toSession->id, $student->coursePart);
                         $this->carryForwardDue($student, $fromSession, $toSession, $due, $log);
                         $student->update([
                             'academic_session_id' => $toSession->id,

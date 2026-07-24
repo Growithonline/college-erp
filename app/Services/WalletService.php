@@ -1114,7 +1114,11 @@ class WalletService
             }
             $feeAmt  = round($ta->effective_charged, 2);
             $paidAmt = round((float) $ta->paid_amount, 2);
-            $transportTotal += $balance;
+            // Gross charged amount, not the balance — every other fee item's contribution
+            // to 'total' below is a gross figure (not netted against payments already
+            // made), so mixing in a netted transport balance here understated "Total
+            // Payable" for students with a partially-paid transport allocation.
+            $transportTotal += $feeAmt;
             $items[] = [
                 'type'                    => 'transport',
                 'fee_type_id'             => null,
@@ -1129,6 +1133,10 @@ class WalletService
                 'transport_allocation_id' => $ta->id,
                 'fee_amount'              => $feeAmt,
                 'paid_amount'             => $paidAmt,
+                // Single source of truth for "what this allocation still owes" —
+                // TransportAllocation::getBalanceAttribute() — reused as-is by
+                // buildPendingRows() instead of it re-deriving fee_amount - paid_amount.
+                'balance'                 => $balance,
             ];
         }
 
@@ -1204,7 +1212,9 @@ class WalletService
                     'discount'   => (float) ($paidData?->discount_total ?? 0),
                     'fine'       => (float) ($fineByFee[$label] ?? 0),
                     'paid'       => $paidAmount,
-                    'pending'    => max(0, round($feeAmount - $paidAmount, 2)),
+                    // Reuse TransportAllocation::getBalanceAttribute() (carried through as
+                    // 'balance') instead of re-deriving fee_amount - paid_amount here.
+                    'pending'    => max(0, (float) ($item['balance'] ?? round($feeAmount - $paidAmount, 2))),
                 ];
             }
 
