@@ -16,6 +16,7 @@ use App\Models\Subject;
 use App\Models\StudentSubject;
 use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
+use App\Models\TransportAllocation;
 use App\Http\Controllers\Institute\Master\AdmissionFormController;
 use App\Services\FeeCalculatorService;
 use App\Services\WalletService;
@@ -1371,6 +1372,25 @@ class PromotionController extends Controller
 
                     if (!$this->canSessionPromote($student)) {
                         throw new \RuntimeException("{$student->name} is not yet in the year-end semester. Please complete Semester Promotion first.");
+                    }
+
+                    // Session promotion crosses an academic_session_id boundary, so an
+                    // active transport allocation can't be auto-settled the way semester
+                    // promotion does (which closes-and-reopens within the same session,
+                    // so crediting the unused portion is offset by a fresh charge). There
+                    // is no safe automatic amount to credit here without either
+                    // shortchanging the institute or assuming the student continues
+                    // transport in the new session — both are judgment calls only staff
+                    // should make. Block promotion until they explicitly close (or
+                    // transfer) the allocation via the Transport module; whatever balance
+                    // remains after that is carried forward correctly below.
+                    $hasActiveTransport = TransportAllocation::where('student_id', $student->id)
+                        ->where('academic_session_id', $student->academic_session_id)
+                        ->where('is_active', true)
+                        ->exists();
+
+                    if ($hasActiveTransport) {
+                        throw new \RuntimeException("{$student->name}: has an active transport allocation. Please close or transfer it in the Transport module before session promotion — the due amount will carry forward correctly once settled.");
                     }
 
                     $check = $this->checkNextPart($student);

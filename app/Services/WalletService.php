@@ -849,65 +849,40 @@ class WalletService
      * labeled as transport) and without ever clearing the source allocation's own
      * balance — the same amount would then exist in two disconnected places at once.
      *
-     * Any semester-billed allocation still active at promotion time is closed here
-     * first, crediting back the unused portion — same as the semester-promotion
-     * path. Yearly/one-time active allocations are deliberately left alone, matching
-     * carryForwardSemesterTransport()'s own scope (they don't have a semester-bound
-     * period to renew, and yearly already has its own cross-session skip logic).
+     * Unlike carryForwardSemesterTransport(), this never touches an active
+     * allocation — PromotionController::sessionPromote() refuses to run at all while
+     * one exists (staff must close/transfer it via the Transport module first).
+     * There is no safe automatic amount to credit here the way semester promotion
+     * does: that path closes-and-reopens within the same session, so crediting the
+     * unused portion is offset by a fresh charge, whereas session promotion
+     * deliberately does not auto-create a new allocation (a new academic session can
+     * mean different routes/fees), so crediting without a replacement charge would
+     * just erase real revenue.
      *
-     * Whatever allocation still carries a balance afterward — whether just closed
-     * above, or already closed earlier with money still owed (e.g. a route change
-     * or cancellation from a previous semester that was never fully settled) — is
-     * relocated to the new session by reassigning academic_session_id alone; nothing
-     * else on the row changes. It resurfaces under its own route/stop label in the
-     * new session's Fee Collection page instead of disappearing into the anonymous
-     * "Previous Due" figure.
+     * Every allocation this finds is therefore already closed, with whatever
+     * balance staff settled on when they closed/transferred it. Any of those still
+     * carrying a balance is relocated to the new session by reassigning
+     * academic_session_id alone — nothing else on the row changes. It resurfaces
+     * under its own route/stop label in the new session's Fee Collection page
+     * instead of disappearing into the anonymous "Previous Due" figure.
      *
      * Must run BEFORE the caller computes the old session's pending-due total for
      * that "Previous Due" lump sum (PromotionController::getWalletDue()), or this
      * amount would be double-counted — once here under its own label, once inside
-     * "Previous Due". No new allocation is auto-created for the new session (unlike
-     * the semester-promotion path) — a new academic session can mean different
-     * routes/fees, so continuing transport service is left to a deliberate staff
-     * decision via the ordinary New Allocation / Bulk Allocation flows.
+     * "Previous Due".
      */
     public static function carryForwardTransportDuesOnSessionPromotion(Student $student, int $oldSessionId, int $newSessionId): void
     {
-        $allocations = TransportAllocation::where('student_id', $student->id)
+        TransportAllocation::where('student_id', $student->id)
             ->where('academic_session_id', $oldSessionId)
-            ->with('route')
+            ->where('is_active', false)
             ->lockForUpdate()
-            ->get();
-
-        if ($allocations->isEmpty()) {
-            return;
-        }
-
-        $setting = InstituteTransportSetting::forInstitute((int) $student->institute_id);
-        $today = now()->startOfDay();
-
-        foreach ($allocations as $alloc) {
-            if ($alloc->is_active && $alloc->route?->billing_frequency === 'semester') {
-                $creditAmount = $setting->proratedUnusedAmount($alloc, $today);
-                if ($creditAmount > 0) {
-                    self::creditTransportAllocation(
-                        $alloc,
-                        $creditAmount,
-                        'Session promotion — unused portion of previous session'
-                    );
+            ->get()
+            ->each(function (TransportAllocation $alloc) use ($newSessionId) {
+                if (round((float) $alloc->balance, 2) > 0) {
+                    $alloc->update(['academic_session_id' => $newSessionId]);
                 }
-
-                $alloc->update([
-                    'is_active' => false,
-                    'status'    => 'closed',
-                    'end_date'  => $today->toDateString(),
-                ]);
-            }
-
-            if (round((float) $alloc->balance, 2) > 0) {
-                $alloc->update(['academic_session_id' => $newSessionId]);
-            }
-        }
+            });
     }
 
     public static function resolveAcademicContext(Student $student, int $sessionId): array

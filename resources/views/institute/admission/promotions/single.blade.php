@@ -162,6 +162,14 @@
     <i class="bi bi-info-circle-fill me-2"></i>
     This is a short-term / modular course — use <strong>Mark Complete</strong> below instead of session promotion.
 </div>
+@elseif($check['can_session_promote'] && $student->activeTransportAllocation)
+<div class="alert alert-warning border-0 shadow-sm mb-3">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    This student has an active transport allocation ({{ $student->activeTransportAllocation->route?->name }}) —
+    session promotion crosses into a new session, so it can't auto-settle this the way semester promotion does.
+    <a href="{{ route('transport.allocations.show', $student->activeTransportAllocation) }}" class="alert-link">Close or transfer it in the Transport module first &rarr;</a>
+    The due amount will carry forward correctly once settled.
+</div>
 @elseif($check['can_session_promote'])
 <div class="alert alert-success border-0 shadow-sm mb-3">
     <i class="bi bi-check-circle-fill me-2"></i>
@@ -376,7 +384,7 @@
             </form>
         </div>
     </div>
-    @elseif($check['can_session_promote'])
+    @elseif($check['can_session_promote'] && !$student->activeTransportAllocation)
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-warning text-dark py-2"><i class="bi bi-calendar-arrow-up me-1"></i>Promote</div>
         <div class="card-body">
