@@ -255,46 +255,82 @@ class TransportAllocationController extends TransportBaseController
      * the ledger, so it must never be summed into the wallet or fee collection totals.
      * One-time routes have no period to split, so they're skipped entirely.
      */
+    /**
+     * Chains every semester/yearly transport allocation the student has had in this
+     * academic session (not just the one being viewed) into one continuous month-wise
+     * table — a route change mid-session shouldn't fragment the explanation across
+     * separate allocation pages. A transfer's closing day and the next allocation's
+     * start day are often the same calendar date (transfer()/close() both default to
+     * "today" for both ends), so any overlapping day is credited to the newer
+     * allocation only, never counted on both.
+     */
     private function buildMonthlyFeeBreakdown(TransportAllocation $allocation, InstituteTransportSetting $setting): array
     {
-        $frequency = $allocation->route?->billing_frequency;
-        if (!in_array($frequency, ['semester', 'yearly'], true) || !$allocation->start_date) {
-            return [];
-        }
-
-        $start = $allocation->start_date->copy()->startOfDay();
-        $months = $frequency === 'yearly' ? 12 : max(1, (int) $setting->semester_duration_months);
-        $periodEnd = $start->copy()->addMonths($months);
+        $chain = TransportAllocation::where('student_id', $allocation->student_id)
+            ->where('academic_session_id', $allocation->academic_session_id)
+            ->where('institute_id', $allocation->institute_id)
+            ->with('route:id,name,billing_frequency')
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->get();
 
         $today = now()->startOfDay();
-        $countedUntil = $today->lt($periodEnd) ? $today : $periodEnd->copy()->subDay();
-        if ($countedUntil->lt($start)) {
-            return [];
-        }
-
-        $totalDays = max(1, $start->diffInDays($periodEnd));
-        $dailyRate = (float) $allocation->effective_charged / $totalDays;
-
         $rows = [];
-        $cursor = $start->copy();
-        while ($cursor->lte($countedUntil)) {
-            // endOfMonth() leaves the time at 23:59:59.999999 — diffing that against a
-            // midnight-aligned cursor/countedUntil produces a value like 24.999999999988
-            // instead of a clean 25, since it's a fraction of a day short. Re-normalize
-            // to midnight so every boundary in this loop is day-aligned.
-            $monthEnd = $cursor->copy()->endOfMonth()->startOfDay();
-            $segmentEnd = $monthEnd->lt($countedUntil) ? $monthEnd : $countedUntil->copy();
-            $days = (int) round($cursor->diffInDays($segmentEnd)) + 1;
 
-            $rows[] = [
-                'label'  => $cursor->format('M Y'),
-                'from'   => $cursor->format('d M'),
-                'to'     => $segmentEnd->format('d M'),
-                'days'   => $days,
-                'amount' => round($days * $dailyRate, 2),
-            ];
+        foreach ($chain as $index => $alloc) {
+            $frequency = $alloc->route?->billing_frequency;
+            if (!in_array($frequency, ['semester', 'yearly'], true) || !$alloc->start_date) {
+                continue;
+            }
 
-            $cursor = $monthEnd->copy()->addDay()->startOfDay();
+            $start = $alloc->start_date->copy()->startOfDay();
+            $months = $frequency === 'yearly' ? 12 : max(1, (int) $setting->semester_duration_months);
+            $periodEnd = $start->copy()->addMonths($months);
+
+            $ownEnd = $alloc->is_active
+                ? $today
+                : ($alloc->end_date ? $alloc->end_date->copy()->startOfDay() : $today);
+            $countedUntil = $ownEnd->lt($periodEnd) ? $ownEnd : $periodEnd->copy()->subDay();
+
+            // Trim overlap with whatever allocation comes next — the newer one wins
+            // any calendar day both rows would otherwise claim.
+            $next = $chain->get($index + 1);
+            if ($next && $next->start_date) {
+                $dayBeforeNext = $next->start_date->copy()->startOfDay()->subDay();
+                if ($dayBeforeNext->lt($countedUntil)) {
+                    $countedUntil = $dayBeforeNext;
+                }
+            }
+
+            if ($countedUntil->lt($start)) {
+                continue;
+            }
+
+            $totalDays = max(1, $start->diffInDays($periodEnd));
+            $dailyRate = (float) $alloc->effective_charged / $totalDays;
+            $routeLabel = $alloc->route?->name ?? 'Route';
+
+            $cursor = $start->copy();
+            while ($cursor->lte($countedUntil)) {
+                // endOfMonth() leaves the time at 23:59:59.999999 — diffing that against a
+                // midnight-aligned cursor/countedUntil produces a value like 24.999999999988
+                // instead of a clean 25, since it's a fraction of a day short. Re-normalize
+                // to midnight so every boundary in this loop is day-aligned.
+                $monthEnd = $cursor->copy()->endOfMonth()->startOfDay();
+                $segmentEnd = $monthEnd->lt($countedUntil) ? $monthEnd : $countedUntil->copy();
+                $days = (int) round($cursor->diffInDays($segmentEnd)) + 1;
+
+                $rows[] = [
+                    'label'  => $cursor->format('M Y'),
+                    'route'  => $routeLabel,
+                    'from'   => $cursor->format('d M'),
+                    'to'     => $segmentEnd->format('d M'),
+                    'days'   => $days,
+                    'amount' => round($days * $dailyRate, 2),
+                ];
+
+                $cursor = $monthEnd->copy()->addDay()->startOfDay();
+            }
         }
 
         return $rows;

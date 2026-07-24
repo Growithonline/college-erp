@@ -142,6 +142,7 @@
             <thead class="table-light">
                 <tr>
                     <th>Month</th>
+                    <th>Route</th>
                     <th>Period</th>
                     <th class="text-center">Days</th>
                     <th class="text-end">Amount</th>
@@ -151,6 +152,7 @@
                 @foreach($monthlyFeeBreakdown as $row)
                 <tr>
                     <td>{{ $row['label'] }}</td>
+                    <td><small class="text-muted">{{ $row['route'] }}</small></td>
                     <td><small class="text-muted">{{ $row['from'] }} – {{ $row['to'] }}</small></td>
                     <td class="text-center">{{ $row['days'] }}</td>
                     <td class="text-end fw-semibold">₹{{ number_format($row['amount'], 2) }}</td>
@@ -159,7 +161,7 @@
             </tbody>
             <tfoot>
                 <tr class="table-light">
-                    <th colspan="3" class="text-end">Total accrued so far</th>
+                    <th colspan="4" class="text-end">Total accrued so far</th>
                     <th class="text-end">₹{{ number_format(collect($monthlyFeeBreakdown)->sum('amount'), 2) }}</th>
                 </tr>
             </tfoot>
@@ -185,13 +187,20 @@
                     <th>Stop</th>
                     <th>Start Date</th>
                     <th>End Date</th>
-                    <th class="text-end">Fee</th>
+                    <th class="text-end">Charged</th>
                     <th class="text-end">Paid</th>
+                    <th class="text-end">Adjustment</th>
+                    <th class="text-end">Due</th>
                     <th class="text-center">Status</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($history as $i => $h)
+                @php
+                    // effective_charged is what's actually owed after any credit note/edit —
+                    // fee_amount alone goes stale the moment a transfer/cancel credit is applied.
+                    $hAdjustment = round((float) $h->fee_amount - $h->effective_charged, 2);
+                @endphp
                 <tr class="{{ $h->id === $allocation->id ? 'table-primary fw-semibold' : '' }}">
                     <td>{{ $i + 1 }}</td>
                     <td><small>{{ $h->session?->name ?? '—' }}</small></td>
@@ -204,8 +213,18 @@
                     <td><small>{{ $h->stop?->stop_name ?? '—' }}</small></td>
                     <td><small>{{ $h->start_date?->format('d M Y') ?? '—' }}</small></td>
                     <td><small>{{ $h->end_date?->format('d M Y') ?? '—' }}</small></td>
-                    <td class="text-end small">₹{{ number_format((float) $h->fee_amount, 2) }}</td>
+                    <td class="text-end small">₹{{ number_format($h->effective_charged, 2) }}</td>
                     <td class="text-end small text-success">₹{{ number_format((float) $h->paid_amount, 2) }}</td>
+                    <td class="text-end small">
+                        @if($hAdjustment > 0.004)
+                            <span class="text-success">Credit ₹{{ number_format($hAdjustment, 2) }}</span>
+                        @elseif($hAdjustment < -0.004)
+                            <span class="text-danger">Fine ₹{{ number_format(abs($hAdjustment), 2) }}</span>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
+                    <td class="text-end small fw-semibold {{ $h->balance > 0 ? 'text-danger' : 'text-success' }}">₹{{ number_format($h->balance, 2) }}</td>
                     <td class="text-center">
                         @if($h->is_active)
                             <span class="badge bg-success">Active</span>
