@@ -446,21 +446,31 @@
                     @endforeach
                 </tbody>
                 <tfoot>
+                    @php
+                        // This footer must reconcile with the rows actually shown above —
+                        // a ledger's total is a literal sum of its own columns, same as a
+                        // bank statement. The business-level "Total Charged" / "Total Paid"
+                        // figures (which net out fine/discount/credit-note handling
+                        // differently per fee type) belong on the summary cards above, not
+                        // relabeled as this table's own total.
+                        $ledgerTotalDebit  = (float) $transactions->sum('debit');
+                        $ledgerTotalCredit = (float) $transactions->sum('credit');
+                    @endphp
                     <tr>
                         <td colspan="4" class="text-end" style="font-size:12px;font-weight:700;color:#374151;letter-spacing:0.04em;">TOTAL</td>
                         <td class="text-end">
-                            <span class="mono fw-bold text-danger" style="font-size:13px;">₹ {{ number_format($summary['total_charged'], 2) }}</span>
+                            <span class="mono fw-bold text-danger" style="font-size:13px;">₹ {{ number_format($ledgerTotalDebit, 2) }}</span>
                         </td>
                         <td class="text-end">
-                            <span class="mono fw-bold text-success" style="font-size:13px;">₹ {{ number_format($summary['total_paid'], 2) }}</span>
+                            <span class="mono fw-bold text-success" style="font-size:13px;">₹ {{ number_format($ledgerTotalCredit, 2) }}</span>
                         </td>
                         <td></td>
                         <td class="text-end">
-                            <span class="mono fw-bold {{ $summary['balance'] < 0 ? 'text-danger' : 'text-success' }}" style="font-size:14px;">
-                                ₹ {{ number_format($summary['balance'], 2) }}
+                            <span class="mono fw-bold {{ $clBal < 0 ? 'text-danger' : 'text-success' }}" style="font-size:14px;">
+                                ₹ {{ number_format($clBal, 2) }}
                             </span>
-                            <div style="font-size:10px;font-weight:600;margin-top:2px;color:{{ $summary['balance'] < 0 ? '#dc2626' : '#16a34a' }};">
-                                {{ $summary['balance'] < 0 ? 'DUE' : ($summary['balance'] > 0 ? 'ADVANCE' : 'CLEAR') }}
+                            <div style="font-size:10px;font-weight:600;margin-top:2px;color:{{ $clBal < 0 ? '#dc2626' : '#16a34a' }};">
+                                {{ $clBal < 0 ? 'DUE' : ($clBal > 0 ? 'ADVANCE' : 'CLEAR') }}
                             </div>
                         </td>
                     </tr>
