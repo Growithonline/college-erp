@@ -1374,7 +1374,13 @@ class PromotionController extends Controller
                     }
 
                     $check = $this->checkNextPart($student);
-                    $due = $this->getWalletDue($student, $student->academic_session_id);
+
+                    // Computed per-branch below (not here) — the failed/default branches
+                    // need to carry any transport due into the new session first, or it
+                    // would be double-counted (once under its own label there, once here
+                    // in the generic "Previous Due" figure). See
+                    // WalletService::carryForwardTransportDuesOnSessionPromotion().
+                    $due = null;
 
                     $this->snapshotIdentity(
                         $student,
@@ -1384,6 +1390,10 @@ class PromotionController extends Controller
 
                     if ($check['is_last']) {
                         // ── FINAL YEAR: apply terminal outcome ───────────────────────
+                        // No target session exists for a terminal outcome, so there's
+                        // nowhere to carry a transport due into — it's included here as-is,
+                        // same as every other pending fee.
+                        $due = $this->getWalletDue($student, $student->academic_session_id);
                         $terminalStatus = $this->normalizeTerminalStatus($request->input('completion_status'));
                         $log = PromotionLog::create([
                             'institute_id'         => $instituteId,
@@ -1432,6 +1442,9 @@ class PromotionController extends Controller
 
                     // DROPPED: student leaves — no session move needed
                     if ($completionStatus === 'dropped') {
+                        // No target session here either — same reasoning as the terminal
+                        // branch above.
+                        $due = $this->getWalletDue($student, $student->academic_session_id);
                         $droppedLog = PromotionLog::create([
                             'institute_id'         => $instituteId,
                             'student_id'           => $student->id,
@@ -1465,6 +1478,16 @@ class PromotionController extends Controller
                         if ((int) $student->academic_session_id === (int) $toSession->id) {
                             throw new \RuntimeException("{$student->name} is already in the {$toSession->name} session.");
                         }
+
+                        // Move any outstanding transport due into the new session BEFORE
+                        // computing "Previous Due" below, so it isn't double-counted.
+                        WalletService::carryForwardTransportDuesOnSessionPromotion(
+                            $student,
+                            $student->academic_session_id,
+                            $toSession->id
+                        );
+                        $due = $this->getWalletDue($student, $student->academic_session_id);
+
                         $bounds      = $this->currentPartBounds($student);
                         $fromSession = $student->session ?: AcademicSession::find($student->academic_session_id);
 
@@ -1512,6 +1535,15 @@ class PromotionController extends Controller
                     if ((int) $student->academic_session_id === (int) $toSession->id) {
                         throw new \RuntimeException("{$student->name} is already in the {$toSession->name} session.");
                     }
+
+                    // Move any outstanding transport due into the new session BEFORE
+                    // computing "Previous Due" below, so it isn't double-counted.
+                    WalletService::carryForwardTransportDuesOnSessionPromotion(
+                        $student,
+                        $student->academic_session_id,
+                        $toSession->id
+                    );
+                    $due = $this->getWalletDue($student, $student->academic_session_id);
 
                     $toSemester  = $this->nextSemester($student);
                     $nextPart    = $this->targetPartForStudent($student, $toSemester);
