@@ -526,7 +526,11 @@ class ReportController extends Controller
     private function attachSubjectGroups(iterable $students): void
     {
         foreach ($students as $student) {
-            $byRole = $student->studentSubjects->groupBy('subject_role');
+            // toBase() first: studentSubjects is an Eloquent Collection, and groupBy()'s late
+            // static binding would otherwise make $byRole an Eloquent Collection too — whose
+            // except() expects model instances (calls getKey()) instead of excluding by array
+            // key, crashing on the plain sub-collections groupBy() produces here.
+            $byRole = $student->studentSubjects->toBase()->groupBy('subject_role');
             $student->major_subjects = $byRole->get('major', collect())->pluck('subject.name')->filter()->implode(', ');
             $student->minor_subjects = $byRole->get('minor', collect())->pluck('subject.name')->filter()->implode(', ');
             $student->other_subjects = $byRole->except(['major', 'minor'])->flatten(1)->pluck('subject.name')->filter()->implode(', ');
