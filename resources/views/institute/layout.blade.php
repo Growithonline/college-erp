@@ -1008,8 +1008,16 @@
                            href="{{ route('finance.wallet.approval-limits.index') }}">
                         <i class="bi bi-shield-check"></i> Approval Limits
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('master.report-particulars.*') ? 'active' : '' }}"
+                           href="{{ route('master.report-particulars.index') }}">
+                        <i class="bi bi-list-columns"></i> Report Particulars
+                    </a></li>
 
                     <li class="mt-2"><small class="text-muted px-2 fw-semibold" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Reports</small></li>
+                    <li><a class="nav-link {{ request()->routeIs('finance.wallet.daily-register.*') ? 'active' : '' }}"
+                           href="{{ route('finance.wallet.daily-register.index') }}">
+                        <i class="bi bi-journal-richtext"></i> Daily Register
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('finance.wallet.reports.income') ? 'active' : '' }}"
                            href="{{ route('finance.wallet.reports.income') }}">
                         <i class="bi bi-bar-chart"></i> Income Report

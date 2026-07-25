@@ -11,6 +11,7 @@ use App\Http\Controllers\Institute\Master\CourseStreamController;
 use App\Http\Controllers\Institute\Master\CourseSubjectController;
 use App\Http\Controllers\Institute\Master\SubjectController;
 use App\Http\Controllers\Institute\Master\FeeTypeController;
+use App\Http\Controllers\Institute\Master\ReportParticularController;
 use App\Http\Controllers\Institute\Master\FeeAssignmentController;
 use App\Http\Controllers\Institute\Master\StudentTypeController;
 use App\Http\Controllers\Institute\Master\CourseTypeController;
@@ -42,6 +43,7 @@ use App\Http\Controllers\Institute\Finance\FinanceSettingController;
 use App\Http\Controllers\Institute\Finance\FinanceReportController;
 use App\Http\Controllers\Institute\Finance\SalaryController;
 use App\Http\Controllers\Institute\Finance\Wallet\WalletDashboardController;
+use App\Http\Controllers\Institute\Finance\Wallet\DailyRegisterController;
 use App\Http\Controllers\Institute\Finance\Wallet\IncomeCategoryController;
 use App\Http\Controllers\Institute\Finance\Wallet\ManualIncomeController;
 use App\Http\Controllers\Institute\Finance\Wallet\ExpenseCategoryL1Controller;
@@ -213,6 +215,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('fee-types/{feeType}/toggle', [FeeTypeController::class, 'toggle'])
              ->name('fee-types.toggle');
         Route::resource('fee-assignments', FeeAssignmentController::class);
+
+        Route::resource('report-particulars', ReportParticularController::class)->except(['show']);
+        Route::post('report-particulars/{reportParticular}/toggle', [ReportParticularController::class, 'toggle'])
+             ->name('report-particulars.toggle');
 
         // Fee Plans
         Route::get('fee-plans',                              [FeePlanController::class, 'index'])->name('fee-plans.index');
@@ -503,6 +509,10 @@ Route::middleware(['auth'])->group(function () {
             Route::get('reports/income', [WalletDashboardController::class, 'incomeReport'])->name('reports.income');
             Route::get('reports/expense', [WalletDashboardController::class, 'expenseReport'])->name('reports.expense');
             Route::get('reports/session-comparison', [WalletDashboardController::class, 'sessionComparison'])->name('reports.session-comparison');
+
+            // Daily Register — day-wise cash register (client's paper "Daily Report" digitized)
+            Route::get('daily-register', [DailyRegisterController::class, 'index'])->name('daily-register.index');
+            Route::post('daily-register/header', [DailyRegisterController::class, 'saveHeader'])->name('daily-register.header');
 
             // Phase 7: Low balance threshold update
             Route::post('threshold', [WalletDashboardController::class, 'updateThreshold'])->name('threshold.update');
