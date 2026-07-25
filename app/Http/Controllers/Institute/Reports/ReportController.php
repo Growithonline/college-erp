@@ -410,6 +410,129 @@ class ReportController extends Controller
         ));
     }
 
+    public function subjectWiseStudentReport(Request $request)
+    {
+        $this->authorizeReportAccess('admission');
+        $this->ensureReportExportPermission($request);
+        $instituteId   = $this->instituteId();
+        $activeSession = AcademicSession::where('institute_id', $instituteId)
+            ->where('is_active', true)->first();
+
+        $sessionId      = $request->session_id ?? $activeSession?->id;
+        $filterSemester = $request->integer('semester', 0);
+
+        $sessions    = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes = CourseType::where('institute_id', $instituteId)->orderBy('name')->get();
+        $courses     = Course::where('institute_id', $instituteId)->where('status', true)
+            ->when($request->course_type_id, fn($q) => $q->where('course_type_id', $request->course_type_id))
+            ->when($this->currentStaff()?->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $this->currentStaff()->allowedCourseIds() ?: [-1]))
+            ->orderBy('name')->get();
+
+        $query = Student::with(['stream.course.type', 'coursePart', 'studentSubjects.subject'])
+            ->where('institute_id', $instituteId)
+            ->where('status', 'active');
+        $this->applyStaffOperationalStudentScope($query);
+
+        if ($sessionId) {
+            $query->where('academic_session_id', $sessionId);
+        }
+        if ($request->course_type_id) {
+            $query->whereHas('stream.course', fn($q) => $q->where('course_type_id', $request->course_type_id));
+        }
+        if ($request->course_id) {
+            $query->whereHas('stream', fn($q) => $q->where('course_id', $request->course_id));
+        }
+        if ($request->stream_id) {
+            $query->where('course_stream_id', $request->stream_id);
+        }
+        if ($filterSemester > 0) {
+            $query->where('current_semester', $filterSemester);
+        }
+        if ($request->search) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                  ->orWhere('father_name', 'like', "%{$s}%")
+                  ->orWhere('mother_name', 'like', "%{$s}%")
+                  ->orWhere('student_uid', 'like', "%{$s}%")
+                  ->orWhere('enrollment_no', 'like', "%{$s}%")
+                  ->orWhere('roll_no', 'like', "%{$s}%");
+            });
+        }
+
+        // Export: all matching rows, unpaginated
+        if (in_array($request->export, ['csv', 'excel', 'pdf'])) {
+            $allStudents = $query->orderBy('name')->get();
+            $this->attachSubjectGroups($allStudents);
+
+            if ($request->export === 'pdf') {
+                $institute = Institute::find($instituteId);
+                return view('institute.reports.subject-wise-student-print', [
+                    'allStudents'   => $allStudents,
+                    'sessionObj'    => AcademicSession::find($sessionId),
+                    'instituteName' => $institute?->name ?? 'Institute',
+                ]);
+            }
+
+            $headers = ['#', 'Std ID', 'Form No', 'UIN No', 'Roll No', 'Enroll No', 'Name',
+                        'Father Name', 'Mother Name', 'Course Type', 'Course', 'Semester',
+                        'Major Subjects', 'Minor Subjects', 'Other Subjects'];
+            $exportRows = [];
+            foreach ($allStudents as $i => $student) {
+                $exportRows[] = [
+                    $i + 1,
+                    $student->student_uid,
+                    $student->institute_form_no,
+                    $student->uin_no,
+                    $student->roll_no,
+                    $student->enrollment_no,
+                    $student->name,
+                    $student->father_name,
+                    $student->mother_name,
+                    $student->stream?->course?->type?->name ?? '',
+                    $student->stream?->course?->name ?? '',
+                    $student->current_semester ? 'Sem ' . $student->current_semester : '',
+                    $student->major_subjects,
+                    $student->minor_subjects,
+                    $student->other_subjects,
+                ];
+            }
+
+            $filename = 'subject-wise-student-' . now()->format('Ymd');
+            if ($request->export === 'excel') {
+                return $this->exportSimpleExcel('Subject Wise Student', $headers, $exportRows, $filename);
+            }
+            return $this->exportCsv($headers, $exportRows, $filename);
+        }
+
+        $perPage = $request->integer('per_page', 20);
+        $perPage = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
+
+        $students = $query->orderBy('name')->paginate($perPage)->withQueryString();
+        $this->attachSubjectGroups($students);
+
+        $streams = $request->course_id
+            ? CourseStream::where('course_id', $request->course_id)->where('status', true)->orderBy('name')->get()
+            : collect();
+
+        return view('institute.reports.subject-wise-student', compact(
+            'students', 'sessions', 'courseTypes', 'courses', 'streams',
+            'activeSession', 'sessionId', 'filterSemester', 'perPage'
+        ));
+    }
+
+    // Groups each student's allocated subjects into Major / Minor / Other (compulsory,
+    // optional, both) buckets as comma-separated names, for the Subject Wise report.
+    private function attachSubjectGroups(iterable $students): void
+    {
+        foreach ($students as $student) {
+            $byRole = $student->studentSubjects->groupBy('subject_role');
+            $student->major_subjects = $byRole->get('major', collect())->pluck('subject.name')->filter()->implode(', ');
+            $student->minor_subjects = $byRole->get('minor', collect())->pluck('subject.name')->filter()->implode(', ');
+            $student->other_subjects = $byRole->except(['major', 'minor'])->flatten(1)->pluck('subject.name')->filter()->implode(', ');
+        }
+    }
+
     // ── Total payable fee calculate karo (FeeCalculatorService use karke) ──
     private function calculatePayable(Student $student, ?int $sessionId, int $semester, int $instituteId): float
     {

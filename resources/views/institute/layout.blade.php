@@ -1091,6 +1091,10 @@
                            href="{{ route('reports.custom-student') }}">
                         <i class="bi bi-table"></i> Custom Report
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.subject-wise-student') ? 'active' : '' }}"
+                           href="{{ route('reports.subject-wise-student') }}">
+                        <i class="bi bi-journal-bookmark"></i> Subject Wise Student
+                    </a></li>
                 </ul>
             </div>
         </li>

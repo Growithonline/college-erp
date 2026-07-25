@@ -556,6 +556,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/daily-collection',    [ReportController::class, 'dailyReport'])->name('daily-collection');
         Route::get('/semester-wise',       [ReportController::class, 'semesterReport'])->name('semester-wise');
         Route::get('/custom-student',      [ReportController::class, 'customStudentReport'])->name('custom-student');
+        Route::get('/subject-wise-student',[ReportController::class, 'subjectWiseStudentReport'])->name('subject-wise-student');
         Route::get('/streams',             [ReportController::class, 'getStreams'])->name('streams');
 
         // Admission sub-reports
@@ -1289,6 +1290,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::get('/daily-collection',    [ReportController::class, 'dailyReport'])->name('daily-collection');
             Route::get('/semester-wise',       [ReportController::class, 'semesterReport'])->name('semester-wise');
             Route::get('/custom-student',      [ReportController::class, 'customStudentReport'])->name('custom-student');
+            Route::get('/subject-wise-student',[ReportController::class, 'subjectWiseStudentReport'])->name('subject-wise-student');
             Route::get('/streams',             [ReportController::class, 'getStreams'])->name('streams');
         });
 

@@ -503,6 +503,10 @@
                            href="{{ route('staff.reports.admission-analytics') }}">
                         <i class="bi bi-graph-up-arrow"></i> Admission Analytics
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('staff.reports.subject-wise-student') ? 'active' : '' }}"
+                           href="{{ route('staff.reports.subject-wise-student') }}">
+                        <i class="bi bi-journal-bookmark"></i> Subject Wise Student
+                    </a></li>
                     @endif
                 </ul>
             </div>
