@@ -1770,16 +1770,17 @@ class PromotionController extends Controller
         $students = $query->orderBy('name')->limit(15)->get();
 
         return response()->json($students->map(fn($st) => [
-            'id'          => $st->id,
-            'name'        => $st->name,
-            'student_uid' => $st->student_uid,
-            'mobile'      => $st->mobile,
-            'father_name' => $st->father_name,
-            'mother_name' => $st->mother_name,
-            'course'      => $st->stream?->course?->name ?? '',
-            'stream'      => $st->stream?->name ?? '',
-            'session'     => $st->session?->name ?? '',
-            'sem'         => $st->current_semester,
+            'id'            => $st->id,
+            'name'          => $st->name,
+            'student_uid'   => $st->student_uid,
+            'enrollment_no' => $st->enrollment_no,
+            'mobile'        => $st->mobile,
+            'father_name'   => $st->father_name,
+            'mother_name'   => $st->mother_name,
+            'course'        => $st->stream?->course?->name ?? '',
+            'stream'        => $st->stream?->name ?? '',
+            'session'       => $st->session?->name ?? '',
+            'sem'           => $st->current_semester,
         ]));
     }
 

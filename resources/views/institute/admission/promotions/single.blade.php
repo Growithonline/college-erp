@@ -101,7 +101,7 @@
             <input type="text" id="singleStudentSearch" class="form-control form-control-sm"
                    placeholder="Name, Student ID or Mobile..." autocomplete="off">
             <div id="singleSearchResults" class="list-group position-absolute w-100 shadow-sm"
-                 style="z-index:100;max-height:360px;overflow-y:auto;"></div>
+                 style="z-index:100;max-height:440px;overflow-y:auto;"></div>
         </div>
         <div class="form-text" style="font-size:11px;">Filters above narrow the search. Type at least 2 characters.</div>
     </div>
@@ -517,13 +517,14 @@ document.getElementById('singleStudentSearch')?.addEventListener('input', functi
                     ? '<div class="list-group-item text-muted small">No students found</div>'
                     : data.map(s => `
                         <a href="${@json($singleBlankUrl)}?student_id=${s.id}${currentFilterParams()}"
-                           class="list-group-item list-group-item-action py-2">
-                            <div class="fw-semibold small">${escHtml(s.name)}
-                                <span class="text-muted fw-normal ms-1" style="font-size:10px;">${escHtml(s.student_uid ?? '')}</span></div>
-                            <div class="text-muted" style="font-size:11px;">
+                           class="list-group-item list-group-item-action py-3">
+                            <div class="fw-bold" style="font-size:14px;">${escHtml(s.name)}
+                                <span class="text-muted fw-normal ms-1" style="font-size:11px;">${escHtml(s.student_uid ?? '')}</span></div>
+                            <div class="text-muted" style="font-size:12px;">
                                 ${escHtml(s.course)}${s.stream ? ' · ' + escHtml(s.stream) : ''} &bull; Sem ${s.sem ?? '-'} &bull; ${escHtml(s.session)}</div>
-                            ${(s.father_name || s.mother_name) ? `<div class="text-muted" style="font-size:10px;">
-                                ${s.father_name ? 'F: ' + escHtml(s.father_name) : ''}${s.father_name && s.mother_name ? ' &bull; ' : ''}${s.mother_name ? 'M: ' + escHtml(s.mother_name) : ''}
+                            ${s.enrollment_no ? `<div class="text-muted" style="font-size:12px;">Enrollment: <span class="fw-semibold">${escHtml(s.enrollment_no)}</span></div>` : ''}
+                            ${(s.father_name || s.mother_name) ? `<div class="mt-1" style="font-size:12px;color:#334155;">
+                                ${s.father_name ? '<span class="fw-bold">F:</span> ' + escHtml(s.father_name) : ''}${s.father_name && s.mother_name ? ' &bull; ' : ''}${s.mother_name ? '<span class="fw-bold">M:</span> ' + escHtml(s.mother_name) : ''}
                             </div>` : ''}
                         </a>`).join('');
             });
