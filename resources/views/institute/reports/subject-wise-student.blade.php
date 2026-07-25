@@ -2,7 +2,6 @@
     $isStaff = auth()->guard('staff')->check();
     $layout = $isStaff ? 'staff.layout' : 'institute.layout';
     $subjectWiseRoute = $isStaff ? 'staff.reports.subject-wise-student' : 'reports.subject-wise-student';
-    $streamsRoute = $isStaff ? 'staff.reports.streams' : 'reports.streams';
 @endphp
 @extends($layout)
 @section('title', 'Subject Wise Student')
@@ -83,7 +82,7 @@
                 {{-- Semester --}}
                 <div class="col-md-1">
                     <label class="form-label small fw-semibold">Semester</label>
-                    <select name="semester" class="form-select form-select-sm">
+                    <select name="semester" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="0" {{ ($filterSemester ?? 0) == 0 ? 'selected' : '' }}>All</option>
                         @for($i=1;$i<=8;$i++)
                             <option value="{{ $i }}" {{ ($filterSemester ?? 0) == $i ? 'selected' : '' }}>S{{ $i }}</option>
@@ -186,37 +185,22 @@
 
 @push('scripts')
 <script>
-const COURSES_ALL = @json($courses->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'type_id' => $c->course_type_id]));
-
-// Course Type → filter courses
+// Each filter submits immediately on change. Course Type/Course also clear their
+// dependent (narrower) filters first, so the reload can't submit a stale course_id/
+// stream_id that no longer matches the newly selected parent — the server already
+// re-narrows the Course and Stream option lists from course_type_id/course_id on
+// every request, so no client-side option rebuilding or AJAX call is needed here.
 document.getElementById('courseTypeFilter').addEventListener('change', function() {
-    const typeId = this.value;
-    const sel    = document.getElementById('courseFilter');
-    sel.innerHTML = '<option value="">— All Courses —</option>';
-    COURSES_ALL.filter(c => !typeId || String(c.type_id) === typeId).forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id; opt.textContent = c.name;
-        sel.appendChild(opt);
-    });
-    document.getElementById('streamFilter').innerHTML = '<option value="">— All Streams —</option>';
+    document.getElementById('courseFilter').value = '';
+    document.getElementById('streamFilter').value = '';
+    this.form.submit();
 });
-
-// Course → fetch streams
 document.getElementById('courseFilter').addEventListener('change', function() {
-    const courseId = this.value;
-    const streamSel = document.getElementById('streamFilter');
-    streamSel.innerHTML = '<option value="">Loading...</option>';
-    if (!courseId) { streamSel.innerHTML = '<option value="">— All Streams —</option>'; return; }
-    fetch(`{{ route($streamsRoute) }}?course_id=${courseId}`)
-        .then(r => r.json())
-        .then(data => {
-            streamSel.innerHTML = '<option value="">— All Streams —</option>';
-            data.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id; opt.textContent = s.name;
-                streamSel.appendChild(opt);
-            });
-        });
+    document.getElementById('streamFilter').value = '';
+    this.form.submit();
+});
+document.getElementById('streamFilter').addEventListener('change', function() {
+    this.form.submit();
 });
 </script>
 @endpush
