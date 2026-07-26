@@ -41,22 +41,31 @@
                     @error('source_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
-                {{-- fee_invoice: flat FeeType vs course-wise --}}
+                {{-- fee_invoice: flat FeeType vs item-type vs course-wise --}}
+                @php
+                    $currentFeeMode = old('fee_mode', ($reportParticular->course_id ?? null) ? 'course' : (($reportParticular->item_type ?? null) ? 'item_type' : 'flat'));
+                @endphp
                 <div id="rpFeeInvoiceFields" class="d-none">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Fee Row Type</label>
-                        <div class="d-flex gap-3">
+                        <div class="d-flex gap-3 flex-wrap">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="fee_mode" id="rpFeeModeFlat" value="flat"
-                                       {{ old('fee_mode', ($reportParticular->fee_type_id ?? null) ? 'flat' : 'flat') == 'flat' ? 'checked' : '' }}>
+                                       {{ $currentFeeMode == 'flat' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="rpFeeModeFlat">Flat Fee Type (e.g. TC Fee)</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="fee_mode" id="rpFeeModeCourse" value="course"
-                                       {{ old('fee_mode') == 'course' || ($reportParticular->course_id ?? null) ? 'checked' : '' }}>
+                                       {{ $currentFeeMode == 'course' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="rpFeeModeCourse">Course-wise (with semester split)</label>
                             </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="fee_mode" id="rpFeeModeItemType" value="item_type"
+                                       {{ $currentFeeMode == 'item_type' ? 'checked' : '' }}>
+                                <label class="form-check-label" for="rpFeeModeItemType">Transport / Practical Fee</label>
+                            </div>
                         </div>
+                        <small class="text-muted">Transport &amp; Practical fee invoice items aren't linked to a Fee Type — use this option for those.</small>
                     </div>
 
                     <div id="rpFeeTypeField" class="mb-3">
@@ -68,6 +77,17 @@
                             @endforeach
                         </select>
                         @error('fee_type_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div id="rpItemTypeField" class="mb-3 d-none">
+                        <label class="form-label fw-semibold">Item Type <span class="text-danger">*</span></label>
+                        <select name="item_type" class="form-select @error('item_type') is-invalid @enderror">
+                            <option value="">Select Item Type</option>
+                            @foreach($itemTypes as $key => $label)
+                                <option value="{{ $key }}" {{ old('item_type', $reportParticular->item_type ?? '') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('item_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div id="rpCourseFields" class="d-none">
@@ -103,14 +123,15 @@
                 </div>
 
                 <div id="rpExpenseFields" class="mb-3 d-none">
-                    <label class="form-label fw-semibold">Expense Category <span class="text-danger">*</span></label>
+                    <label class="form-label fw-semibold">Expense Category</label>
                     <select name="expense_category_l1_id" class="form-select @error('expense_category_l1_id') is-invalid @enderror">
-                        <option value="">Select Category</option>
+                        <option value="">— Uncategorized (expenses saved with no category) —</option>
                         @foreach($expenseCategories as $ec)
                             <option value="{{ $ec->id }}" {{ old('expense_category_l1_id', $reportParticular->expense_category_l1_id ?? '') == $ec->id ? 'selected' : '' }}>{{ $ec->name }}</option>
                         @endforeach
                     </select>
                     @error('expense_category_l1_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    <small class="text-muted">Leave as "Uncategorized" to create a catch-all row for expenses with no category set.</small>
                 </div>
 
                 <div id="rpSalaryFields" class="mb-3 d-none">
@@ -174,15 +195,17 @@
     }
 
     function toggleFeeMode() {
-        const isCourse = document.getElementById('rpFeeModeCourse').checked;
-        document.getElementById('rpCourseFields').classList.toggle('d-none', !isCourse);
-        document.getElementById('rpFeeTypeField').classList.toggle('d-none', isCourse);
+        const mode = document.querySelector('input[name="fee_mode"]:checked')?.value || 'flat';
+        document.getElementById('rpCourseFields').classList.toggle('d-none', mode !== 'course');
+        document.getElementById('rpFeeTypeField').classList.toggle('d-none', mode !== 'flat');
+        document.getElementById('rpItemTypeField').classList.toggle('d-none', mode !== 'item_type');
     }
 
     sectionSel.addEventListener('change', populateSourceTypes);
     sourceSel.addEventListener('change', toggleFields);
     document.getElementById('rpFeeModeFlat').addEventListener('change', toggleFeeMode);
     document.getElementById('rpFeeModeCourse').addEventListener('change', toggleFeeMode);
+    document.getElementById('rpFeeModeItemType').addEventListener('change', toggleFeeMode);
 
     populateSourceTypes();
 })();

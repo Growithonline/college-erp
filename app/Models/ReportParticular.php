@@ -11,6 +11,7 @@ class ReportParticular extends Model
         'section',
         'source_type',
         'fee_type_id',
+        'item_type',
         'course_id',
         'year_number',
         'income_category_id',

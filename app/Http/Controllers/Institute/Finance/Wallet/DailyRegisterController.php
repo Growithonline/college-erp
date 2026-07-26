@@ -121,14 +121,22 @@ class DailyRegisterController extends Controller
             return $this->buildCourseRow($particular, $instituteId, $sessionId, $date);
         }
 
-        if ($particular->source_type === 'fee_invoice' && $particular->fee_type_id) {
+        if ($particular->source_type === 'fee_invoice' && ($particular->fee_type_id || $particular->item_type)) {
             $base = FeeInvoiceItem::query()
                 ->join('fee_invoices', 'fee_invoices.id', '=', 'fee_invoice_items.fee_invoice_id')
-                ->where('fee_invoice_items.fee_type_id', $particular->fee_type_id)
                 ->where('fee_invoices.institute_id', $instituteId)
                 ->when($sessionId, fn ($q) => $q->where('fee_invoices.academic_session_id', $sessionId))
                 ->where('fee_invoices.is_cancelled', false)
                 ->whereDate('fee_invoices.payment_date', $date);
+
+            if ($particular->fee_type_id) {
+                $base->where('fee_invoice_items.fee_type_id', $particular->fee_type_id);
+            } else {
+                // Transport/Practical invoice items aren't linked to a FeeType at all —
+                // only item_type identifies them (see TransportBillingController,
+                // TransportAllocationController, PracticalFeeTokenController).
+                $base->where('fee_invoice_items.item_type', $particular->item_type);
+            }
 
             $count = (clone $base)->distinct()->count('fee_invoices.id');
             $amount = (float) (clone $base)->sum('fee_invoice_items.amount');
@@ -170,12 +178,26 @@ class DailyRegisterController extends Controller
         $totalCount = 0;
         $totalAmount = 0.0;
 
+        // Course::semesterOptionsForYear() always stores semester=0 ("Annual") for
+        // yearly/modular courses — it can't distinguish year in that case, so year
+        // must be resolved via the student's own course_part_id instead. For
+        // semester/trimester courses, FeeInvoice.semester stores the absolute
+        // part_number directly and is set fresh at collection time, so it's the
+        // more reliable signal (matches what the invoice list itself displays).
+        $isYearlyType = !$course || $course->effectiveSemestersPerYear() <= 1;
+
         foreach ($parts as $index => $part) {
             $base = FeeInvoice::where('institute_id', $instituteId)
                 ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
                 ->where('is_cancelled', false)
-                ->whereDate('payment_date', $date)
-                ->whereHas('student', fn ($q) => $q->where('course_part_id', $part->id));
+                ->whereDate('payment_date', $date);
+
+            if ($isYearlyType) {
+                $base->whereHas('student', fn ($q) => $q->where('course_part_id', $part->id));
+            } else {
+                $base->where('semester', $part->part_number)
+                     ->whereHas('student.stream', fn ($q) => $q->where('course_id', $particular->course_id));
+            }
 
             $count = (clone $base)->count();
             $amount = (float) (clone $base)->sum('paid_amount');
@@ -206,14 +228,24 @@ class DailyRegisterController extends Controller
     private function buildExpenseRow(ReportParticular $particular, int $instituteId, ?int $sessionId, string $date): array
     {
         if ($particular->source_type === 'expense') {
-            $base = Expense::where('institute_id', $instituteId)
+            // expense_category_l1_id may be null here — an intentional "Uncategorized"
+            // catch-all row (see ReportParticularController); Eloquent's where(col, null)
+            // compiles to a NULL-safe whereNull automatically.
+            $original = Expense::where('institute_id', $instituteId)
                 ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
                 ->where('expense_category_l1_id', $particular->expense_category_l1_id)
                 ->where('wallet_debited', true)
-                ->where('is_reversed', false)
                 ->whereDate('expense_date', $date);
 
-            return $this->row($particular, (clone $base)->count(), (float) (clone $base)->sum('amount'));
+            $reversedToday = Expense::where('institute_id', $instituteId)
+                ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
+                ->where('expense_category_l1_id', $particular->expense_category_l1_id)
+                ->whereNotNull('reversed_at')
+                ->whereDate('reversed_at', $date);
+
+            $net = $this->netOfReversals($original, $reversedToday, 'amount');
+
+            return $this->row($particular, $net['count'], $net['amount']);
         }
 
         if ($particular->source_type === 'salary') {
@@ -221,28 +253,53 @@ class DailyRegisterController extends Controller
             $amount = 0.0;
 
             if (in_array($particular->salary_scope, ['both', 'teaching'], true)) {
-                $base = SalaryRecord::where('institute_id', $instituteId)
+                $original = SalaryRecord::where('institute_id', $instituteId)
                     ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
                     ->where('wallet_debited', true)
                     ->whereDate('payment_date', $date);
 
-                $count += (clone $base)->count();
-                $amount += (float) (clone $base)->sum('net_payable');
+                $reversedToday = SalaryRecord::where('institute_id', $instituteId)
+                    ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
+                    ->whereNotNull('reversed_at')
+                    ->whereDate('reversed_at', $date);
+
+                $net = $this->netOfReversals($original, $reversedToday, 'net_payable');
+                $count += $net['count'];
+                $amount += $net['amount'];
             }
 
             if (in_array($particular->salary_scope, ['both', 'non_teaching'], true)) {
-                $base = EmployeeSalaryDisbursement::where('institute_id', $instituteId)
+                $original = EmployeeSalaryDisbursement::where('institute_id', $instituteId)
                     ->where('wallet_debited', true)
                     ->whereDate('payment_date', $date);
 
-                $count += (clone $base)->count();
-                $amount += (float) (clone $base)->sum('net_salary');
+                $reversedToday = EmployeeSalaryDisbursement::where('institute_id', $instituteId)
+                    ->whereNotNull('reversed_at')
+                    ->whereDate('reversed_at', $date);
+
+                $net = $this->netOfReversals($original, $reversedToday, 'net_salary');
+                $count += $net['count'];
+                $amount += $net['amount'];
             }
 
             return $this->row($particular, $count, $amount);
         }
 
         return $this->row($particular, 0, 0.0);
+    }
+
+    /**
+     * Cash-basis total for a date: original wallet-debited amount posted that date,
+     * minus any reversal whose reversed_at (not the original expense/payment date)
+     * falls on that date — so a later reversal reduces the day it actually happened
+     * on, instead of silently erasing history on the original day.
+     */
+    private function netOfReversals($original, $reversedToday, string $amountColumn): array
+    {
+        return [
+            'count'  => (clone $original)->count(),
+            'amount' => (float) (clone $original)->sum($amountColumn) - (float) (clone $reversedToday)->sum($amountColumn),
+        ];
     }
 
     private function row(ReportParticular $particular, int $count, float $amount): array

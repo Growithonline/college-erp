@@ -38,12 +38,16 @@
                             {{ $p->course?->name }} — Year {{ $p->year_number }}
                         @elseif($p->fee_type_id)
                             {{ $p->feeType?->name }}
+                        @elseif($p->item_type)
+                            {{ ucfirst($p->item_type) }} (item type)
                         @elseif($p->income_category_id)
                             {{ $p->incomeCategory?->name }}
                         @elseif($p->expense_category_l1_id)
                             {{ $p->expenseCategoryL1?->name }}
                         @elseif($p->salary_scope)
                             {{ ucfirst(str_replace('_',' ', $p->salary_scope)) }}
+                        @elseif($p->source_type === 'expense')
+                            Uncategorized
                         @else
                             —
                         @endif

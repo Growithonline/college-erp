@@ -27,6 +27,13 @@ class ReportParticularController extends Controller
         'salary'         => 'Salary Payout',
     ];
 
+    // Invoice items created without a fee_type_id (e.g. one-time transport fee,
+    // practical exam fee) — only identifiable via FeeInvoiceItem.item_type.
+    private const ITEM_TYPES = [
+        'transport' => 'Transport Fee',
+        'practical' => 'Practical Fee',
+    ];
+
     public function index()
     {
         $instituteId = auth()->user()->institute_id;
@@ -102,6 +109,7 @@ class ReportParticularController extends Controller
         return [
             'sourceTypesBySection' => self::SOURCE_TYPES_BY_SECTION,
             'sourceLabels'         => self::SOURCE_LABELS,
+            'itemTypes'            => self::ITEM_TYPES,
             'feeTypes'             => FeeType::where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get(),
             'courses'              => Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get(),
             'incomeCategories'     => InstituteIncomeCategory::where('institute_id', $instituteId)->active()->orderBy('name')->get(),
@@ -131,6 +139,7 @@ class ReportParticularController extends Controller
             'source_type' => $sourceType,
             'name'        => $request->input('name'),
             'fee_type_id' => null,
+            'item_type'   => null,
             'course_id'   => null,
             'year_number' => null,
             'income_category_id'     => null,
@@ -140,7 +149,7 @@ class ReportParticularController extends Controller
 
         switch ($sourceType) {
             case 'fee_invoice':
-                $mode = $request->input('fee_mode', 'flat'); // 'flat' | 'course'
+                $mode = $request->input('fee_mode', 'flat'); // 'flat' | 'course' | 'item_type'
                 if ($mode === 'course') {
                     $request->validate([
                         'course_id'   => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
@@ -148,6 +157,11 @@ class ReportParticularController extends Controller
                     ]);
                     $data['course_id']   = $request->input('course_id');
                     $data['year_number'] = $request->input('year_number');
+                } elseif ($mode === 'item_type') {
+                    $request->validate([
+                        'item_type' => ['required', Rule::in(array_keys(self::ITEM_TYPES))],
+                    ]);
+                    $data['item_type'] = $request->input('item_type');
                 } else {
                     $request->validate([
                         'fee_type_id' => ['required', Rule::exists('fee_types', 'id')->where('institute_id', $instituteId)],
@@ -164,10 +178,13 @@ class ReportParticularController extends Controller
                 break;
 
             case 'expense':
+                // Left blank = catch-all for expenses saved with no category (the expense
+                // form allows that) — without this row those amounts are invisible to every
+                // other expense particular, since none of them can match a null category.
                 $request->validate([
-                    'expense_category_l1_id' => ['required', Rule::exists('expense_categories_l1', 'id')->where('institute_id', $instituteId)],
+                    'expense_category_l1_id' => ['nullable', Rule::exists('expense_categories_l1', 'id')->where('institute_id', $instituteId)],
                 ]);
-                $data['expense_category_l1_id'] = $request->input('expense_category_l1_id');
+                $data['expense_category_l1_id'] = $request->input('expense_category_l1_id') ?: null;
                 break;
 
             case 'salary':
