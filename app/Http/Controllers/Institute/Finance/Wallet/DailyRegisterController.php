@@ -104,6 +104,12 @@ class DailyRegisterController extends Controller
             'activities'        => 'nullable|string|max:2000',
         ]);
 
+        foreach (['book_no', 'rec_range_from', 'rec_range_to', 'online_range_from', 'online_range_to', 'sr_no', 'activities'] as $field) {
+            if (!empty($data[$field])) {
+                $data[$field] = strtoupper($data[$field]);
+            }
+        }
+
         DailyReportHeader::updateOrCreate(
             ['institute_id' => $instituteId, 'report_date' => $data['report_date']],
             $data + ['created_by' => auth()->id()]
@@ -344,7 +350,7 @@ class DailyRegisterController extends Controller
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('institute.finance.wallet.daily-register-pdf', $data)->setPaper('a4', 'landscape');
 
-            return $pdf->download('daily-register-' . $data['date'] . '.pdf');
+            return $pdf->stream('daily-register-' . $data['date'] . '.pdf');
         }
 
         if ($format === 'csv') {

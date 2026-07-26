@@ -58,31 +58,31 @@
             <div class="row g-2">
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Book No.</label>
-                    <input type="text" name="book_no" value="{{ old('book_no', $header->book_no) }}" class="form-control form-control-sm">
+                    <input type="text" name="book_no" value="{{ old('book_no', $header->book_no) }}" class="form-control form-control-sm" style="text-transform:uppercase">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Rec. Range From</label>
-                    <input type="text" name="rec_range_from" value="{{ old('rec_range_from', $header->rec_range_from) }}" class="form-control form-control-sm">
+                    <input type="text" name="rec_range_from" value="{{ old('rec_range_from', $header->rec_range_from) }}" class="form-control form-control-sm" style="text-transform:uppercase">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Rec. Range To</label>
-                    <input type="text" name="rec_range_to" value="{{ old('rec_range_to', $header->rec_range_to) }}" class="form-control form-control-sm">
+                    <input type="text" name="rec_range_to" value="{{ old('rec_range_to', $header->rec_range_to) }}" class="form-control form-control-sm" style="text-transform:uppercase">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Online From</label>
-                    <input type="text" name="online_range_from" value="{{ old('online_range_from', $header->online_range_from) }}" class="form-control form-control-sm">
+                    <input type="text" name="online_range_from" value="{{ old('online_range_from', $header->online_range_from) }}" class="form-control form-control-sm" style="text-transform:uppercase">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Online To</label>
-                    <input type="text" name="online_range_to" value="{{ old('online_range_to', $header->online_range_to) }}" class="form-control form-control-sm">
+                    <input type="text" name="online_range_to" value="{{ old('online_range_to', $header->online_range_to) }}" class="form-control form-control-sm" style="text-transform:uppercase">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">S.R. No.</label>
-                    <input type="text" name="sr_no" value="{{ old('sr_no', $header->sr_no) }}" class="form-control form-control-sm">
+                    <input type="text" name="sr_no" value="{{ old('sr_no', $header->sr_no) }}" class="form-control form-control-sm" style="text-transform:uppercase">
                 </div>
                 <div class="col-md-10">
                     <label class="form-label small mb-1">Activities</label>
-                    <input type="text" name="activities" value="{{ old('activities', $header->activities) }}" class="form-control form-control-sm">
+                    <input type="text" name="activities" value="{{ old('activities', $header->activities) }}" class="form-control form-control-sm" style="text-transform:uppercase">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-check-lg me-1"></i>Save</button>

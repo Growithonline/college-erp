@@ -137,7 +137,7 @@ class ReportParticularController extends Controller
         $data = [
             'section'     => $section,
             'source_type' => $sourceType,
-            'name'        => $request->input('name'),
+            'name'        => strtoupper($request->input('name')),
             'fee_type_id' => null,
             'item_type'   => null,
             'course_id'   => null,

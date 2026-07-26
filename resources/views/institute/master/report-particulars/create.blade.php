@@ -19,7 +19,8 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
                     <input type="text" name="name" value="{{ old('name', $reportParticular->name ?? '') }}"
-                           class="form-control @error('name') is-invalid @enderror" placeholder="e.g. B.A. 1st Year, TC Fee, Library Fine">
+                           class="form-control @error('name') is-invalid @enderror" placeholder="e.g. B.A. 1st Year, TC Fee, Library Fine"
+                           style="text-transform:uppercase">
                     @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
