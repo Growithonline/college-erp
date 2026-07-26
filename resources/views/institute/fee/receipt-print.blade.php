@@ -212,6 +212,12 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
     body.print-pdf #a4-view      { display:block !important; }
     body.print-pdf #thermal-view { display:none  !important; }
 }
+
+body.hide-institute .r-header .inst,
+body.hide-institute .watermark,
+body.hide-institute .inst-name {
+    display: none !important;
+}
 </style>
 </head>
 <body id="printBody" class="print-a4">
@@ -280,6 +286,16 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
                     🖨️ Thermal (80mm)
                 </button>
             </div>
+
+            @if(in_array($panel, ['institute', 'staff']))
+            <div class="sb-section">
+                <div class="sb-label">Options</div>
+                <label class="sb-btn sb-nav" style="cursor:pointer;">
+                    <input type="checkbox" id="hideInstituteToggle" onchange="toggleHideInstitute(this)" style="margin:0;">
+                    Hide Institute Details
+                </label>
+            </div>
+            @endif
 
             <div class="sb-section">
                 <div class="sb-label">Actions</div>
@@ -540,7 +556,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
                 <div class="thermal-sheet">
                     @php $fr = 'display:flex;justify-content:space-between;margin-bottom:2px;font-size:10px;font-weight:600;'; @endphp
 
-                    <div style="text-align:center;font-size:16px;font-weight:700;line-height:1.15;">{{ $inst->name ?? 'Institute Name' }}</div>
+                    <div class="inst-name" style="text-align:center;font-size:16px;font-weight:700;line-height:1.15;">{{ $inst->name ?? 'Institute Name' }}</div>
 
                     <div style="text-align:center;font-size:11px;font-weight:700;border:1px solid #000;padding:2px;margin:3px 0;">
                         Fee Receipt{{ $receipt->is_cancelled ? ' - CANCELLED' : '' }}{{ $receipt->session?->name ? ' (' . $receipt->session->name . ')' : '' }}
@@ -618,7 +634,17 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 
 <script>
 let currentMode = 'a4';
+let hideInstitute = false;
 const queryParams = new URLSearchParams(window.location.search);
+
+function applyBodyClass(baseClass) {
+    document.getElementById('printBody').className = baseClass + (hideInstitute ? ' hide-institute' : '');
+}
+
+function toggleHideInstitute(checkbox) {
+    hideInstitute = checkbox.checked;
+    applyBodyClass(currentMode === 'thermal' ? 'print-thermal' : 'print-a4');
+}
 
 function syncPageStyle(mode) {
     let style = document.getElementById('_printPageStyle');
@@ -639,7 +665,7 @@ function thermalPageCss() {
 
 function setMode(mode) {
     currentMode = mode;
-    document.getElementById('printBody').className = mode === 'thermal' ? 'print-thermal' : 'print-a4';
+    applyBodyClass(mode === 'thermal' ? 'print-thermal' : 'print-a4');
     document.getElementById('a4-view').style.display      = mode === 'a4'      ? 'block' : 'none';
     document.getElementById('thermal-view').style.display = mode === 'thermal' ? 'block' : 'none';
     document.getElementById('tabA4').classList.toggle('active',      mode === 'a4');
@@ -648,7 +674,7 @@ function setMode(mode) {
 }
 
 function printReceipt() {
-    document.getElementById('printBody').className = currentMode === 'thermal' ? 'print-thermal' : 'print-a4';
+    applyBodyClass(currentMode === 'thermal' ? 'print-thermal' : 'print-a4');
     syncPageStyle(currentMode);
     if (currentMode === 'thermal') {
         printWithoutBrowserTitle(() => window.print());
@@ -658,7 +684,7 @@ function printReceipt() {
 }
 
 function savePDF() {
-    document.getElementById('printBody').className = 'print-pdf';
+    applyBodyClass('print-pdf');
     syncPageStyle('a4');
     setTimeout(() => window.print(), 100);
 }
