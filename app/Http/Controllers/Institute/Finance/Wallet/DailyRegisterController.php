@@ -21,6 +21,11 @@ use Illuminate\Http\Request;
 
 class DailyRegisterController extends Controller
 {
+    // Fixed non-cash payment mode columns for the PDF's bank-wise pivot table —
+    // matches FeeInvoice.payment_mode's enum values, excluding 'cash' (shown
+    // separately as "By Hand Receipt").
+    private const NON_CASH_MODES = ['UPI', 'ONLINE', 'NEFT', 'RTGS', 'CHEQUE', 'DD'];
+
     private function instituteId(): int
     {
         return auth()->user()->institute_id;
@@ -94,6 +99,7 @@ class DailyRegisterController extends Controller
             'date'             => $date,
             'instituteName'    => Institute::find($instituteId)?->name ?? '',
             'yearLabels'       => $yearLabels,
+            'nonCashModes'     => self::NON_CASH_MODES,
         ];
 
         if ($request->filled('export')) {
@@ -430,14 +436,22 @@ class DailyRegisterController extends Controller
                 $bank = $bankId ? ($bankAccounts[$bankId] ?? null) : null;
 
                 return [
-                    'bank_name' => $bank?->account_name ?? $bank?->bank_name ?? ($bankId ? ('Bank #' . $bankId) : 'Unassigned / Other Online'),
-                    'count'     => (int) $group->sum('cnt'),
-                    'amount'    => (float) $group->sum('total'),
-                    'modes'     => $group->map(fn ($r) => [
+                    'bank_name'    => $bank?->bank_name ?? $bank?->display_label ?? $bank?->account_name ?? ($bankId ? ('Bank #' . $bankId) : 'Unassigned / Other Online'),
+                    'count'        => (int) $group->sum('cnt'),
+                    'amount'       => (float) $group->sum('total'),
+                    'modes'        => $group->map(fn ($r) => [
                         'mode'   => strtoupper($r->payment_mode ?? 'OTHER'),
                         'count'  => (int) $r->cnt,
                         'amount' => (float) $r->total,
                     ])->values(),
+                    // Keyed by mode name for O(1) lookup when rendering a fixed
+                    // set of mode columns (PDF pivot table).
+                    'modes_by_key' => $group->mapWithKeys(fn ($r) => [
+                        strtoupper($r->payment_mode ?? 'OTHER') => [
+                            'count'  => (int) $r->cnt,
+                            'amount' => (float) $r->total,
+                        ],
+                    ]),
                 ];
             })
             ->sortByDesc('amount')

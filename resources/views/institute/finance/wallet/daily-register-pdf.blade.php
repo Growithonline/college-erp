@@ -48,17 +48,29 @@ Computerized Receipt: ₹{{ number_format($receiptModeSplit['computerized']['amo
 <span class="muted">(reference only, already included in Income below)</span></h3>
 @if($receiptModeSplit['bank_wise']->isNotEmpty())
 <table class="data">
-    <thead><tr><th>Bank Account</th><th>Mode</th><th class="r">Count</th><th class="r">Amount</th></tr></thead>
+    <thead>
+        <tr>
+            <th>Bank Account</th><th class="r">Count</th>
+            @foreach($nonCashModes as $mode)<th class="r">{{ $mode }}</th>@endforeach
+            <th class="r">Amount</th>
+        </tr>
+    </thead>
     <tbody>
         @foreach($receiptModeSplit['bank_wise'] as $bank)
-            @foreach($bank['modes'] as $m)
-            <tr>
-                <td>{{ $bank['bank_name'] }}</td>
-                <td>{{ $m['mode'] }}</td>
-                <td class="r">{{ $m['count'] }}</td>
-                <td class="r">₹{{ number_format($m['amount'], 2) }}</td>
-            </tr>
+        <tr>
+            <td>{{ $bank['bank_name'] }}</td>
+            <td class="r">{{ $bank['count'] }}</td>
+            @foreach($nonCashModes as $mode)
+            <td class="r">
+                @if(!empty($bank['modes_by_key'][$mode]))
+                    ₹{{ number_format($bank['modes_by_key'][$mode]['amount'], 0) }} | {{ $bank['modes_by_key'][$mode]['count'] }}
+                @else
+                    —
+                @endif
+            </td>
             @endforeach
+            <td class="r">₹{{ number_format($bank['amount'], 2) }}</td>
+        </tr>
         @endforeach
     </tbody>
 </table>
