@@ -46,16 +46,86 @@ class SalaryController extends Controller
 
         $instituteId = $this->instituteId();
 
-        $salaryRecords = EmployeeSalaryDisbursement::with(['employee.department', 'employee.designation', 'expenseAccount', 'bankAccount', 'journalEntry'])
+        $staffRecords = SalaryRecord::with(['staffMember.role', 'expenseAccount', 'bankAccount'])
             ->where('institute_id', $instituteId)
-            ->orderByDesc('year')
-            ->orderByDesc('month')
-            ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->map(function (SalaryRecord $record) {
+                $totalDeductions = round(
+                    (float) $record->deductions
+                    + (float) $record->absence_deduction
+                    + (float) $record->pf_employee
+                    + (float) $record->esi_employee
+                    + (float) $record->tds
+                    + (float) $record->professional_tax
+                    + (float) $record->loan_deduction,
+                    2
+                );
 
-        $totalPayable = (float) $salaryRecords->sum('gross_salary');
-        $totalPaid    = (float) $salaryRecords->where('status', 'paid')->sum('net_salary');
-        $pendingCount = $salaryRecords->where('status', 'pending')->count();
+                return (object) [
+                    'type'          => 'staff',
+                    'id'            => $record->id,
+                    'year'          => (int) $record->salary_year,
+                    'month'         => (int) $record->salary_month,
+                    'payment_date'  => $record->payment_date,
+                    'name'          => $record->staffMember?->name ?? '—',
+                    'sub_label'     => $record->staffMember?->role?->name ?? 'Staff',
+                    'expense_head'  => $record->expenseAccount,
+                    'gross'         => round((float) $record->net_payable + $totalDeductions, 2),
+                    'deductions'    => $totalDeductions,
+                    'net'           => (float) $record->net_payable,
+                    'payment_mode'  => $record->payment_mode,
+                    'bank_account'  => $record->bankAccount,
+                    'status'        => $record->status,
+                    'journal_entry_id'          => $record->journal_entry_id,
+                    'reversal_journal_entry_id' => $record->reversal_journal_entry_id,
+                    'pay_route'     => !in_array($record->status, [SalaryRecord::STATUS_PAID, SalaryRecord::STATUS_REVERSED], true)
+                        ? route('finance.salary.pay', $record->id) : null,
+                    'reverse_route' => $record->status === SalaryRecord::STATUS_PAID
+                        ? route('finance.salary.reverse', $record->id) : null,
+                    'profile_route' => null,
+                ];
+            });
+
+        $employeeRecords = EmployeeSalaryDisbursement::with(['employee.department', 'employee.designation', 'expenseAccount', 'bankAccount'])
+            ->where('institute_id', $instituteId)
+            ->get()
+            ->map(function (EmployeeSalaryDisbursement $record) {
+                $subLabel = collect([$record->employee?->department?->name, $record->employee?->designation?->name])
+                    ->filter()
+                    ->join(' · ');
+
+                return (object) [
+                    'type'          => 'employee',
+                    'id'            => $record->id,
+                    'year'          => (int) $record->year,
+                    'month'         => (int) $record->month,
+                    'payment_date'  => $record->payment_date,
+                    'name'          => $record->employee?->name ?? '—',
+                    'sub_label'     => $subLabel ?: 'Employee',
+                    'expense_head'  => $record->expenseAccount,
+                    'gross'         => (float) $record->gross_salary,
+                    'deductions'    => (float) $record->deductions,
+                    'net'           => (float) $record->net_salary,
+                    'payment_mode'  => $record->payment_mode,
+                    'bank_account'  => $record->bankAccount,
+                    'status'        => $record->status,
+                    'journal_entry_id'          => $record->journal_entry_id,
+                    'reversal_journal_entry_id' => $record->reversal_journal_entry_id,
+                    'pay_route'     => null,
+                    'reverse_route' => $record->status === 'paid' && $record->employee_id
+                        ? route('employees.salary.reverseForm', [$record->employee_id, $record->id]) : null,
+                    'profile_route' => $record->employee_id
+                        ? route('employees.salary.disbursements', $record->employee_id) : null,
+                ];
+            });
+
+        $salaryRecords = $staffRecords->concat($employeeRecords)
+            ->sort(fn ($a, $b) => [$b->year, $b->month, $b->id] <=> [$a->year, $a->month, $a->id])
+            ->values();
+
+        $totalPayable = round((float) $salaryRecords->sum('gross'), 2);
+        $totalPaid    = round((float) $salaryRecords->where('status', 'paid')->sum('net'), 2);
+        $pendingCount = $salaryRecords->whereNotIn('status', ['paid', 'reversed'])->count();
 
         return view('institute.finance.salary.index', compact(
             'salaryRecords',

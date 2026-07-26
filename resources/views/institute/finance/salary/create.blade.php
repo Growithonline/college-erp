@@ -1,11 +1,11 @@
 @extends('institute.layout')
-@section('title', 'Add Salary Record')
+@section('title', 'Add Staff Salary')
 @section('breadcrumb', 'Finance / Salary / Add')
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2 text-primary"></i>Add Salary Record</h4>
+        <h4 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2 text-primary"></i>Add Staff Salary</h4>
         <small class="text-muted">Pending salary create karo ya chahe to same screen se paid salary bhi save kar do</small>
     </div>
     <a href="{{ route('finance.salary.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -16,8 +16,12 @@
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="alert alert-info border-0 shadow-sm">
-            <div class="fw-semibold mb-1">Tip</div>
-            <div class="small mb-0">Agar payment details blank chhodoge to record `Pending` rahega. Payment details bharoge to salary directly paid mark ho jayegi.</div>
+            <div class="fw-semibold mb-1">Note</div>
+            <div class="small mb-0">
+                Yeh form sirf teaching/office staff (StaffMember) ke liye hai. Transport/support staff (drivers, helpers) ki salary
+                <a href="{{ route('employees.index') }}">Employees section</a> se manage hoti hai.
+                Agar payment details blank chhodoge to record <code>Pending</code> rahega, bharoge to salary directly paid mark ho jayegi.
+            </div>
         </div>
 
         <div class="card border-0 shadow-sm">
