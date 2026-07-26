@@ -57,6 +57,20 @@ class DailyRegisterController extends Controller
             $totalExpense += $row['amount'];
         }
 
+        // Course-wise rows carry a year_data map (1, 2, 3...) — the table needs a
+        // fixed set of "Year" columns wide enough for whichever configured course
+        // has the most years, so every row lines up under the same header.
+        $maxYears = 0;
+        foreach ($incomeRows as $row) {
+            if (!empty($row['year_data'])) {
+                $maxYears = max($maxYears, max(array_keys($row['year_data'])));
+            }
+        }
+        $yearLabels = [];
+        for ($y = 1; $y <= $maxYears; $y++) {
+            $yearLabels[$y] = $this->yearLabel($y);
+        }
+
         $receiptModeSplit = $this->receiptModeSplit($instituteId, $sessionId, $date);
 
         $lastBalance = (float) (InstituteTransaction::where('institute_id', $instituteId)
@@ -78,6 +92,7 @@ class DailyRegisterController extends Controller
             'header'           => $header,
             'date'             => $date,
             'instituteName'    => Institute::find($instituteId)?->name ?? '',
+            'yearLabels'       => $yearLabels,
         ];
 
         if ($request->filled('export')) {
@@ -171,19 +186,77 @@ class DailyRegisterController extends Controller
         return $this->row($particular, 0, 0.0);
     }
 
+    /**
+     * One row per COURSE (not per course+year) — covers every year of the course,
+     * so the admin doesn't need a separate particular for each year. The report
+     * renders one "Year" table column per year, each holding that year's own
+     * semester/trimester breakdown.
+     */
     private function buildCourseRow(ReportParticular $particular, int $instituteId, ?int $sessionId, string $date): array
     {
         $course = $particular->course;
 
-        $parts = CoursePart::where('course_id', $particular->course_id)
-            ->where('year_number', $particular->year_number)
-            ->orderBy('part_number')
-            ->get();
+        // Modular/certificate courses use CoursePart.year_number to count MONTHS,
+        // not academic years (see CourseController::generateCourseParts) — a
+        // per-month breakdown doesn't map to "1st Year/2nd Year" columns, so these
+        // are aggregated as a single flat "Year 1" total instead.
+        if ($course && $course->isShortTerm()) {
+            $base = FeeInvoice::where('institute_id', $instituteId)
+                ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
+                ->where('is_cancelled', false)
+                ->whereDate('payment_date', $date)
+                ->whereHas('student.stream', fn ($q) => $q->where('course_id', $particular->course_id));
 
-        $subColumns = [];
+            $count = (clone $base)->count();
+            $amount = (float) (clone $base)->sum('paid_amount');
+
+            return [
+                'particular' => $particular,
+                'name'       => $particular->name,
+                'count'      => $count,
+                'amount'     => $amount,
+                'year_data'  => [1 => [
+                    'sub_columns' => [['label' => 'Year', 'count' => $count, 'amount' => $amount]],
+                    'count'       => $count,
+                    'amount'      => $amount,
+                ]],
+            ];
+        }
+
+        $numYears = (int) (CoursePart::where('course_id', $particular->course_id)->max('year_number') ?: 1);
+
+        $yearData = [];
         $totalCount = 0;
         $totalAmount = 0.0;
 
+        for ($year = 1; $year <= $numYears; $year++) {
+            $parts = CoursePart::where('course_id', $particular->course_id)
+                ->where('year_number', $year)
+                ->orderBy('part_number')
+                ->get();
+
+            [$subColumns, $yearCount, $yearAmount] = $this->partsBreakdown($parts, $particular, $course, $instituteId, $sessionId, $date);
+
+            $yearData[$year] = ['sub_columns' => $subColumns, 'count' => $yearCount, 'amount' => $yearAmount];
+            $totalCount += $yearCount;
+            $totalAmount += $yearAmount;
+        }
+
+        return [
+            'particular' => $particular,
+            'name'       => $particular->name,
+            'count'      => $totalCount,
+            'amount'     => $totalAmount,
+            'year_data'  => $yearData,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<CoursePart>  $parts  the semester/trimester parts of a single year
+     * @return array{0: array, 1: int, 2: float} [sub_columns, count, amount]
+     */
+    private function partsBreakdown($parts, ReportParticular $particular, $course, int $instituteId, ?int $sessionId, string $date): array
+    {
         // Course::semesterOptionsForYear() always stores semester=0 ("Annual") for
         // yearly/modular courses — it can't distinguish year in that case, so year
         // must be resolved via the student's own course_part_id instead. For
@@ -191,6 +264,10 @@ class DailyRegisterController extends Controller
         // part_number directly and is set fresh at collection time, so it's the
         // more reliable signal (matches what the invoice list itself displays).
         $isYearlyType = !$course || $course->effectiveSemestersPerYear() <= 1;
+
+        $subColumns = [];
+        $count = 0;
+        $amount = 0.0;
 
         foreach ($parts as $index => $part) {
             $base = FeeInvoice::where('institute_id', $instituteId)
@@ -205,21 +282,15 @@ class DailyRegisterController extends Controller
                      ->whereHas('student.stream', fn ($q) => $q->where('course_id', $particular->course_id));
             }
 
-            $count = (clone $base)->count();
-            $amount = (float) (clone $base)->sum('paid_amount');
+            $c = (clone $base)->count();
+            $a = (float) (clone $base)->sum('paid_amount');
 
-            $subColumns[] = ['label' => $this->partLabel($course, $index), 'count' => $count, 'amount' => $amount];
-            $totalCount += $count;
-            $totalAmount += $amount;
+            $subColumns[] = ['label' => $this->partLabel($course, $index), 'count' => $c, 'amount' => $a];
+            $count += $c;
+            $amount += $a;
         }
 
-        return [
-            'particular'  => $particular,
-            'name'        => $particular->name,
-            'count'       => $totalCount,
-            'amount'      => $totalAmount,
-            'sub_columns' => $subColumns,
-        ];
+        return [$subColumns, $count, $amount];
     }
 
     private function partLabel($course, int $index): string
@@ -229,6 +300,18 @@ class DailyRegisterController extends Controller
         }
 
         return ($course->structure_type === 'trimester' ? 'Tri ' : 'Sem ') . ($index + 1);
+    }
+
+    private function yearLabel(int $n): string
+    {
+        $suffix = match (true) {
+            $n === 1 => 'st',
+            $n === 2 => 'nd',
+            $n === 3 => 'rd',
+            default  => 'th',
+        };
+
+        return "{$n}{$suffix} Year";
     }
 
     private function buildExpenseRow(ReportParticular $particular, int $instituteId, ?int $sessionId, string $date): array
@@ -311,11 +394,11 @@ class DailyRegisterController extends Controller
     private function row(ReportParticular $particular, int $count, float $amount): array
     {
         return [
-            'particular'  => $particular,
-            'name'        => $particular->name,
-            'count'       => $count,
-            'amount'      => $amount,
-            'sub_columns' => null,
+            'particular' => $particular,
+            'name'       => $particular->name,
+            'count'      => $count,
+            'amount'     => $amount,
+            'year_data'  => null,
         ];
     }
 

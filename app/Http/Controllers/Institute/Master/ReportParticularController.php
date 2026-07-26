@@ -151,12 +151,13 @@ class ReportParticularController extends Controller
             case 'fee_invoice':
                 $mode = $request->input('fee_mode', 'flat'); // 'flat' | 'course' | 'item_type'
                 if ($mode === 'course') {
+                    // One row covers every year of the course — the report itself
+                    // expands it into a "Year" column per year, so no year_number
+                    // is collected here.
                     $request->validate([
-                        'course_id'   => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
-                        'year_number' => 'required|integer|min:1|max:10',
+                        'course_id' => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
                     ]);
-                    $data['course_id']   = $request->input('course_id');
-                    $data['year_number'] = $request->input('year_number');
+                    $data['course_id'] = $request->input('course_id');
                 } elseif ($mode === 'item_type') {
                     $request->validate([
                         'item_type' => ['required', Rule::in(array_keys(self::ITEM_TYPES))],

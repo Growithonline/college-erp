@@ -35,7 +35,7 @@
                     <td><span class="badge bg-info-subtle text-info border border-info-subtle">{{ $sourceLabels[$p->source_type] ?? $p->source_type }}</span></td>
                     <td class="text-muted small">
                         @if($p->course_id)
-                            {{ $p->course?->name }} — Year {{ $p->year_number }}
+                            {{ $p->course?->name }} — All Years
                         @elseif($p->fee_type_id)
                             {{ $p->feeType?->name }}
                         @elseif($p->item_type)

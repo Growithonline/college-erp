@@ -101,13 +101,7 @@
                                 @endforeach
                             </select>
                             @error('course_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Year Number <span class="text-danger">*</span></label>
-                            <input type="number" name="year_number" min="1" max="10" value="{{ old('year_number', $reportParticular->year_number ?? '') }}"
-                                   class="form-control @error('year_number') is-invalid @enderror" placeholder="e.g. 1 for 1st Year">
-                            @error('year_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            <small class="text-muted">Semester/trimester sub-columns are derived automatically from the course's structure.</small>
+                            <small class="text-muted">Covers every year of this course — the report shows a "Year" column per year, each with its own semester/trimester breakdown.</small>
                         </div>
                     </div>
                 </div>

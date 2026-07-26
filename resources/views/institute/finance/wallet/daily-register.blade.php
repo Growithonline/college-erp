@@ -126,31 +126,39 @@
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0 small">
             <thead class="table-light">
-                <tr><th>#</th><th>Particular</th><th>Breakdown</th><th class="text-end">Count</th><th class="text-end">Amount</th></tr>
+                <tr>
+                    <th>#</th><th>Particular</th><th class="text-end">Count</th>
+                    @foreach($yearLabels as $label)
+                        <th>{{ $label }}</th>
+                    @endforeach
+                    <th class="text-end">Amount</th>
+                </tr>
             </thead>
             <tbody>
                 @forelse($incomeRows as $i => $row)
                 <tr>
                     <td class="text-muted">{{ $i + 1 }}</td>
                     <td class="fw-semibold">{{ $row['name'] }}</td>
-                    <td class="text-muted">
-                        @if(!empty($row['sub_columns']))
-                            @foreach($row['sub_columns'] as $sub)
-                                <span class="badge bg-light text-dark border me-1">{{ $sub['label'] }}: {{ $sub['count'] }} (₹{{ number_format($sub['amount'], 0) }})</span>
-                            @endforeach
-                        @else
-                            —
-                        @endif
-                    </td>
                     <td class="text-end">{{ $row['count'] }}</td>
+                    @foreach($yearLabels as $y => $label)
+                        <td class="text-muted">
+                            @if(!empty($row['year_data'][$y]))
+                                @foreach($row['year_data'][$y]['sub_columns'] as $sub)
+                                    <span class="badge bg-light text-dark border me-1">{{ $sub['label'] }}: {{ $sub['count'] }} (₹{{ number_format($sub['amount'], 0) }})</span>
+                                @endforeach
+                            @else
+                                —
+                            @endif
+                        </td>
+                    @endforeach
                     <td class="text-end fw-semibold text-success">₹{{ number_format($row['amount'], 2) }}</td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="text-center text-muted py-3">No income particulars configured. <a href="{{ route('master.report-particulars.create') }}">Add one</a>.</td></tr>
+                <tr><td colspan="{{ 4 + count($yearLabels) }}" class="text-center text-muted py-3">No income particulars configured. <a href="{{ route('master.report-particulars.create') }}">Add one</a>.</td></tr>
                 @endforelse
             </tbody>
             <tfoot class="table-light fw-bold">
-                <tr><td colspan="4">Total (A)</td><td class="text-end text-success">₹{{ number_format($totalIncome, 2) }}</td></tr>
+                <tr><td colspan="{{ 3 + count($yearLabels) }}">Total (A)</td><td class="text-end text-success">₹{{ number_format($totalIncome, 2) }}</td></tr>
             </tfoot>
         </table>
     </div>

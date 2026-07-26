@@ -51,24 +51,32 @@ Computerized Receipt: ₹{{ number_format($receiptModeSplit['computerized']['amo
 <div class="section">
 <h3>Income</h3>
 <table class="data">
-    <thead><tr><th>Particular</th><th>Breakdown</th><th class="r">Count</th><th class="r">Amount</th></tr></thead>
+    <thead>
+        <tr>
+            <th>Particular</th><th class="r">Count</th>
+            @foreach($yearLabels as $label)<th>{{ $label }}</th>@endforeach
+            <th class="r">Amount</th>
+        </tr>
+    </thead>
     <tbody>
         @foreach($incomeRows as $row)
         <tr>
             <td>{{ $row['name'] }}</td>
+            <td class="r">{{ $row['count'] }}</td>
+            @foreach($yearLabels as $y => $label)
             <td class="muted">
-                @if(!empty($row['sub_columns']))
-                    @foreach($row['sub_columns'] as $sub){{ $sub['label'] }}: {{ $sub['count'] }} (₹{{ number_format($sub['amount'], 0) }}){{ !$loop->last ? ', ' : '' }}@endforeach
+                @if(!empty($row['year_data'][$y]))
+                    @foreach($row['year_data'][$y]['sub_columns'] as $sub){{ $sub['label'] }}: {{ $sub['count'] }} (₹{{ number_format($sub['amount'], 0) }}){{ !$loop->last ? ', ' : '' }}@endforeach
                 @else
                     —
                 @endif
             </td>
-            <td class="r">{{ $row['count'] }}</td>
+            @endforeach
             <td class="r">₹{{ number_format($row['amount'], 2) }}</td>
         </tr>
         @endforeach
     </tbody>
-    <tfoot><tr><td colspan="3">Total (A)</td><td class="r">₹{{ number_format($totalIncome, 2) }}</td></tr></tfoot>
+    <tfoot><tr><td colspan="{{ 2 + count($yearLabels) }}">Total (A)</td><td class="r">₹{{ number_format($totalIncome, 2) }}</td></tr></tfoot>
 </table>
 </div>
 
