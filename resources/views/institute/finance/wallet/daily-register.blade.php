@@ -94,10 +94,10 @@
 
 {{-- ── Receipt mode reference (By Hand vs Computerized) ───────────────────── --}}
 <div class="row g-3 mb-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex justify-content-between align-items-center">
-                <div><i class="bi bi-pencil-square text-secondary me-2"></i>By Hand Receipt <small class="text-muted">(reference only)</small></div>
+                <div><i class="bi bi-pencil-square text-secondary me-2"></i>By Hand Receipt (Cash) <small class="text-muted d-block">(reference only)</small></div>
                 <div class="text-end">
                     <div class="fw-bold">₹{{ number_format($receiptModeSplit['by_hand']['amount'], 2) }}</div>
                     <small class="text-muted">{{ $receiptModeSplit['by_hand']['count'] }} receipts</small>
@@ -105,14 +105,40 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-8">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div><i class="bi bi-laptop text-secondary me-2"></i>Computerized Receipt <small class="text-muted">(reference only)</small></div>
-                <div class="text-end">
-                    <div class="fw-bold">₹{{ number_format($receiptModeSplit['computerized']['amount'], 2) }}</div>
-                    <small class="text-muted">{{ $receiptModeSplit['computerized']['count'] }} receipts</small>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center {{ $receiptModeSplit['bank_wise']->isNotEmpty() ? 'mb-2' : '' }}">
+                    <div><i class="bi bi-laptop text-secondary me-2"></i>Computerized Receipt <small class="text-muted">(reference only)</small></div>
+                    <div class="text-end">
+                        <div class="fw-bold">₹{{ number_format($receiptModeSplit['computerized']['amount'], 2) }}</div>
+                        <small class="text-muted">{{ $receiptModeSplit['computerized']['count'] }} receipts</small>
+                    </div>
                 </div>
+                @if($receiptModeSplit['bank_wise']->isNotEmpty())
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 small">
+                        <tbody>
+                            @foreach($receiptModeSplit['bank_wise'] as $bank)
+                            <tr class="cursor-pointer" data-bs-toggle="collapse" data-bs-target="#drBank{{ $loop->index }}" style="cursor:pointer">
+                                <td><i class="bi bi-chevron-down small me-1 text-muted"></i>{{ $bank['bank_name'] }}</td>
+                                <td class="text-end text-muted">{{ $bank['count'] }} txns</td>
+                                <td class="text-end fw-semibold">₹{{ number_format($bank['amount'], 2) }}</td>
+                            </tr>
+                            <tr class="collapse" id="drBank{{ $loop->index }}">
+                                <td colspan="3" class="p-0">
+                                    <div class="px-3 py-2" style="background:#f8fafc">
+                                        @foreach($bank['modes'] as $m)
+                                            <span class="badge bg-light text-dark border me-1">{{ $m['mode'] }}: {{ $m['count'] }} (₹{{ number_format($m['amount'], 0) }})</span>
+                                        @endforeach
+                                    </div>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @endif
             </div>
         </div>
     </div>

@@ -42,10 +42,27 @@
 </table>
 
 <div class="section">
-<h3>By Hand Receipt: ₹{{ number_format($receiptModeSplit['by_hand']['amount'], 2) }} ({{ $receiptModeSplit['by_hand']['count'] }})
+<h3>By Hand Receipt (Cash): ₹{{ number_format($receiptModeSplit['by_hand']['amount'], 2) }} ({{ $receiptModeSplit['by_hand']['count'] }})
 &nbsp;&nbsp;|&nbsp;&nbsp;
 Computerized Receipt: ₹{{ number_format($receiptModeSplit['computerized']['amount'], 2) }} ({{ $receiptModeSplit['computerized']['count'] }})
 <span class="muted">(reference only, already included in Income below)</span></h3>
+@if($receiptModeSplit['bank_wise']->isNotEmpty())
+<table class="data">
+    <thead><tr><th>Bank Account</th><th>Mode</th><th class="r">Count</th><th class="r">Amount</th></tr></thead>
+    <tbody>
+        @foreach($receiptModeSplit['bank_wise'] as $bank)
+            @foreach($bank['modes'] as $m)
+            <tr>
+                <td>{{ $bank['bank_name'] }}</td>
+                <td>{{ $m['mode'] }}</td>
+                <td class="r">{{ $m['count'] }}</td>
+                <td class="r">₹{{ number_format($m['amount'], 2) }}</td>
+            </tr>
+            @endforeach
+        @endforeach
+    </tbody>
+</table>
+@endif
 </div>
 
 <div class="section">

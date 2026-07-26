@@ -11,6 +11,7 @@ use App\Models\Expense;
 use App\Models\FeeInvoice;
 use App\Models\FeeInvoiceItem;
 use App\Models\Institute;
+use App\Models\InstituteBankAccount;
 use App\Models\InstituteManualIncome;
 use App\Models\InstituteTransaction;
 use App\Models\ReportParticular;
@@ -413,16 +414,45 @@ class DailyRegisterController extends Controller
             ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
             ->where('is_cancelled', false)
             ->whereDate('payment_date', $date)
-            ->selectRaw('payment_mode, COUNT(*) as cnt, SUM(paid_amount) as total')
-            ->groupBy('payment_mode')
+            ->selectRaw('bank_account_id, payment_mode, COUNT(*) as cnt, SUM(paid_amount) as total')
+            ->groupBy('bank_account_id', 'payment_mode')
             ->get();
 
-        $byHand = $rows->first(fn ($r) => strtolower($r->payment_mode ?? '') === 'cash');
-        $computerized = $rows->filter(fn ($r) => strtolower($r->payment_mode ?? '') !== 'cash');
+        $cashRows = $rows->filter(fn ($r) => strtolower($r->payment_mode ?? '') === 'cash');
+        $nonCashRows = $rows->filter(fn ($r) => strtolower($r->payment_mode ?? '') !== 'cash');
+
+        $bankIds = $nonCashRows->pluck('bank_account_id')->filter()->unique();
+        $bankAccounts = InstituteBankAccount::whereIn('id', $bankIds)->get()->keyBy('id');
+
+        $bankWise = $nonCashRows
+            ->groupBy(fn ($r) => $r->bank_account_id ?: 0)
+            ->map(function ($group, $bankId) use ($bankAccounts) {
+                $bank = $bankId ? ($bankAccounts[$bankId] ?? null) : null;
+
+                return [
+                    'bank_name' => $bank?->account_name ?? $bank?->bank_name ?? ($bankId ? ('Bank #' . $bankId) : 'Unassigned / Other Online'),
+                    'count'     => (int) $group->sum('cnt'),
+                    'amount'    => (float) $group->sum('total'),
+                    'modes'     => $group->map(fn ($r) => [
+                        'mode'   => strtoupper($r->payment_mode ?? 'OTHER'),
+                        'count'  => (int) $r->cnt,
+                        'amount' => (float) $r->total,
+                    ])->values(),
+                ];
+            })
+            ->sortByDesc('amount')
+            ->values();
 
         return [
-            'by_hand'      => ['count' => (int) ($byHand->cnt ?? 0), 'amount' => (float) ($byHand->total ?? 0)],
-            'computerized' => ['count' => (int) $computerized->sum('cnt'), 'amount' => (float) $computerized->sum('total')],
+            'by_hand' => [
+                'count'  => (int) $cashRows->sum('cnt'),
+                'amount' => (float) $cashRows->sum('total'),
+            ],
+            'computerized' => [
+                'count'  => (int) $nonCashRows->sum('cnt'),
+                'amount' => (float) $nonCashRows->sum('total'),
+            ],
+            'bank_wise' => $bankWise,
         ];
     }
 
