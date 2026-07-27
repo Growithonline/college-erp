@@ -84,7 +84,8 @@
                     <label class="form-label small fw-semibold">Semester</label>
                     <select name="semester" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="0" {{ ($filterSemester ?? 0) == 0 ? 'selected' : '' }}>All</option>
-                        @for($i=1;$i<=8;$i++)
+                        {{-- Up to 12 covers a 4-year trimester (3 sem/year) course, not just 2-sem/year ones --}}
+                        @for($i=1;$i<=12;$i++)
                             <option value="{{ $i }}" {{ ($filterSemester ?? 0) == $i ? 'selected' : '' }}>S{{ $i }}</option>
                         @endfor
                     </select>
