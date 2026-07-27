@@ -737,16 +737,25 @@ class PromotionController extends Controller
 
     private function ensureReverseSafety(PromotionLog $log): void
     {
-        $hasLaterPromotion = PromotionLog::where('student_id', $log->student_id)
+        // status='reversed' rows are themselves audit entries created by a prior reverse
+        // action (see reversePromotion()) — they record an undo, not a forward promotion
+        // built on top of $log, so they must not block reversing an older log once whatever
+        // promotion came after it has already been undone.
+        $laterPromotion = PromotionLog::where('student_id', $log->student_id)
             ->where('id', '!=', $log->id)
             ->where('created_at', '>', $log->created_at)
             ->where('is_reversed', false)
-            ->exists();
+            ->where('status', '!=', 'reversed')
+            ->orderBy('created_at')
+            ->first();
 
         abort_if(
-            $hasLaterPromotion,
+            $laterPromotion !== null,
             422,
-            'This student has later promotion records. Please reverse the most recent promotion first.'
+            $laterPromotion
+                ? "This student has a later {$laterPromotion->promotion_type} promotion (dated "
+                    . $laterPromotion->created_at->format('d M Y, h:i A') . '). Please reverse that one first.'
+                : 'This student has later promotion records. Please reverse the most recent promotion first.'
         );
 
         $targetSessionId = $log->to_session_id ?? $log->from_session_id;
