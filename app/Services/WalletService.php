@@ -1085,9 +1085,19 @@ class WalletService
                 'amount'      => (float) $row->amount,
             ]);
 
-        // Controls the date filter in getAlreadyPaidByFeeName.
-        // For semester promotion with no Sem N rules we show Sem N-1 items and need ALL payments.
-        $effectivePromotionLog = $promotionLog;
+        // Controls the date filter in getAlreadyPaidByFeeName. A semester promotion never
+        // crosses academic_session_id — the same session-wide fee obligation continues, and
+        // fee rules are frequently semester-agnostic (e.g. "Sem: Both"), so a payment made
+        // just before the bump still belongs to the exact fee item being shown now. This must
+        // be decided unconditionally (not only when $previousDueItems is empty) — a student
+        // can already carry an unrelated "Previous Due (...)" row from an earlier session
+        // promotion, which would otherwise skip this entirely and wrongly date-filter out a
+        // legitimate payment as "not yet paid". Only session-type promotions keep the filter,
+        // since those genuinely start a new fee obligation and an old session's payments must
+        // not be credited against it.
+        $effectivePromotionLog = ($promotionLog && $promotionLog->promotion_type === 'semester')
+            ? null
+            : $promotionLog;
 
         if ($previousDueItems->isEmpty() && $promotionLog) {
             $dueAmount = (float) $promotionLog->dues_carried_forward;
@@ -1117,7 +1127,6 @@ class WalletService
 
                 if (($prevData['total'] ?? 0) > 0) {
                     $feeData = $prevData;          // replace empty Sem N data with Sem N-1 items
-                    $effectivePromotionLog = null; // include ALL session payments in already_paid
                     $dueAmount = 0;                // no separate previous_due item needed
                 }
             }
