@@ -52,7 +52,7 @@ class Course extends Model
         }
 
         $partLabel = $this->structure_type === 'trimester' ? 'Trimester' : 'Sem';
-        $allLabel  = $spy > 2 ? 'All' : 'Both';
+        $allLabel  = $spy > 2 ? 'All' : 'Yearly (Once)';
 
         $options = [0 => $allLabel];
         for ($i = 1; $i <= $spy; $i++) {
@@ -72,7 +72,7 @@ class Course extends Model
         }
 
         $partLabel = $this->structure_type === 'trimester' ? 'Trimester' : 'Sem';
-        $allLabel  = $spy > 2 ? 'All' : 'Both';
+        $allLabel  = $spy > 2 ? 'All' : 'Yearly (Once)';
 
         if ($yearNumber === 0) {
             // Year = All → relative (T1, T2, T3) — means "this trimester of every year"
@@ -107,7 +107,7 @@ class Course extends Model
     {
         if ($value === 0) {
             $spy = $this->effectiveSemestersPerYear();
-            return $spy > 2 ? 'All' : ($spy === 1 ? 'Annual' : 'Both');
+            return $spy > 2 ? 'All' : ($spy === 1 ? 'Annual' : 'Yearly (Once)');
         }
 
         $partLabel = $this->structure_type === 'trimester' ? 'Trimester' : 'Sem';

@@ -81,7 +81,7 @@
                 <label class="form-label small fw-semibold mb-1">Semester</label>
                 <select name="semester" class="form-select form-select-sm">
                     <option value="">-- Select Sem --</option>
-                    @foreach(($selectedCourse ? $selectedCourse->semesterOptions() : [0=>'Both',1=>'Sem 1',2=>'Sem 2']) as $val => $lbl)
+                    @foreach(($selectedCourse ? $selectedCourse->semesterOptions() : [0=>'Yearly (Once)',1=>'Sem 1',2=>'Sem 2']) as $val => $lbl)
                     <option value="{{ $val }}" {{ request('semester') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
                     @endforeach
                 </select>
