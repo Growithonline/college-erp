@@ -353,6 +353,28 @@
                         </div>
                     </li>
 
+                    {{-- Marksheet & Degree --}}
+                    <li>
+                        <a class="nav-link d-flex {{ request()->routeIs('master.document-batches*') || request()->routeIs('master.document-distribution*') ? 'active' : '' }}"
+                           data-bs-toggle="collapse" href="#documentsMenu" role="button"
+                           aria-expanded="{{ request()->routeIs('master.document-batches*') || request()->routeIs('master.document-distribution*') ? 'true' : 'false' }}">
+                            <i class="bi bi-file-earmark-text"></i> Marksheet & Degree
+                            <i class="bi bi-chevron-down collapse-arrow"></i>
+                        </a>
+                        <div class="collapse {{ request()->routeIs('master.document-batches*') || request()->routeIs('master.document-distribution*') ? 'show' : '' }}" id="documentsMenu">
+                            <ul class="nav flex-column sub-sub-menu">
+                                <li><a class="nav-link {{ request()->routeIs('master.document-batches*') ? 'active' : '' }}"
+                                       href="{{ route('master.document-batches.index') }}">
+                                    <i class="bi bi-collection"></i> Batches
+                                </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('master.document-distribution*') ? 'active' : '' }}"
+                                       href="{{ route('master.document-distribution.index') }}">
+                                    <i class="bi bi-box-arrow-up-right"></i> Distribution
+                                </a></li>
+                            </ul>
+                        </div>
+                    </li>
+
                     {{-- Bank Accounts --}}
                     <li>
                         <a class="nav-link d-flex {{ request()->routeIs('master.bank-accounts*') ? 'active' : '' }}"

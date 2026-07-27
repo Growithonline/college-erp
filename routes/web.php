@@ -23,6 +23,8 @@ use App\Http\Controllers\Institute\Master\AdmissionFormController;
 use App\Http\Controllers\Institute\Master\ChannelPartnerController;
 use App\Http\Controllers\Institute\Master\StaffRoleController;
 use App\Http\Controllers\Institute\Master\StaffMemberController;
+use App\Http\Controllers\Institute\Master\DocumentBatchController;
+use App\Http\Controllers\Institute\Master\DocumentDistributionController;
 use App\Http\Controllers\Institute\Admission\AdmissionController;
 use App\Http\Controllers\Institute\Admission\EnquiryController;
 use App\Http\Controllers\Institute\Admission\StudentBulkImportController;
@@ -265,6 +267,22 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('staff-members/{staffMember}/bonuses/{bonus}', [StaffMemberController::class, 'destroyBonus'])->name('staff-members.bonuses.destroy');
         Route::post('staff-members/{staffMember}/documents',         [StaffMemberController::class, 'storeDocument'])->name('staff-members.documents.store');
         Route::delete('staff-members/{staffMember}/documents/{document}', [StaffMemberController::class, 'destroyDocument'])->name('staff-members.documents.destroy');
+
+        // Marksheet & Degree Distribution
+        Route::prefix('document-batches')->name('document-batches.')->group(function () {
+            Route::get('/',                                  [DocumentBatchController::class, 'index'])->name('index');
+            Route::get('/create',                             [DocumentBatchController::class, 'create'])->name('create');
+            Route::post('/',                                  [DocumentBatchController::class, 'store'])->name('store');
+            Route::get('/{documentBatch}',                    [DocumentBatchController::class, 'show'])->name('show');
+            Route::post('/{documentBatch}/dispatch',          [DocumentBatchController::class, 'markDispatched'])->name('dispatch');
+            Route::post('/{documentBatch}/receive',           [DocumentBatchController::class, 'markReceived'])->name('receive');
+            Route::get('/{documentBatch}/sort',               [DocumentBatchController::class, 'sort'])->name('sort');
+            Route::post('/{documentBatch}/students/{documentBatchStudent}/found', [DocumentBatchController::class, 'toggleFound'])->name('students.found');
+        });
+        Route::prefix('document-distribution')->name('document-distribution.')->group(function () {
+            Route::get('/',                                   [DocumentDistributionController::class, 'index'])->name('index');
+            Route::post('/{documentBatchStudent}/distribute',  [DocumentDistributionController::class, 'distribute'])->name('distribute');
+        });
 
         // Phase 8: Bank Accounts & Payment Permissions
         Route::get('bank-accounts',                        [BankAccountController::class, 'index'])->name('bank-accounts.index');
