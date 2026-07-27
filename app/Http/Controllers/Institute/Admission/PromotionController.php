@@ -3255,6 +3255,107 @@ class PromotionController extends Controller
         ));
     }
 
+    // Dedicated view of only passed_out students — outcomesIndex() covers all 4 terminal
+    // statuses (passed_out/backlog/failed/dropped) mixed together via a filter dropdown;
+    // this is the same query/export shape with status locked to passed_out, so students who
+    // actually completed the course aren't mixed in with backlog/failed/dropped ones or with
+    // active students on the main directory.
+    public function passedOutStudents(Request $request)
+    {
+        $this->ensurePromotionAccess();
+        $instituteId = $this->instituteId();
+        $activeSession = AcademicSession::viewSession($instituteId);
+        $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courses = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $sessionId = $request->input('session_id', $activeSession?->id);
+        $courseId = $request->input('course_id');
+
+        $this->ensureStaffCanAccessSession($sessionId ? (int) $sessionId : null);
+        $this->ensureStaffCanAccessCourse($courseId ? (int) $courseId : null);
+
+        $query = Student::with(['stream.course', 'coursePart', 'session'])
+            ->where('institute_id', $instituteId)
+            ->where('status', 'passed_out');
+        $this->applyStudentAccessScope($query);
+
+        if ($sessionId) {
+            $query->where('academic_session_id', $sessionId);
+        }
+        if ($courseId) {
+            $query->whereHas('stream', fn($q) => $q->where('course_id', $courseId));
+        }
+        if ($request->search) {
+            $search = $this->escapeLike($request->search);
+            $query->where(function ($inner) use ($search) {
+                $inner->where('name', 'like', "%{$search}%")
+                    ->orWhere('student_uid', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->export === 'csv') {
+            $all = $query->orderBy('name')->get();
+            $allLogs = PromotionLog::where('institute_id', $instituteId)
+                ->whereIn('student_id', $all->pluck('id'))
+                ->where(fn($inner) => $inner->where('terminal_status', 'passed_out')->orWhere('status', 'completed'))
+                ->orderByDesc('created_at')
+                ->get()
+                ->groupBy('student_id');
+
+            $headers = ['#', 'Std ID', 'Name', 'Father Name', 'Mother Name', 'Roll No', 'Enroll No', 'UIN No',
+                        'Course', 'Stream', 'Session', 'Semester', 'Due', 'Updated By', 'Date'];
+
+            $filename = 'passed-out-students.csv';
+            return response()->stream(function () use ($all, $allLogs, $headers) {
+                $handle = fopen('php://output', 'w');
+                fputcsv($handle, $headers);
+                foreach ($all as $i => $s) {
+                    $log = $allLogs->get($s->id)?->first();
+                    $due = (float) ($log?->dues_carried_forward ?? 0);
+                    fputcsv($handle, [
+                        $i + 1,
+                        $s->student_uid ?? '',
+                        $s->name,
+                        $s->father_name ?? '',
+                        $s->mother_name ?? '',
+                        $s->roll_no ?? '',
+                        $s->enrollment_no ?? '',
+                        $s->uin_no ?? '',
+                        $s->stream?->course?->name ?? '',
+                        $s->stream?->name ?? '',
+                        $s->session?->name ?? '',
+                        $s->current_semester ?? '',
+                        $due > 0 ? number_format($due, 2) : 'Clear',
+                        $log?->promoted_by ?? '',
+                        $log?->created_at?->format('d/m/Y') ?? '',
+                    ]);
+                }
+                fclose($handle);
+            }, 200, [
+                'Content-Type'        => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
+        }
+
+        $students = $query->orderBy('name')->paginate(50)->withQueryString();
+        $logs = PromotionLog::where('institute_id', $instituteId)
+            ->whereIn('student_id', $students->pluck('id'))
+            ->where(fn($inner) => $inner->where('terminal_status', 'passed_out')->orWhere('status', 'completed'))
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('student_id');
+
+        return view('institute.admission.promotions.passed-out', compact(
+            'students',
+            'logs',
+            'sessions',
+            'courses',
+            'sessionId',
+            'courseId',
+            'activeSession'
+        ));
+    }
+
     /**
      * Show students who were in a given session but were later promoted and moved on
      * to the next session (sourced from student_academic_identity).

@@ -188,6 +188,10 @@
                                        href="{{ route('staff.admissions.promote.promoted-students') }}">
                                     <i class="bi bi-arrow-up-circle text-info"></i> Promoted Students
                                 </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.passed-out-students') ? 'active' : '' }}"
+                                       href="{{ route('staff.admissions.promote.passed-out-students') }}">
+                                    <i class="bi bi-patch-check text-success"></i> Passed Out Students
+                                </a></li>
                                 <li><a class="nav-link {{ request()->routeIs('staff.admissions.promote.identity*') ? 'active' : '' }}"
                                        href="{{ route('staff.admissions.promote.identity') }}">
                                     <i class="bi bi-person-badge text-primary"></i> Roll / Form No
