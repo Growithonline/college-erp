@@ -25,6 +25,7 @@ use App\Http\Controllers\Institute\Master\StaffRoleController;
 use App\Http\Controllers\Institute\Master\StaffMemberController;
 use App\Http\Controllers\Institute\Master\DocumentBatchController;
 use App\Http\Controllers\Institute\Master\DocumentDistributionController;
+use App\Http\Controllers\Institute\Master\CourseDocumentFeeController;
 use App\Http\Controllers\Institute\Admission\AdmissionController;
 use App\Http\Controllers\Institute\Admission\EnquiryController;
 use App\Http\Controllers\Institute\Admission\StudentBulkImportController;
@@ -283,6 +284,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/',                                   [DocumentDistributionController::class, 'index'])->name('index');
             Route::post('/{documentBatchStudent}/distribute',  [DocumentDistributionController::class, 'distribute'])->name('distribute');
         });
+        Route::get('document-fee-settings',  [CourseDocumentFeeController::class, 'edit'])->name('document-fee-settings.edit');
+        Route::post('document-fee-settings', [CourseDocumentFeeController::class, 'update'])->name('document-fee-settings.update');
 
         // Phase 8: Bank Accounts & Payment Permissions
         Route::get('bank-accounts',                        [BankAccountController::class, 'index'])->name('bank-accounts.index');

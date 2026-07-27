@@ -47,7 +47,7 @@ class DocumentDistributionController extends Controller
                     $q->where('course_id', $courseId);
                 }
             })
-            ->with(['student', 'batch']);
+            ->with(['student', 'batch.course.documentFee']);
 
         if ($request->input('distribution_status') === 'distributed') {
             $query->whereNotNull('distributed_at');
@@ -57,10 +57,12 @@ class DocumentDistributionController extends Controller
 
         $rows = $query->orderByDesc('found_at')->paginate(30)->withQueryString();
 
-        $rows->getCollection()->transform(function (DocumentBatchStudent $row) {
+        $rows->getCollection()->transform(function (DocumentBatchStudent $row) use ($documentType) {
             $row->due = $row->student
                 ? (WalletService::getStudentSummary($row->student, (int) $row->student->academic_session_id)['total_due'] ?? 0)
                 : 0;
+
+            $row->defaultFeeAmount = $row->batch?->course?->documentFee?->feeFor($documentType);
 
             return $row;
         });

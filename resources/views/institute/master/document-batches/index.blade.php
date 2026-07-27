@@ -8,6 +8,9 @@
         <small class="text-muted">{{ $batches->total() }} batch(es)</small>
     </div>
     <div class="d-flex gap-2">
+        <a href="{{ route('master.document-fee-settings.edit') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-currency-rupee me-1"></i> Fee Settings
+        </a>
         <a href="{{ route('master.document-distribution.index') }}" class="btn btn-outline-primary">
             <i class="bi bi-box-arrow-up-right me-1"></i> Distribution
         </a>

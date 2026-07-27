@@ -100,7 +100,8 @@
                         @if(!$row->is_distributed)
                         <button type="button" class="btn btn-sm btn-primary distribute-btn"
                                 data-url="{{ route('master.document-distribution.distribute', $row) }}"
-                                data-student="{{ $row->student->name ?? '' }}">
+                                data-student="{{ $row->student->name ?? '' }}"
+                                data-fee="{{ $row->defaultFeeAmount ?? '' }}">
                             Distribute
                         </button>
                         @endif
@@ -139,6 +140,9 @@
                         <div class="col-12 form-check">
                             <input type="checkbox" class="form-check-input" id="chargeFeeToggle">
                             <label class="form-check-label fw-medium" for="chargeFeeToggle">Charge marksheet/degree fee?</label>
+                            <div class="form-text">
+                                Amount auto-fills from <a href="{{ route('master.document-fee-settings.edit') }}" target="_blank">Fee Settings</a> if configured for this course — editable below.
+                            </div>
                         </div>
                         <div id="feeFieldsWrap" class="col-12 row g-3 d-none">
                             <div class="col-md-6">
@@ -177,11 +181,16 @@ const distributeModal   = new bootstrap.Modal(distributeModalEl);
 const distributeForm    = document.getElementById('distributeForm');
 const chargeFeeToggle   = document.getElementById('chargeFeeToggle');
 const feeFieldsWrap     = document.getElementById('feeFieldsWrap');
+const feeAmountInput    = feeFieldsWrap.querySelector('[name="fee_amount"]');
 const feeInputs         = feeFieldsWrap.querySelectorAll('input, select');
+let currentDefaultFee   = '';
 
 function setFeeFieldsVisible(visible) {
     feeFieldsWrap.classList.toggle('d-none', !visible);
     feeInputs.forEach(el => el.disabled = !visible);
+    if (visible && !feeAmountInput.value && currentDefaultFee) {
+        feeAmountInput.value = currentDefaultFee;
+    }
 }
 
 chargeFeeToggle.addEventListener('change', function () {
@@ -192,6 +201,7 @@ document.querySelectorAll('.distribute-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
         distributeForm.reset();
         chargeFeeToggle.checked = false;
+        currentDefaultFee = this.dataset.fee || '';
         setFeeFieldsVisible(false);
         distributeForm.action = this.dataset.url;
         document.getElementById('distributeStudentName').textContent = this.dataset.student;

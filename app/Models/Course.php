@@ -139,4 +139,9 @@ class Course extends Model
     {
         return $this->hasMany(CourseStream::class);
     }
+
+    public function documentFee()
+    {
+        return $this->hasOne(CourseDocumentFee::class);
+    }
 }

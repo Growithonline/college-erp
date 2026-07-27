@@ -371,6 +371,10 @@
                                        href="{{ route('master.document-distribution.index') }}">
                                     <i class="bi bi-box-arrow-up-right"></i> Distribution
                                 </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('master.document-fee-settings*') ? 'active' : '' }}"
+                                       href="{{ route('master.document-fee-settings.edit') }}">
+                                    <i class="bi bi-currency-rupee"></i> Fee Settings
+                                </a></li>
                             </ul>
                         </div>
                     </li>
