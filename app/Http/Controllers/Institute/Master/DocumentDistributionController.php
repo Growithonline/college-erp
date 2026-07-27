@@ -33,6 +33,10 @@ class DocumentDistributionController extends Controller
         $sessionId    = $request->integer('session_id') ?: AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
         $courseId     = $request->integer('course_id') ?: null;
 
+        $defaultCategoryId = $categories->first(
+            fn ($category) => str_contains(strtolower($category->name), $documentType === 'degree' ? 'degree' : 'marksheet')
+        )?->id;
+
         $query = DocumentBatchStudent::whereNotNull('found_at')
             ->whereHas('batch', function ($q) use ($instituteId, $documentType, $sessionId, $courseId) {
                 $q->where('institute_id', $instituteId)->where('document_type', $documentType);
@@ -62,7 +66,7 @@ class DocumentDistributionController extends Controller
         });
 
         return view('institute.master.document-distribution.index', compact(
-            'rows', 'sessions', 'courses', 'categories', 'documentType', 'sessionId', 'courseId'
+            'rows', 'sessions', 'courses', 'categories', 'documentType', 'sessionId', 'courseId', 'defaultCategoryId'
         ));
     }
 

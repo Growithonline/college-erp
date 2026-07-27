@@ -136,18 +136,24 @@
                             <input type="text" class="form-control" name="received_by_name" placeholder="Student / relative name" required>
                         </div>
                         <div class="col-12"><hr class="my-1"></div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-medium">Fee Amount (optional)</label>
-                            <input type="number" class="form-control" name="fee_amount" min="0" step="0.01" placeholder="Leave blank if no fee">
+                        <div class="col-12 form-check">
+                            <input type="checkbox" class="form-check-input" id="chargeFeeToggle">
+                            <label class="form-check-label fw-medium" for="chargeFeeToggle">Charge marksheet/degree fee?</label>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-medium">Income Category</label>
-                            <select class="form-select" name="income_category_id">
-                                <option value="">Select category</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                @endforeach
-                            </select>
+                        <div id="feeFieldsWrap" class="col-12 row g-3 d-none">
+                            <div class="col-md-6">
+                                <label class="form-label fw-medium">Fee Amount</label>
+                                <input type="number" class="form-control" name="fee_amount" min="0" step="0.01" disabled>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-medium">Income Category</label>
+                                <select class="form-select" name="income_category_id" disabled>
+                                    <option value="">Select category</option>
+                                    @foreach($categories as $category)
+                                        <option value="{{ $category->id }}" {{ (string) $defaultCategoryId === (string) $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-medium">Remarks</label>
@@ -167,10 +173,27 @@
 @push('scripts')
 <script>
 const distributeModalEl = document.getElementById('distributeModal');
-const distributeModal = new bootstrap.Modal(distributeModalEl);
+const distributeModal   = new bootstrap.Modal(distributeModalEl);
+const distributeForm    = document.getElementById('distributeForm');
+const chargeFeeToggle   = document.getElementById('chargeFeeToggle');
+const feeFieldsWrap     = document.getElementById('feeFieldsWrap');
+const feeInputs         = feeFieldsWrap.querySelectorAll('input, select');
+
+function setFeeFieldsVisible(visible) {
+    feeFieldsWrap.classList.toggle('d-none', !visible);
+    feeInputs.forEach(el => el.disabled = !visible);
+}
+
+chargeFeeToggle.addEventListener('change', function () {
+    setFeeFieldsVisible(this.checked);
+});
+
 document.querySelectorAll('.distribute-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-        document.getElementById('distributeForm').action = this.dataset.url;
+        distributeForm.reset();
+        chargeFeeToggle.checked = false;
+        setFeeFieldsVisible(false);
+        distributeForm.action = this.dataset.url;
         document.getElementById('distributeStudentName').textContent = this.dataset.student;
         distributeModal.show();
     });
