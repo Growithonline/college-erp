@@ -1099,12 +1099,20 @@ class WalletService
             ? null
             : $promotionLog;
 
-        if ($previousDueItems->isEmpty() && $promotionLog) {
+        if ($promotionLog && $promotionLog->promotion_type === 'semester') {
+            // Semester promotion never creates a real "Previous Due (...)" transaction — its
+            // dues_carried_forward is only ever a PromotionLog snapshot (see semesterPromote()),
+            // unlike session promotion which does via carryForwardDue(). So this must run
+            // regardless of $previousDueItems — a student can already carry an unrelated
+            // "Previous Due (...)" row from an earlier SESSION promotion sitting in this same
+            // session, which has nothing to do with THIS semester promotion's own carried-forward
+            // due; gating on it silently drops the due from the fee breakdown entirely once it
+            // has happened once, even though the amount is still a real, unpaid debit in the ledger.
             $dueAmount = (float) $promotionLog->dues_carried_forward;
 
-            // Semester promotion where current semester has no fee rules:
-            // show the previous semester's fee items so Total Charged / Total Paid display correctly.
-            if ($promotionLog->promotion_type === 'semester' && empty($feeData['items'])) {
+            // Current semester has no fee rules of its own: show the previous semester's fee
+            // items so Total Charged / Total Paid display correctly.
+            if (empty($feeData['items'])) {
                 $fromSemester = (int) $promotionLog->from_semester;
                 try {
                     $prevData = FeeCalculatorService::calculate(
@@ -1126,18 +1134,34 @@ class WalletService
                 }
 
                 if (($prevData['total'] ?? 0) > 0) {
-                    $feeData = $prevData;          // replace empty Sem N data with Sem N-1 items
-                    $dueAmount = 0;                // no separate previous_due item needed
+                    $feeData = $prevData; // replace empty Sem N data with Sem N-1 items
+                    $dueAmount = 0;       // Sem N-1's items already represent what's owed
                 }
             }
+
+            // Whether or not the current semester has its own fee items, any amount still
+            // owed from before this promotion needs its own line — otherwise a leftover balance
+            // from an earlier semester would vanish from the item-based breakdown the moment the
+            // new semester has its own distinct charges.
+            if ($dueAmount > 0) {
+                $previousDueItems->push([
+                    'type'        => 'previous_due',
+                    'fee_type_id' => null,
+                    'label'       => 'Previous Due (Before Semester ' . $promotionLog->to_semester . ')',
+                    'amount'      => $dueAmount,
+                ]);
+            }
+        } elseif ($previousDueItems->isEmpty() && $promotionLog) {
+            // Session/readmission promotion: dues_carried_forward is normally already reflected
+            // as a real "Previous Due (...)" transaction (see carryForwardDue()). Only synthesize
+            // one here if that transaction is missing for some reason.
+            $dueAmount = (float) $promotionLog->dues_carried_forward;
 
             if ($dueAmount > 0) {
                 $previousDueItems = collect([[
                     'type'        => 'previous_due',
                     'fee_type_id' => null,
-                    'label'       => $promotionLog->promotion_type === 'semester'
-                        ? 'Previous Due (Before Semester ' . $promotionLog->to_semester . ')'
-                        : 'Previous Due (' . ($promotionLog->fromSession?->name ?? 'Previous Session') . ')',
+                    'label'       => 'Previous Due (' . ($promotionLog->fromSession?->name ?? 'Previous Session') . ')',
                     'amount'      => $dueAmount,
                 ]]);
             }
