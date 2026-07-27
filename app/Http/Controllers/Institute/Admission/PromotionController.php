@@ -1146,7 +1146,17 @@ class PromotionController extends Controller
         $promoted = 0;
         $errors = [];
 
-        foreach ($request->student_ids as $sid) {
+        // De-duplicated: a duplicate id in the same submission (e.g. a double-click firing
+        // two overlapping requests with an identical student_ids payload) would otherwise
+        // pass this student through the loop twice. lockForUpdate() below only serializes
+        // the two attempts — it does not stop the second one from validly advancing an
+        // already-promoted student by one more semester (this is how a trimester student
+        // could jump Sem 1 -> Sem 2 -> Sem 3 in one click: after the first pass, Sem 2 is
+        // still mid-year for a 3-semester course, so canSemesterPromote() allows a second
+        // hop where a 2-semester course would already be at year-end and reject it).
+        $studentIds = array_unique($request->student_ids);
+
+        foreach ($studentIds as $sid) {
             try {
                 DB::transaction(function () use ($sid, $instituteId, $request, &$promoted) {
                     // lockForUpdate prevents concurrent promotions of the same student
@@ -1348,7 +1358,11 @@ class PromotionController extends Controller
         $completed = 0;
         $errors = [];
 
-        foreach ($request->student_ids as $sid) {
+        // De-duplicated for the same reason as semesterPromote() — a duplicate id in one
+        // submission (e.g. an overlapping double-click) shouldn't process the same student twice.
+        $studentIds = array_unique($request->student_ids);
+
+        foreach ($studentIds as $sid) {
             try {
                 $result = DB::transaction(function () use ($sid, $instituteId, $request) {
                     // lockForUpdate prevents concurrent session-promotions of the same

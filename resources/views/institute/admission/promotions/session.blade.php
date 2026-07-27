@@ -140,7 +140,7 @@
                     Outstanding dues are carried forward to the new session wallet.
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-warning btn-sm fw-semibold">
+                    <button type="submit" class="btn btn-warning btn-sm fw-semibold" id="promoteSubmitBtn">
                         <i class="bi bi-calendar-arrow-up me-1"></i>Promote
                     </button>
                 </div>
@@ -407,6 +407,9 @@ document.getElementById('promoteForm').addEventListener('submit', function() {
     document.querySelectorAll('.student-cb:checked').forEach(cb => {
         inputs.innerHTML += `<input type="hidden" name="student_ids[]" value="${cb.value}">`;
     });
+    // Prevent a double-click from firing two overlapping promote requests for the
+    // same students.
+    document.getElementById('promoteSubmitBtn').disabled = true;
 });
 </script>
 @endsection

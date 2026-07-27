@@ -98,7 +98,7 @@
                     <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Optional">
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-primary btn-sm">
+                    <button type="submit" class="btn btn-primary btn-sm" id="promoteSubmitBtn">
                         <i class="bi bi-arrow-up-circle me-1"></i>Promote
                     </button>
                 </div>
@@ -312,6 +312,9 @@ document.getElementById('promoteForm').addEventListener('submit', function() {
     document.querySelectorAll('.student-cb:checked').forEach(cb => {
         inputs.innerHTML += `<input type="hidden" name="student_ids[]" value="${cb.value}">`;
     });
+    // Prevent a double-click from firing two overlapping promote requests for the
+    // same students.
+    document.getElementById('promoteSubmitBtn').disabled = true;
 });
 </script>
 @endsection
