@@ -260,6 +260,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('staff-members/archived/list',                    [StaffMemberController::class, 'trashed'])->name('staff-members.trashed');
         Route::post('staff-members/{id}/restore',                    [StaffMemberController::class, 'restore'])->name('staff-members.restore');
         Route::delete('staff-members/{id}/force-delete',             [StaffMemberController::class, 'forceDelete'])->name('staff-members.force-delete');
+        Route::patch('staff-members/{staffMember}/salary-structure', [StaffMemberController::class, 'updateSalaryStructure'])->name('staff-members.salary-structure');
+        Route::post('staff-members/{staffMember}/bonuses',           [StaffMemberController::class, 'storeBonus'])->name('staff-members.bonuses.store');
+        Route::delete('staff-members/{staffMember}/bonuses/{bonus}', [StaffMemberController::class, 'destroyBonus'])->name('staff-members.bonuses.destroy');
+        Route::post('staff-members/{staffMember}/documents',         [StaffMemberController::class, 'storeDocument'])->name('staff-members.documents.store');
+        Route::delete('staff-members/{staffMember}/documents/{document}', [StaffMemberController::class, 'destroyDocument'])->name('staff-members.documents.destroy');
 
         // Phase 8: Bank Accounts & Payment Permissions
         Route::get('bank-accounts',                        [BankAccountController::class, 'index'])->name('bank-accounts.index');

@@ -74,8 +74,8 @@
                     <tr>
                         <td class="text-muted small">{{ $i+1 }}</td>
                         <td>
-                            <div class="fw-semibold">{{ $member->name }}</div>
-                            <small class="text-muted">{{ $member->email }}</small>
+                            <a href="{{ route('master.staff-members.show', $member) }}" class="fw-semibold text-decoration-none">{{ $member->name }}</a>
+                            <div><small class="text-muted">{{ $member->email }}</small></div>
                         </td>
                         <td>
                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
@@ -148,6 +148,8 @@
                         </td>
                         <td>
                             <div class="d-flex gap-1">
+                                <a href="{{ route('master.staff-members.show', $member) }}"
+                                   class="btn btn-outline-secondary btn-sm" title="View Profile"><i class="bi bi-eye"></i></a>
                                 <a href="{{ route('master.staff-members.edit', $member) }}"
                                    class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></a>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" title="Archive Staff"

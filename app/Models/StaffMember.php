@@ -71,6 +71,21 @@ class StaffMember extends Authenticatable
         return $this->hasMany(SalaryRecord::class, 'staff_member_id');
     }
 
+    public function loans()
+    {
+        return $this->hasMany(StaffLoan::class, 'staff_member_id');
+    }
+
+    public function bonuses()
+    {
+        return $this->hasMany(StaffBonus::class, 'staff_member_id');
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(StaffDocument::class, 'staff_member_id');
+    }
+
     public function salaryExpenseHead()
     {
         return $this->belongsTo(Account::class, 'salary_expense_head_id');

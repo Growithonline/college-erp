@@ -307,6 +307,134 @@ class StaffMemberController extends Controller
         }
     }
 
+    public function show(StaffMember $staffMember)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+
+        $staffMember->load(['role', 'loans' => function ($query) {
+            $query->orderByDesc('id');
+        }, 'bonuses' => function ($query) {
+            $query->orderByDesc('payment_date');
+        }, 'documents' => function ($query) {
+            $query->orderByDesc('created_at');
+        }]);
+
+        $salaryRecords = $staffMember->salaryRecords()
+            ->orderByDesc('salary_year')
+            ->orderByDesc('salary_month')
+            ->take(6)
+            ->get();
+
+        return view('institute.master.staff.members.show', compact('staffMember', 'salaryRecords'));
+    }
+
+    public function updateSalaryStructure(Request $request, StaffMember $staffMember)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+
+        $validated = $request->validate([
+            'hra_percent'              => 'nullable|integer|min:0|max:100',
+            'da_percent'               => 'nullable|integer|min:0|max:100',
+            'ta_amount'                => 'nullable|numeric|min:0',
+            'medical_amount'           => 'nullable|numeric|min:0',
+            'pf_applicable'            => 'nullable|boolean',
+            'tds_monthly'              => 'nullable|numeric|min:0',
+            'professional_tax_monthly' => 'nullable|numeric|min:0',
+        ]);
+
+        $staffMember->update([
+            'hra_percent'              => (int) ($validated['hra_percent'] ?? 0),
+            'da_percent'               => (int) ($validated['da_percent'] ?? 0),
+            'ta_amount'                => (float) ($validated['ta_amount'] ?? 0),
+            'medical_amount'           => (float) ($validated['medical_amount'] ?? 0),
+            'pf_applicable'            => $request->boolean('pf_applicable'),
+            'tds_monthly'              => (float) ($validated['tds_monthly'] ?? 0),
+            'professional_tax_monthly' => (float) ($validated['professional_tax_monthly'] ?? 0),
+        ]);
+
+        return back()->with('success', 'Salary structure updated. Yeh agli payroll draft generation se apply hogi.');
+    }
+
+    public function storeBonus(Request $request, StaffMember $staffMember)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+
+        $validated = $request->validate([
+            'bonus_type'   => ['required', Rule::in(array_keys(\App\Models\StaffBonus::$types))],
+            'amount'       => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date',
+            'remarks'      => 'nullable|string|max:300',
+        ]);
+
+        $staffMember->bonuses()->create([
+            'institute_id'  => $this->instituteId(),
+            'bonus_type'    => $validated['bonus_type'],
+            'amount'        => $validated['amount'],
+            'payment_date'  => $validated['payment_date'],
+            'remarks'       => $validated['remarks'] ?? null,
+        ]);
+
+        return back()->with('success', 'Bonus record add ho gaya.');
+    }
+
+    public function destroyBonus(StaffMember $staffMember, \App\Models\StaffBonus $bonus)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+        abort_if($bonus->staff_member_id !== $staffMember->id, 404);
+
+        $bonus->delete();
+
+        return back()->with('success', 'Bonus record delete ho gaya.');
+    }
+
+    public function storeDocument(Request $request, StaffMember $staffMember)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+
+        $validated = $request->validate([
+            'document_type'   => ['required', Rule::in(array_keys(\App\Models\StaffDocument::$types))],
+            'document_number' => 'nullable|string|max:100',
+            'issue_date'      => 'nullable|date',
+            'expiry_date'     => 'nullable|date',
+            'notes'           => 'nullable|string|max:300',
+            'file'            => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png',
+        ]);
+
+        $filePath = null;
+        $originalName = null;
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('staff/documents', 'public');
+            $originalName = $request->file('file')->getClientOriginalName();
+        }
+
+        $staffMember->documents()->create([
+            'institute_id'    => $this->instituteId(),
+            'document_type'   => $validated['document_type'],
+            'document_number' => $validated['document_number'] ?? null,
+            'issue_date'      => $validated['issue_date'] ?? null,
+            'expiry_date'     => $validated['expiry_date'] ?? null,
+            'file_path'       => $filePath,
+            'original_name'   => $originalName,
+            'notes'           => $validated['notes'] ?? null,
+        ]);
+
+        return back()->with('success', 'Document upload ho gaya.');
+    }
+
+    public function destroyDocument(StaffMember $staffMember, \App\Models\StaffDocument $document)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+        abort_if($document->staff_member_id !== $staffMember->id, 404);
+
+        if ($document->file_path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($document->file_path);
+        }
+
+        $document->delete();
+
+        return back()->with('success', 'Document delete ho gaya.');
+    }
+
     public function edit(StaffMember $staffMember)
     {
         abort_if($staffMember->institute_id !== $this->instituteId(), 403);
