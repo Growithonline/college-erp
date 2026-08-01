@@ -25,7 +25,13 @@
 @endphp
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="mb-0 fw-bold"><i class="bi bi-person-plus me-2 text-primary"></i>New Admission</h4>
+        <h4 class="mb-0 fw-bold">
+            @if($isLateralEntry ?? false)
+                <i class="bi bi-arrow-repeat me-2 text-primary"></i>Lateral Entry Admission
+            @else
+                <i class="bi bi-person-plus me-2 text-primary"></i>New Admission
+            @endif
+        </h4>
         <small class="text-muted">
             Session: <span class="fw-semibold text-primary">{{ $defaultSession->name ?? 'No Active Session' }}</span>
         </small>
@@ -640,9 +646,22 @@
                 @if($fieldEnabled('student_type'))
                 <div class="col-md-2">
                     <label class="form-label small fw-semibold">Student Type @if($fieldRequired('student_type'))<span class="text-danger">*</span>@endif</label>
+                    @php
+                        // On the Lateral Entry page, default to whichever StudentType looks like
+                        // "Lateral Entry" — staff can still change it, but forgetting to switch
+                        // it away from "Regular" would silently skip the Lateral-specific fee
+                        // rules from Phase 2, so the safer default matters here.
+                        $defaultStudentTypeSlug = $studentTypes->first()?->slug;
+                        if ($isLateralEntry ?? false) {
+                            $lateralStudentType = $studentTypes->first(fn($st) => str_contains(strtolower($st->slug), 'lateral'));
+                            if ($lateralStudentType) {
+                                $defaultStudentTypeSlug = $lateralStudentType->slug;
+                            }
+                        }
+                    @endphp
                     <select name="student_type" class="form-select form-select-sm fee-param-field" {{ $fieldRequired('student_type') ? 'required' : '' }}>
                         @foreach($studentTypes as $st)
-                        <option value="{{ $st->slug }}" {{ $pv('student_type', $studentTypes->first()?->slug) == $st->slug ? 'selected' : '' }}>{{ $st->name }}</option>
+                        <option value="{{ $st->slug }}" {{ $pv('student_type', $defaultStudentTypeSlug) == $st->slug ? 'selected' : '' }}>{{ $st->name }}</option>
                         @endforeach
                     </select>
                 </div>
