@@ -60,49 +60,56 @@
 
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+        <table class="table table-hover table-sm align-middle mb-0" style="font-size:12px;">
+            <thead style="background:#1e3a5f; color:#fff;">
                 <tr>
-                    <th>Student</th>
-                    <th>Batch</th>
-                    <th>Found On</th>
-                    <th>Due</th>
-                    <th>Status</th>
-                    <th></th>
+                    <th class="ps-2" style="min-width:110px; white-space:nowrap;">Student UID</th>
+                    <th style="min-width:150px;">Name</th>
+                    <th style="min-width:180px;">Batch</th>
+                    <th style="min-width:85px; white-space:nowrap;">Found On</th>
+                    <th style="min-width:110px; white-space:nowrap;">Due</th>
+                    <th style="min-width:130px; white-space:nowrap;">Status</th>
+                    <th style="min-width:100px;"></th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($rows as $row)
                 <tr>
-                    <td>
-                        {{ $row->student->name ?? '-' }}
-                        <div><small class="text-muted">{{ $row->student->roll_no ?? '' }}</small></div>
+                    <td class="ps-2">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:10px; font-weight:600;">
+                            {{ $row->student->student_uid ?? '—' }}
+                        </span>
                     </td>
                     <td>
-                        {{ $row->batch->course->name ?? '-' }}
-                        @if($row->batch->courseStream) — {{ $row->batch->courseStream->name }} @endif
-                        @if($row->batch->coursePart)
-                            <div><small class="text-muted">{{ $row->batch->coursePart->part_name }}</small></div>
-                        @endif
-                        @if($row->batch->batch_label)
-                            <div><small class="text-muted">{{ $row->batch->batch_label }}</small></div>
-                        @endif
+                        <div class="fw-semibold" style="font-size:12px; line-height:1.3;">{{ $row->student->name ?? '-' }}</div>
+                        <div class="text-muted" style="font-size:10.5px;">{{ $row->student->roll_no ?? '' }}</div>
                     </td>
-                    <td class="text-muted small">{{ $row->found_at?->format('d M Y') }}</td>
+                    <td>
+                        <div class="fw-semibold" style="font-size:12px; line-height:1.3;">
+                            {{ $row->batch->course->name ?? '-' }}
+                            @if($row->batch->courseStream) — {{ $row->batch->courseStream->name }} @endif
+                        </div>
+                        <div class="text-muted" style="font-size:10.5px;">
+                            {{ $row->batch->coursePart->part_name ?? '' }}
+                            @if($row->batch->coursePart && $row->batch->batch_label) &middot; @endif
+                            {{ $row->batch->batch_label ?? '' }}
+                        </div>
+                    </td>
+                    <td class="text-muted fw-semibold" style="white-space:nowrap;">{{ $row->found_at?->format('d M Y') }}</td>
                     <td>
                         @if($row->due > 0)
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">₹{{ number_format($row->due, 2) }}</span>
-                            <a href="{{ route('fee.create', ['student_id' => $row->student_id]) }}" target="_blank" class="d-block small mt-1">Clear Due</a>
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle" style="font-size:10px; font-weight:600;">₹{{ number_format($row->due, 2) }}</span>
+                            <a href="{{ route('fee.create', ['student_id' => $row->student_id]) }}" target="_blank" class="d-block" style="font-size:10.5px;">Clear Due</a>
                         @else
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">No Due</span>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle" style="font-size:10px; font-weight:600;">No Due</span>
                         @endif
                     </td>
                     <td>
                         @if($row->is_distributed)
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Distributed</span>
-                            <div class="small text-muted">{{ $row->distributed_at->format('d M Y') }} — {{ $row->received_by_name }}</div>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:10px; font-weight:600;">Distributed</span>
+                            <div class="text-muted" style="font-size:10.5px;">{{ $row->distributed_at->format('d M Y') }} — {{ $row->received_by_name }}</div>
                         @else
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Pending</span>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle" style="font-size:10px; font-weight:600;">Pending</span>
                         @endif
                     </td>
                     <td>
@@ -110,14 +117,15 @@
                         <button type="button" class="btn btn-sm btn-primary distribute-btn"
                                 data-url="{{ route('master.document-distribution.distribute', $row) }}"
                                 data-student="{{ $row->student->name ?? '' }}"
-                                data-fee="{{ $row->defaultFeeAmount ?? '' }}">
+                                data-fee="{{ $row->defaultFeeAmount ?? '' }}"
+                                style="padding:3px 10px; font-size:11px;">
                             Distribute
                         </button>
                         @endif
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="text-center text-muted py-4">No records found.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">No records found.</td></tr>
                 @endforelse
             </tbody>
         </table>
