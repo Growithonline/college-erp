@@ -76,44 +76,70 @@
 @else
     <div class="card border-0 shadow-sm">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+            <table class="table table-hover table-sm align-middle mb-0" style="font-size:12px;">
+                <thead style="background:#1e3a5f; color:#fff;">
                     <tr>
-                        <th>Session</th>
-                        <th>Course</th>
-                        <th>Stream</th>
-                        <th>Type</th>
-                        <th>Semester / Batch Label</th>
-                        <th>Total</th>
-                        <th>Found</th>
-                        <th>Distributed</th>
-                        <th>Status</th>
-                        <th></th>
+                        <th class="ps-2" style="min-width:70px; white-space:nowrap;">Session</th>
+                        <th style="min-width:150px;">Course / Stream</th>
+                        <th style="min-width:100px; white-space:nowrap;">Type</th>
+                        <th style="min-width:130px;">Semester / Batch Label</th>
+                        <th style="min-width:55px; white-space:nowrap;">Total</th>
+                        <th style="min-width:60px; white-space:nowrap;">Found</th>
+                        <th style="min-width:80px; white-space:nowrap;">Distributed</th>
+                        <th style="min-width:110px; white-space:nowrap;">Status</th>
+                        <th style="min-width:70px;"></th>
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $statusBadges = [
+                            'received'   => 'bg-success-subtle text-success border-success-subtle',
+                            'dispatched' => 'bg-warning-subtle text-warning border-warning-subtle',
+                            'pending'    => 'bg-secondary-subtle text-secondary border-secondary-subtle',
+                        ];
+                    @endphp
                     @foreach($batches as $batch)
                     <tr>
-                        <td>{{ $batch->session->name ?? '-' }}</td>
-                        <td>{{ $batch->course->name ?? '-' }}</td>
-                        <td>{{ $batch->courseStream->name ?? '-' }}</td>
-                        <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $batch->document_type_label }}</span></td>
-                        <td>
-                            {{ $batch->coursePart->part_name ?? '' }}
-                            @if($batch->coursePart && $batch->batch_label) &middot; @endif
-                            {{ $batch->batch_label ?? '' }}
-                            @if(!$batch->coursePart && !$batch->batch_label) - @endif
+                        <td class="ps-2">
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle" style="font-size:10px; font-weight:600; white-space:nowrap;">
+                                <i class="bi bi-calendar3 me-1"></i>{{ $batch->session->name ?? '—' }}
+                            </span>
                         </td>
-                        <td>{{ $batch->students_count }}</td>
-                        <td>{{ $batch->found_count }}</td>
-                        <td>{{ $batch->distributed_count }}</td>
                         <td>
-                            <span class="badge {{ match($batch->status) { 'received' => 'bg-success', 'dispatched' => 'bg-warning text-dark', default => 'bg-secondary' } }}">
+                            <div class="fw-semibold" style="font-size:12px; line-height:1.3;">{{ $batch->course->name ?? '-' }}</div>
+                            <div class="text-muted" style="font-size:10.5px;">{{ $batch->courseStream->name ?? '—' }}</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:10px; font-weight:600;">
+                                {{ $batch->document_type_label }}
+                            </span>
+                        </td>
+                        <td class="fw-semibold" style="white-space:nowrap;">
+                            {{ $batch->coursePart->part_name ?? '—' }}
+                            @if($batch->batch_label)
+                                <div class="text-muted fw-normal" style="font-size:10.5px;">{{ $batch->batch_label }}</div>
+                            @endif
+                        </td>
+                        <td class="fw-semibold">{{ $batch->students_count }}</td>
+                        <td>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle" style="font-size:10px; font-weight:600;">
+                                {{ $batch->found_count }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle" style="font-size:10px; font-weight:600;">
+                                {{ $batch->distributed_count }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge border {{ $statusBadges[$batch->status] ?? $statusBadges['pending'] }}" style="font-size:10px; font-weight:600;">
                                 {{ $batch->status_label }}
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('master.document-batches.show', $batch) }}" class="btn btn-sm btn-outline-secondary">
+                            <a href="{{ route('master.document-batches.show', $batch) }}"
+                               class="btn btn-sm btn-outline-secondary" title="View"
+                               style="padding:2px 8px; font-size:11px;">
                                 <i class="bi bi-eye"></i> View
                             </a>
                         </td>
