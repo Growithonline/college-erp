@@ -141,11 +141,22 @@
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Semester</label>
                     <select name="current_semester" class="form-select form-select-sm" onchange="stdAutoSubmit()">
                         <option value="">All Sem</option>
-                        @for($s = 1; $s <= 10; $s++)
+                        @for($s = 1; $s <= $maxSemester; $s++)
                             <option value="{{ $s }}" {{ request('current_semester') == $s ? 'selected' : '' }}>
                                 Sem {{ $s }}
                             </option>
                         @endfor
+                    </select>
+                </div>
+
+                {{-- Student Type --}}
+                <div class="col-auto" style="min-width:120px;">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Student Type</label>
+                    <select name="student_type" class="form-select form-select-sm" onchange="stdAutoSubmit()">
+                        <option value="">All Types</option>
+                        @foreach($studentTypes as $st)
+                            <option value="{{ $st->slug }}" {{ request('student_type') === $st->slug ? 'selected' : '' }}>{{ $st->name }}</option>
+                        @endforeach
                     </select>
                 </div>
 

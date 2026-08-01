@@ -11,6 +11,7 @@ use App\Models\CourseStream;
 use App\Models\CourseType;
 use App\Models\Institute;
 use App\Models\Student;
+use App\Models\StudentType;
 use App\Traits\ExportsTabularData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -166,6 +167,19 @@ class StudentDirectoryController extends Controller
             ->orderBy('name')
             ->get();
 
+        $studentTypes = StudentType::forInstitute($instituteId)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        // Semester filter range should reflect the longest course this institute actually
+        // runs (e.g. a 4-year trimester course goes up to Sem 12) rather than an arbitrary
+        // fixed cap that clips longer courses.
+        $maxSemester = $courses->reduce(function ($max, $course) {
+            $courseMax = (int) ($course->duration ?? 1) * $course->effectiveSemestersPerYear();
+            return max($max, $courseMax);
+        }, 8);
+
         $sessionId = $request->filled('session_id') ? (int) $request->session_id : $activeSession?->id;
 
         $query = Student::where('institute_id', $instituteId)
@@ -207,6 +221,10 @@ class StudentDirectoryController extends Controller
             $query->where('current_semester', (int) $request->current_semester);
         }
 
+        if ($request->filled('student_type')) {
+            $query->where('student_type', $request->student_type);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -229,7 +247,7 @@ class StudentDirectoryController extends Controller
 
         return view('institute.students.index', compact(
             'students', 'activeSession', 'sessions', 'courseTypes', 'courses', 'streams',
-            'sessionId', 'quickOnly', 'centersMap', 'partnersMap'
+            'sessionId', 'quickOnly', 'centersMap', 'partnersMap', 'studentTypes', 'maxSemester'
         ));
     }
 
