@@ -109,24 +109,62 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                <table class="table table-hover table-sm align-middle mb-0" style="font-size:12px;">
+                    <thead style="background:#1e3a5f; color:#fff;">
                         <tr>
-                            <th style="width:40px;">
+                            <th class="ps-2" style="width:30px;">
                                 <input type="checkbox" class="form-check-input" id="selectAll" checked>
                             </th>
-                            <th>Name</th>
-                            <th>Roll No</th>
-                            <th>Enrollment No</th>
+                            <th style="min-width:70px; white-space:nowrap;">Session</th>
+                            <th style="min-width:110px; white-space:nowrap;">Student UID</th>
+                            <th style="min-width:150px; white-space:nowrap;">Name</th>
+                            <th style="min-width:70px; white-space:nowrap;">Roll No</th>
+                            <th style="min-width:90px; white-space:nowrap;">Enroll No</th>
+                            <th style="min-width:110px; white-space:nowrap;">Father Name</th>
+                            <th style="min-width:110px; white-space:nowrap;">Mother Name</th>
+                            <th style="min-width:90px; white-space:nowrap;">Due</th>
+                            <th style="min-width:220px;">Subjects</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($students as $student)
                         <tr>
-                            <td><input type="checkbox" class="form-check-input student-check" name="student_ids[]" value="{{ $student->id }}" checked></td>
-                            <td>{{ $student->name }}</td>
-                            <td>{{ $student->roll_no ?? '-' }}</td>
-                            <td>{{ $student->enrollment_no ?? '-' }}</td>
+                            <td class="ps-2"><input type="checkbox" class="form-check-input student-check" name="student_ids[]" value="{{ $student->id }}" checked></td>
+                            <td>
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle" style="font-size:10px; font-weight:600; white-space:nowrap;">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ $student->session?->name ?? '—' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:10px; font-weight:600;">
+                                    {{ $student->student_uid ?? '—' }}
+                                </span>
+                            </td>
+                            <td class="fw-semibold">{{ $student->name }}</td>
+                            <td class="text-muted fw-semibold">{{ $student->roll_no ?? '—' }}</td>
+                            <td class="text-muted fw-semibold">{{ $student->enrollment_no ?? '—' }}</td>
+                            <td class="fw-semibold" style="white-space:nowrap;">{{ $student->father_name ?: '—' }}</td>
+                            <td class="fw-semibold" style="white-space:nowrap;">{{ $student->mother_name ?: '—' }}</td>
+                            <td>
+                                @if($student->totalDue > 0)
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle" style="font-size:10px; font-weight:600;">
+                                        ₹{{ number_format($student->totalDue, 2) }}
+                                    </span>
+                                @else
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle" style="font-size:10px; font-weight:600;">
+                                        No Due
+                                    </span>
+                                @endif
+                            </td>
+                            <td>
+                                @forelse($student->subjects as $subject)
+                                    <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle me-1 mb-1" style="font-size:10px; font-weight:500;">
+                                        {{ $subject->name }}
+                                    </span>
+                                @empty
+                                    <span class="text-muted">—</span>
+                                @endforelse
+                            </td>
                         </tr>
                         @endforeach
                     </tbody>

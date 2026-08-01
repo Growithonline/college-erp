@@ -12,6 +12,7 @@ use App\Models\DocumentBatch;
 use App\Models\DocumentBatchStudent;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
+use App\Services\WalletService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -89,6 +90,8 @@ class DocumentBatchController extends Controller
 
         $students = collect();
 
+        $withSubjects = ['session', 'subjects' => fn ($q) => $q->wherePivot('academic_session_id', $sessionId)];
+
         if ($documentType === 'degree' && $sessionId && $courseId && $streamId) {
             // Degree = whole course completed — only students who have actually passed out,
             // scoped to the specific stream (different streams' degrees can arrive separately).
@@ -96,6 +99,7 @@ class DocumentBatchController extends Controller
                 ->where('academic_session_id', $sessionId)
                 ->where('status', 'passed_out')
                 ->where('course_stream_id', $streamId)
+                ->with($withSubjects)
                 ->orderBy('name')
                 ->get();
         } elseif ($documentType === 'marksheet' && $sessionId && $courseId && $streamId && $coursePartId) {
@@ -115,9 +119,15 @@ class DocumentBatchController extends Controller
 
             $students = Student::where('institute_id', $instituteId)
                 ->whereIn('id', $studentIds)
+                ->with($withSubjects)
                 ->orderBy('name')
                 ->get();
         }
+
+        // Due is computed live (not stored), so it has to be resolved per student here.
+        $students->each(function (Student $student) {
+            $student->totalDue = WalletService::getStudentSummary($student, (int) $student->academic_session_id)['total_due'] ?? 0;
+        });
 
         return view('institute.master.document-batches.create', compact(
             'sessions', 'courseTypes', 'courses', 'streams', 'courseParts', 'students',
