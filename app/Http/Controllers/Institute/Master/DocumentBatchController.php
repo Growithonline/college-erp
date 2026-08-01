@@ -27,8 +27,26 @@ class DocumentBatchController extends Controller
     {
         $instituteId = $this->instituteId();
 
-        $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
-        $courses  = Course::where('institute_id', $instituteId)->orderBy('name')->get();
+        $sessions    = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes = CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get();
+
+        $courseTypeId = $request->integer('course_type_id') ?: null;
+        $courseId     = $request->integer('course_id') ?: null;
+
+        $courses = Course::where('institute_id', $instituteId)
+            ->when($courseTypeId, fn ($q) => $q->where('course_type_id', $courseTypeId))
+            ->orderBy('name')
+            ->get();
+
+        $streams = CourseStream::whereHas('course', fn ($q) => $q->where('institute_id', $instituteId))
+            ->when($courseId, fn ($q) => $q->where('course_id', $courseId))
+            ->orderBy('name')
+            ->get();
+
+        $courseParts = CoursePart::whereHas('course', fn ($q) => $q->where('institute_id', $instituteId))
+            ->when($courseId, fn ($q) => $q->where('course_id', $courseId))
+            ->orderBy('part_number')
+            ->get();
 
         $query = DocumentBatch::where('institute_id', $instituteId)
             ->with(['session', 'course', 'courseStream', 'coursePart'])
@@ -42,11 +60,20 @@ class DocumentBatchController extends Controller
         if ($request->filled('session_id')) {
             $query->where('academic_session_id', (int) $request->session_id);
         }
-        if ($request->filled('course_id')) {
-            $query->where('course_id', (int) $request->course_id);
-        }
         if ($request->filled('document_type')) {
             $query->where('document_type', $request->document_type);
+        }
+        if ($courseTypeId) {
+            $query->whereHas('course', fn ($q) => $q->where('course_type_id', $courseTypeId));
+        }
+        if ($courseId) {
+            $query->where('course_id', $courseId);
+        }
+        if ($request->filled('course_stream_id')) {
+            $query->where('course_stream_id', (int) $request->course_stream_id);
+        }
+        if ($request->filled('course_part_id')) {
+            $query->where('course_part_id', (int) $request->course_part_id);
         }
         if ($request->filled('status')) {
             match ($request->status) {
@@ -59,7 +86,9 @@ class DocumentBatchController extends Controller
 
         $batches = $query->paginate(20)->withQueryString();
 
-        return view('institute.master.document-batches.index', compact('batches', 'sessions', 'courses'));
+        return view('institute.master.document-batches.index', compact(
+            'batches', 'sessions', 'courseTypes', 'courses', 'streams', 'courseParts'
+        ));
     }
 
     public function create(Request $request)

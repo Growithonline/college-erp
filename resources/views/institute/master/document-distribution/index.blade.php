@@ -16,6 +16,15 @@
     <div class="card-body">
         <form method="GET" id="filterForm" class="row g-3">
             <div class="col-md-3">
+                <label class="form-label fw-medium">Session</label>
+                <select class="form-select" name="session_id" onchange="document.getElementById('filterForm').submit()">
+                    <option value="">All Sessions</option>
+                    @foreach($sessions as $session)
+                        <option value="{{ $session->id }}" {{ (string)$sessionId === (string)$session->id ? 'selected' : '' }}>{{ $session->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label fw-medium">Document Type</label>
                 <select class="form-select" name="document_type" onchange="document.getElementById('filterForm').submit()">
                     @foreach(\App\Models\DocumentBatch::$documentTypes as $key => $label)
@@ -24,11 +33,11 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label fw-medium">Session</label>
-                <select class="form-select" name="session_id" onchange="document.getElementById('filterForm').submit()">
-                    <option value="">All Sessions</option>
-                    @foreach($sessions as $session)
-                        <option value="{{ $session->id }}" {{ (string)$sessionId === (string)$session->id ? 'selected' : '' }}>{{ $session->name }}</option>
+                <label class="form-label fw-medium">Course Type</label>
+                <select class="form-select" name="course_type_id" onchange="document.getElementById('filterForm').submit()">
+                    <option value="">All Course Types</option>
+                    @foreach($courseTypes as $type)
+                        <option value="{{ $type->id }}" {{ (string)$courseTypeId === (string)$type->id ? 'selected' : '' }}>{{ $type->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -42,6 +51,24 @@
                 </select>
             </div>
             <div class="col-md-3">
+                <label class="form-label fw-medium">Stream</label>
+                <select class="form-select" name="course_stream_id" onchange="document.getElementById('filterForm').submit()">
+                    <option value="">All Streams</option>
+                    @foreach($streams as $stream)
+                        <option value="{{ $stream->id }}" {{ (string)$streamId === (string)$stream->id ? 'selected' : '' }}>{{ $stream->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-medium">Semester / Year</label>
+                <select class="form-select" name="course_part_id" onchange="document.getElementById('filterForm').submit()">
+                    <option value="">All Semesters</option>
+                    @foreach($courseParts as $part)
+                        <option value="{{ $part->id }}" {{ (string)$coursePartId === (string)$part->id ? 'selected' : '' }}>{{ $part->part_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label fw-medium">Distribution Status</label>
                 <select class="form-select" name="distribution_status" onchange="document.getElementById('filterForm').submit()">
                     <option value="">All</option>
@@ -49,6 +76,13 @@
                     <option value="distributed" {{ request('distribution_status') === 'distributed' ? 'selected' : '' }}>Distributed</option>
                 </select>
             </div>
+            @if(request()->anyFilled(['session_id','course_type_id','course_id','course_stream_id','course_part_id','distribution_status']) || $documentType !== 'marksheet')
+            <div class="col-12">
+                <a href="{{ route('master.document-distribution.index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle me-1"></i> Clear Filters
+                </a>
+            </div>
+            @endif
         </form>
     </div>
 </div>

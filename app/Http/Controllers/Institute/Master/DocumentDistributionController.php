@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Institute\Master;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Course;
+use App\Models\CoursePart;
+use App\Models\CourseStream;
+use App\Models\CourseType;
 use App\Models\DocumentBatch;
 use App\Models\DocumentBatchStudent;
 use App\Models\InstituteIncomeCategory;
@@ -25,26 +28,53 @@ class DocumentDistributionController extends Controller
     {
         $instituteId = $this->instituteId();
 
-        $sessions   = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
-        $courses    = Course::where('institute_id', $instituteId)->orderBy('name')->get();
-        $categories = InstituteIncomeCategory::where('institute_id', $instituteId)->active()->orderBy('name')->get();
+        $sessions    = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes = CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get();
+        $categories  = InstituteIncomeCategory::where('institute_id', $instituteId)->active()->orderBy('name')->get();
 
         $documentType = $request->input('document_type', 'marksheet');
         $sessionId    = $request->integer('session_id') ?: AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id');
+        $courseTypeId = $request->integer('course_type_id') ?: null;
         $courseId     = $request->integer('course_id') ?: null;
+        $streamId     = $request->integer('course_stream_id') ?: null;
+        $coursePartId = $request->integer('course_part_id') ?: null;
+
+        $courses = Course::where('institute_id', $instituteId)
+            ->when($courseTypeId, fn ($q) => $q->where('course_type_id', $courseTypeId))
+            ->orderBy('name')
+            ->get();
+
+        $streams = CourseStream::whereHas('course', fn ($q) => $q->where('institute_id', $instituteId))
+            ->when($courseId, fn ($q) => $q->where('course_id', $courseId))
+            ->orderBy('name')
+            ->get();
+
+        $courseParts = CoursePart::whereHas('course', fn ($q) => $q->where('institute_id', $instituteId))
+            ->when($courseId, fn ($q) => $q->where('course_id', $courseId))
+            ->orderBy('part_number')
+            ->get();
 
         $defaultCategoryId = $categories->first(
             fn ($category) => str_contains(strtolower($category->name), $documentType === 'degree' ? 'degree' : 'marksheet')
         )?->id;
 
         $query = DocumentBatchStudent::whereNotNull('found_at')
-            ->whereHas('batch', function ($q) use ($instituteId, $documentType, $sessionId, $courseId) {
+            ->whereHas('batch', function ($q) use ($instituteId, $documentType, $sessionId, $courseTypeId, $courseId, $streamId, $coursePartId) {
                 $q->where('institute_id', $instituteId)->where('document_type', $documentType);
                 if ($sessionId) {
                     $q->where('academic_session_id', $sessionId);
                 }
+                if ($courseTypeId) {
+                    $q->whereHas('course', fn ($cq) => $cq->where('course_type_id', $courseTypeId));
+                }
                 if ($courseId) {
                     $q->where('course_id', $courseId);
+                }
+                if ($streamId) {
+                    $q->where('course_stream_id', $streamId);
+                }
+                if ($coursePartId) {
+                    $q->where('course_part_id', $coursePartId);
                 }
             })
             ->with(['student', 'batch.course.documentFee', 'batch.courseStream', 'batch.coursePart']);
@@ -68,7 +98,8 @@ class DocumentDistributionController extends Controller
         });
 
         return view('institute.master.document-distribution.index', compact(
-            'rows', 'sessions', 'courses', 'categories', 'documentType', 'sessionId', 'courseId', 'defaultCategoryId'
+            'rows', 'sessions', 'courseTypes', 'courses', 'streams', 'courseParts', 'categories',
+            'documentType', 'sessionId', 'courseTypeId', 'courseId', 'streamId', 'coursePartId', 'defaultCategoryId'
         ));
     }
 
