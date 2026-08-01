@@ -218,6 +218,7 @@
                     <th style="min-width:65px; white-space:nowrap;">UIN No</th>
                     <th style="min-width:120px; white-space:nowrap;">Course</th>
                     <th style="min-width:65px; white-space:nowrap;">Year/Sem</th>
+                    <th style="min-width:90px; white-space:nowrap;">Student Type</th>
                     <th style="min-width:90px; white-space:nowrap;">Admitted By</th>
                     <th style="min-width:85px; white-space:nowrap;">Source</th>
                     <th style="min-width:80px; white-space:nowrap;">Adm. Date</th>
@@ -226,6 +227,7 @@
                 </tr>
             </thead>
             <tbody>
+                @php $studentTypeNames = $studentTypes->pluck('name', 'slug'); @endphp
                 @forelse($students as $i => $student)
                 @php
                     $src = $student->admission_source ?? 'direct';
@@ -334,6 +336,11 @@
                         @endif
                     </td>
 
+                    {{-- Student Type --}}
+                    <td class="fw-semibold" style="white-space:nowrap;">
+                        {{ $studentTypeNames[$student->student_type] ?? ucfirst(str_replace('_', ' ', $student->student_type ?? '')) ?: '—' }}
+                    </td>
+
                     {{-- Admitted By --}}
                     <td>
                         <span class="badge {{ $admittedByBadge }} border"
@@ -389,7 +396,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="16" class="text-center text-muted py-5">
+                    <td colspan="17" class="text-center text-muted py-5">
                         <i class="bi bi-people fs-2 d-block mb-2"></i>
                         No students found matching your filters.
                     </td>
