@@ -104,7 +104,7 @@ document.querySelectorAll('.toggle-found-btn').forEach(function (btn) {
         .then(res => res.json().then(data => ({ ok: res.ok, data })))
         .then(({ ok, data }) => {
             if (!ok) {
-                alert(data.error || 'Could not update found status.');
+                window.showToast(data.error || 'Could not update found status.', 'danger');
                 return;
             }
 
