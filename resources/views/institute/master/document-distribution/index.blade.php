@@ -55,7 +55,7 @@
 
 <div class="alert alert-info">
     <i class="bi bi-info-circle me-1"></i>
-    Sirf wahi students dikhte hain jinka document "Sort &amp; Verify" step me Found mark ho chuka hai.
+    Only students whose document has been marked "Found" in the Sort &amp; Verify step appear here.
 </div>
 
 <div class="card border-0 shadow-sm">

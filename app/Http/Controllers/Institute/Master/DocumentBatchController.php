@@ -179,7 +179,7 @@ class DocumentBatchController extends Controller
             $studentIds->map(fn ($id) => ['student_id' => $id])->all()
         );
 
-        return redirect()->route('master.document-batches.show', $batch)->with('success', 'Batch ban gaya.');
+        return redirect()->route('master.document-batches.show', $batch)->with('success', 'Batch created.');
     }
 
     public function show(DocumentBatch $documentBatch)
@@ -208,7 +208,7 @@ class DocumentBatchController extends Controller
 
         $documentBatch->update($validated);
 
-        return back()->with('success', 'Dispatch status update ho gaya.');
+        return back()->with('success', 'Dispatch status updated.');
     }
 
     public function markReceived(Request $request, DocumentBatch $documentBatch)
@@ -222,7 +222,7 @@ class DocumentBatchController extends Controller
 
         $documentBatch->update($validated);
 
-        return back()->with('success', 'Receive status update ho gaya.');
+        return back()->with('success', 'Receive status updated.');
     }
 
     public function sort(DocumentBatch $documentBatch)

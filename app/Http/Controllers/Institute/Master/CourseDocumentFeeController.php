@@ -52,6 +52,6 @@ class CourseDocumentFeeController extends Controller
             );
         }
 
-        return back()->with('success', 'Fee settings save ho gaye.');
+        return back()->with('success', 'Fee settings saved.');
     }
 }

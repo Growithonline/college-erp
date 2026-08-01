@@ -119,6 +119,6 @@ class DocumentDistributionController extends Controller
             $documentBatchStudent->save();
         });
 
-        return back()->with('success', 'Distribution record ho gaya.');
+        return back()->with('success', 'Distribution recorded.');
     }
 }

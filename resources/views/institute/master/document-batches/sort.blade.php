@@ -20,27 +20,33 @@
 
 <div class="alert alert-info">
     <i class="bi bi-info-circle me-1"></i>
-    Physical bundle se milaan karke har student ka marksheet/degree mila ya nahi mark karein — isse baad me student aane par turant pata chal jayega.
+    Match each student against the physical bundle and mark whether their marksheet/degree was found — this lets front-desk staff instantly check status later instead of searching the pile again.
 </div>
 
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+        <table class="table table-hover table-sm align-middle mb-0" style="font-size:12px;">
+            <thead style="background:#1e3a5f; color:#fff;">
                 <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Roll No</th>
-                    <th>Found Status</th>
-                    <th style="width:160px;"></th>
+                    <th class="ps-2" style="width:36px;">#</th>
+                    <th style="min-width:110px; white-space:nowrap;">Student UID</th>
+                    <th style="min-width:150px;">Name</th>
+                    <th style="min-width:70px; white-space:nowrap;">Roll No</th>
+                    <th style="min-width:120px; white-space:nowrap;">Found Status</th>
+                    <th style="width:150px;"></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($students as $i => $row)
                 <tr id="row-{{ $row->id }}">
-                    <td class="text-muted small">{{ $i+1 }}</td>
-                    <td>{{ $row->student->name ?? '-' }}</td>
-                    <td>{{ $row->student->roll_no ?? '-' }}</td>
+                    <td class="ps-2 text-muted fw-semibold">{{ $i+1 }}</td>
+                    <td>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:10px; font-weight:600;">
+                            {{ $row->student->student_uid ?? '—' }}
+                        </span>
+                    </td>
+                    <td class="fw-semibold">{{ $row->student->name ?? '-' }}</td>
+                    <td class="text-muted fw-semibold">{{ $row->student->roll_no ?? '—' }}</td>
                     <td class="status-cell">
                         @if($row->is_found)
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
