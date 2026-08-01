@@ -1405,9 +1405,12 @@ class ReportController extends Controller
         $sessionId = $request->session_id ?? $activeSession?->id;
         $sessionObj = AcademicSession::find($sessionId);
 
-        $query = Student::where('institute_id', $instituteId)
-            ->where('admission_type', 'lateral')
-            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId));
+        // Columns qualified with students. explicitly — courseStats below joins in
+        // course_streams/courses, and courses also has its own institute_id column,
+        // which makes an unqualified 'institute_id' ambiguous once that join is added.
+        $query = Student::where('students.institute_id', $instituteId)
+            ->where('students.admission_type', 'lateral')
+            ->when($sessionId, fn($q) => $q->where('students.academic_session_id', $sessionId));
         $this->applyStaffStudentScope($query);
 
         $terminalNonPassout = ['backlog', 'failed', 'dropped'];
