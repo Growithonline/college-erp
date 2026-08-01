@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CoursePart;
+use App\Models\CourseStream;
+use App\Models\CourseType;
 use App\Models\DocumentBatch;
 use App\Models\DocumentBatchStudent;
 use App\Models\Student;
@@ -28,7 +30,7 @@ class DocumentBatchController extends Controller
         $courses  = Course::where('institute_id', $instituteId)->orderBy('name')->get();
 
         $query = DocumentBatch::where('institute_id', $instituteId)
-            ->with(['session', 'course', 'coursePart'])
+            ->with(['session', 'course', 'courseStream', 'coursePart'])
             ->withCount([
                 'students',
                 'students as found_count' => fn ($q) => $q->whereNotNull('found_at'),
@@ -63,13 +65,23 @@ class DocumentBatchController extends Controller
     {
         $instituteId = $this->instituteId();
 
-        $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
-        $courses  = Course::where('institute_id', $instituteId)->orderBy('name')->get();
+        $sessions    = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes = CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get();
 
         $sessionId    = $request->integer('session_id') ?: null;
-        $courseId     = $request->integer('course_id') ?: null;
         $documentType = $request->input('document_type', 'marksheet');
+        $courseTypeId = $request->integer('course_type_id') ?: null;
+        $courseId     = $request->integer('course_id') ?: null;
+        $streamId     = $request->integer('course_stream_id') ?: null;
         $coursePartId = $request->integer('course_part_id') ?: null;
+
+        $courses = $courseTypeId
+            ? Course::where('institute_id', $instituteId)->where('course_type_id', $courseTypeId)->orderBy('name')->get()
+            : collect();
+
+        $streams = $courseId
+            ? CourseStream::where('course_id', $courseId)->orderBy('name')->get()
+            : collect();
 
         $courseParts = $courseId
             ? CoursePart::where('course_id', $courseId)->orderBy('part_number')->get()
@@ -77,22 +89,25 @@ class DocumentBatchController extends Controller
 
         $students = collect();
 
-        if ($documentType === 'degree' && $sessionId && $courseId) {
-            // Degree = whole course completed — only students who have actually passed out.
+        if ($documentType === 'degree' && $sessionId && $courseId && $streamId) {
+            // Degree = whole course completed — only students who have actually passed out,
+            // scoped to the specific stream (different streams' degrees can arrive separately).
             $students = Student::where('institute_id', $instituteId)
                 ->where('academic_session_id', $sessionId)
                 ->where('status', 'passed_out')
-                ->whereHas('stream', fn ($q) => $q->where('course_id', $courseId))
+                ->where('course_stream_id', $streamId)
                 ->orderBy('name')
                 ->get();
-        } elseif ($documentType === 'marksheet' && $sessionId && $courseId && $coursePartId) {
-            // Marksheet = one specific semester/year's exam — anyone who was enrolled in that
-            // part during that session, regardless of what happened to them since (promoted,
-            // backlog, even later passed out). Live student rows won't reflect this anymore
-            // once time has passed, so we look at the academic-identity history instead.
+        } elseif ($documentType === 'marksheet' && $sessionId && $courseId && $streamId && $coursePartId) {
+            // Marksheet = one specific semester/year's exam, for one specific stream — anyone
+            // who was enrolled in that part+stream during that session, regardless of what
+            // happened to them since (promoted, backlog, even later passed out). Live student
+            // rows won't reflect this anymore once time has passed, so we look at the
+            // academic-identity history instead.
             $studentIds = StudentAcademicIdentity::where('institute_id', $instituteId)
                 ->where('academic_session_id', $sessionId)
                 ->where('course_id', $courseId)
+                ->where('course_stream_id', $streamId)
                 ->where('course_part_id', $coursePartId)
                 ->realOnly()
                 ->distinct()
@@ -105,7 +120,8 @@ class DocumentBatchController extends Controller
         }
 
         return view('institute.master.document-batches.create', compact(
-            'sessions', 'courses', 'courseParts', 'students', 'sessionId', 'courseId', 'documentType', 'coursePartId'
+            'sessions', 'courseTypes', 'courses', 'streams', 'courseParts', 'students',
+            'sessionId', 'documentType', 'courseTypeId', 'courseId', 'streamId', 'coursePartId'
         ));
     }
 
@@ -116,6 +132,7 @@ class DocumentBatchController extends Controller
         $validated = $request->validate([
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'course_id'           => 'required|exists:courses,id',
+            'course_stream_id'    => 'required|exists:course_streams,id',
             'course_part_id'      => 'nullable|required_if:document_type,marksheet|exists:course_parts,id',
             'document_type'       => ['required', Rule::in(array_keys(DocumentBatch::$documentTypes))],
             'batch_label'         => 'nullable|string|max:100',
@@ -125,6 +142,7 @@ class DocumentBatchController extends Controller
 
         AcademicSession::where('id', $validated['academic_session_id'])->where('institute_id', $instituteId)->firstOrFail();
         Course::where('id', $validated['course_id'])->where('institute_id', $instituteId)->firstOrFail();
+        CourseStream::where('id', $validated['course_stream_id'])->where('course_id', $validated['course_id'])->firstOrFail();
 
         $coursePartId = null;
         if ($validated['document_type'] === 'marksheet') {
@@ -141,6 +159,7 @@ class DocumentBatchController extends Controller
             'institute_id'        => $instituteId,
             'academic_session_id' => $validated['academic_session_id'],
             'course_id'           => $validated['course_id'],
+            'course_stream_id'    => $validated['course_stream_id'],
             'course_part_id'      => $coursePartId,
             'document_type'       => $validated['document_type'],
             'batch_label'         => $validated['batch_label'] ?? null,
@@ -157,7 +176,7 @@ class DocumentBatchController extends Controller
     {
         abort_if($documentBatch->institute_id !== $this->instituteId(), 403);
 
-        $documentBatch->load(['session', 'course', 'coursePart', 'students.student']);
+        $documentBatch->load(['session', 'course', 'courseStream', 'coursePart', 'students.student']);
 
         $totalCount      = $documentBatch->students->count();
         $foundCount      = $documentBatch->students->whereNotNull('found_at')->count();
@@ -200,7 +219,7 @@ class DocumentBatchController extends Controller
     {
         abort_if($documentBatch->institute_id !== $this->instituteId(), 403);
 
-        $documentBatch->load(['course', 'coursePart', 'session']);
+        $documentBatch->load(['course', 'courseStream', 'coursePart', 'session']);
 
         $students = $documentBatch->students()
             ->with('student')

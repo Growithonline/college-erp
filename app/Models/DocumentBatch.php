@@ -18,7 +18,7 @@ class DocumentBatch extends Model
     ];
 
     protected $fillable = [
-        'institute_id', 'academic_session_id', 'course_id', 'course_part_id', 'document_type',
+        'institute_id', 'academic_session_id', 'course_id', 'course_stream_id', 'course_part_id', 'document_type',
         'batch_label', 'dispatch_date', 'dispatch_remarks',
         'received_date', 'received_count', 'remarks',
     ];
@@ -47,6 +47,11 @@ class DocumentBatch extends Model
     public function coursePart()
     {
         return $this->belongsTo(CoursePart::class);
+    }
+
+    public function courseStream()
+    {
+        return $this->belongsTo(CourseStream::class);
     }
 
     public function students()

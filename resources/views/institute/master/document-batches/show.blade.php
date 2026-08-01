@@ -6,6 +6,7 @@
     <div>
         <h4 class="mb-0 fw-bold">
             {{ $documentBatch->course->name ?? '-' }}
+            @if($documentBatch->courseStream) — {{ $documentBatch->courseStream->name }} @endif
             @if($documentBatch->coursePart) — {{ $documentBatch->coursePart->part_name }} @endif
             — {{ $documentBatch->session->name ?? '-' }}
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">{{ $documentBatch->document_type_label }}</span>

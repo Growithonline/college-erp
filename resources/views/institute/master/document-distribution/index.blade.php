@@ -79,7 +79,11 @@
                         <div><small class="text-muted">{{ $row->student->roll_no ?? '' }}</small></div>
                     </td>
                     <td>
-                        {{ $row->batch->coursePart->part_name ?? $row->batch->course->name ?? '-' }}
+                        {{ $row->batch->course->name ?? '-' }}
+                        @if($row->batch->courseStream) — {{ $row->batch->courseStream->name }} @endif
+                        @if($row->batch->coursePart)
+                            <div><small class="text-muted">{{ $row->batch->coursePart->part_name }}</small></div>
+                        @endif
                         @if($row->batch->batch_label)
                             <div><small class="text-muted">{{ $row->batch->batch_label }}</small></div>
                         @endif

@@ -81,6 +81,7 @@
                     <tr>
                         <th>Session</th>
                         <th>Course</th>
+                        <th>Stream</th>
                         <th>Type</th>
                         <th>Semester / Batch Label</th>
                         <th>Total</th>
@@ -95,6 +96,7 @@
                     <tr>
                         <td>{{ $batch->session->name ?? '-' }}</td>
                         <td>{{ $batch->course->name ?? '-' }}</td>
+                        <td>{{ $batch->courseStream->name ?? '-' }}</td>
                         <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $batch->document_type_label }}</span></td>
                         <td>
                             {{ $batch->coursePart->part_name ?? '' }}

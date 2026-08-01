@@ -47,7 +47,7 @@ class DocumentDistributionController extends Controller
                     $q->where('course_id', $courseId);
                 }
             })
-            ->with(['student', 'batch.course.documentFee', 'batch.coursePart']);
+            ->with(['student', 'batch.course.documentFee', 'batch.courseStream', 'batch.coursePart']);
 
         if ($request->input('distribution_status') === 'distributed') {
             $query->whereNotNull('distributed_at');

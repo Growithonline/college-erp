@@ -11,10 +11,10 @@
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
-        <form method="GET" class="row g-3">
+        <form method="GET" class="row g-3" id="batchFilterForm">
             <div class="col-md-4">
                 <label class="form-label fw-medium">Academic Session <span class="text-danger">*</span></label>
-                <select class="form-select" name="session_id" required>
+                <select class="form-select" name="session_id" required onchange="document.getElementById('batchFilterForm').submit()">
                     <option value="">Select Session</option>
                     @foreach($sessions as $session)
                         <option value="{{ $session->id }}" {{ (string)$sessionId === (string)$session->id ? 'selected' : '' }}>{{ $session->name }}</option>
@@ -22,27 +22,46 @@
                 </select>
             </div>
             <div class="col-md-4">
+                <label class="form-label fw-medium">Document Type <span class="text-danger">*</span></label>
+                <select class="form-select" name="document_type" required onchange="document.getElementById('batchFilterForm').submit()">
+                    @foreach(\App\Models\DocumentBatch::$documentTypes as $key => $label)
+                        <option value="{{ $key }}" {{ $documentType === $key ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-medium">Course Type <span class="text-danger">*</span></label>
+                <select class="form-select" name="course_type_id" required onchange="document.getElementById('batchFilterForm').submit()">
+                    <option value="">Select Course Type</option>
+                    @foreach($courseTypes as $type)
+                        <option value="{{ $type->id }}" {{ (string)$courseTypeId === (string)$type->id ? 'selected' : '' }}>{{ $type->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-4">
                 <label class="form-label fw-medium">Course <span class="text-danger">*</span></label>
-                <select class="form-select" name="course_id" required>
-                    <option value="">Select Course</option>
+                <select class="form-select" name="course_id" required onchange="document.getElementById('batchFilterForm').submit()" {{ $courseTypeId ? '' : 'disabled' }}>
+                    <option value="">{{ $courseTypeId ? 'Select Course' : 'Select Course Type first' }}</option>
                     @foreach($courses as $course)
                         <option value="{{ $course->id }}" {{ (string)$courseId === (string)$course->id ? 'selected' : '' }}>{{ $course->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label fw-medium">Document Type <span class="text-danger">*</span></label>
-                <select class="form-select" name="document_type" required>
-                    @foreach(\App\Models\DocumentBatch::$documentTypes as $key => $label)
-                        <option value="{{ $key }}" {{ $documentType === $key ? 'selected' : '' }}>{{ $label }}</option>
+                <label class="form-label fw-medium">Stream <span class="text-danger">*</span></label>
+                <select class="form-select" name="course_stream_id" required onchange="document.getElementById('batchFilterForm').submit()" {{ $courseId ? '' : 'disabled' }}>
+                    <option value="">{{ $courseId ? 'Select Stream' : 'Select Course first' }}</option>
+                    @foreach($streams as $stream)
+                        <option value="{{ $stream->id }}" {{ (string)$streamId === (string)$stream->id ? 'selected' : '' }}>{{ $stream->name }}</option>
                     @endforeach
                 </select>
+                <small class="text-muted">Different streams' documents can arrive at different times.</small>
             </div>
             @if($documentType === 'marksheet')
             <div class="col-md-4">
                 <label class="form-label fw-medium">Semester / Year <span class="text-danger">*</span></label>
-                <select class="form-select" name="course_part_id" required>
-                    <option value="">Select Course first, then Semester</option>
+                <select class="form-select" name="course_part_id" required onchange="document.getElementById('batchFilterForm').submit()" {{ $courseId ? '' : 'disabled' }}>
+                    <option value="">{{ $courseId ? 'Select Semester' : 'Select Course first' }}</option>
                     @foreach($courseParts as $part)
                         <option value="{{ $part->id }}" {{ (string)$coursePartId === (string)$part->id ? 'selected' : '' }}>{{ $part->part_name }}</option>
                     @endforeach
@@ -59,12 +78,12 @@
     </div>
 </div>
 
-@if($sessionId && $courseId && ($documentType === 'degree' || $coursePartId))
+@if($sessionId && $courseId && $streamId && ($documentType === 'degree' || $coursePartId))
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center">
         <h6 class="fw-semibold mb-0">Eligible Students ({{ $students->count() }})</h6>
         <small class="text-muted">
-            {{ $documentType === 'degree' ? 'Course complete, status = Passed Out' : 'Enrolled in this semester during this session (any current status)' }}
+            {{ $documentType === 'degree' ? 'Course complete, status = Passed Out' : 'Enrolled in this semester + stream during this session (any current status)' }}
         </small>
     </div>
     <div class="card-body">
@@ -78,6 +97,7 @@
             @csrf
             <input type="hidden" name="academic_session_id" value="{{ $sessionId }}">
             <input type="hidden" name="course_id" value="{{ $courseId }}">
+            <input type="hidden" name="course_stream_id" value="{{ $streamId }}">
             <input type="hidden" name="document_type" value="{{ $documentType }}">
             @if($documentType === 'marksheet')
             <input type="hidden" name="course_part_id" value="{{ $coursePartId }}">
