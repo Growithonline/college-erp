@@ -130,6 +130,12 @@
                            href="{{ route($authGuard.'.admissions.quick-create') }}">
                         <i class="bi bi-lightning-fill" style="color:#f59e0b;"></i> Quick Register
                     </a></li>
+                    @if($authGuard === 'staff')
+                    <li><a class="nav-link {{ request()->routeIs($authGuard.'.admissions.lateral-entry') ? 'active' : '' }}"
+                           href="{{ route($authGuard.'.admissions.lateral-entry') }}">
+                        <i class="bi bi-arrow-repeat"></i> Lateral Entry
+                    </a></li>
+                    @endif
                     @if($authGuard !== 'partner')
                     <li><a class="nav-link {{ request()->routeIs($authGuard.'.admissions.create') ? 'active' : '' }}"
                            href="{{ route($authGuard.'.admissions.create') }}">
@@ -506,6 +512,10 @@
                     <li><a class="nav-link {{ request()->routeIs('staff.reports.admission-analytics') ? 'active' : '' }}"
                            href="{{ route('staff.reports.admission-analytics') }}">
                         <i class="bi bi-graph-up-arrow"></i> Admission Analytics
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('staff.reports.lateral-entry-analytics') ? 'active' : '' }}"
+                           href="{{ route('staff.reports.lateral-entry-analytics') }}">
+                        <i class="bi bi-arrow-repeat"></i> Lateral Entry Analytics
                     </a></li>
                     <li><a class="nav-link {{ request()->routeIs('staff.reports.subject-wise-student') ? 'active' : '' }}"
                            href="{{ route('staff.reports.subject-wise-student') }}">

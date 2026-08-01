@@ -408,15 +408,11 @@
                 @endif
             @endforeach
 
+            <input type="hidden" name="admission_type" value="new">
             @if($fieldEnabled('admission_type'))
             <div class="col-md-{{ $isCompact ? 3 : 4 }}">
-                <label class="form-label small fw-semibold mb-1">Admission Type @if($fieldRequired('admission_type'))<span class="text-danger">*</span>@endif</label>
-                <select name="admission_type" class="{{ $fs }}" {{ $fieldRequired('admission_type') ? 'required' : '' }}>
-                    <option value="new" {{ $qv('admission_type','new')=='new' ? 'selected':'' }}>New</option>
-                    <option value="lateral" {{ $qv('admission_type','new')=='lateral' ? 'selected':'' }}>Lateral Entry</option>
-                    <option value="transfer" {{ $qv('admission_type','new')=='transfer' ? 'selected':'' }}>Transfer</option>
-                    <option value="re_admission" {{ $qv('admission_type','new')=='re_admission' ? 'selected':'' }}>Re-Admission</option>
-                </select>
+                <label class="form-label small fw-semibold mb-1 d-block">Admission Type</label>
+                <input type="text" class="form-control form-control-sm bg-light" value="New Admission" readonly>
             </div>
             @endif
 

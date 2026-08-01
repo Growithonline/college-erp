@@ -518,6 +518,10 @@
                            href="{{ route('admissions.quick-create') }}">
                         <i class="bi bi-lightning-fill text-warning"></i> Quick Register
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.lateral-entry') ? 'active' : '' }}"
+                           href="{{ route('admissions.lateral-entry') }}">
+                        <i class="bi bi-arrow-repeat text-dark"></i> Lateral Entry
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('admissions.online') ? 'active' : '' }}"
                            href="{{ route('admissions.online') }}">
                         <i class="bi bi-globe text-info"></i> Online Admission
@@ -1124,6 +1128,10 @@
                     <li><a class="nav-link {{ request()->routeIs('reports.admission-analytics') ? 'active' : '' }}"
                            href="{{ route('reports.admission-analytics') }}">
                         <i class="bi bi-graph-up-arrow"></i> Admission Analytics
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.lateral-entry-analytics') ? 'active' : '' }}"
+                           href="{{ route('reports.lateral-entry-analytics') }}">
+                        <i class="bi bi-arrow-repeat"></i> Lateral Entry Analytics
                     </a></li>
                     <li><a class="nav-link {{ request()->routeIs('reports.custom-student') ? 'active' : '' }}"
                            href="{{ route('reports.custom-student') }}">

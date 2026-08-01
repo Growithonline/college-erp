@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class StreamSessionLimit extends Model
 {
-    protected $fillable = ['course_stream_id', 'academic_session_id', 'student_limit'];
+    protected $fillable = ['course_stream_id', 'academic_session_id', 'admission_type', 'student_limit'];
 
     public function stream()
     {

@@ -289,8 +289,13 @@ class WalletService
             ->toArray();
 
         $coursePart = $student->coursePart?->year_number ?? 1;
-        $session = AcademicSession::find($sessionId);
-        $semester = $session?->current_semester ?? 1;
+        // Use the student's own current_semester (set correctly at creation — always 1 for a
+        // regular admission, whatever the staff chose for a Lateral Entry admission) rather than
+        // AcademicSession.current_semester, which has no write-path anywhere in the app and stays
+        // stuck at its default of 1 forever. This was always latent (harmless for course_part=1
+        // admissions where relative-semester math coincidentally matched), but directly breaks
+        // fee resolution for a Lateral Entry student admitted at an even semester (e.g. Sem 4).
+        $semester = $student->current_semester ?: 1;
 
         $feeData = FeeCalculatorService::calculate(
             instituteId:     $student->institute_id,

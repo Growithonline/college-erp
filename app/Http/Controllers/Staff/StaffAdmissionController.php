@@ -335,6 +335,54 @@ class StaffAdmissionController extends Controller
         ));
     }
 
+    // ─── Lateral Entry Admission (staff panel) ─────────────────────────
+    // Same data-scoping as create() above; only the view differs (Year/Part +
+    // Semester left open). Submits to the same store()->storePreview() pipeline.
+    public function lateralEntryCreate()
+    {
+        $this->permCheck('admission_add');
+        session()->forget(['admission_preview', 'previewData']);
+        $staff = $this->staff();
+        abort_unless($staff->canUseFullAdmissionForm(), 403, 'Full admission form is not permitted for your account.');
+        $instituteId   = $staff->institute_id;
+        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->firstOrFail();
+
+        $allSessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderByDesc('is_active')->orderByDesc('id')->get();
+        if (!($staff->restrict_session_access ?? false)) {
+            $admissibleSessions = $allSessions;
+        } else {
+            $allowed = array_map('intval', $staff->allowed_session_ids ?? []);
+            $admissibleSessions = $allSessions->filter(fn($s) => in_array($s->id, $allowed))->values();
+        }
+
+        $formConfig    = \App\Http\Controllers\Institute\Master\AdmissionFormController::getActiveConfig($instituteId, 'admission');
+        $sections      = \App\Http\Controllers\Institute\Master\AdmissionFormController::getSections('admission');
+        $courses       = Course::where('institute_id', $instituteId)
+            ->where('status', true)
+            ->when($staff->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $staff->allowedCourseIds() ?: [-1]))
+            ->with(['streams','parts','type'])
+            ->get();
+        $courseTypeIds = $courses->pluck('course_type_id')->filter()->unique()->values();
+        $courseTypes   = CourseType::whereIn('id', $courseTypeIds)->orderBy('sort_order')->orderBy('name')->get();
+        $studentTypes  = StudentTypeController::getActiveTypes($instituteId);
+        $centers       = Center::where('institute_id', $instituteId)->where('status', true)->get();
+        $partners      = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->get();
+
+        $transportRoutes   = TransportRoute::with('stops')->where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $transportVehicles = TransportVehicle::where('institute_id', $instituteId)->where('status', true)->orderBy('vehicle_no')->get();
+        $transportDrivers  = TransportDriver::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $transportStops    = TransportRouteStop::with('route:id,name')->whereHas('route', fn($q) => $q->where('institute_id', $instituteId))->where('status', true)->orderBy('sequence')->get();
+
+        $isLateralEntry = true;
+
+        return view('staff.admissions.lateral-entry', compact(
+            'activeSession', 'admissibleSessions', 'formConfig', 'sections', 'courses', 'courseTypes', 'studentTypes',
+            'centers', 'partners', 'isLateralEntry',
+            'transportRoutes', 'transportVehicles', 'transportDrivers', 'transportStops'
+        ));
+    }
+
     public function store(Request $request)
     {
         $this->permCheck('admission_add');
@@ -383,9 +431,15 @@ class StaffAdmissionController extends Controller
         $transportDrivers  = TransportDriver::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $transportStops    = TransportRouteStop::with('route:id,name')->whereHas('route', fn($q) => $q->where('institute_id', $instituteId))->where('status', true)->orderBy('sequence')->get();
 
-        return view('staff.admissions.create', compact(
+        // A Lateral Entry admission must come back to the Lateral view on edit — the regular
+        // view hardcodes Admission Type to 'new' and hides the Semester field entirely, which
+        // would silently downgrade/corrupt a lateral submission on resubmit otherwise.
+        $isLateralEntry = ($formData['admission_type'] ?? 'new') === 'lateral';
+        $view = $isLateralEntry ? 'staff.admissions.lateral-entry' : 'staff.admissions.create';
+
+        return view($view, compact(
             'activeSession', 'formConfig', 'sections',
-            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes',
+            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes', 'isLateralEntry',
             'transportRoutes', 'transportVehicles', 'transportDrivers', 'transportStops'
         ))->with('previewEdit', true);
     }

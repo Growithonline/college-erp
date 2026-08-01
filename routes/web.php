@@ -589,6 +589,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/cancelled-fee',       [ReportController::class, 'cancelledFeeReport'])->name('cancelled-fee');
         Route::get('/admission',           [ReportController::class, 'admissionReport'])->name('admission');
         Route::get('/admission-analytics', [ReportController::class, 'admissionAnalytics'])->name('admission-analytics');
+        Route::get('/lateral-entry-analytics', [ReportController::class, 'lateralEntryAnalytics'])->name('lateral-entry-analytics');
         Route::get('/daily-collection',    [ReportController::class, 'dailyReport'])->name('daily-collection');
         Route::get('/semester-wise',       [ReportController::class, 'semesterReport'])->name('semester-wise');
         Route::get('/custom-student',      [ReportController::class, 'customStudentReport'])->name('custom-student');
@@ -625,6 +626,7 @@ Route::middleware(['auth'])->group(function () {
     // ADMISSIONS — static routes PEHLE, resource LAST
 
     Route::get('admissions/online',        [AdmissionController::class, 'onlineAdmissions'])->name('admissions.online');
+    Route::get('admissions/lateral-entry', [AdmissionController::class, 'lateralEntryCreate'])->name('admissions.lateral-entry');
     Route::get('admissions/quick',         [AdmissionController::class, 'quickCreate'])->name('admissions.quick-create');
     Route::post('admissions/quick',        [AdmissionController::class, 'quickStore'])->name('admissions.quick-store');
     Route::post('admissions/quick-confirm', [AdmissionController::class, 'quickConfirm'])->name('admissions.quick-confirm');
@@ -1090,6 +1092,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('admissions/stream-seats', [StaffAdmissionController::class, 'getStreamSeats'])->name('admissions.stream-seats');
         Route::post('admissions/fee-preview', [StaffAdmissionController::class, 'feePreview'])->name('admissions.fee-preview');
         Route::get('admissions/new',   [StaffAdmissionController::class, 'create'])->name('admissions.create');
+        Route::get('admissions/lateral-entry', [StaffAdmissionController::class, 'lateralEntryCreate'])->name('admissions.lateral-entry');
         Route::post('admissions',      [StaffAdmissionController::class, 'store'])->name('admissions.store');
         Route::get('admissions/edit-preview', [StaffAdmissionController::class, 'editPreview'])->name('admissions.edit-preview');
         Route::post('admissions/confirm', [StaffAdmissionController::class, 'confirm'])->name('admissions.confirm');
@@ -1325,6 +1328,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::get('/cancelled-fee',       [ReportController::class, 'cancelledFeeReport'])->name('cancelled-fee');
             Route::get('/admission',           [ReportController::class, 'admissionReport'])->name('admission');
             Route::get('/admission-analytics', [ReportController::class, 'admissionAnalytics'])->name('admission-analytics');
+            Route::get('/lateral-entry-analytics', [ReportController::class, 'lateralEntryAnalytics'])->name('lateral-entry-analytics');
             Route::get('/daily-collection',    [ReportController::class, 'dailyReport'])->name('daily-collection');
             Route::get('/semester-wise',       [ReportController::class, 'semesterReport'])->name('semester-wise');
             Route::get('/custom-student',      [ReportController::class, 'customStudentReport'])->name('custom-student');

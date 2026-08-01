@@ -17,7 +17,9 @@ use App\Models\Institute;
 use App\Models\PaymentClaim;
 use App\Models\PracticalFeeTokenBatch;
 use App\Models\StaffMember;
+use App\Models\StreamSessionLimit;
 use App\Models\Student;
+use App\Models\StudentAcademicIdentity;
 use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
 use App\Services\WalletService;
@@ -1382,6 +1384,149 @@ class ReportController extends Controller
             fputcsv($out, ['Staff', 'Enquiries', 'Applications', 'Admissions']);
             foreach ($counselorStats as $row) {
                 fputcsv($out, [$row->staff_name, $row->enquiries, $row->applications, $row->admissions]);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    // ── Lateral Entry Analytics ──────────────────────────────────────────
+    public function lateralEntryAnalytics(Request $request)
+    {
+        $this->authorizeReportAccess('admission');
+        $this->ensureReportExportPermission($request);
+        $instituteId = $this->instituteId();
+
+        $sessions = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $activeSession = AcademicSession::viewSession($instituteId);
+        $sessionId = $request->session_id ?? $activeSession?->id;
+        $sessionObj = AcademicSession::find($sessionId);
+
+        $query = Student::where('institute_id', $instituteId)
+            ->where('admission_type', 'lateral')
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId));
+        $this->applyStaffStudentScope($query);
+
+        $terminalNonPassout = ['backlog', 'failed', 'dropped'];
+
+        $totalLateral   = (clone $query)->count();
+        $activeCount    = (clone $query)->where('status', 'active')->count();
+        $passedOutCount = (clone $query)->where('status', 'passed_out')->count();
+        $terminalCount  = (clone $query)->whereIn('status', $terminalNonPassout)->count();
+
+        $studentIds = (clone $query)->pluck('id');
+
+        $feeCollected = (float) FeeInvoice::where('institute_id', $instituteId)
+            ->whereIn('student_id', $studentIds)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->where('is_cancelled', false)
+            ->sum('paid_amount');
+
+        $feePending = (float) StudentWallet::whereIn('student_id', $studentIds)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->get()
+            ->sum(fn($w) => max(0, -(float) $w->main_b));
+
+        // Course-wise breakdown
+        $courseStats = (clone $query)
+            ->join('course_streams', 'course_streams.id', '=', 'students.course_stream_id')
+            ->join('courses', 'courses.id', '=', 'course_streams.course_id')
+            ->selectRaw('courses.name as course_name')
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN students.status = 'active' THEN 1 ELSE 0 END) as active_count")
+            ->selectRaw("SUM(CASE WHEN students.status = 'passed_out' THEN 1 ELSE 0 END) as passed_out_count")
+            ->groupBy('courses.name')
+            ->orderByDesc('total')
+            ->get();
+
+        // Starting-semester-wise breakdown — from the ADMISSION-time snapshot, not the
+        // student's current semester, since a lateral student may already have been
+        // promoted forward one or more times since they were admitted.
+        $semesterStats = StudentAcademicIdentity::whereIn('student_id', $studentIds)
+            ->where('source', 'admission')
+            ->selectRaw('semester_at_time, COUNT(*) as total')
+            ->groupBy('semester_at_time')
+            ->orderBy('semester_at_time')
+            ->get();
+
+        // Seat utilization vs the optional Lateral Entry quota (only streams where an
+        // institute has actually set one — most won't have any rows here at all).
+        $seatStats = StreamSessionLimit::with('stream.course')
+            ->where('admission_type', 'lateral')
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->whereHas('stream.course', fn($q) => $q->where('institute_id', $instituteId))
+            ->get()
+            ->map(function ($limit) use ($sessionId) {
+                $filled = Student::where('course_stream_id', $limit->course_stream_id)
+                    ->where('academic_session_id', $sessionId)
+                    ->where('admission_type', 'lateral')
+                    ->where('status', '!=', 'cancelled')
+                    ->count();
+
+                return [
+                    'stream'    => $limit->stream?->name ?? '-',
+                    'course'    => $limit->stream?->course?->name ?? '-',
+                    'limit'     => (int) $limit->student_limit,
+                    'filled'    => $filled,
+                    'remaining' => (int) $limit->student_limit - $filled,
+                ];
+            });
+
+        if ($request->export === 'csv') {
+            return $this->exportLateralEntryAnalyticsCsv(
+                $sessionObj, $totalLateral, $activeCount, $passedOutCount, $terminalCount,
+                $feeCollected, $feePending, $courseStats, $semesterStats, $seatStats
+            );
+        }
+
+        return view('institute.reports.lateral-entry-analytics', compact(
+            'sessions', 'sessionObj', 'sessionId',
+            'totalLateral', 'activeCount', 'passedOutCount', 'terminalCount',
+            'feeCollected', 'feePending', 'courseStats', 'semesterStats', 'seatStats'
+        ));
+    }
+
+    private function exportLateralEntryAnalyticsCsv(
+        ?AcademicSession $sessionObj, int $totalLateral, int $activeCount, int $passedOutCount, int $terminalCount,
+        float $feeCollected, float $feePending, $courseStats, $semesterStats, $seatStats
+    ): \Symfony\Component\HttpFoundation\StreamedResponse {
+        $filename = 'lateral-entry-analytics-' . now()->format('Ymd') . '.csv';
+
+        return response()->streamDownload(function () use (
+            $sessionObj, $totalLateral, $activeCount, $passedOutCount, $terminalCount,
+            $feeCollected, $feePending, $courseStats, $semesterStats, $seatStats
+        ) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($out, ['Lateral Entry Analytics', $sessionObj?->name ?? 'All Sessions']);
+            fputcsv($out, []);
+            fputcsv($out, ['SUMMARY']);
+            fputcsv($out, ['Total Lateral Admissions', 'Active', 'Passed Out', 'Backlog/Failed/Dropped', 'Fee Collected', 'Fee Pending']);
+            fputcsv($out, [$totalLateral, $activeCount, $passedOutCount, $terminalCount, $feeCollected, $feePending]);
+            fputcsv($out, []);
+
+            fputcsv($out, ['COURSE-WISE BREAKDOWN']);
+            fputcsv($out, ['Course', 'Total', 'Active', 'Passed Out']);
+            foreach ($courseStats as $row) {
+                fputcsv($out, [$row->course_name, $row->total, $row->active_count, $row->passed_out_count]);
+            }
+            fputcsv($out, []);
+
+            fputcsv($out, ['STARTING SEMESTER-WISE BREAKDOWN']);
+            fputcsv($out, ['Semester', 'Total']);
+            foreach ($semesterStats as $row) {
+                fputcsv($out, ['Sem ' . $row->semester_at_time, $row->total]);
+            }
+            fputcsv($out, []);
+
+            fputcsv($out, ['LATERAL SEAT QUOTA UTILIZATION']);
+            fputcsv($out, ['Course', 'Stream', 'Limit', 'Filled', 'Remaining']);
+            foreach ($seatStats as $row) {
+                fputcsv($out, [$row['course'], $row['stream'], $row['limit'], $row['filled'], $row['remaining']]);
             }
 
             fclose($out);

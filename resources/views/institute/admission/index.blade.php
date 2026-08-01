@@ -23,6 +23,9 @@
         <a href="{{ route('admissions.create') }}" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-lg me-1"></i>New Admission
         </a>
+        <a href="{{ route('admissions.lateral-entry') }}" class="btn btn-outline-dark btn-sm">
+            <i class="bi bi-arrow-repeat me-1"></i>Lateral Entry
+        </a>
     </div>
 </div>
 

@@ -78,11 +78,15 @@ class CourseStreamController extends Controller
     }
 
     // ── Set seat limit for current session ───────────────────────────
+    // Also used to set the optional, separate Lateral Entry quota (admission_type=lateral) —
+    // same form/action, just an extra flag. Leaving admission_type off keeps setting the
+    // general pooled limit exactly as before.
     public function setLimit(Request $request)
     {
         $request->validate([
             'stream_id'     => 'required|exists:course_streams,id',
             'student_limit' => 'required|integer|min:1|max:9999',
+            'admission_type'=> ['nullable', 'in:lateral'],
         ]);
 
         $stream = CourseStream::findOrFail($request->stream_id);
@@ -92,31 +96,68 @@ class CourseStreamController extends Controller
         $activeSession = \App\Models\AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)->firstOrFail();
 
+        $admissionType = $request->input('admission_type') ?: 'all';
+
         \App\Models\StreamSessionLimit::updateOrCreate(
             [
                 'course_stream_id'    => $stream->id,
                 'academic_session_id' => $activeSession->id,
+                'admission_type'      => $admissionType,
             ],
             ['student_limit' => $request->student_limit]
         );
 
-        return redirect()->back()
-            ->with('success', "Seat limit of {$request->student_limit} set for {$stream->name} — {$activeSession->name}.");
-    }
-    public static function checkSeatAvailability(int $streamId, int $sessionId): array
-    {
-        $limit = \App\Models\StreamSessionLimit::where('course_stream_id', $streamId)
-            ->where('academic_session_id', $sessionId)
-            ->value('student_limit');
+        $label = $admissionType === 'lateral' ? 'Lateral Entry seat limit' : 'Seat limit';
 
-        if (!$limit) {
+        return redirect()->back()
+            ->with('success', "{$label} of {$request->student_limit} set for {$stream->name} — {$activeSession->name}.");
+    }
+    // Lateral Entry seats are an OPTIONAL, separate quota. If a stream+session never
+    // has a 'lateral' row configured, lateral admissions are checked against (and
+    // counted within) the same general pool as everyone else — identical to the
+    // behaviour before this quota existed. Only once an institute explicitly sets a
+    // lateral-specific limit do lateral admissions move to their own pool, and get
+    // excluded from the general pool's filled-count so the two quotas don't double-count.
+    public static function checkSeatAvailability(int $streamId, int $sessionId, ?string $admissionType = null): array
+    {
+        $limits = \App\Models\StreamSessionLimit::where('course_stream_id', $streamId)
+            ->where('academic_session_id', $sessionId)
+            ->get()
+            ->keyBy('admission_type');
+
+        $lateralLimit = $limits->get('lateral');
+
+        if ($admissionType === 'lateral' && $lateralLimit) {
+            $limit  = (int) $lateralLimit->student_limit;
+            $filled = \App\Models\Student::where('course_stream_id', $streamId)
+                ->where('academic_session_id', $sessionId)
+                ->where('admission_type', 'lateral')
+                ->where('status', '!=', 'cancelled')
+                ->count();
+
+            return [
+                'available' => ($limit - $filled) > 0,
+                'limit'     => $limit,
+                'filled'    => $filled,
+                'remaining' => $limit - $filled,
+            ];
+        }
+
+        $generalLimit = $limits->get('all');
+        if (!$generalLimit) {
             return ['available' => true, 'limit' => null, 'filled' => 0, 'remaining' => null];
         }
 
-        $filled = \App\Models\Student::where('course_stream_id', $streamId)
+        $limit       = (int) $generalLimit->student_limit;
+        $filledQuery = \App\Models\Student::where('course_stream_id', $streamId)
             ->where('academic_session_id', $sessionId)
-            ->where('status', '!=', 'cancelled')
-            ->count();
+            ->where('status', '!=', 'cancelled');
+
+        if ($lateralLimit) {
+            $filledQuery->where('admission_type', '!=', 'lateral');
+        }
+
+        $filled = $filledQuery->count();
 
         return [
             'available' => ($limit - $filled) > 0,

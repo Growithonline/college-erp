@@ -220,6 +220,14 @@ class AdmissionController extends Controller
         };
     }
 
+    private function lateralEntryCreateView(): string
+    {
+        return match ($this->panelPrefix()) {
+            'staff' => 'staff.admissions.lateral-entry',
+            default => 'institute.admission.lateral-entry',
+        };
+    }
+
     private function quickCreateView(): string
     {
         return match ($this->panelPrefix()) {
@@ -1818,6 +1826,35 @@ class AdmissionController extends Controller
             ->first();
     }
 
+    // ── Lateral Entry: resolve which Year/Part + Semester a new admission starts at ──
+    // Regular ("new") admissions always start at the course's first part / semester 1 —
+    // unchanged from existing behaviour. Lateral Entry admissions (admission_type=='lateral')
+    // trust the staff-selected course_part_id + current_semester instead, since diploma/
+    // polytechnic students join directly into a later year (validated against the chosen
+    // stream's own course parts so a mismatched/foreign course_part_id can't be submitted).
+    private function resolveEntryCoursePartAndSemester(array $formData, ?int $streamId): array
+    {
+        $isLateral = ($formData['admission_type'] ?? 'new') === 'lateral';
+
+        if (!$isLateral) {
+            return [$this->firstCoursePartForStream($streamId), 1];
+        }
+
+        $stream = $streamId ? CourseStream::find($streamId) : null;
+        abort_if(!$stream, 422, 'Please select a Stream before choosing a Lateral Entry Year/Semester.');
+
+        $coursePartId = (int) ($formData['course_part_id'] ?? 0);
+        $part = \App\Models\CoursePart::where('id', $coursePartId)
+            ->where('course_id', $stream->course_id)
+            ->first();
+        abort_if(!$part, 422, 'Please select a valid Year/Part for this Lateral Entry admission.');
+
+        $semester = (int) ($formData['current_semester'] ?? 0);
+        abort_if($semester < 1 || $semester > 20, 422, 'Please enter a valid starting semester (1-20) for this Lateral Entry admission.');
+
+        return [$part, $semester];
+    }
+
     private function resolveCoursePartForEdit(CourseStream $stream, ?int $coursePartId, ?Student $student = null): ?CoursePart
     {
         if ($coursePartId) {
@@ -2012,6 +2049,45 @@ class AdmissionController extends Controller
         ) + $transportData);
     }
 
+    // ─── Lateral Entry Admission — diploma/polytechnic students joining directly
+    // into a later year/semester. Reuses the same form partial + storePreview/confirmStore
+    // pipeline as the regular Full form; only the view differs (Year/Part + Semester are
+    // left open here instead of being forced to the course's first part).
+    public function lateralEntryCreate()
+    {
+        $instituteId = $this->instituteId();
+
+        session()->forget(['admission_preview', 'previewData']);
+
+        $activeSession = AcademicSession::where('institute_id', $instituteId)
+            ->where('is_active', true)->first();
+
+        $formConfig = AdmissionFormController::getActiveConfig($instituteId, 'admission');
+        $sections   = AdmissionFormController::getSections();
+
+        $centers  = Center::where('institute_id', $instituteId)->where('status', true)->get();
+        $partners = ChannelPartner::where('institute_id', $instituteId)->where('status', true)->get();
+        $allowedPaymentModes = $this->allowedPaymentModes();
+        $bankAccounts = $this->allowedBankAccounts($instituteId, $allowedPaymentModes);
+        $courses      = Course::where('institute_id', $instituteId)->where('status', true)
+                            ->when($this->currentStaff()?->hasRestrictedCourseAccess(), fn($q) => $q->whereIn('id', $this->currentStaff()->allowedCourseIds() ?: [-1]))
+                            ->with('streams', 'parts', 'type')->get();
+        $courseTypes  = CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get();
+        $studentTypes = StudentTypeController::getActiveTypes($instituteId);
+        $transportData = $this->transportSelectionData($instituteId);
+
+        $admissibleSessions = $this->admissibleSessions($instituteId);
+        $feePlans = FeePlan::with('installments')
+            ->where('institute_id', $instituteId)->where('is_active', true)->orderBy('name')->get();
+
+        $isLateralEntry = true;
+
+        return view($this->lateralEntryCreateView(), compact(
+            'activeSession', 'admissibleSessions', 'formConfig', 'sections',
+            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes', 'feePlans',
+            'isLateralEntry'
+        ) + $transportData);
+    }
 
     // ─── Edit Preview — Session data se form wapas fill karo ────────────
     public function editPreview()
@@ -2041,9 +2117,16 @@ class AdmissionController extends Controller
         // Session mein store karo — view mein $pd se read hoga
         session()->put('previewData', $formData);
 
-        return view($this->admissionCreateView(), compact(
+        // A Lateral Entry admission must come back to the Lateral view on edit — the regular
+        // view hardcodes Admission Type to 'new' and hides the Semester field entirely, which
+        // would silently downgrade/corrupt a lateral submission on resubmit otherwise.
+        $isLateralEntry = ($formData['admission_type'] ?? 'new') === 'lateral';
+        $view = $isLateralEntry ? $this->lateralEntryCreateView() : $this->admissionCreateView();
+
+        return view($view, compact(
             'activeSession', 'formConfig', 'sections',
-            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes', 'feePlans'
+            'centers', 'partners', 'courses', 'courseTypes', 'studentTypes', 'feePlans',
+            'isLateralEntry'
         ) + $transportData)->with('previewEdit', true)
           ->with('pd', $formData); // Direct PHP variable bhi pass karo
     }
@@ -2067,7 +2150,10 @@ class AdmissionController extends Controller
 
         $this->makeAdmissionValidator($request, $formConfig)->validate();
 
-        $firstPart = $this->firstCoursePartForStream((int) $request->course_stream_id);
+        [$firstPart, $entrySemester] = $this->resolveEntryCoursePartAndSemester(
+            $request->all(),
+            (int) $request->course_stream_id
+        );
         if ($firstPart) {
             $request->merge(['course_part_id' => $firstPart->id]);
         }
@@ -2127,7 +2213,7 @@ class AdmissionController extends Controller
             ->get();
 
         // Fee preview
-        $semester = 1;
+        $semester = $entrySemester;
         $feeData  = \App\Services\FeeCalculatorService::calculate(
             instituteId:     $instituteId,
             sessionId:       $activeSession->id,
@@ -2176,7 +2262,7 @@ class AdmissionController extends Controller
         $streamId = $formData['course_stream_id'] ?? null;
         if ($streamId) {
             $seatCheck = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
-                (int) $streamId, $activeSession->id
+                (int) $streamId, $activeSession->id, $formData['admission_type'] ?? null
             );
             if (!$seatCheck['available']) {
                 return redirect()->route($this->admissionRoute('create'))
@@ -2185,7 +2271,10 @@ class AdmissionController extends Controller
         }
 
         $year      = StudentIdService::getYearFromSession($activeSession->name);
-        $firstPart = $this->firstCoursePartForStream((int) ($formData['course_stream_id'] ?? 0));
+        [$firstPart, $entrySemester] = $this->resolveEntryCoursePartAndSemester(
+            $formData,
+            (int) ($formData['course_stream_id'] ?? 0)
+        );
         if ($firstPart) {
             $formData['course_part_id'] = $firstPart->id;
         }
@@ -2216,7 +2305,7 @@ class AdmissionController extends Controller
 
         try {
         DB::transaction(function () use (
-            $formData, $instituteId, $activeSession, $year, $firstPart,
+            $formData, $instituteId, $activeSession, $year, $firstPart, $entrySemester,
             $selectedSubjectIds, $selectedMajorIds, $selectedMinorIds,
             $subjectSelection, $yearNumber, &$student, &$studentId
         ) {
@@ -2279,7 +2368,7 @@ class AdmissionController extends Controller
                 'course_stream_id'    => $formData['course_stream_id'],
                 'course_part_id'      => $firstPart?->id ?? ($formData['course_part_id'] ?? null),
                 'fee_plan_id'         => !empty($formData['fee_plan_id']) ? (int) $formData['fee_plan_id'] : null,
-                'current_semester'    => 1,
+                'current_semester'    => $entrySemester,
                 'status'              => $this->initialAdmissionStatus(),
                 'admitted_by_staff_id' => auth()->guard('staff')->check() ? auth()->guard('staff')->id() : null,
                 'admitted_by_type'    => $this->admittedByType(),
@@ -2490,7 +2579,7 @@ class AdmissionController extends Controller
             ->where('is_active', true)->value('id');
 
         $result = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
-            $streamId, $sessionId
+            $streamId, $sessionId, $request->string('admission_type')->toString() ?: null
         );
 
         return response()->json($result);

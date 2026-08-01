@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Institute\Master;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Course;
+use App\Models\StudentType;
 use App\Models\Subject;
 use App\Models\SubjectFeeRule;
 use Illuminate\Http\JsonResponse;
@@ -25,9 +26,10 @@ class SubjectFeeRuleController extends Controller
         $instituteId   = $this->instituteId();
         $activeSession = AcademicSession::viewSession($instituteId);
 
-        $sessionId  = $request->integer('session_id') ?: $activeSession?->id;
-        $coursePart = $request->integer('course_part') ?: null;
-        $semester   = $request->filled('semester') ? $request->integer('semester') : null;
+        $sessionId   = $request->integer('session_id') ?: $activeSession?->id;
+        $coursePart  = $request->integer('course_part') ?: null;
+        $semester    = $request->filled('semester') ? $request->integer('semester') : null;
+        $studentType = $request->filled('student_type') ? $request->string('student_type')->toString() : 'all';
 
         $courses  = Course::where('institute_id', $instituteId)
             ->where('status', true)
@@ -38,6 +40,12 @@ class SubjectFeeRuleController extends Controller
             ->orderByDesc('is_active')
             ->orderBy('name')
             ->get();
+
+        $studentTypes = StudentType::forInstitute($instituteId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
 
         $rules          = collect();
         $subjects       = collect();
@@ -68,6 +76,7 @@ class SubjectFeeRuleController extends Controller
                 ->where('institute_id',        $instituteId)
                 ->where('academic_session_id', $sessionId)
                 ->where('course_id',           $selectedCourse->id)
+                ->where('student_type',        $studentType)
                 ->where('is_active',           true);
 
             if ($coursePart) $rulesQuery->where('course_part', $coursePart);
@@ -81,7 +90,8 @@ class SubjectFeeRuleController extends Controller
 
         return view('institute.master.fee.subject-fee-rules.index', compact(
             'courses', 'sessions', 'rules', 'subjects', 'selectedCourse',
-            'sessionId', 'activeSession', 'coursePart', 'semester'
+            'sessionId', 'activeSession', 'coursePart', 'semester',
+            'studentTypes', 'studentType'
         ));
     }
 
@@ -100,6 +110,12 @@ class SubjectFeeRuleController extends Controller
         $sessions = AcademicSession::where('institute_id', $instituteId)
             ->orderByDesc('is_active')->orderBy('name')->get();
 
+        $studentTypes = StudentType::forInstitute($instituteId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         $rulesQuery = SubjectFeeRule::with(['subject', 'course', 'session'])
             ->where('institute_id',        $instituteId)
             ->where('academic_session_id', $sessionId)
@@ -113,6 +129,9 @@ class SubjectFeeRuleController extends Controller
         }
         if ($request->filled('semester')) {
             $rulesQuery->where('semester', $request->integer('semester'));
+        }
+        if ($request->filled('student_type')) {
+            $rulesQuery->where('student_type', $request->string('student_type')->toString());
         }
 
         $perPage  = $request->integer('per_page', 20);
@@ -143,7 +162,8 @@ class SubjectFeeRuleController extends Controller
 
         return view('institute.master.fee.subject-fee-rules.summary', compact(
             'courses', 'sessions', 'allRules', 'sessionId', 'activeSession',
-            'totalRules', 'totalSubjectFee', 'totalPracticalFee', 'editRule', 'perPage'
+            'totalRules', 'totalSubjectFee', 'totalPracticalFee', 'editRule', 'perPage',
+            'studentTypes'
         ));
     }
 
@@ -151,6 +171,7 @@ class SubjectFeeRuleController extends Controller
     public function store(Request $request)
     {
         $instituteId = $this->instituteId();
+        $validSlugs  = StudentType::forInstitute($instituteId)->pluck('slug')->push('all')->toArray();
 
         $validated = $request->validate([
             'course_id'           => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
@@ -158,6 +179,7 @@ class SubjectFeeRuleController extends Controller
             'subject_id'          => ['required', Rule::exists('subjects', 'id')->where('institute_id', $instituteId)],
             'course_part'         => 'required|integer|min:1|max:6',
             'semester'            => 'required|integer|min:0|max:12',
+            'student_type'        => ['nullable', Rule::in($validSlugs)],
             'subject_fee'         => 'required|numeric|min:0|max:999999',
             'practical_fee'       => 'nullable|numeric|min:0|max:999999',
         ]);
@@ -170,6 +192,7 @@ class SubjectFeeRuleController extends Controller
                 'subject_id'          => $validated['subject_id'],
                 'course_part'         => $validated['course_part'],
                 'semester'            => $validated['semester'],
+                'student_type'        => $validated['student_type'] ?? 'all',
             ],
             [
                 'subject_fee'   => $validated['subject_fee'],
@@ -185,19 +208,23 @@ class SubjectFeeRuleController extends Controller
     public function bulkStore(Request $request)
     {
         $instituteId = $this->instituteId();
+        $validSlugs  = StudentType::forInstitute($instituteId)->pluck('slug')->push('all')->toArray();
 
         $validated = $request->validate([
             'academic_session_id'  => ['required', Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
             'course_id'            => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
             'course_part'          => 'required|integer|min:1|max:6',
             'semester'             => 'required|integer|min:0|max:12',
+            'student_type'         => ['nullable', Rule::in($validSlugs)],
             'fees'                 => 'required|array|min:1|max:100',
             'fees.*.subject_id'    => ['required', Rule::exists('subjects', 'id')->where('institute_id', $instituteId)],
             'fees.*.subject_fee'   => 'required|numeric|min:0|max:999999',
             'fees.*.practical_fee' => 'nullable|numeric|min:0|max:999999',
         ]);
 
-        DB::transaction(function () use ($validated, $instituteId) {
+        $studentType = $validated['student_type'] ?? 'all';
+
+        DB::transaction(function () use ($validated, $instituteId, $studentType) {
             foreach ($validated['fees'] as $fee) {
                 SubjectFeeRule::updateOrCreate(
                     [
@@ -207,6 +234,7 @@ class SubjectFeeRuleController extends Controller
                         'subject_id'          => (int) $fee['subject_id'],
                         'course_part'         => $validated['course_part'],
                         'semester'            => $validated['semester'],
+                        'student_type'        => $studentType,
                     ],
                     [
                         'subject_fee'   => (float) $fee['subject_fee'],
@@ -284,9 +312,12 @@ class SubjectFeeRuleController extends Controller
             'course_id'     => ['required', Rule::exists('courses', 'id')->where('institute_id', $instituteId)],
             'course_part'   => 'required|integer|min:1|max:6',
             'semester'      => 'required|integer|min:0|max:12',
+            'student_type'  => 'nullable|string|max:50',
             'subject_ids'   => 'required|array',
             'subject_ids.*' => ['integer', Rule::exists('subjects', 'id')->where('institute_id', $instituteId)],
         ]);
+
+        $studentType = $validated['student_type'] ?? 'all';
 
         $rules = SubjectFeeRule::with('subject:id,name,has_practical')
             ->where('institute_id',        $instituteId)
@@ -297,9 +328,14 @@ class SubjectFeeRuleController extends Controller
                 $q->where('semester', $validated['semester'])
                   ->orWhere('semester', 0)
             )
+            ->where(fn($q) => $q->whereIn('student_type', [$studentType, 'all']))
             ->where('is_active', true)
             ->whereIn('subject_id', $validated['subject_ids'])
-            ->get();
+            ->get()
+            // Most specific (matching student_type) rule wins over the 'all' fallback.
+            ->groupBy('subject_id')
+            ->map(fn($group) => $group->sortByDesc(fn($r) => $r->student_type !== 'all' ? 1 : 0)->first())
+            ->values();
 
         return response()->json([
             'success' => true,

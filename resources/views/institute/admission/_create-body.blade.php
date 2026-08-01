@@ -161,6 +161,18 @@
                     <i class="bi bi-arrow-up-circle me-1 text-primary"></i>Select Year/Part to load subjects
                 </div>
             </div>
+            @if($isLateralEntry ?? false)
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">
+                    Starting Semester <span class="text-danger">*</span>
+                </label>
+                <input type="number" name="current_semester" class="form-control form-control-sm"
+                       min="1" max="20" required placeholder="e.g. 3">
+                <div class="form-text small text-muted">
+                    Semester this student joins directly (earlier semesters are skipped).
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -239,16 +251,20 @@
             </div>
             @endif
 
+            @if($isLateralEntry ?? false)
+            <input type="hidden" name="admission_type" value="lateral">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold d-block">Admission Type</label>
+                <input type="text" class="form-control form-control-sm bg-light" value="Lateral Entry" readonly>
+            </div>
+            @else
+            <input type="hidden" name="admission_type" value="new">
             @if($fieldEnabled('admission_type'))
             <div class="col-md-3">
-                <label class="form-label small fw-semibold">Admission Type @if($fieldRequired('admission_type'))<span class="text-danger">*</span>@endif</label>
-                <select name="admission_type" class="form-select form-select-sm fee-param-field" {{ $fieldRequired('admission_type') ? 'required' : '' }}>
-                    <option value="new" {{ $pv('admission_type','new')=='new' ? 'selected':'' }}>New</option>
-                    <option value="lateral" {{ $pv('admission_type','new')=='lateral' ? 'selected':'' }}>Lateral Entry</option>
-                    <option value="transfer" {{ $pv('admission_type','new')=='transfer' ? 'selected':'' }}>Transfer</option>
-                    <option value="re_admission" {{ $pv('admission_type','new')=='re_admission' ? 'selected':'' }}>Re-Admission</option>
-                </select>
+                <label class="form-label small fw-semibold d-block">Admission Type</label>
+                <input type="text" class="form-control form-control-sm bg-light" value="New Admission" readonly>
             </div>
+            @endif
             @endif
 
             @if($fieldEnabled('admission_source'))
@@ -870,6 +886,7 @@ $courseStreamsData = $courses->mapWithKeys(function($c) {
 });
 @endphp
 const courseStreams = @json($courseStreamsData);
+const isLateralEntry = @json($isLateralEntry ?? false);
 const courseTypeLevels = @json($courseTypes->pluck('education_level', 'id'));
 const EDU_LEVEL_ROWS = {
     ug:          ['10th','12th','other'],
@@ -959,9 +976,21 @@ function onStreamChange(streamId) {
 
     if (!courseId || !courseStreams[courseId] || !streamId) return;
 
-    const parts = [...courseStreams[courseId].parts]
-        .sort((a, b) => (a.year || 0) - (b.year || 0))
-        .slice(0, 1);
+    const allParts = [...courseStreams[courseId].parts].sort((a, b) => (a.year || 0) - (b.year || 0));
+
+    // Lateral Entry: staff must be able to pick ANY year/part (student is joining
+    // directly into a later semester) — show every part and let them choose.
+    if (isLateralEntry) {
+        partSel.innerHTML = '<option value="">— Select Year/Semester —</option>';
+        allParts.forEach(p => {
+            partSel.innerHTML += `<option value="${p.id}" data-year="${p.year}">${p.name}</option>`;
+        });
+        if (partHint) partHint.style.display = 'none';
+        return;
+    }
+
+    // Regular admission: always starts at the course's first year/part.
+    const parts = allParts.slice(0, 1);
     partSel.innerHTML = '';
     parts.forEach(p => {
         partSel.innerHTML += `<option value="${p.id}" data-year="${p.year}">${p.name}</option>`;
@@ -1276,7 +1305,11 @@ function checkStreamSeats(streamId) {
     const submitBtn = document.querySelector('button[type="submit"]');
     if (!streamId) { if (infoDiv) infoDiv.innerHTML = ''; return; }
 
-    fetch(`{{ $streamSeatsUrl }}?stream_id=${streamId}`)
+    const seatsUrl = isLateralEntry
+        ? `{{ $streamSeatsUrl }}?stream_id=${streamId}&admission_type=lateral`
+        : `{{ $streamSeatsUrl }}?stream_id=${streamId}`;
+
+    fetch(seatsUrl)
         .then(r => r.json())
         .then(data => {
             if (!infoDiv) return;

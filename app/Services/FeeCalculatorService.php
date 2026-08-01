@@ -99,9 +99,15 @@ class FeeCalculatorService
                         $q->where('semester', $relativeSemester);
                     }
                 })
+                ->where(fn($q) => $q->whereIn('student_type', [$studentType, 'all']))
                 ->whereIn('subject_id', $subjectIds)
                 ->where('is_active', true)
-                ->get();
+                ->get()
+                // Most specific rule wins per subject: a rule scoped to this exact
+                // student_type (e.g. Lateral Entry) overrides the 'all' fallback rule.
+                ->groupBy('subject_id')
+                ->map(fn($group) => $group->sortByDesc(fn($r) => $r->student_type !== 'all' ? 1 : 0)->first())
+                ->values();
 
             // Load subjects to check has_practical
             $subjects = Subject::whereIn('id', $subjectIds)

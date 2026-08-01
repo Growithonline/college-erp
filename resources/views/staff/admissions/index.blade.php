@@ -26,6 +26,9 @@
         <a href="{{ route('staff.admissions.create') }}" class="btn btn-primary btn-sm">
             <i class="bi bi-person-plus me-1"></i>Full Form
         </a>
+        <a href="{{ route('staff.admissions.lateral-entry') }}" class="btn btn-outline-dark btn-sm">
+            <i class="bi bi-arrow-repeat me-1"></i>Lateral Entry
+        </a>
     </div>
     @endif
 </div>

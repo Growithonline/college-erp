@@ -76,13 +76,18 @@ class AdmissionDocumentController extends Controller
 
     // ─── Required documents helper ─────────────────────────────────────────────
 
-    public static function getRequiredDocumentTypes(int $courseId, string $userType, int $instituteId): array
+    public static function getRequiredDocumentTypes(int $courseId, string $userType, int $instituteId, string $admissionType = 'all'): array
     {
         $rules = DocumentUploadRule::where('course_id', $courseId)
             ->where('user_type', $userType)
+            ->where(fn($q) => $q->whereIn('admission_type', [$admissionType, 'all']))
             ->where('requirement', '!=', 'skip')
             ->with(['documentType' => fn($q) => $q->active()])
-            ->get();
+            ->get()
+            // A rule scoped to this exact admission_type (e.g. Lateral Entry) overrides
+            // the 'all' fallback rule for the same document type.
+            ->groupBy('document_type_id')
+            ->map(fn($group) => $group->sortByDesc(fn($r) => $r->admission_type !== 'all' ? 1 : 0)->first());
 
         return $rules->map(fn($r) => [
             'document_type'  => $r->documentType,
@@ -97,7 +102,10 @@ class AdmissionDocumentController extends Controller
         $request->validate(['course_id' => 'required|exists:courses,id']);
 
         $userType = $this->panelUserType();
-        $docs     = self::getRequiredDocumentTypes($request->course_id, $userType, $this->instituteId());
+        $docs     = self::getRequiredDocumentTypes(
+            $request->course_id, $userType, $this->instituteId(),
+            $request->string('admission_type')->toString() ?: 'all'
+        );
 
         return response()->json(['documents' => $docs]);
     }
@@ -305,7 +313,7 @@ class AdmissionDocumentController extends Controller
         $userType  = $this->panelUserType();
 
         $rules = $courseId
-            ? self::getRequiredDocumentTypes($courseId, $userType, $this->instituteId())
+            ? self::getRequiredDocumentTypes($courseId, $userType, $this->instituteId(), $student->admission_type ?? 'all')
             : [];
 
         $uploaded = AdmissionDocument::where('student_id', $student->id)

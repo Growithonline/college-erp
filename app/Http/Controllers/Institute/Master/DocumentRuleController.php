@@ -39,15 +39,24 @@ class DocumentRuleController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Existing rules: [user_type][document_type_id] = requirement
+        // Existing rules: [user_type][document_type_id] = requirement (admission_type='all' — every admission type)
         $rules = DocumentUploadRule::where('course_id', $course->id)
+            ->where('admission_type', 'all')
             ->get()
             ->groupBy('user_type')
             ->map(fn($group) => $group->pluck('requirement', 'document_type_id'));
 
+        // Lateral Entry only ever happens via the staff/institute panel, so it's a single
+        // extra column layered on top of the 'staff' user_type — optional, defaults to
+        // whatever the 'staff' column above already says if left unset.
+        $lateralRules = DocumentUploadRule::where('course_id', $course->id)
+            ->where('user_type', 'staff')
+            ->where('admission_type', 'lateral')
+            ->pluck('requirement', 'document_type_id');
+
         $userTypes = DocumentUploadRule::USER_TYPES;
 
-        return view('institute.master.document-rules.show', compact('course', 'categories', 'rules', 'userTypes'));
+        return view('institute.master.document-rules.show', compact('course', 'categories', 'rules', 'userTypes', 'lateralRules'));
     }
 
     public function save(Request $request, Course $course)
@@ -58,6 +67,8 @@ class DocumentRuleController extends Controller
         $request->validate([
             'rules'                     => 'nullable|array',
             'rules.*.*'                 => 'in:required,optional,skip',
+            'lateral_rules'             => 'nullable|array',
+            'lateral_rules.*'           => 'nullable|in:required,optional,skip',
         ]);
 
         $incoming = $request->input('rules', []); // [user_type][doc_type_id] = requirement
@@ -78,6 +89,7 @@ class DocumentRuleController extends Controller
                         'course_id'        => $course->id,
                         'document_type_id' => $docTypeId,
                         'user_type'        => $userType,
+                        'admission_type'   => 'all',
                     ],
                     [
                         'institute_id' => $instituteId,
@@ -85,6 +97,34 @@ class DocumentRuleController extends Controller
                     ]
                 );
             }
+        }
+
+        // Optional Lateral Entry overrides (staff panel only) — "Default" (empty) means
+        // it just falls back to the 'staff' column's rule above, so we delete any
+        // existing override rather than storing an empty requirement.
+        foreach ($request->input('lateral_rules', []) as $docTypeId => $requirement) {
+            $docTypeExists = DocumentType::where('id', $docTypeId)
+                ->where('institute_id', $instituteId)
+                ->exists();
+
+            if (!$docTypeExists) continue;
+
+            $key = [
+                'course_id'        => $course->id,
+                'document_type_id' => $docTypeId,
+                'user_type'        => 'staff',
+                'admission_type'   => 'lateral',
+            ];
+
+            if (empty($requirement)) {
+                DocumentUploadRule::where($key)->delete();
+                continue;
+            }
+
+            DocumentUploadRule::updateOrCreate($key, [
+                'institute_id' => $instituteId,
+                'requirement'  => $requirement,
+            ]);
         }
 
         return back()->with('success', 'Document rules saved for "' . $course->name . '".');

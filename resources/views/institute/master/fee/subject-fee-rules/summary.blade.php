@@ -86,6 +86,16 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Student Type</label>
+                <select name="student_type" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    <option value="all" {{ request('student_type') === 'all' ? 'selected' : '' }}>All Students (default)</option>
+                    @foreach($studentTypes as $st)
+                    <option value="{{ $st->slug }}" {{ request('student_type') === $st->slug ? 'selected' : '' }}>{{ $st->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <button type="submit" class="btn btn-primary btn-sm w-100">
                     <i class="bi bi-funnel me-1"></i> Filter
                 </button>
@@ -114,6 +124,7 @@
                     <th>Year</th>
                     <th>Sem</th>
                     <th>Subject</th>
+                    <th>Student Type</th>
                     <th class="text-center">Practical</th>
                     <th class="text-end">Subject Fee</th>
                     <th class="text-end">Practical Fee</th>
@@ -138,6 +149,13 @@
                         <div class="fw-semibold">{{ $rule->subject->name ?? '—' }}</div>
                         @if($rule->subject?->code)
                         <small class="text-muted">({{ $rule->subject->code }})</small>
+                        @endif
+                    </td>
+                    <td>
+                        @if(($rule->student_type ?? 'all') === 'all')
+                        <span class="text-muted small">All Students</span>
+                        @else
+                        <span class="badge bg-info text-dark">{{ $rule->student_type_label }}</span>
                         @endif
                     </td>
                     <td class="text-center">
@@ -175,7 +193,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="10" class="text-center text-muted py-4">
+                    <td colspan="11" class="text-center text-muted py-4">
                         <i class="bi bi-inbox fs-4 d-block mb-2"></i>
                         No subject fee rules found
                     </td>
@@ -185,7 +203,7 @@
             @if($allRules->total())
             <tfoot class="table-light fw-bold">
                 <tr>
-                    <td colspan="6" class="text-end">Total:</td>
+                    <td colspan="7" class="text-end">Total:</td>
                     <td class="text-end">₹ {{ number_format($totalSubjectFee) }}</td>
                     <td class="text-end text-warning">₹ {{ number_format($totalPracticalFee) }}</td>
                     <td class="text-end text-success">₹ {{ number_format($totalSubjectFee + $totalPracticalFee) }}</td>

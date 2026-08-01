@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class DocumentUploadRule extends Model
 {
     protected $fillable = [
-        'institute_id', 'course_id', 'document_type_id', 'user_type', 'requirement',
+        'institute_id', 'course_id', 'document_type_id', 'user_type', 'admission_type', 'requirement',
     ];
 
     public const USER_TYPES = ['online', 'center', 'partner', 'staff'];

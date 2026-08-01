@@ -88,6 +88,16 @@
             </div>
 
             <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Student Type</label>
+                <select name="student_type" class="form-select form-select-sm">
+                    <option value="all" {{ $studentType === 'all' ? 'selected' : '' }}>All Students</option>
+                    @foreach($studentTypes as $st)
+                    <option value="{{ $st->slug }}" {{ $studentType === $st->slug ? 'selected' : '' }}>{{ $st->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2">
                 <button type="submit" class="btn btn-primary btn-sm w-100">
                     <i class="bi bi-funnel me-1"></i> Load Subjects
                 </button>
@@ -109,9 +119,17 @@
         &nbsp;|&nbsp;
         Session: <strong>{{ $sessions->find($sessionId)?->name ?? '' }}</strong>
         &nbsp;|&nbsp;
+        Student Type: <strong>{{ $studentType === 'all' ? 'All Students' : ($studentTypes->firstWhere('slug', $studentType)?->name ?? $studentType) }}</strong>
+        &nbsp;|&nbsp;
         <span class="text-primary fw-semibold">{{ $subjects->count() }} subjects</span> mapped
     </span>
 </div>
+@if($studentType !== 'all')
+<div class="alert alert-warning py-2 mb-3">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Ye fees sirf <strong>{{ $studentTypes->firstWhere('slug', $studentType)?->name ?? $studentType }}</strong> students par lagengi. Baaki sabke liye "All Students" wali fee hi lagu hogi.
+</div>
+@endif
 
 @if($subjects->isEmpty())
 <div class="card border-0 shadow-sm">
@@ -148,6 +166,7 @@
         <input type="hidden" name="course_id"           value="{{ $selectedCourse->id }}">
         <input type="hidden" name="course_part"         value="{{ $coursePart }}">
         <input type="hidden" name="semester"            value="{{ $semester }}">
+        <input type="hidden" name="student_type"        value="{{ $studentType }}">
 
         <div class="table-responsive">
             <table class="table table-sm table-hover align-middle mb-0" style="font-size:13px;">

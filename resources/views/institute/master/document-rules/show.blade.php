@@ -49,6 +49,9 @@
                             {{ \App\Models\DocumentUploadRule::USER_TYPE_LABELS[$ut] ?? $ut }}
                         </th>
                         @endforeach
+                        <th class="text-center" style="min-width:150px;">
+                            Lateral Entry <span class="d-block text-muted fw-normal" style="font-size:0.7rem;">(overrides Staff/Admin, optional)</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -80,6 +83,35 @@
                             </div>
                         </td>
                         @endforeach
+                        @php $currentLateral = $lateralRules[$dt->id] ?? ''; @endphp
+                        <td class="text-center">
+                            <div class="d-flex flex-column gap-1 align-items-center">
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="radio"
+                                           name="lateral_rules[{{ $dt->id }}]"
+                                           id="rule_lateral_{{ $dt->id }}_default"
+                                           value=""
+                                           @checked($currentLateral === '')>
+                                    <label class="form-check-label badge bg-light text-dark border"
+                                           for="rule_lateral_{{ $dt->id }}_default">
+                                        Default
+                                    </label>
+                                </div>
+                                @foreach(['required' => ['danger', 'Required'], 'optional' => ['warning', 'Optional'], 'skip' => ['secondary', 'Skip']] as $val => [$color, $label])
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="radio"
+                                           name="lateral_rules[{{ $dt->id }}]"
+                                           id="rule_lateral_{{ $dt->id }}_{{ $val }}"
+                                           value="{{ $val }}"
+                                           @checked($currentLateral === $val)>
+                                    <label class="form-check-label badge bg-{{ $color }}-subtle text-{{ $color }} border"
+                                           for="rule_lateral_{{ $dt->id }}_{{ $val }}">
+                                        {{ $label }}
+                                    </label>
+                                </div>
+                                @endforeach
+                            </div>
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>

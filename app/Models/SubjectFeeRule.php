@@ -9,7 +9,7 @@ class SubjectFeeRule extends Model
     protected $fillable = [
         'institute_id', 'academic_session_id',
         'course_id', 'subject_id',
-        'course_part', 'semester',
+        'course_part', 'semester', 'student_type',
         'subject_fee', 'practical_fee',
         'is_active',
     ];
@@ -28,5 +28,16 @@ class SubjectFeeRule extends Model
     public function getTotalFeeAttribute(): float
     {
         return (float)$this->subject_fee + (float)$this->practical_fee;
+    }
+
+    public function getStudentTypeLabelAttribute(): string
+    {
+        if (($this->student_type ?? 'all') === 'all') return 'All';
+
+        $name = StudentType::where('institute_id', $this->institute_id)
+            ->where('slug', $this->student_type)
+            ->value('name');
+
+        return $name ?? ucwords(str_replace('_', ' ', $this->student_type));
     }
 }

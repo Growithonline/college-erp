@@ -73,13 +73,21 @@
                             $activeSessionId = \App\Models\AcademicSession::where('institute_id', auth()->user()->institute_id)
                                 ->where('is_active', true)->value('id');
                             $sessionLimit = \App\Models\StreamSessionLimit::where('course_stream_id', $stream->id)
-                                ->where('academic_session_id', $activeSessionId)->first();
+                                ->where('academic_session_id', $activeSessionId)
+                                ->where('admission_type', 'all')->first();
+                            $lateralSessionLimit = \App\Models\StreamSessionLimit::where('course_stream_id', $stream->id)
+                                ->where('academic_session_id', $activeSessionId)
+                                ->where('admission_type', 'lateral')->first();
                         @endphp
                         @if($sessionLimit)
                         @php
-                            $filled    = \App\Models\Student::where('course_stream_id', $stream->id)
+                            $filledQuery = \App\Models\Student::where('course_stream_id', $stream->id)
                                 ->where('academic_session_id', $activeSessionId)
-                                ->where('status', '!=', 'cancelled')->count();
+                                ->where('status', '!=', 'cancelled');
+                            if ($lateralSessionLimit) {
+                                $filledQuery->where('admission_type', '!=', 'lateral');
+                            }
+                            $filled    = $filledQuery->count();
                             $remaining = $sessionLimit->student_limit - $filled;
                         @endphp
                         <div class="text-center">
@@ -87,6 +95,21 @@
                                 {{ $filled }}/{{ $sessionLimit->student_limit }}
                             </div>
                             <div class="text-muted">Seats</div>
+                        </div>
+                        @endif
+                        @if($lateralSessionLimit)
+                        @php
+                            $lateralFilled = \App\Models\Student::where('course_stream_id', $stream->id)
+                                ->where('academic_session_id', $activeSessionId)
+                                ->where('admission_type', 'lateral')
+                                ->where('status', '!=', 'cancelled')->count();
+                            $lateralRemaining = $lateralSessionLimit->student_limit - $lateralFilled;
+                        @endphp
+                        <div class="text-center">
+                            <div class="fw-bold {{ $lateralRemaining <= 0 ? 'text-danger' : 'text-dark' }}">
+                                {{ $lateralFilled }}/{{ $lateralSessionLimit->student_limit }}
+                            </div>
+                            <div class="text-muted">Lateral</div>
                         </div>
                         @endif
                     </div>
@@ -111,6 +134,16 @@
                             onclick="showLimitModal({{ $stream->id }}, '{{ addslashes($stream->name) }}', {{ $sessionLimit?->student_limit ?? 0 }})">
                             <i class="bi bi-people me-1"></i>
                             {{ $sessionLimit ? 'Edit Seat Limit ('.$sessionLimit->student_limit.')' : '+ Set Seat Limit' }}
+                        </button>
+                    </div>
+
+                    {{-- Optional, separate Lateral Entry quota — never required --}}
+                    <div class="mt-2">
+                        <button type="button"
+                            class="btn btn-outline-dark btn-sm w-100"
+                            onclick="showLateralLimitModal({{ $stream->id }}, '{{ addslashes($stream->name) }}', {{ $lateralSessionLimit?->student_limit ?? 0 }})">
+                            <i class="bi bi-arrow-repeat me-1"></i>
+                            {{ $lateralSessionLimit ? 'Edit Lateral Entry Seats ('.$lateralSessionLimit->student_limit.')' : '+ Lateral Entry Seats (optional)' }}
                         </button>
                     </div>
 
@@ -196,12 +229,63 @@
     </div>
 </div>
 
+{{-- Set Lateral Entry Seat Limit Modal — optional, separate quota --}}
+<div class="modal fade" id="lateralLimitModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header" style="background:#1e293b;color:white;">
+                <h6 class="modal-title fw-bold">
+                    <i class="bi bi-arrow-repeat me-2"></i>Lateral Entry Seat Limit
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('master.streams.set-limit') }}">
+                @csrf
+                <input type="hidden" name="stream_id" id="lateralLimitStreamId">
+                <input type="hidden" name="admission_type" value="lateral">
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small border-0 mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Optional. Leave unset and Lateral Entry admissions share the same seat pool as
+                        regular admissions above. Set this only if you want a separate, dedicated
+                        quota for Lateral Entry students for the
+                        <strong>current session ({{ $activeSession->name ?? '' }})</strong>.
+                    </div>
+                    <label class="form-label fw-semibold">
+                        Stream: <span id="lateralLimitStreamName" class="text-primary"></span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-people"></i></span>
+                        <input type="number" name="student_limit" id="lateralLimitInput"
+                               class="form-control" placeholder="e.g. 10"
+                               min="1" max="9999" required>
+                        <span class="input-group-text">students</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark btn-sm">
+                        <i class="bi bi-check-lg me-1"></i>Save Lateral Entry Limit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 function showLimitModal(streamId, streamName, currentLimit) {
     document.getElementById('limitStreamId').value   = streamId;
     document.getElementById('limitStreamName').textContent = streamName;
     document.getElementById('limitInput').value      = currentLimit || '';
     new bootstrap.Modal(document.getElementById('limitModal')).show();
+}
+
+function showLateralLimitModal(streamId, streamName, currentLimit) {
+    document.getElementById('lateralLimitStreamId').value   = streamId;
+    document.getElementById('lateralLimitStreamName').textContent = streamName;
+    document.getElementById('lateralLimitInput').value      = currentLimit || '';
+    new bootstrap.Modal(document.getElementById('lateralLimitModal')).show();
 }
 </script>
 
