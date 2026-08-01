@@ -1666,7 +1666,11 @@ class AdmissionController extends Controller
         $rules = [
             'course_type_id'   => ['required', Rule::exists('course_types', 'id')->where('institute_id', $this->instituteId())],
             'course_id'        => ['nullable', 'exists:courses,id'],
-            'course_stream_id' => ['required', 'exists:course_streams,id'],
+            'course_stream_id' => ['required', Rule::exists('course_streams', 'id')->where(function ($query) {
+                $query->whereIn('course_id', function ($sub) {
+                    $sub->select('id')->from('courses')->where('institute_id', $this->instituteId());
+                });
+            })],
             'course_part_id' => ['nullable', 'exists:course_parts,id'],
             'fee_plan_id'    => ['nullable', Rule::exists('fee_plans', 'id')->where('institute_id', $this->instituteId())],
             'selected_subjects' => ['nullable', 'array'],
