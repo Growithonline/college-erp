@@ -12,6 +12,12 @@ use Illuminate\Support\Facades\DB;
 //
 // Every step is guarded — see the 2026_07_31_000001 migration's comment for why
 // (MySQL DDL isn't transactional, so a retry after a partial failure must be safe).
+//
+// course_id has no dedicated single-column index of its own — it only has one because
+// it's the leftmost column of doc_rule_unique. Dropping that unique index directly
+// fails with error 1553 ("needed in a foreign key constraint") because InnoDB would be
+// left with no index at all covering the course_id foreign key. Giving course_id its
+// own dedicated index first avoids that (see 2026_07_31_000001 for the same fix).
 return new class extends Migration
 {
     public function up(): void
@@ -27,6 +33,16 @@ return new class extends Migration
             ->all();
 
         if (!in_array('admission_type', $indexes, true)) {
+            $hasCourseIndex = collect(DB::select(
+                "SHOW INDEX FROM document_upload_rules WHERE Key_name = 'document_upload_rules_course_id_index'"
+            ))->isNotEmpty();
+
+            if (!$hasCourseIndex) {
+                Schema::table('document_upload_rules', function (Blueprint $table) {
+                    $table->index('course_id', 'document_upload_rules_course_id_index');
+                });
+            }
+
             if (!empty($indexes)) {
                 Schema::table('document_upload_rules', function (Blueprint $table) {
                     $table->dropUnique('doc_rule_unique');

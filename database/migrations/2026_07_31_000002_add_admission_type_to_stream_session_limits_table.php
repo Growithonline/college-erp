@@ -31,6 +31,20 @@ return new class extends Migration
             $hasOldIndex = collect(DB::select("SHOW INDEX FROM stream_session_limits WHERE Key_name = 'ssl_stream_session_unique'"))->isNotEmpty();
 
             if ($hasOldIndex) {
+                // course_stream_id may have no dedicated index of its own (only via being
+                // the leftmost column of ssl_stream_session_unique) — see the
+                // 2026_07_31_000001 migration's comment for why dropping that unique
+                // index directly can fail with MySQL error 1553 in that case.
+                $hasStreamIndex = collect(DB::select(
+                    "SHOW INDEX FROM stream_session_limits WHERE Key_name = 'stream_session_limits_course_stream_id_index'"
+                ))->isNotEmpty();
+
+                if (!$hasStreamIndex) {
+                    Schema::table('stream_session_limits', function (Blueprint $table) {
+                        $table->index('course_stream_id', 'stream_session_limits_course_stream_id_index');
+                    });
+                }
+
                 Schema::table('stream_session_limits', function (Blueprint $table) {
                     $table->dropUnique('ssl_stream_session_unique');
                 });
