@@ -186,7 +186,7 @@ class DocumentBatchController extends Controller
     {
         abort_if($documentBatch->institute_id !== $this->instituteId(), 403);
 
-        $documentBatch->load(['session', 'course', 'courseStream', 'coursePart', 'students.student']);
+        $documentBatch->load(['session', 'course', 'courseStream', 'coursePart', 'students.student.session']);
 
         $totalCount      = $documentBatch->students->count();
         $foundCount      = $documentBatch->students->whereNotNull('found_at')->count();
