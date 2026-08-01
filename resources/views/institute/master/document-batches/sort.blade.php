@@ -23,6 +23,21 @@
     Match each student against the physical bundle and mark whether their marksheet/degree was found — this lets front-desk staff instantly check status later instead of searching the pile again.
 </div>
 
+@if($documentBatch->received_count !== null)
+    @php
+        $overLimit = $foundCount > $documentBatch->received_count;
+    @endphp
+    <div class="alert {{ $overLimit ? 'alert-danger' : 'alert-secondary' }} d-flex align-items-center gap-2" id="foundCountBanner">
+        <i class="bi {{ $overLimit ? 'bi-exclamation-triangle-fill' : 'bi-box-seam' }}"></i>
+        <span>
+            Found <strong id="foundCountValue">{{ $foundCount }}</strong> / {{ $documentBatch->received_count }} (package count)
+            @if($overLimit)
+                — this exceeds the declared package count, please review.
+            @endif
+        </span>
+    </div>
+@endif
+
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover table-sm align-middle mb-0" style="font-size:12px;">
@@ -86,8 +101,13 @@ document.querySelectorAll('.toggle-found-btn').forEach(function (btn) {
                 'Accept': 'application/json',
             },
         })
-        .then(res => res.json())
-        .then(data => {
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) {
+                alert(data.error || 'Could not update found status.');
+                return;
+            }
+
             if (data.found) {
                 statusCell.innerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle">Found <small class="text-muted">(' + data.found_at + ')</small></span>';
                 button.textContent = 'Mark Not Found';
@@ -98,6 +118,11 @@ document.querySelectorAll('.toggle-found-btn').forEach(function (btn) {
                 button.textContent = 'Mark Found';
                 button.classList.remove('btn-outline-danger');
                 button.classList.add('btn-outline-success');
+            }
+
+            const foundCountValue = document.getElementById('foundCountValue');
+            if (foundCountValue && typeof data.found_count !== 'undefined') {
+                foundCountValue.textContent = data.found_count;
             }
         });
     });

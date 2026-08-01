@@ -236,7 +236,9 @@ class DocumentBatchController extends Controller
             ->get()
             ->sortBy(fn ($row) => $row->student?->name);
 
-        return view('institute.master.document-batches.sort', compact('documentBatch', 'students'));
+        $foundCount = $students->filter(fn ($row) => $row->is_found)->count();
+
+        return view('institute.master.document-batches.sort', compact('documentBatch', 'students', 'foundCount'));
     }
 
     public function toggleFound(DocumentBatch $documentBatch, DocumentBatchStudent $documentBatchStudent)
@@ -244,13 +246,23 @@ class DocumentBatchController extends Controller
         abort_if($documentBatch->institute_id !== $this->instituteId(), 403);
         abort_if($documentBatchStudent->document_batch_id !== $documentBatch->id, 404);
 
+        $markingAsFound = !$documentBatchStudent->found_at;
+        $foundCount     = $documentBatch->students()->whereNotNull('found_at')->count();
+
+        if ($markingAsFound && $documentBatch->received_count !== null && $foundCount >= $documentBatch->received_count) {
+            return response()->json([
+                'error' => "Package count is {$documentBatch->received_count} — that many documents are already marked Found. Update the Package Count on the batch page if more actually arrived.",
+            ], 422);
+        }
+
         $documentBatchStudent->update([
-            'found_at' => $documentBatchStudent->found_at ? null : now(),
+            'found_at' => $markingAsFound ? now() : null,
         ]);
 
         return response()->json([
-            'found'    => $documentBatchStudent->is_found,
-            'found_at' => optional($documentBatchStudent->found_at)->format('d M Y, h:i A'),
+            'found'       => $documentBatchStudent->is_found,
+            'found_at'    => optional($documentBatchStudent->found_at)->format('d M Y, h:i A'),
+            'found_count' => $documentBatch->students()->whereNotNull('found_at')->count(),
         ]);
     }
 }
