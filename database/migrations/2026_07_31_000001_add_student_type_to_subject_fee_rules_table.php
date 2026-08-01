@@ -16,6 +16,13 @@ use Illuminate\Support\Facades\DB;
 // yet run. A bare re-run would then fail on "column already exists" before ever
 // reaching the index change. Guarding each step makes a retry from any partial state
 // converge to the same end result instead of failing again.
+//
+// institute_id has no dedicated single-column index of its own — it only has one
+// because it's the leftmost column of subject_fee_rules_unique (MySQL didn't create a
+// redundant one at table-creation time). Dropping that unique index directly fails
+// with error 1553 ("needed in a foreign key constraint") because InnoDB would be left
+// with no index at all covering the institute_id foreign key. Giving institute_id its
+// own dedicated index first avoids that.
 return new class extends Migration
 {
     public function up(): void
@@ -31,6 +38,16 @@ return new class extends Migration
             ->all();
 
         if (!in_array('student_type', $indexes, true)) {
+            $hasInstituteIndex = collect(DB::select(
+                "SHOW INDEX FROM subject_fee_rules WHERE Key_name = 'subject_fee_rules_institute_id_index'"
+            ))->isNotEmpty();
+
+            if (!$hasInstituteIndex) {
+                Schema::table('subject_fee_rules', function (Blueprint $table) {
+                    $table->index('institute_id', 'subject_fee_rules_institute_id_index');
+                });
+            }
+
             if (!empty($indexes)) {
                 Schema::table('subject_fee_rules', function (Blueprint $table) {
                     $table->dropUnique('subject_fee_rules_unique');
