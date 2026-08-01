@@ -82,7 +82,7 @@
                         <th>Session</th>
                         <th>Course</th>
                         <th>Type</th>
-                        <th>Batch Label</th>
+                        <th>Semester / Batch Label</th>
                         <th>Total</th>
                         <th>Found</th>
                         <th>Distributed</th>
@@ -96,7 +96,12 @@
                         <td>{{ $batch->session->name ?? '-' }}</td>
                         <td>{{ $batch->course->name ?? '-' }}</td>
                         <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $batch->document_type_label }}</span></td>
-                        <td>{{ $batch->batch_label ?? '-' }}</td>
+                        <td>
+                            {{ $batch->coursePart->part_name ?? '' }}
+                            @if($batch->coursePart && $batch->batch_label) &middot; @endif
+                            {{ $batch->batch_label ?? '' }}
+                            @if(!$batch->coursePart && !$batch->batch_label) - @endif
+                        </td>
                         <td>{{ $batch->students_count }}</td>
                         <td>{{ $batch->found_count }}</td>
                         <td>{{ $batch->distributed_count }}</td>

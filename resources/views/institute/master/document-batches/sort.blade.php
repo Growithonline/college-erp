@@ -6,7 +6,9 @@
     <div>
         <h4 class="mb-0 fw-bold">Sort & Verify</h4>
         <small class="text-muted">
-            {{ $documentBatch->course->name ?? '-' }} — {{ $documentBatch->session->name ?? '-' }}
+            {{ $documentBatch->course->name ?? '-' }}
+            @if($documentBatch->coursePart) — {{ $documentBatch->coursePart->part_name }} @endif
+            — {{ $documentBatch->session->name ?? '-' }}
             ({{ $documentBatch->document_type_label }}{{ $documentBatch->batch_label ? ', '.$documentBatch->batch_label : '' }})
         </small>
     </div>

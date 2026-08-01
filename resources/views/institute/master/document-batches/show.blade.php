@@ -5,7 +5,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold">
-            {{ $documentBatch->course->name ?? '-' }} — {{ $documentBatch->session->name ?? '-' }}
+            {{ $documentBatch->course->name ?? '-' }}
+            @if($documentBatch->coursePart) — {{ $documentBatch->coursePart->part_name }} @endif
+            — {{ $documentBatch->session->name ?? '-' }}
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">{{ $documentBatch->document_type_label }}</span>
         </h4>
         <small class="text-muted">{{ $documentBatch->batch_label ?? 'No batch label' }}</small>

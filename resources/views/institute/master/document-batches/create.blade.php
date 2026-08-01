@@ -38,6 +38,18 @@
                     @endforeach
                 </select>
             </div>
+            @if($documentType === 'marksheet')
+            <div class="col-md-4">
+                <label class="form-label fw-medium">Semester / Year <span class="text-danger">*</span></label>
+                <select class="form-select" name="course_part_id" required>
+                    <option value="">Select Course first, then Semester</option>
+                    @foreach($courseParts as $part)
+                        <option value="{{ $part->id }}" {{ (string)$coursePartId === (string)$part->id ? 'selected' : '' }}>{{ $part->part_name }}</option>
+                    @endforeach
+                </select>
+                <small class="text-muted">Marksheet is per-semester exam, not whole-course completion.</small>
+            </div>
+            @endif
             <div class="col-12">
                 <button type="submit" class="btn btn-outline-primary">
                     <i class="bi bi-search me-1"></i> Load Eligible Students
@@ -47,17 +59,19 @@
     </div>
 </div>
 
-@if($sessionId && $courseId)
+@if($sessionId && $courseId && ($documentType === 'degree' || $coursePartId))
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center">
         <h6 class="fw-semibold mb-0">Eligible Students ({{ $students->count() }})</h6>
-        <small class="text-muted">Final year, status = Passed Out</small>
+        <small class="text-muted">
+            {{ $documentType === 'degree' ? 'Course complete, status = Passed Out' : 'Enrolled in this semester during this session (any current status)' }}
+        </small>
     </div>
     <div class="card-body">
         @if($students->isEmpty())
             <div class="text-center py-4 text-muted">
                 <i class="bi bi-people opacity-25 fs-2 d-block mb-2"></i>
-                No passed-out students found for this session &amp; course.
+                No eligible students found for this selection.
             </div>
         @else
         <form method="POST" action="{{ route('master.document-batches.store') }}">
@@ -65,6 +79,9 @@
             <input type="hidden" name="academic_session_id" value="{{ $sessionId }}">
             <input type="hidden" name="course_id" value="{{ $courseId }}">
             <input type="hidden" name="document_type" value="{{ $documentType }}">
+            @if($documentType === 'marksheet')
+            <input type="hidden" name="course_part_id" value="{{ $coursePartId }}">
+            @endif
 
             <div class="mb-3">
                 <label class="form-label fw-medium">Batch Label</label>

@@ -78,7 +78,12 @@
                         {{ $row->student->name ?? '-' }}
                         <div><small class="text-muted">{{ $row->student->roll_no ?? '' }}</small></div>
                     </td>
-                    <td>{{ $row->batch->batch_label ?? $row->batch->course->name ?? '-' }}</td>
+                    <td>
+                        {{ $row->batch->coursePart->part_name ?? $row->batch->course->name ?? '-' }}
+                        @if($row->batch->batch_label)
+                            <div><small class="text-muted">{{ $row->batch->batch_label }}</small></div>
+                        @endif
+                    </td>
                     <td class="text-muted small">{{ $row->found_at?->format('d M Y') }}</td>
                     <td>
                         @if($row->due > 0)
