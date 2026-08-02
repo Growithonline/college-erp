@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <style>
-    body { font-family: DejaVu Sans, sans-serif; font-size: 8px; color: #333; margin: 0; }
-    h1 { text-align:center; font-size:14px; margin:0 0 2px; color:#1a1a2e; }
-    h2 { text-align:center; font-size:10px; margin:0 0 6px; color:#555; font-weight:normal; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 8px; color: #000; margin: 0; }
+    h1 { text-align:center; font-size:14px; margin:0 0 2px; color:#000; }
+    h2 { text-align:center; font-size:10px; margin:0 0 6px; color:#000; font-weight:normal; }
     .meta { width:100%; border-collapse:collapse; margin-bottom:8px; }
-    .meta td { padding:3px 6px; font-size:7.5px; border:1px solid #ddd; }
+    .meta td { padding:3px 6px; font-size:7.5px; border:1px solid #ddd; color:#000; }
     .meta td.label { background:#f1f5f9; font-weight:bold; width:90px; }
-    h3 { font-size:9px; color:#1a1a2e; margin:10px 0 4px; border-bottom:1px solid #ddd; padding-bottom:2px; }
+    h3 { font-size:9px; color:#000; margin:10px 0 4px; border-bottom:1px solid #ddd; padding-bottom:2px; }
     table.data { width:100%; border-collapse:collapse; margin-bottom:8px; }
     table.data thead tr { background:#1a1a2e; color:#fff; }
     table.data th { padding:4px 3px; text-align:left; font-size:7px; }
     table.data th.r, table.data td.r { text-align:right; }
-    table.data td { padding:3px; border-bottom:1px solid #eee; font-size:7.5px; }
+    table.data td { padding:3px; border-bottom:1px solid #eee; font-size:7.5px; color:#000; }
     table.data tr:nth-child(even) td { background:#f9f9f9; }
-    table.data tfoot tr { background:#f1f5f9; font-weight:bold; }
-    .muted { color:#777; font-size:7px; }
+    table.data tfoot tr { background:#f1f5f9; font-weight:bold; color:#000; }
+    .muted { color:#000; font-size:7px; }
     .totals { width:100%; border-collapse:collapse; margin-top:8px; }
-    .totals td { padding:6px 8px; border:1px solid #ccc; font-size:8px; }
+    .totals td { padding:6px 8px; border:1px solid #ccc; font-size:8px; color:#000; }
     .totals td.label { background:#f1f5f9; font-weight:bold; }
-    .totals td.grand { background:#e8f5e9; font-weight:bold; font-size:11px; color:#198754; }
+    .totals td.grand { background:#e8f5e9; font-weight:bold; font-size:11px; color:#000; }
     .section { page-break-inside:avoid; }
 </style>
 </head>
