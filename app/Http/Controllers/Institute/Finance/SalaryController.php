@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Institute\Finance;
 
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Account;
@@ -13,6 +14,7 @@ use App\Models\StaffMember;
 use App\Services\AccountingSetupService;
 use App\Services\InstituteWalletService;
 use App\Services\JournalService;
+use App\Services\PayrollService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -82,6 +84,8 @@ class SalaryController extends Controller
                         ? route('finance.salary.pay', $record->id) : null,
                     'reverse_route' => $record->status === SalaryRecord::STATUS_PAID
                         ? route('finance.salary.reverse', $record->id) : null,
+                    'retry_route'   => ($record->status === SalaryRecord::STATUS_PAID && !$record->journal_entry_id)
+                        ? route('finance.salary.retry-posting', $record->id) : null,
                     'profile_route' => null,
                 ];
             });
@@ -114,6 +118,7 @@ class SalaryController extends Controller
                     'pay_route'     => null,
                     'reverse_route' => $record->status === 'paid' && $record->employee_id
                         ? route('employees.salary.reverseForm', [$record->employee_id, $record->id]) : null,
+                    'retry_route'   => null,
                     'profile_route' => $record->employee_id
                         ? route('employees.salary.disbursements', $record->employee_id) : null,
                 ];
@@ -223,10 +228,8 @@ class SalaryController extends Controller
 
         $paymentMode = $validated['payment_mode'] ?? null;
         $paymentDate = $validated['payment_date'] ?? null;
-        $paidAmount = $paymentDate ? $netPayable : 0;
         $paymentAccountId = null;
         $bankAccountId = null;
-        $status = $paymentDate ? SalaryRecord::STATUS_PAID : SalaryRecord::STATUS_DRAFT;
 
         if ($paymentDate && $paymentMode === 'cash') {
             $settings = FinanceSetting::where('institute_id', $instituteId)->first();
@@ -243,39 +246,49 @@ class SalaryController extends Controller
             abort_if(!$paymentAccountId, 422, 'Selected bank account GL mapping is missing.');
         }
 
+        // Always create as Draft first — payment (status/journal/wallet-debit) is applied
+        // afterwards via PayrollService::markSalaryPaid(), the same atomic path the "pay"
+        // screen uses, so a directly-paid record can never skip the wallet debit.
         $salaryRecord = SalaryRecord::create([
             'institute_id' => $instituteId,
             'academic_session_id' => !empty($validated['academic_session_id']) ? (int) $validated['academic_session_id'] : null,
             'staff_member_id' => (int) $staffMember->id,
             'expense_account_id' => (int) $expenseAccount->id,
-            'payment_account_id' => $paymentAccountId,
-            'bank_account_id' => $bankAccountId,
             'salary_month' => (int) $validated['salary_month'],
             'salary_year' => (int) $validated['salary_year'],
             'basic_salary' => $basic,
             'allowances' => $allowances,
             'deductions' => $deductions,
             'net_payable' => $netPayable,
-            'paid_amount' => $paidAmount,
-            'payment_date' => $paymentDate,
-            'payment_mode' => $paymentMode,
+            'paid_amount' => 0,
             'remarks' => $validated['remarks'] ?? null,
-            'status' => $status,
+            'status' => SalaryRecord::STATUS_DRAFT,
             'created_by' => auth()->id(),
         ]);
 
-        if ($salaryRecord->status === SalaryRecord::STATUS_PAID) {
-            $journalEntry = JournalService::safePostSalaryPayment($salaryRecord->fresh(['staffMember', 'expenseAccount', 'bankAccount']));
-            if ($journalEntry && !$salaryRecord->journal_entry_id) {
-                $salaryRecord->update(['journal_entry_id' => $journalEntry->id]);
-            }
+        if (!$paymentDate) {
+            return redirect()
+                ->route('finance.salary.index')
+                ->with('success', 'Salary record created. You can now process the payment from the pay screen.');
+        }
+
+        try {
+            PayrollService::markSalaryPaid(
+                $salaryRecord, $paymentDate, $paymentMode, $validated['remarks'] ?? null,
+                $paymentAccountId, $bankAccountId
+            );
+        } catch (InsufficientWalletBalanceException $e) {
+            return redirect()->route('finance.salary.index')->with('error',
+                'Salary record created (Draft), but wallet balance was insufficient (Available: Rs '
+                . number_format($e->available, 2) . '). Try the payment again from the pay screen.');
+        } catch (\RuntimeException $e) {
+            return redirect()->route('finance.salary.index')->with('error',
+                'Salary record created (Draft), but payment could not be posted: ' . $e->getMessage());
         }
 
         return redirect()
             ->route('finance.salary.index')
-            ->with('success', $salaryRecord->status === SalaryRecord::STATUS_PAID
-                ? 'Salary record create ho gaya aur payment post ho gayi.'
-                : 'Salary record create ho gaya. Ab pay screen se payment kar sakte ho.');
+            ->with('success', 'Salary record created and payment posted.');
     }
 
     public function pay(SalaryRecord $salaryRecord): View|RedirectResponse
@@ -330,30 +343,46 @@ class SalaryController extends Controller
             abort_if(!$paymentAccountId, 422, 'Selected bank account GL mapping is missing.');
         }
 
-        $salaryRecord->update([
-            'payment_account_id' => $paymentAccountId,
-            'bank_account_id' => $bankAccountId,
-            'paid_amount' => (float) $salaryRecord->net_payable,
-            'payment_date' => $validated['payment_date'],
-            'payment_mode' => $validated['payment_mode'],
-            'remarks' => $validated['remarks'] ?? $salaryRecord->remarks,
-            'status' => SalaryRecord::STATUS_PAID,
-        ]);
-
-        $fresh = $salaryRecord->fresh(['staffMember', 'expenseAccount', 'bankAccount']);
-        $journalEntry = JournalService::safePostSalaryPayment($fresh);
-        if ($journalEntry && !$salaryRecord->journal_entry_id) {
-            $salaryRecord->update(['journal_entry_id' => $journalEntry->id]);
+        // Status update + journal posting + wallet debit happen atomically inside
+        // PayrollService::markSalaryPaid() (single DB transaction, locked balance check).
+        try {
+            PayrollService::markSalaryPaid(
+                $salaryRecord, $validated['payment_date'], $validated['payment_mode'],
+                $validated['remarks'] ?? $salaryRecord->remarks, $paymentAccountId, $bankAccountId
+            );
+        } catch (InsufficientWalletBalanceException $e) {
+            return back()->with('error',
+                'Wallet balance insufficient. Available: Rs ' . number_format($e->available, 2) .
+                ', Required: Rs ' . number_format((float) $salaryRecord->net_payable, 2));
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        // Debit institute wallet for this salary payment
-        InstituteWalletService::debitSalary($salaryRecord->fresh(['staffMember']));
+        $fresh = $salaryRecord->fresh();
 
         return redirect()
             ->route('finance.salary.index')
-            ->with('success', $journalEntry
+            ->with('success', $fresh->journal_entry_id
                 ? 'Salary payment record ho gayi, wallet se debit ho gaya aur journal post ho gaya.'
                 : 'Salary paid mark ho gayi, lekin accounting posting pending hai.');
+    }
+
+    public function retryPosting(SalaryRecord $salaryRecord): RedirectResponse
+    {
+        abort_if($salaryRecord->institute_id !== $this->instituteId(), 403);
+        abort_if($salaryRecord->journal_entry_id, 422, 'This salary has already been posted.');
+        abort_if($salaryRecord->status !== SalaryRecord::STATUS_PAID, 422, 'Only a paid salary can be posted.');
+
+        $journalEntry = JournalService::safePostSalaryPayment(
+            $salaryRecord->fresh(['staffMember', 'expenseAccount', 'bankAccount'])
+        );
+
+        if ($journalEntry) {
+            $salaryRecord->update(['journal_entry_id' => $journalEntry->id]);
+            return back()->with('success', 'Accounting entry posted.');
+        }
+
+        return back()->with('error', 'Posting is still failing — check the expense/cash/bank account GL mapping in Finance Settings.');
     }
 
     public function reverseForm(SalaryRecord $salaryRecord): View|RedirectResponse
@@ -376,6 +405,11 @@ class SalaryController extends Controller
 
         abort_if($salaryRecord->institute_id !== $this->instituteId(), 403);
         abort_if($salaryRecord->status !== SalaryRecord::STATUS_PAID, 422, 'Only paid salary can be reversed.');
+        abort_if(
+            FinanceSetting::isDateLocked($this->instituteId(), $salaryRecord->payment_date),
+            422,
+            'This salary falls in a locked accounting period (' . $salaryRecord->payment_date?->format('d M Y') . ') and cannot be reversed.'
+        );
 
         $validated = $request->validate([
             'reversal_reason' => 'required|string|max:255',

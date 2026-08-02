@@ -80,7 +80,7 @@
         <div class="fw-bold fs-5">
             <i class="bi bi-receipt-cutoff me-2"></i>Total Expense (Approved)
         </div>
-        <div class="fw-bold fs-4 text-danger">Rs {{ number_format($grandTotal, 2) }}</div>
+        <div class="fw-bold fs-4 text-danger">₹{{ number_format($grandTotal, 2) }}</div>
     </div>
 </div>
 
@@ -112,7 +112,7 @@
                         <tr {{ $l1Id == $row->expense_category_l1_id ? 'class=table-warning' : '' }}>
                             <td class="fw-semibold">{{ $catName }}</td>
                             <td class="text-end text-muted">{{ $row->count }}</td>
-                            <td class="text-end text-danger">Rs {{ number_format($row->total, 2) }}</td>
+                            <td class="text-end text-danger">₹{{ number_format($row->total, 2) }}</td>
                             <td class="text-end">
                                 <div class="d-flex align-items-center justify-content-end gap-1">
                                     <div class="progress flex-grow-1" style="height:6px;min-width:40px">
@@ -166,14 +166,14 @@
                             <td>{{ $row->categoryL2?->name ?? '—' }}</td>
                             <td class="text-muted">{{ $row->vendor?->name ?? $row->vendor_name ?? '—' }}</td>
                             <td class="text-end">{{ $row->count }}</td>
-                            <td class="text-end text-danger fw-semibold">Rs {{ number_format($row->total, 2) }}</td>
+                            <td class="text-end text-danger fw-semibold">₹{{ number_format($row->total, 2) }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                     <tfoot class="table-light fw-semibold">
                         <tr>
                             <td colspan="3">Total</td>
-                            <td class="text-end text-danger">Rs {{ number_format($byL2->sum('total'), 2) }}</td>
+                            <td class="text-end text-danger">₹{{ number_format($byL2->sum('total'), 2) }}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -201,7 +201,7 @@
                         @foreach($monthWise as $row)
                         <tr>
                             <td>{{ \Carbon\Carbon::parse($row->month . '-01')->format('F Y') }}</td>
-                            <td class="text-end text-danger">Rs {{ number_format($row->total, 2) }}</td>
+                            <td class="text-end text-danger">₹{{ number_format($row->total, 2) }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -241,9 +241,9 @@ new Chart(document.getElementById('expenseChart'), {
         responsive: true,
         plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: ctx => 'Rs ' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) } }
+            tooltip: { callbacks: { label: ctx => '₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) } }
         },
-        scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rs ' + v.toLocaleString('en-IN') } } }
+        scales: { y: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') } } }
     }
 });
 </script>

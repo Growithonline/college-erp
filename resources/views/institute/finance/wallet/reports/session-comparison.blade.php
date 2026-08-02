@@ -53,16 +53,16 @@
                         </span>
                     </td>
                     <td class="text-end text-success fw-semibold">
-                        Rs {{ number_format($row['total_income'], 2) }}
+                        ₹{{ number_format($row['total_income'], 2) }}
                     </td>
                     <td class="text-end text-danger fw-semibold">
-                        Rs {{ number_format($row['total_expense'], 2) }}
+                        ₹{{ number_format($row['total_expense'], 2) }}
                     </td>
                     <td class="text-end fw-bold {{ $net >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ $net >= 0 ? '+' : '' }}Rs {{ number_format($net, 2) }}
+                        {{ $net >= 0 ? '+' : '' }}₹{{ number_format($net, 2) }}
                     </td>
                     <td class="text-end fw-bold {{ $row['balance'] >= 0 ? 'text-success' : 'text-danger' }}">
-                        Rs {{ number_format($row['balance'], 2) }}
+                        ₹{{ number_format($row['balance'], 2) }}
                     </td>
                     <td>
                         <a href="{{ route('finance.wallet.dashboard', ['session_id' => $s->id]) }}"
@@ -81,11 +81,11 @@
             <tfoot class="table-light fw-bold">
                 <tr>
                     <td colspan="2">Grand Total</td>
-                    <td class="text-end text-success">Rs {{ number_format($comparison->sum('total_income'), 2) }}</td>
-                    <td class="text-end text-danger">Rs {{ number_format($comparison->sum('total_expense'), 2) }}</td>
+                    <td class="text-end text-success">₹{{ number_format($comparison->sum('total_income'), 2) }}</td>
+                    <td class="text-end text-danger">₹{{ number_format($comparison->sum('total_expense'), 2) }}</td>
                     @php $netTotal = $comparison->sum('total_income') - $comparison->sum('total_expense'); @endphp
                     <td class="text-end {{ $netTotal >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ $netTotal >= 0 ? '+' : '' }}Rs {{ number_format($netTotal, 2) }}
+                        {{ $netTotal >= 0 ? '+' : '' }}₹{{ number_format($netTotal, 2) }}
                     </td>
                     <td colspan="2"></td>
                 </tr>
@@ -135,12 +135,12 @@ new Chart(document.getElementById('comparisonChart'), {
         responsive: true,
         plugins: {
             legend: { position: 'top' },
-            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': Rs ' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) } }
+            tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ₹' + ctx.parsed.y.toLocaleString('en-IN', {minimumFractionDigits:2}) } }
         },
         scales: {
             y: {
                 beginAtZero: false,
-                ticks: { callback: v => 'Rs ' + v.toLocaleString('en-IN') }
+                ticks: { callback: v => '₹' + v.toLocaleString('en-IN') }
             }
         }
     }

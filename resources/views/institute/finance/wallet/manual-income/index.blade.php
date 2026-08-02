@@ -52,7 +52,7 @@
                     <td><span class="badge bg-info bg-opacity-10 text-info">{{ $income->category->name }}</span></td>
                     <td class="text-muted">{{ $income->description ?? '-' }}</td>
                     <td class="text-muted">{{ $income->receipt_no ?? '-' }}</td>
-                    <td class="text-end fw-semibold text-success">Rs {{ number_format($income->amount, 2) }}</td>
+                    <td class="text-end fw-semibold text-success">₹{{ number_format($income->amount, 2) }}</td>
                 </tr>
                 @empty
                 <tr>

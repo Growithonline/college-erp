@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Expense;
@@ -60,29 +61,35 @@ class ExpenseApprovalController extends Controller
         $approverId = auth()->guard('staff')->id() ?? auth()->id();
 
         // Wrap approval + wallet debit + GL posting in one transaction
-        DB::transaction(function () use ($expense, $walletSessionId, $approverId) {
-            // Re-check status inside transaction to prevent double-approve
-            $fresh = Expense::where('id', $expense->id)->lockForUpdate()->first();
+        try {
+            DB::transaction(function () use ($expense, $walletSessionId, $approverId) {
+                // Re-check status inside transaction to prevent double-approve
+                $fresh = Expense::where('id', $expense->id)->lockForUpdate()->first();
 
-            if (!$fresh || $fresh->approval_status !== Expense::STATUS_PENDING) {
-                return; // Already processed by a concurrent request
-            }
+                if (!$fresh || $fresh->approval_status !== Expense::STATUS_PENDING) {
+                    return; // Already processed by a concurrent request
+                }
 
-            if ($walletSessionId && !$fresh->academic_session_id) {
-                $fresh->update(['academic_session_id' => $walletSessionId]);
-            }
+                if ($walletSessionId && !$fresh->academic_session_id) {
+                    $fresh->update(['academic_session_id' => $walletSessionId]);
+                }
 
-            $fresh->update([
-                'approval_status'      => Expense::STATUS_APPROVED,
-                'approved_by_staff_id' => $approverId,
-                'approved_at'          => now(),
-            ]);
+                $fresh->update([
+                    'approval_status'      => Expense::STATUS_APPROVED,
+                    'approved_by_staff_id' => $approverId,
+                    'approved_at'          => now(),
+                ]);
 
-            // Debit wallet (inside this transaction — wallet service uses its own nested tx)
-            if ($walletSessionId) {
-                InstituteWalletService::debitExpense($fresh->fresh(['categoryL2', 'vendor']));
-            }
-        });
+                // Debit wallet (inside this transaction — wallet service uses its own nested tx)
+                if ($walletSessionId) {
+                    InstituteWalletService::debitExpense($fresh->fresh(['categoryL2', 'vendor']));
+                }
+            });
+        } catch (InsufficientWalletBalanceException $e) {
+            return back()->with('error',
+                'Wallet balance insufficient. Available: Rs ' . number_format($e->available, 2) .
+                ', Required: Rs ' . number_format($e->required, 2));
+        }
 
         // GL journal posted outside the locked transaction (safe — idempotent via entry_key)
         $freshExpense = $expense->fresh(['expenseAccount', 'paymentAccount', 'bankAccount']);

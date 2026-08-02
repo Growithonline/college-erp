@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
+    use BelongsToAuthInstitute;
+
     // approval_status values
     public const STATUS_AUTO_APPROVED = 'auto_approved';
     public const STATUS_PENDING       = 'pending';

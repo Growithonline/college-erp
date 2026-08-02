@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\AcademicSession;
 use App\Models\Expense;
 use App\Models\InstituteManualIncome;
@@ -9,22 +10,51 @@ use App\Models\InstituteTransaction;
 use App\Models\InstituteWallet;
 use App\Models\EmployeeSalaryDisbursement;
 use App\Models\SalaryRecord;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class InstituteWalletService
 {
+    /**
+     * Fetch the wallet row locked (FOR UPDATE), creating it first if it doesn't exist.
+     * A row that doesn't exist yet can't be locked, so on a concurrent first-ever write
+     * for the same institute+session, the losing INSERT (blocked by the unique
+     * constraint) is caught and re-read instead of throwing.
+     */
+    private static function lockedWallet(int $instituteId, int $sessionId): InstituteWallet
+    {
+        $wallet = InstituteWallet::where('institute_id', $instituteId)
+            ->where('academic_session_id', $sessionId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($wallet) {
+            return $wallet;
+        }
+
+        try {
+            InstituteWallet::create([
+                'institute_id'        => $instituteId,
+                'academic_session_id' => $sessionId,
+                'main_b'              => 0.00,
+            ]);
+        } catch (QueryException $e) {
+            // Unique constraint hit — a concurrent request created it first; fall through and re-select.
+        }
+
+        return InstituteWallet::where('institute_id', $instituteId)
+            ->where('academic_session_id', $sessionId)
+            ->lockForUpdate()
+            ->first();
+    }
+
     public static function creditManualIncome(InstituteManualIncome $income): void
     {
         $instituteId = $income->institute_id;
         $sessionId   = $income->academic_session_id;
 
         DB::transaction(function () use ($income, $instituteId, $sessionId) {
-            $wallet = InstituteWallet::firstOrCreate(
-                ['institute_id' => $instituteId, 'academic_session_id' => $sessionId],
-                ['main_b' => 0.00]
-            );
-            // Lock the row to prevent concurrent balance updates
-            $wallet = InstituteWallet::where('id', $wallet->id)->lockForUpdate()->first();
+            $wallet = self::lockedWallet($instituteId, $sessionId);
 
             $opBal = (float) $wallet->main_b;
             $clBal = round($opBal + (float) $income->amount, 2);
@@ -128,14 +158,23 @@ class InstituteWalletService
         $finalSessionId = $sessionId;
 
         DB::transaction(function () use ($expense, $instituteId, $finalSessionId) {
-            $wallet = InstituteWallet::firstOrCreate(
-                ['institute_id' => $instituteId, 'academic_session_id' => $finalSessionId],
-                ['main_b' => 0.00]
-            );
-            $wallet = InstituteWallet::where('id', $wallet->id)->lockForUpdate()->first();
+            // Re-read expense under lock — prevents double-debit on concurrent requests
+            $freshExpense = Expense::where('id', $expense->id)->lockForUpdate()->first();
 
-            $opBal       = (float) $wallet->main_b;
-            $clBal       = round($opBal - (float) $expense->amount, 2);
+            if (!$freshExpense || $freshExpense->wallet_debited) {
+                return;
+            }
+
+            $wallet = self::lockedWallet($instituteId, $finalSessionId);
+
+            $opBal  = (float) $wallet->main_b;
+            $amount = (float) $expense->amount;
+            $clBal  = round($opBal - $amount, 2);
+
+            if ($clBal < 0) {
+                throw new InsufficientWalletBalanceException($opBal, $amount);
+            }
+
             $description = 'Expense: ' . ($expense->categoryL2?->name
                 ?? $expense->vendor?->name
                 ?? $expense->vendor_name
@@ -146,7 +185,7 @@ class InstituteWalletService
                 'academic_session_id' => $finalSessionId,
                 'des'                 => $description,
                 'credit'              => 0.00,
-                'debit'               => $expense->amount,
+                'debit'               => $amount,
                 'type'                => InstituteTransaction::DEBIT,
                 'date'                => $expense->expense_date->toDateString(),
                 'op_bal'              => $opBal,
@@ -157,7 +196,7 @@ class InstituteWalletService
             ]);
 
             $wallet->update(['main_b' => $clBal]);
-            $expense->update(['wallet_debited' => true]);
+            $freshExpense->update(['wallet_debited' => true]);
         });
     }
 
@@ -246,15 +285,16 @@ class InstituteWalletService
                 return;
             }
 
-            $wallet = InstituteWallet::firstOrCreate(
-                ['institute_id' => $instituteId, 'academic_session_id' => $finalSessionId],
-                ['main_b' => 0.00]
-            );
-            $wallet = InstituteWallet::where('id', $wallet->id)->lockForUpdate()->first();
+            $wallet = self::lockedWallet($instituteId, $finalSessionId);
 
             $opBal     = (float) $wallet->main_b;
             $amount    = (float) $freshSalary->net_payable;
             $clBal     = round($opBal - $amount, 2);
+
+            if ($clBal < 0) {
+                throw new InsufficientWalletBalanceException($opBal, $amount);
+            }
+
             $staffName = $freshSalary->staffMember?->name ?? $salary->staffMember?->name ?? 'Staff';
             $month     = str_pad($freshSalary->salary_month, 2, '0', STR_PAD_LEFT) . '/' . $freshSalary->salary_year;
 
@@ -301,11 +341,7 @@ class InstituteWalletService
                 return;
             }
 
-            $wallet = InstituteWallet::firstOrCreate(
-                ['institute_id' => $instituteId, 'academic_session_id' => $sessionId],
-                ['main_b' => 0.00]
-            );
-            $wallet = InstituteWallet::where('id', $wallet->id)->lockForUpdate()->first();
+            $wallet = self::lockedWallet($instituteId, $sessionId);
 
             $opBal      = (float) $wallet->main_b;
             $amount     = (float) $fresh->net_salary;

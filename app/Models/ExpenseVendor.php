@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 
 class ExpenseVendor extends Model
 {
+    use BelongsToAuthInstitute;
+
     protected $table = 'expense_vendors';
 
     protected $fillable = [

@@ -55,7 +55,7 @@
             <div class="card-body py-3">
                 <div class="small text-muted">Overall Difference</div>
                 <div class="fw-bold fs-4 {{ $overallDifference == 0.0 ? 'text-success' : 'text-danger' }}">
-                    Rs {{ number_format(abs($overallDifference), 2) }}{{ $overallDifference == 0.0 ? '' : ' Mismatch' }}
+                    ₹{{ number_format(abs($overallDifference), 2) }}{{ $overallDifference == 0.0 ? '' : ' Mismatch' }}
                 </div>
             </div>
         </div>
@@ -130,7 +130,7 @@
                     <div class="border rounded p-2 mb-2">
                         <div class="fw-semibold">{{ $expense->expenseAccount?->name ?? 'Expense' }}</div>
                         <div class="small text-muted">{{ $expense->vendor_name ?: 'Internal expense' }}</div>
-                        <div class="small text-muted">{{ $expense->expense_date?->format('d M Y') ?: '-' }} / Rs {{ number_format($expense->amount, 2) }}</div>
+                        <div class="small text-muted">{{ $expense->expense_date?->format('d M Y') ?: '-' }} / ₹{{ number_format($expense->amount, 2) }}</div>
                     </div>
                 @empty
                     <div class="text-muted small">Expense side par koi sample mismatch nahi mila.</div>
@@ -148,7 +148,7 @@
                     <div class="border rounded p-2 mb-2">
                         <div class="fw-semibold">{{ $record->staffMember?->name ?? 'Staff' }}</div>
                         <div class="small text-muted">{{ \Carbon\Carbon::createFromDate($record->salary_year, $record->salary_month, 1)->format('M Y') }}</div>
-                        <div class="small text-muted">{{ $record->payment_date?->format('d M Y') ?: '-' }} / Rs {{ number_format($record->paid_amount, 2) }}</div>
+                        <div class="small text-muted">{{ $record->payment_date?->format('d M Y') ?: '-' }} / ₹{{ number_format($record->paid_amount, 2) }}</div>
                     </div>
                 @empty
                     <div class="text-muted small">Salary side par koi sample mismatch nahi mila.</div>

@@ -23,11 +23,11 @@
                 <div>
                     <i class="bi bi-wallet2 me-2"></i>
                     <strong>Wallet Balance (Active Session):</strong>
-                    Rs {{ number_format($walletBalance, 2) }}
+                    ₹{{ number_format($walletBalance, 2) }}
                 </div>
                 @if(isset($autoApproveLimit) && $autoApproveLimit < PHP_INT_MAX)
                 <div class="small text-muted">
-                    Auto-approve limit: Rs {{ number_format($autoApproveLimit, 2) }}
+                    Auto-approve limit: ₹{{ number_format($autoApproveLimit, 2) }}
                 </div>
                 @endif
             </div>
@@ -120,7 +120,7 @@
                             @if(isset($autoApproveLimit) && $autoApproveLimit < PHP_INT_MAX)
                             <div id="approval_warning" class="form-text text-warning" style="display:none">
                                 <i class="bi bi-exclamation-triangle me-1"></i>
-                                Amount > Rs {{ number_format($autoApproveLimit, 2) }} — approval required from admin.
+                                Amount > ₹{{ number_format($autoApproveLimit, 2) }} — approval required from admin.
                             </div>
                             @endif
                         </div>

@@ -34,7 +34,7 @@
         <div class="card border-0 bg-light h-100">
             <div class="card-body p-3">
                 <div class="fw-semibold small mb-1">
-                    <i class="bi bi-currency-rupee text-warning me-1"></i>Limit = Rs 0
+                    <i class="bi bi-currency-rupee text-warning me-1"></i>Limit = ₹0
                 </div>
                 <div class="small text-muted">All expenses require admin approval before the wallet is debited</div>
             </div>
@@ -44,7 +44,7 @@
         <div class="card border-0 bg-light h-100">
             <div class="card-body p-3">
                 <div class="fw-semibold small mb-1">
-                    <i class="bi bi-currency-rupee text-success me-1"></i>Limit = Rs 2,000
+                    <i class="bi bi-currency-rupee text-success me-1"></i>Limit = ₹2,000
                 </div>
                 <div class="small text-muted">Up to ₹2,000 is auto-approved and wallet debited; above that requires admin approval</div>
             </div>
@@ -128,7 +128,7 @@
                          style="{{ $canCreate ? '' : 'opacity:0.4' }}">
                         <label class="form-label small fw-semibold mb-1">Auto-Approve up to</label>
                         <div class="input-group input-group-sm">
-                            <span class="input-group-text">Rs</span>
+                            <span class="input-group-text">₹</span>
                             <input type="number" step="100" min="0"
                                    name="limits[{{ $role->id }}]"
                                    class="form-control"
@@ -143,7 +143,7 @@
                         @if(!$canCreate)
                             <span class="badge bg-danger"><i class="bi bi-x-lg me-1"></i>No Access</span>
                         @elseif($limit > 0)
-                            <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Up to Rs {{ number_format($limit) }}</span>
+                            <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Up to ₹{{ number_format($limit) }}</span>
                         @else
                             <span class="badge bg-warning text-dark">All need approval</span>
                         @endif

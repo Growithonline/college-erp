@@ -417,6 +417,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
         Route::get('/expenses/{expense}/reverse', [ExpenseController::class, 'reverseForm'])->name('expenses.reverse');
         Route::post('/expenses/{expense}/reverse', [ExpenseController::class, 'reverse'])->name('expenses.reverse.store');
+        Route::post('/expenses/{expense}/retry-posting', [ExpenseController::class, 'retryPosting'])->name('expenses.retry-posting');
         Route::get('/salary', [SalaryController::class, 'index'])->name('salary.index');
         Route::get('/salary/create', [SalaryController::class, 'create'])->name('salary.create');
         Route::post('/salary', [SalaryController::class, 'store'])->name('salary.store');
@@ -424,6 +425,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/salary/{salaryRecord}/pay', [SalaryController::class, 'markPaid'])->name('salary.mark-paid');
         Route::get('/salary/{salaryRecord}/reverse', [SalaryController::class, 'reverseForm'])->name('salary.reverse');
         Route::post('/salary/{salaryRecord}/reverse', [SalaryController::class, 'reverse'])->name('salary.reverse.store');
+        Route::post('/salary/{salaryRecord}/retry-posting', [SalaryController::class, 'retryPosting'])->name('salary.retry-posting');
 
         // ── Payroll: Attendance & Salary Management ──────────────────────────
         Route::prefix('payroll')->name('payroll.')->group(function () {
@@ -1291,6 +1293,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::get('/expenses',        [StaffFinanceController::class, 'expenses'])->name('expenses.index');
             Route::get('/expenses/create', [StaffFinanceController::class, 'createExpense'])->name('expenses.create');
             Route::post('/expenses',       [StaffFinanceController::class, 'storeExpense'])->name('expenses.store');
+            Route::post('/expenses/{expense}/retry-posting', [StaffFinanceController::class, 'retryExpensePosting'])->name('expenses.retry-posting');
             Route::get('ajax/sub-categories', [ExpenseCategoryAjaxController::class, 'subCategories'])->name('ajax.sub-categories');
             Route::get('ajax/vendors',        [ExpenseCategoryAjaxController::class, 'vendors'])->name('ajax.vendors');
             Route::get('/salary',                              [StaffFinanceController::class, 'salary'])->name('salary.index');

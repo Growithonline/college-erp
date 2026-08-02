@@ -26,7 +26,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="small text-muted">Today Expense</div>
-                <div class="fw-bold fs-4 text-danger">Rs {{ number_format($expenseToday, 2) }}</div>
+                <div class="fw-bold fs-4 text-danger">₹{{ number_format($expenseToday, 2) }}</div>
             </div>
         </div>
     </div>
@@ -34,7 +34,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="small text-muted">This Month Expense</div>
-                <div class="fw-bold fs-4 text-primary">Rs {{ number_format($expenseThisMonth, 2) }}</div>
+                <div class="fw-bold fs-4 text-primary">₹{{ number_format($expenseThisMonth, 2) }}</div>
             </div>
         </div>
     </div>
@@ -118,7 +118,7 @@
                             <br><span class="badge bg-info bg-opacity-10 text-info small mt-1">Wallet Debited</span>
                         @endif
                     </td>
-                    <td class="text-end fw-semibold text-danger">Rs {{ number_format($expense->amount, 2) }}</td>
+                    <td class="text-end fw-semibold text-danger">₹{{ number_format($expense->amount, 2) }}</td>
                     <td class="pe-3">
                         @if($expense->is_reversed)
                             <div class="small text-muted">Reason: {{ $expense->reversal_reason ?: '-' }}</div>
@@ -126,11 +126,19 @@
                                 <div class="small text-muted">Rev JE #{{ $expense->reversal_journal_entry_id }}</div>
                             @endif
                         @else
+                            @if(!$expense->journal_entry_id && $expense->isApproved() && Route::has(($rp ?? 'finance') . '.expenses.retry-posting'))
+                            <form action="{{ route(($rp ?? 'finance') . '.expenses.retry-posting', $expense) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-warning btn-sm">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Retry Posting
+                                </button>
+                            </form>
+                            @endif
                             @if(Route::has(($rp ?? 'finance') . '.expenses.reverse'))
                             <a href="{{ route(($rp ?? 'finance') . '.expenses.reverse', $expense) }}" class="btn btn-outline-danger btn-sm">
                                 <i class="bi bi-arrow-counterclockwise me-1"></i> Reverse
                             </a>
-                            @else
+                            @elseif($expense->journal_entry_id)
                             <span class="text-muted small">Posted</span>
                             @endif
                         @endif

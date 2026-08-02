@@ -454,7 +454,8 @@ class DailyRegisterController extends Controller
         $nonCashRows = $rows->filter(fn ($r) => strtolower($r->payment_mode ?? '') !== 'cash');
 
         $bankIds = $nonCashRows->pluck('bank_account_id')->filter()->unique();
-        $bankAccounts = InstituteBankAccount::whereIn('id', $bankIds)->get()->keyBy('id');
+        $bankAccounts = InstituteBankAccount::where('institute_id', $instituteId)
+            ->whereIn('id', $bankIds)->get()->keyBy('id');
 
         $bankWise = $nonCashRows
             ->groupBy(fn ($r) => $r->bank_account_id ?: 0)

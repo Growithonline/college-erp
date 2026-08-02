@@ -33,7 +33,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="small text-muted">Paid Amount</div>
-                        <div class="fw-semibold text-danger">Rs {{ number_format($salaryRecord->paid_amount, 2) }}</div>
+                        <div class="fw-semibold text-danger">₹{{ number_format($salaryRecord->paid_amount, 2) }}</div>
                     </div>
                     <div class="col-md-6">
                         <div class="small text-muted">Expense Head</div>

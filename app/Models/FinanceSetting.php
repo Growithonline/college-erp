@@ -16,15 +16,36 @@ class FinanceSetting extends Model
         'fine_income_account_id',
         'rounding_adjustment_account_id',
         'wallet_low_balance_threshold',
+        'locked_before_date',
     ];
 
     protected $casts = [
         'wallet_low_balance_threshold' => 'decimal:2',
+        'locked_before_date' => 'date',
     ];
 
     public function institute(): BelongsTo
     {
         return $this->belongsTo(Institute::class);
+    }
+
+    /**
+     * Whether $date falls on/before this institute's period-lock cutoff
+     * (i.e. transactions on that date can no longer be reversed).
+     */
+    public static function isDateLocked(int $instituteId, $date): bool
+    {
+        if (!$date) {
+            return false;
+        }
+
+        $lockDate = self::where('institute_id', $instituteId)->value('locked_before_date');
+
+        if (!$lockDate) {
+            return false;
+        }
+
+        return \Carbon\Carbon::parse($date)->lte(\Carbon\Carbon::parse($lockDate));
     }
 
     public function feesReceivableAccount(): BelongsTo

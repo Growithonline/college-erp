@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 
 class ExpenseApprovalLimit extends Model
 {
+    use BelongsToAuthInstitute;
+
     protected $table = 'expense_approval_limits';
 
     protected $fillable = ['institute_id', 'staff_role_id', 'max_auto_approve_amount'];

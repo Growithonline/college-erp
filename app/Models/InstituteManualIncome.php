@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 
 class InstituteManualIncome extends Model
 {
+    use BelongsToAuthInstitute;
+
     protected $fillable = [
         'institute_id', 'academic_session_id', 'income_category_id',
         'amount', 'date', 'receipt_no', 'description', 'attachment_path', 'created_by',

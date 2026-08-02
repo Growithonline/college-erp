@@ -99,6 +99,7 @@ class FinanceSettingController extends Controller
             'fee_type_accounts.*' => 'nullable|integer',
             'bank_account_accounts' => 'nullable|array',
             'bank_account_accounts.*' => 'nullable|integer',
+            'locked_before_date' => 'nullable|date',
         ]);
 
         $allowedAccountIds = Account::where('institute_id', $instituteId)->pluck('id')->map(fn ($id) => (int) $id)->all();
@@ -126,6 +127,7 @@ class FinanceSettingController extends Controller
                 'cash_account_id' => $normalizeAccountId($validated['cash_account_id'] ?? null),
                 'fine_income_account_id' => $normalizeAccountId($validated['fine_income_account_id'] ?? null),
                 'rounding_adjustment_account_id' => $normalizeAccountId($validated['rounding_adjustment_account_id'] ?? null),
+                'locked_before_date' => $validated['locked_before_date'] ?? null,
             ]
         );
 

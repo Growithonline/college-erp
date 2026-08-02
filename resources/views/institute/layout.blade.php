@@ -1400,6 +1400,10 @@
     <script>window.__flashToast = { message: @json(session('success')), type: 'success' };</script>
     @elseif(session('error'))
     <script>window.__flashToast = { message: @json(session('error')), type: 'danger' };</script>
+    @elseif(session('warning'))
+    <script>window.__flashToast = { message: @json(session('warning')), type: 'warning' };</script>
+    @elseif(session('info'))
+    <script>window.__flashToast = { message: @json(session('info')), type: 'info' };</script>
     @elseif($errors->any())
     <script>window.__flashToast = { message: @json($errors->first()), type: 'danger' };</script>
     @endif
@@ -1418,6 +1422,7 @@
         success: { bg:'#f0fdf4', border:'#22c55e', icon:'✓', iconBg:'#22c55e', title:'Success' },
         danger:  { bg:'#fef2f2', border:'#ef4444', icon:'✕', iconBg:'#ef4444', title:'Error' },
         warning: { bg:'#fffbeb', border:'#f59e0b', icon:'!', iconBg:'#f59e0b', title:'Warning' },
+        info:    { bg:'#eff6ff', border:'#3b82f6', icon:'i', iconBg:'#3b82f6', title:'Info' },
     };
 
     window.showToast = function (message, type, duration) {

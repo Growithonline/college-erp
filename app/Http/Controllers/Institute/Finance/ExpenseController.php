@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Institute\Finance;
 
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Account;
@@ -14,6 +15,7 @@ use App\Services\InstituteWalletService;
 use App\Services\JournalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
@@ -220,9 +222,8 @@ class ExpenseController extends Controller
             }
         }
 
-        $expense = Expense::create([
+        $baseData = [
             'institute_id'           => $instituteId,
-            'academic_session_id'    => $sessionId,
             'expense_account_id'     => (int) $expenseAccount->id,
             'payment_account_id'     => $paymentAccountId,
             'bank_account_id'        => $bankAccount?->id,
@@ -235,31 +236,63 @@ class ExpenseController extends Controller
             'expense_category_l1_id' => $validated['expense_category_l1_id'] ?? null,
             'expense_category_l2_id' => $validated['expense_category_l2_id'] ?? null,
             'expense_vendor_id'      => $validated['expense_vendor_id'] ?? null,
-            'approval_status'        => $needsApproval ? Expense::STATUS_PENDING : Expense::STATUS_AUTO_APPROVED,
             'created_by'             => auth()->id(),
-        ]);
+        ];
 
-        if (!$needsApproval) {
-            // Auto-approved: debit wallet (transactionally) then post GL
-            if ($walletSessionId) {
-                if (!$expense->academic_session_id) {
-                    $expense->update(['academic_session_id' => $walletSessionId]);
-                }
-                InstituteWalletService::debitExpense($expense->fresh(['categoryL2', 'vendor']));
-            }
-
-            $journalEntry = JournalService::safePostExpense($expense->fresh(['expenseAccount', 'paymentAccount', 'bankAccount']));
-            if ($journalEntry && !$expense->journal_entry_id) {
-                $expense->update(['journal_entry_id' => $journalEntry->id]);
-            }
+        if ($needsApproval) {
+            Expense::create($baseData + [
+                'academic_session_id' => $sessionId,
+                'approval_status'     => Expense::STATUS_PENDING,
+            ]);
 
             return redirect()->route('finance.expenses.index')
-                ->with('success', 'Expense save ho gaya, wallet se debit ho gaya aur accounting entry post ho gayi.');
+                ->with('info', "Expense of Rs {$amount} is pending approval from an admin.");
         }
 
-        // Pending approval — notify admin
+        // Auto-approved: create + wallet debit happen atomically — either both succeed or neither does
+        try {
+            $expense = DB::transaction(function () use ($baseData, $sessionId, $walletSessionId) {
+                $expense = Expense::create($baseData + [
+                    'academic_session_id' => $sessionId ?? $walletSessionId,
+                    'approval_status'     => Expense::STATUS_AUTO_APPROVED,
+                ]);
+
+                if ($walletSessionId) {
+                    InstituteWalletService::debitExpense($expense->fresh(['categoryL2', 'vendor']));
+                }
+
+                return $expense;
+            });
+        } catch (InsufficientWalletBalanceException $e) {
+            return back()->withInput()->withErrors([
+                'amount' => 'Wallet balance insufficient. Available: Rs ' . number_format($e->available, 2),
+            ]);
+        }
+
+        $journalEntry = JournalService::safePostExpense($expense->fresh(['expenseAccount', 'paymentAccount', 'bankAccount']));
+        if ($journalEntry && !$expense->journal_entry_id) {
+            $expense->update(['journal_entry_id' => $journalEntry->id]);
+        }
+
         return redirect()->route('finance.expenses.index')
-            ->with('info', "Expense Rs {$amount} approval ke liye pending hai. Admin se approval lena hoga.");
+            ->with('success', 'Expense saved, wallet debited, and accounting entry posted.');
+    }
+
+    public function retryPosting(Expense $expense): RedirectResponse
+    {
+        abort_if($expense->institute_id !== $this->instituteId(), 403);
+        abort_if($expense->journal_entry_id, 422, 'This expense has already been posted.');
+        abort_if($expense->is_reversed, 422, 'A reversed expense cannot be posted.');
+        abort_if(!$expense->isApproved(), 422, 'Only an approved expense can be posted.');
+
+        $journalEntry = JournalService::safePostExpense($expense->fresh(['expenseAccount', 'paymentAccount', 'bankAccount']));
+
+        if ($journalEntry) {
+            $expense->update(['journal_entry_id' => $journalEntry->id]);
+            return back()->with('success', 'Accounting entry posted.');
+        }
+
+        return back()->with('error', 'Posting is still failing — check the expense/cash/bank account GL mapping in Finance Settings.');
     }
 
     public function reverseForm(Expense $expense): View|RedirectResponse
@@ -282,6 +315,11 @@ class ExpenseController extends Controller
 
         abort_if($expense->institute_id !== $this->instituteId(), 403);
         abort_if($expense->is_reversed, 422, 'Expense already reversed.');
+        abort_if(
+            FinanceSetting::isDateLocked($this->instituteId(), $expense->expense_date),
+            422,
+            'This expense falls in a locked accounting period (' . $expense->expense_date?->format('d M Y') . ') and cannot be reversed.'
+        );
 
         $validated = $request->validate([
             'reversal_reason' => 'required|string|max:255',

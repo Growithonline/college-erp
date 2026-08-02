@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalaryRecord extends Model
 {
+    use BelongsToAuthInstitute;
+
     public const STATUS_DRAFT = 'draft';
     public const STATUS_APPROVED = 'approved';
     public const STATUS_PENDING = 'pending';

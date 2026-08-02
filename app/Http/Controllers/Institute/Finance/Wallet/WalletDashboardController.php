@@ -210,9 +210,9 @@ class WalletDashboardController extends Controller
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
             ->whereNotNull('collected_by_center_id')->distinct()->pluck('collected_by_center_id');
 
-        StaffMember::whereIn('id', $feeStaffIds)->get()
+        StaffMember::where('institute_id', $instituteId)->whereIn('id', $feeStaffIds)->get()
             ->each(fn($s) => $collectorOptions->push(['key' => 'staff_' . $s->id, 'label' => $s->name . ' (Staff)']));
-        Center::whereIn('id', $feeCenterIds)->get()
+        Center::where('institute_id', $instituteId)->whereIn('id', $feeCenterIds)->get()
             ->each(fn($c) => $collectorOptions->push(['key' => 'center_' . $c->id, 'label' => $c->name . ' (Center)']));
 
         // Bank accounts for filter dropdown
@@ -368,6 +368,7 @@ class WalletDashboardController extends Controller
 
     private function enrichTransactions(array $txItems): array
     {
+        $instituteId  = $this->instituteId();
         $txCollection = collect($txItems);
 
         $feeIds    = $txCollection->where('source_type', 'fee_invoice')->pluck('source_id')->unique();
@@ -375,9 +376,11 @@ class WalletDashboardController extends Controller
         $incIds    = $txCollection->where('source_type', 'manual_income')->pluck('source_id')->unique();
         $salIds    = $txCollection->whereIn('source_type', ['salary', 'salary_reversal'])->pluck('source_id')->unique();
 
-        $feeMap = FeeInvoice::with('bankAccount')->whereIn('id', $feeIds)->get()->keyBy('id');
+        $feeMap = FeeInvoice::with('bankAccount')
+            ->where('institute_id', $instituteId)->whereIn('id', $feeIds)->get()->keyBy('id');
 
         // Fee heads: group items by invoice_id, build summary string
+        // (fee_invoice_items has no institute_id column — scoped implicitly via $feeIds, which is already institute-scoped)
         $feeItemsMap = collect();
         if ($feeIds->isNotEmpty()) {
             $feeItemsMap = FeeInvoiceItem::whereIn('fee_invoice_id', $feeIds)
@@ -386,14 +389,14 @@ class WalletDashboardController extends Controller
                 ->map(fn($items) => $items->map(fn($i) => $i->fee_name . ': ₹' . number_format((float)$i->amount, 0))->implode(' | '));
         }
         $expMap = Expense::with('categoryL1', 'categoryL2', 'vendor')
-            ->whereIn('id', $expIds)->get()->keyBy('id');
+            ->where('institute_id', $instituteId)->whereIn('id', $expIds)->get()->keyBy('id');
         $incMap = InstituteManualIncome::with('category')
-            ->whereIn('id', $incIds)->get()->keyBy('id');
-        $salMap = SalaryRecord::whereIn('id', $salIds)->get()->keyBy('id');
+            ->where('institute_id', $instituteId)->whereIn('id', $incIds)->get()->keyBy('id');
+        $salMap = SalaryRecord::where('institute_id', $instituteId)->whereIn('id', $salIds)->get()->keyBy('id');
 
         $byUserIds = $txCollection->pluck('by_user_id')->filter()->unique();
-        $webUsers  = User::whereIn('id', $byUserIds)->pluck('name', 'id');
-        $staffUsers = StaffMember::whereIn('id', $byUserIds)->pluck('name', 'id');
+        $webUsers  = User::where('institute_id', $instituteId)->whereIn('id', $byUserIds)->pluck('name', 'id');
+        $staffUsers = StaffMember::where('institute_id', $instituteId)->whereIn('id', $byUserIds)->pluck('name', 'id');
 
         $result = [];
         foreach ($txItems as $tx) {

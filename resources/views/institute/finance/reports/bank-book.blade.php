@@ -6,7 +6,7 @@
 @php
     $formatBalance = function ($value, $normalSide) {
         $side = $value < 0 ? ($normalSide === 'debit' ? 'Cr' : 'Dr') : ($normalSide === 'debit' ? 'Dr' : 'Cr');
-        return 'Rs ' . number_format(abs($value), 2) . ' ' . $side;
+        return '₹' . number_format(abs($value), 2) . ' ' . $side;
     };
 @endphp
 

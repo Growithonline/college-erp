@@ -13,7 +13,13 @@ class InstituteTransaction extends Model
         'source_type', 'source_id',
     ];
 
-    protected $casts = ['date' => 'date'];
+    protected $casts = [
+        'date'   => 'date',
+        'credit' => 'decimal:2',
+        'debit'  => 'decimal:2',
+        'op_bal' => 'decimal:2',
+        'cl_bal' => 'decimal:2',
+    ];
 
     public const DEBIT  = 1;
     public const CREDIT = 2;

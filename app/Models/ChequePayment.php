@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ChequePayment extends Model
 {
+    use BelongsToAuthInstitute;
+
     public const STATUS_PENDING = 'pending';
     public const STATUS_CLEARED = 'cleared';
     public const STATUS_BOUNCED = 'bounced';

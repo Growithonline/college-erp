@@ -7,7 +7,7 @@
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-hourglass-split me-2 text-warning"></i>Pending Expense Approvals</h4>
         <small class="text-muted">
-            Total pending: <strong class="text-warning">Rs {{ number_format($totalPendingAmount, 2) }}</strong>
+            Total pending: <strong class="text-warning">₹{{ number_format($totalPendingAmount, 2) }}</strong>
         </small>
     </div>
     <a href="{{ route('finance.expenses.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -91,7 +91,7 @@
                         @endif
                     </td>
                     <td><span class="badge bg-secondary">{{ strtoupper($expense->payment_mode) }}</span></td>
-                    <td class="text-end fw-bold text-danger">Rs {{ number_format($expense->amount, 2) }}</td>
+                    <td class="text-end fw-bold text-danger">₹{{ number_format($expense->amount, 2) }}</td>
                     <td class="text-center">
                         <form method="POST" action="{{ route('finance.wallet.expense-approvals.approve', $expense) }}"
                               class="d-inline">

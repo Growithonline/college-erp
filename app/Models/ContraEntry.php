@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContraEntry extends Model
 {
+    use BelongsToAuthInstitute;
+
     protected $fillable = [
         'institute_id', 'academic_session_id', 'entry_date',
         'amount', 'to_bank_account_id', 'slip_no', 'description', 'created_by',

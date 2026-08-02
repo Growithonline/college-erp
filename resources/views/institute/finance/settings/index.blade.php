@@ -223,6 +223,26 @@
         </div>
     </div>
 
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+            <h6 class="mb-0 fw-semibold">Period Lock</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Lock transactions on/before</label>
+                    <input type="date" name="locked_before_date" class="form-control"
+                           value="{{ old('locked_before_date', optional($settings->locked_before_date)->toDateString()) }}">
+                </div>
+                <div class="col-md-6">
+                    <div class="small text-muted">
+                        No expense or salary payment on or before this date can be reversed. Leave blank if no lock is needed.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary px-4">
             <i class="bi bi-check-lg me-1"></i> Save Finance Settings

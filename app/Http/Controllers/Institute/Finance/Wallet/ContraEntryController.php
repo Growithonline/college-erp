@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\ContraEntry;
 use App\Models\InstituteBankAccount;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -54,7 +55,7 @@ class ContraEntryController extends Controller
 
         $data = $request->validate([
             'entry_date'        => 'required|date',
-            'amount'            => 'required|numeric|min:1',
+            'amount'            => 'required|numeric|min:0.01',
             'to_bank_account_id'=> ['required', Rule::exists('institute_bank_accounts', 'id')->where('institute_id', $instituteId)],
             'slip_no'           => 'nullable|string|max:80',
             'description'       => 'nullable|string|max:500',
@@ -78,6 +79,14 @@ class ContraEntryController extends Controller
     public function destroy(ContraEntry $contraEntry)
     {
         abort_if($contraEntry->institute_id !== $this->instituteId(), 403);
+
+        AuditLogService::log($this->instituteId(), 'finance', 'contra_entry_deleted',
+            'Contra entry deleted.', $contraEntry, [
+                'amount'             => (float) $contraEntry->amount,
+                'entry_date'         => optional($contraEntry->entry_date)->toDateString(),
+                'to_bank_account_id' => $contraEntry->to_bank_account_id,
+            ]);
+
         $contraEntry->delete();
         return back()->with('success', 'Contra entry deleted.');
     }

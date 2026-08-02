@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 
 class InstituteIncomeCategory extends Model
 {
+    use BelongsToAuthInstitute;
+
     protected $fillable = ['institute_id', 'name', 'description', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];

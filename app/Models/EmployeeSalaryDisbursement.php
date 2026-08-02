@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAuthInstitute;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeSalaryDisbursement extends Model
 {
+    use BelongsToAuthInstitute;
+
     protected $fillable = [
         'institute_id', 'employee_id', 'month', 'year',
         'basic_paid', 'total_allowances', 'gross_salary', 'deductions', 'net_salary',

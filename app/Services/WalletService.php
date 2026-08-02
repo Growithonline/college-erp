@@ -1432,6 +1432,7 @@ class WalletService
         DB::transaction(function () use ($invoice, $sessionId, $instituteId, $cashAmount, $discAmount, $student) {
             $studentWallet = StudentWallet::where('student_id', $student->id)
                 ->where('academic_session_id', $sessionId)
+                ->lockForUpdate()
                 ->first();
 
             if ($studentWallet && $cashAmount > 0) {
@@ -1482,6 +1483,7 @@ class WalletService
 
             $instWallet = InstituteWallet::where('institute_id', $instituteId)
                 ->where('academic_session_id', $sessionId)
+                ->lockForUpdate()
                 ->first();
 
             if ($instWallet && $cashAmount > 0) {

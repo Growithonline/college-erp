@@ -30,7 +30,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="small text-muted">Amount</div>
-                        <div class="fw-semibold text-danger">Rs {{ number_format($expense->amount, 2) }}</div>
+                        <div class="fw-semibold text-danger">₹{{ number_format($expense->amount, 2) }}</div>
                     </div>
                     <div class="col-md-4">
                         <div class="small text-muted">Posting Status</div>

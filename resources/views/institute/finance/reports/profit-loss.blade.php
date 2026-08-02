@@ -54,7 +54,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body py-3">
                 <div class="small text-muted">Total Income</div>
-                <div class="fw-bold fs-4 text-success">Rs {{ number_format($totalIncome, 2) }}</div>
+                <div class="fw-bold fs-4 text-success">₹{{ number_format($totalIncome, 2) }}</div>
             </div>
         </div>
     </div>
@@ -62,7 +62,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body py-3">
                 <div class="small text-muted">Total Expense</div>
-                <div class="fw-bold fs-4 text-danger">Rs {{ number_format($totalExpense, 2) }}</div>
+                <div class="fw-bold fs-4 text-danger">₹{{ number_format($totalExpense, 2) }}</div>
             </div>
         </div>
     </div>
@@ -71,7 +71,7 @@
             <div class="card-body py-3">
                 <div class="small text-muted">Net Result</div>
                 <div class="fw-bold fs-4 {{ $netResult >= 0 ? 'text-primary' : 'text-danger' }}">
-                    Rs {{ number_format(abs($netResult), 2) }} {{ $netResult >= 0 ? 'Surplus' : 'Deficit' }}
+                    ₹{{ number_format(abs($netResult), 2) }} {{ $netResult >= 0 ? 'Surplus' : 'Deficit' }}
                 </div>
             </div>
         </div>

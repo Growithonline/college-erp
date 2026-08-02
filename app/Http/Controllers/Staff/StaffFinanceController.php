@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Account;
@@ -18,6 +19,7 @@ use App\Services\PayrollService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -220,9 +222,8 @@ class StaffFinanceController extends Controller
             }
         }
 
-        $expense = Expense::create([
+        $baseData = [
             'institute_id'            => $instituteId,
-            'academic_session_id'     => $sessionId,
             'expense_account_id'      => $expenseAccount->id,
             'payment_account_id'      => $paymentAccountId,
             'bank_account_id'         => $bankAccount?->id,
@@ -235,36 +236,80 @@ class StaffFinanceController extends Controller
             'expense_category_l1_id'  => $validated['expense_category_l1_id'] ?? null,
             'expense_category_l2_id'  => $validated['expense_category_l2_id'] ?? null,
             'expense_vendor_id'       => $validated['expense_vendor_id'] ?? null,
-            'approval_status'         => $needsApproval ? Expense::STATUS_PENDING : Expense::STATUS_AUTO_APPROVED,
             'created_by'              => $staff->id,
-        ]);
+        ];
+
+        if ($needsApproval) {
+            $expense = Expense::create($baseData + [
+                'academic_session_id' => $sessionId,
+                'approval_status'     => Expense::STATUS_PENDING,
+            ]);
+
+            AuditLogService::log($instituteId, 'finance', 'expense_created', 'Expense created.', $expense, [
+                'amount'         => $amount,
+                'payment_mode'   => $expense->payment_mode,
+                'needs_approval' => true,
+            ]);
+
+            return redirect()->route('staff.finance.expenses.index')
+                ->with('info', "Expense of Rs {$amount} has been sent to admin for approval.");
+        }
+
+        // Auto-approved: create + wallet debit happen atomically — either both succeed or neither does
+        try {
+            $expense = DB::transaction(function () use ($baseData, $sessionId, $walletSessionId) {
+                $expense = Expense::create($baseData + [
+                    'academic_session_id' => $sessionId ?? $walletSessionId,
+                    'approval_status'     => Expense::STATUS_AUTO_APPROVED,
+                ]);
+
+                if ($walletSessionId) {
+                    InstituteWalletService::debitExpense($expense->fresh(['categoryL2', 'vendor']));
+                }
+
+                return $expense;
+            });
+        } catch (InsufficientWalletBalanceException $e) {
+            return back()->withInput()->withErrors([
+                'amount' => 'Wallet balance insufficient. Available: Rs ' . number_format($e->available, 2),
+            ]);
+        }
 
         AuditLogService::log($instituteId, 'finance', 'expense_created', 'Expense created.', $expense, [
             'amount'         => $amount,
             'payment_mode'   => $expense->payment_mode,
-            'needs_approval' => $needsApproval,
+            'needs_approval' => false,
         ]);
 
-        if (!$needsApproval) {
-            if ($walletSessionId && !$expense->academic_session_id) {
-                $expense->update(['academic_session_id' => $walletSessionId]);
-            }
-            // debitExpense is internally transactional with lockForUpdate
-            InstituteWalletService::debitExpense($expense->fresh(['categoryL2', 'vendor']));
-
-            $journalEntry = JournalService::safePostExpense(
-                $expense->fresh(['expenseAccount', 'paymentAccount', 'bankAccount'])
-            );
-            if ($journalEntry && !$expense->journal_entry_id) {
-                $expense->update(['journal_entry_id' => $journalEntry->id]);
-            }
-
-            return redirect()->route('staff.finance.expenses.index')
-                ->with('success', 'Expense save ho gaya, wallet se debit ho gaya aur GL entry post ho gayi.');
+        $journalEntry = JournalService::safePostExpense(
+            $expense->fresh(['expenseAccount', 'paymentAccount', 'bankAccount'])
+        );
+        if ($journalEntry && !$expense->journal_entry_id) {
+            $expense->update(['journal_entry_id' => $journalEntry->id]);
         }
 
         return redirect()->route('staff.finance.expenses.index')
-            ->with('info', "Expense Rs {$amount} approval ke liye admin ke paas gayi hai.");
+            ->with('success', 'Expense saved, wallet debited, and GL entry posted.');
+    }
+
+    public function retryExpensePosting(Expense $expense): RedirectResponse
+    {
+        if (!$this->staff()->canCreateExpense()) {
+            abort(403, 'Permission denied.');
+        }
+        abort_if($expense->institute_id !== $this->instituteId(), 403);
+        abort_if($expense->journal_entry_id, 422, 'This expense has already been posted.');
+        abort_if($expense->is_reversed, 422, 'A reversed expense cannot be posted.');
+        abort_if(!$expense->isApproved(), 422, 'Only an approved expense can be posted.');
+
+        $journalEntry = JournalService::safePostExpense($expense->fresh(['expenseAccount', 'paymentAccount', 'bankAccount']));
+
+        if ($journalEntry) {
+            $expense->update(['journal_entry_id' => $journalEntry->id]);
+            return back()->with('success', 'Accounting entry posted.');
+        }
+
+        return back()->with('error', 'Posting is still failing — check the GL account mapping in Finance Settings.');
     }
 
     // ── Salary Book ──────────────────────────────────────────────────
@@ -356,14 +401,23 @@ class StaffFinanceController extends Controller
             $paymentAccountId = $bankAccount->gl_account_id;
         }
 
-        PayrollService::markSalaryPaid(
-            $salaryRecord,
-            $validated['payment_date'],
-            $validated['payment_mode'],
-            $validated['remarks'] ?? null,
-            $paymentAccountId,
-            $bankAccountId
-        );
+        try {
+            PayrollService::markSalaryPaid(
+                $salaryRecord,
+                $validated['payment_date'],
+                $validated['payment_mode'],
+                $validated['remarks'] ?? null,
+                $paymentAccountId,
+                $bankAccountId
+            );
+        } catch (InsufficientWalletBalanceException $e) {
+            return back()->with('error',
+                'Wallet balance insufficient. Available: Rs ' . number_format($e->available, 2) .
+                ', Required: Rs ' . number_format((float) $salaryRecord->net_payable, 2));
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
         AuditLogService::log($this->instituteId(), 'finance', 'salary_paid', 'Salary marked paid.', $salaryRecord, [
             'staff_member_id' => $salaryRecord->staff_member_id,
             'payment_mode' => $validated['payment_mode'],

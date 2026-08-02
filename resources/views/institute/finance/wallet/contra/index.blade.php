@@ -38,7 +38,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Amount (₹) <span class="text-danger">*</span></label>
                         <input type="number" name="amount" class="form-control form-control-sm @error('amount') is-invalid @enderror"
-                               placeholder="0.00" step="0.01" min="1" value="{{ old('amount') }}" required>
+                               placeholder="0.00" step="0.01" min="0.01" value="{{ old('amount') }}" required>
                         @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 

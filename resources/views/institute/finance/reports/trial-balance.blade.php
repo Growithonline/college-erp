@@ -50,7 +50,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body py-3">
                 <div class="small text-muted">Total Debit</div>
-                <div class="fw-bold fs-4 text-primary">Rs {{ number_format($totalDebit, 2) }}</div>
+                <div class="fw-bold fs-4 text-primary">₹{{ number_format($totalDebit, 2) }}</div>
             </div>
         </div>
     </div>
@@ -58,7 +58,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body py-3">
                 <div class="small text-muted">Total Credit</div>
-                <div class="fw-bold fs-4 text-success">Rs {{ number_format($totalCredit, 2) }}</div>
+                <div class="fw-bold fs-4 text-success">₹{{ number_format($totalCredit, 2) }}</div>
             </div>
         </div>
     </div>

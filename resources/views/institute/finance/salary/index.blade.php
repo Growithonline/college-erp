@@ -128,6 +128,14 @@
                         @if($record->pay_route)
                             <a href="{{ $record->pay_route }}" class="btn btn-sm btn-outline-primary">Pay</a>
                         @endif
+                        @if($record->retry_route)
+                            <form action="{{ $record->retry_route }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-warning">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Retry Posting
+                                </button>
+                            </form>
+                        @endif
                         @if($record->reverse_route)
                             <a href="{{ $record->reverse_route }}" class="btn btn-sm btn-outline-danger">Reverse</a>
                         @endif

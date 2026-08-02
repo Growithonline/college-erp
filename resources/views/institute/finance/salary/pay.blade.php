@@ -36,7 +36,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body py-3">
                 <div class="small text-muted">Net Payable</div>
-                <div class="fw-bold fs-4 text-success">Rs {{ number_format($salaryRecord->net_payable, 2) }}</div>
+                <div class="fw-bold fs-4 text-success">₹{{ number_format($salaryRecord->net_payable, 2) }}</div>
             </div>
         </div>
     </div>

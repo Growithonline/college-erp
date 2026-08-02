@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FinanceSetting;
 use App\Models\SalaryRecord;
 use App\Models\StaffMember;
 use App\Models\AttendanceLockRecord;
@@ -348,6 +349,12 @@ class PayrollService
     {
         if ($salaryRecord->status !== SalaryRecord::STATUS_PAID) {
             throw new \RuntimeException('Only paid salary can be reversed.');
+        }
+
+        if (FinanceSetting::isDateLocked($salaryRecord->institute_id, $salaryRecord->payment_date)) {
+            throw new \RuntimeException(
+                'This salary falls in a locked accounting period (' . $salaryRecord->payment_date?->format('d M Y') . ') and cannot be reversed.'
+            );
         }
 
         // Wrap journal reversal + status update + wallet credit atomically
