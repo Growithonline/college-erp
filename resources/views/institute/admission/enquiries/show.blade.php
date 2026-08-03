@@ -78,10 +78,16 @@
             <div class="card-body">
                 <h6 class="fw-bold mb-3">Application</h6>
                 @if($enquiry->converted_student_id)
-                    <div class="text-success small">
+                    <div class="text-success small mb-2">
                         <i class="bi bi-check-circle me-1"></i>
                         Converted to Student ({{ $enquiry->convertedStudent?->student_uid }})
                     </div>
+                    <form method="POST" action="{{ route($routePrefix.'enquiries.resend-documents-link', $enquiry) }}">
+                        @csrf
+                        <button class="btn btn-outline-primary btn-sm w-100">
+                            <i class="bi bi-send me-1"></i> Resend Application Link
+                        </button>
+                    </form>
                 @elseif($enquiry->status === 'interested')
                     <form method="POST" action="{{ route($routePrefix.'enquiries.send-application-link', $enquiry) }}">
                         @csrf

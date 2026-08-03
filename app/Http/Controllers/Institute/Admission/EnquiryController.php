@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Institute\Admission;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ApplicationDocumentsLinkMail;
 use App\Mail\ApplicationLinkMail;
 use App\Models\Course;
 use App\Models\Enquiry;
@@ -174,6 +175,33 @@ class EnquiryController extends Controller
         InstituteMailer::send($this->instituteId(), $enquiry->email, new ApplicationLinkMail($enquiry, $url));
 
         return back()->with('success', 'Application link sent to ' . $enquiry->email . '.');
+    }
+
+    public function resendDocumentsLink(int $id)
+    {
+        $enquiry = Enquiry::forInstitute($this->instituteId())->findOrFail($id);
+        $this->ensureCanAccess($enquiry);
+        abort_unless($enquiry->converted_student_id, 422, 'This enquiry has not been converted to an application yet.');
+
+        $student = $enquiry->convertedStudent()->firstOrFail();
+
+        $shortName = Institute::find($this->instituteId())?->short_name;
+        abort_unless($shortName, 422, 'Institute short code is not set. Contact support before sending application links.');
+        abort_unless($student->email, 422, 'This student has no email address on file.');
+
+        $url = URL::temporarySignedRoute(
+            'public.application.next-steps',
+            now()->addDays(30),
+            ['shortName' => strtolower($shortName), 'student' => $student->id]
+        );
+
+        InstituteMailer::send(
+            $this->instituteId(),
+            $student->email,
+            new ApplicationDocumentsLinkMail($student, $url, $student->status === 'waitlisted')
+        );
+
+        return back()->with('success', 'Application link resent to ' . $student->email . '.');
     }
 
     public function storeFollowUp(Request $request, int $id)

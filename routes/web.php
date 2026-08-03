@@ -740,6 +740,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('{id}/assign',         [EnquiryController::class, 'assign'])->name('assign');
         Route::post('{id}/follow-up',      [EnquiryController::class, 'storeFollowUp'])->name('follow-up.store');
         Route::post('{id}/send-application-link', [EnquiryController::class, 'sendApplicationLink'])->name('send-application-link');
+        Route::post('{id}/resend-documents-link', [EnquiryController::class, 'resendDocumentsLink'])->name('resend-documents-link');
     });
 
     // Certificates
@@ -1175,6 +1176,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::post('{id}/assign',         [EnquiryController::class, 'assign'])->name('assign');
             Route::post('{id}/follow-up',      [EnquiryController::class, 'storeFollowUp'])->name('follow-up.store');
             Route::post('{id}/send-application-link', [EnquiryController::class, 'sendApplicationLink'])->name('send-application-link');
+            Route::post('{id}/resend-documents-link', [EnquiryController::class, 'resendDocumentsLink'])->name('resend-documents-link');
         });
 
         // Fee (permission: fee_collect)
