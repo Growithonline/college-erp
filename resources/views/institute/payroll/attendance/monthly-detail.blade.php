@@ -3,6 +3,30 @@
 @section('title', 'Staff Monthly Attendance Detail')
 
 @section('content')
+@php
+    $firstOfMonth = \Carbon\Carbon::createFromDate($year, $month, 1);
+    $daysInMonth  = $firstOfMonth->daysInMonth;
+    $startOffset  = $firstOfMonth->dayOfWeek; // 0 = Sunday
+    $today        = \Carbon\Carbon::today();
+    $attByDate    = $attendances->keyBy(fn($a) => $a->attendance_date->toDateString());
+    $prevMonth    = $firstOfMonth->copy()->subMonthNoOverflow();
+    $nextMonth    = $firstOfMonth->copy()->addMonthNoOverflow();
+
+    $statusMeta = [
+        'Present'      => ['label' => 'P',  'bg' => 'success',   'dot' => '#198754'],
+        'Absent'       => ['label' => 'A',  'bg' => 'danger',    'dot' => '#dc3545'],
+        'Half Day'     => ['label' => 'HD', 'bg' => 'warning',   'dot' => '#ffc107'],
+        'Paid Leave'   => ['label' => 'PL', 'bg' => 'info',      'dot' => '#0dcaf0'],
+        'Unpaid Leave' => ['label' => 'UL', 'bg' => 'secondary', 'dot' => '#6c757d'],
+        'Holiday'      => ['label' => 'H',  'bg' => 'dark',      'dot' => '#212529'],
+        'Week Off'     => ['label' => 'WO', 'bg' => 'light',     'dot' => '#dee2e6'],
+    ];
+
+    $markedWorking = $summary['present'] + $summary['absent'] + $summary['half_day'] + $summary['paid_leave'] + $summary['unpaid_leave'];
+    $attended      = $summary['present'] + ($summary['half_day'] * 0.5) + $summary['paid_leave'];
+    $attendancePct = $markedWorking > 0 ? round(($attended / $markedWorking) * 100, 1) : null;
+@endphp
+
 <div class="container-fluid py-4">
 
     {{-- Header --}}
@@ -12,8 +36,11 @@
                class="btn btn-secondary btn-sm">
                 <i class="bi bi-arrow-left"></i> Back
             </a>
+            <div class="rounded-circle bg-primary bg-opacity-10 text-primary fw-bold d-flex align-items-center justify-content-center"
+                 style="width:36px;height:36px;font-size:13px;">
+                {{ collect(explode(' ', trim($staff->name)))->filter()->map(fn($p) => mb_strtoupper(mb_substr($p,0,1)))->take(2)->implode('') }}
+            </div>
             <h1 class="h4 mb-0">{{ $staff->name }}</h1>
-            <span class="badge bg-primary">{{ \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y') }}</span>
             <span class="badge bg-info text-dark">{{ $staff->staff_category }}</span>
             @if($isLocked)
                 <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Locked</span>
@@ -23,24 +50,87 @@
         </div>
     </div>
 
+    {{-- Calendar card --}}
+    <div class="card mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route(($rp ?? 'finance') . '.payroll.attendance.monthly', ['staff_id' => $staff->id, 'year' => $prevMonth->year, 'month' => $prevMonth->month]) }}"
+                   class="btn btn-outline-secondary btn-sm" title="Previous month">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                <span class="fw-semibold fs-6">{{ $firstOfMonth->format('F Y') }}</span>
+                <a href="{{ route(($rp ?? 'finance') . '.payroll.attendance.monthly', ['staff_id' => $staff->id, 'year' => $nextMonth->year, 'month' => $nextMonth->month]) }}"
+                   class="btn btn-outline-secondary btn-sm {{ $nextMonth->startOfMonth()->isAfter($today) ? 'disabled' : '' }}" title="Next month">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportMonth()">
+                <i class="bi bi-download me-1"></i> Export This Month
+            </button>
+        </div>
+
+        <div class="card-body">
+            <div class="calendar-grid">
+                @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $dow)
+                    <div class="cal-dow">{{ $dow }}</div>
+                @endforeach
+
+                @for($i = 0; $i < $startOffset; $i++)
+                    <div class="cal-day cal-day-empty"></div>
+                @endfor
+
+                @for($d = 1; $d <= $daysInMonth; $d++)
+                    @php
+                        $cellDate = $firstOfMonth->copy()->day($d);
+                        $iso      = $cellDate->toDateString();
+                        $att      = $attByDate->get($iso);
+                        $meta     = $att ? ($statusMeta[$att->status] ?? null) : null;
+                        $isFuture = $cellDate->isAfter($today);
+                        $isToday  = $cellDate->isSameDay($today);
+                    @endphp
+                    <div class="cal-day {{ $isToday ? 'cal-day-today' : '' }} {{ $isFuture ? 'cal-day-future' : '' }} {{ $att && !$isLocked && !$isFuture ? 'cal-day-clickable' : '' }}"
+                         data-marked="{{ $att ? 1 : 0 }}"
+                         data-date="{{ $iso }}"
+                         data-day-name="{{ $cellDate->format('l') }}"
+                         data-status="{{ $att?->status ?? '' }}"
+                         data-in-time="{{ $att?->in_time?->format('H:i') ?? '' }}"
+                         data-out-time="{{ $att?->out_time?->format('H:i') ?? '' }}"
+                         data-late-minutes="{{ $att?->late_minutes ?? 0 }}"
+                         data-overtime-hours="{{ $att?->overtime_hours ?? 0 }}"
+                         data-remarks="{{ $att?->remarks ?? '' }}"
+                         @if($att && !$isLocked && !$isFuture) onclick="openEditModal(this)" @endif
+                         title="{{ $att ? $att->status : ($isFuture ? 'Future date' : 'Not marked') }}">
+                        <div class="cal-day-num">{{ $d }}</div>
+                        @if($meta)
+                            <span class="badge bg-{{ $meta['bg'] }} {{ in_array($meta['bg'], ['warning','light']) ? 'text-dark' : '' }} cal-status-badge">{{ $meta['label'] }}</span>
+                        @elseif(!$isFuture)
+                            <span class="cal-not-marked" title="Not marked">·</span>
+                        @endif
+                    </div>
+                @endfor
+            </div>
+
+            {{-- Legend + quick stats --}}
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3 pt-3 border-top">
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">{{ $summary['present'] }} Present</span>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ $summary['absent'] }} Absent</span>
+                    @if($attendancePct !== null)
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Attendance: {{ $attendancePct }}%</span>
+                    @endif
+                </div>
+                <div class="d-flex flex-wrap gap-3 small text-muted">
+                    <span><span class="cal-not-marked">·</span> Not marked</span>
+                    @foreach($statusMeta as $label => $meta)
+                        <span><span class="badge bg-{{ $meta['bg'] }} {{ in_array($meta['bg'], ['warning','light']) ? 'text-dark' : '' }} cal-status-badge">{{ $meta['label'] }}</span> = {{ $label }}</span>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Stat Cards --}}
     <div class="row mb-4 g-3">
-        <div class="col-6 col-md-3 col-lg-2">
-            <div class="card text-center h-100">
-                <div class="card-body py-3">
-                    <div class="text-muted small mb-1">Present</div>
-                    <div class="h3 text-success mb-0">{{ $summary['present'] }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <div class="card text-center h-100">
-                <div class="card-body py-3">
-                    <div class="text-muted small mb-1">Absent</div>
-                    <div class="h3 text-danger mb-0">{{ $summary['absent'] }}</div>
-                </div>
-            </div>
-        </div>
         <div class="col-6 col-md-3 col-lg-2">
             <div class="card text-center h-100">
                 <div class="card-body py-3">
@@ -68,16 +158,8 @@
         <div class="col-6 col-md-3 col-lg-2">
             <div class="card text-center h-100">
                 <div class="card-body py-3">
-                    <div class="text-muted small mb-1">Holiday</div>
-                    <div class="h3 text-dark mb-0">{{ $summary['holiday'] }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <div class="card text-center h-100">
-                <div class="card-body py-3">
-                    <div class="text-muted small mb-1">Week Off</div>
-                    <div class="h3 mb-0">{{ $summary['week_off'] }}</div>
+                    <div class="text-muted small mb-1">Holiday / Week Off</div>
+                    <div class="h3 mb-0">{{ $summary['holiday'] + $summary['week_off'] }}</div>
                 </div>
             </div>
         </div>
@@ -92,16 +174,8 @@
         <div class="col-6 col-md-3 col-lg-2">
             <div class="card text-center h-100">
                 <div class="card-body py-3">
-                    <div class="text-muted small mb-1">OT Hours</div>
-                    <div class="h3 text-primary mb-0">{{ number_format($summary['total_overtime'], 1) }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <div class="card text-center h-100">
-                <div class="card-body py-3">
-                    <div class="text-muted small mb-1">Late (min)</div>
-                    <div class="h3 mb-0">{{ $summary['total_late_minutes'] }}</div>
+                    <div class="text-muted small mb-1">OT Hours / Late (min)</div>
+                    <div class="h3 mb-0"><span class="text-primary">{{ number_format($summary['total_overtime'], 1) }}</span> / {{ $summary['total_late_minutes'] }}</div>
                 </div>
             </div>
         </div>
@@ -112,7 +186,7 @@
     <div class="card mb-4 border-success">
         <div class="card-header bg-success bg-opacity-10 d-flex justify-content-between align-items-center">
             <h6 class="mb-0 text-success fw-semibold">
-                <i class="bi bi-calculator me-1"></i> Expected Salary (Attendance ke aadhar par)
+                <i class="bi bi-calculator me-1"></i> Expected Salary (based on attendance)
             </h6>
             <small class="text-muted">
                 {{ $staff->payroll_type === 'monthly' ? 'Monthly' : 'Daily Wage' }} —
@@ -154,87 +228,6 @@
         This staff member's salary is not configured. Set a monthly salary or daily wage in the staff profile.
     </div>
     @endif
-
-    {{-- Daily Records Table --}}
-    <div class="card">
-        <div class="card-header bg-light">
-            <h5 class="mb-0">Daily Attendance Records</h5>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 14%">Date</th>
-                        <th style="width: 15%">Status</th>
-                        <th style="width: 10%">In Time</th>
-                        <th style="width: 10%">Out Time</th>
-                        <th style="width: 9%">Late (min)</th>
-                        <th style="width: 9%">OT (hrs)</th>
-                        <th>Remarks</th>
-                        <th style="width: 8%">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($attendances as $att)
-                        @php
-                            $rowClass = match($att->status) {
-                                'Absent'       => 'table-danger',
-                                'Unpaid Leave' => 'table-warning',
-                                'Holiday'      => 'table-secondary',
-                                'Week Off'     => 'table-light',
-                                default        => '',
-                            };
-                            $badgeClass = match($att->status) {
-                                'Present'      => 'bg-success',
-                                'Absent'       => 'bg-danger',
-                                'Half Day'     => 'bg-warning text-dark',
-                                'Paid Leave'   => 'bg-info text-dark',
-                                'Unpaid Leave' => 'bg-secondary',
-                                'Holiday'      => 'bg-dark',
-                                'Week Off'     => 'bg-light text-dark border',
-                                default        => 'bg-secondary',
-                            };
-                        @endphp
-                        <tr class="{{ $rowClass }}">
-                            <td>
-                                {{ $att->attendance_date->format('d-m-Y') }}
-                                <small class="text-muted">({{ $att->attendance_date->format('D') }})</small>
-                            </td>
-                            <td><span class="badge {{ $badgeClass }}">{{ $att->status }}</span></td>
-                            <td>{{ $att->in_time?->format('H:i') ?? '-' }}</td>
-                            <td>{{ $att->out_time?->format('H:i') ?? '-' }}</td>
-                            <td>{{ $att->late_minutes > 0 ? $att->late_minutes : '-' }}</td>
-                            <td>{{ $att->overtime_hours > 0 ? number_format($att->overtime_hours, 1) : '-' }}</td>
-                            <td><small class="text-muted">{{ $att->remarks ?? '-' }}</small></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary"
-                                    data-staff-id="{{ $staff->id }}"
-                                    data-staff-name="{{ $staff->name }}"
-                                    data-date="{{ $att->attendance_date->toDateString() }}"
-                                    data-status="{{ $att->status }}"
-                                    data-in-time="{{ $att->in_time?->format('H:i') ?? '' }}"
-                                    data-out-time="{{ $att->out_time?->format('H:i') ?? '' }}"
-                                    data-late-minutes="{{ $att->late_minutes ?? 0 }}"
-                                    data-overtime-hours="{{ $att->overtime_hours ?? 0 }}"
-                                    data-remarks="{{ $att->remarks ?? '' }}"
-                                    onclick="openEditModal(this)"
-                                    @if($isLocked) disabled title="Month is locked" @endif>
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-3">
-                                No attendance records for this period
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
 </div>
 
 {{-- Edit Attendance Modal --}}
@@ -243,29 +236,25 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    Edit Attendance — <span id="modalStaffName"></span>
+                    Edit Attendance — <span id="modalStaffName">{{ $staff->name }}</span>
                     <small class="text-muted ms-2" id="modalDate"></small>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="editStaffId">
+                <input type="hidden" id="editStaffId" value="{{ $staff->id }}">
                 <input type="hidden" id="editDate">
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Attendance Status <span class="text-danger">*</span></label>
                     <select id="editStatus" name="status" class="form-select" required>
-                        <option value="Present">Present</option>
-                        <option value="Absent">Absent</option>
-                        <option value="Half Day">Half Day</option>
-                        <option value="Paid Leave">Paid Leave</option>
-                        <option value="Unpaid Leave">Unpaid Leave</option>
-                        <option value="Holiday">Holiday</option>
-                        <option value="Week Off">Week Off</option>
+                        @foreach(\App\Models\StaffAttendance::STATUSES as $s)
+                            <option value="{{ $s }}">{{ $s }}</option>
+                        @endforeach
                     </select>
                 </div>
 
-                <div class="row g-3 mb-3">
+                <div class="row g-3 mb-2">
                     <div class="col-md-6">
                         <label class="form-label">In Time</label>
                         <input type="time" id="editInTime" class="form-control">
@@ -275,16 +264,8 @@
                         <input type="time" id="editOutTime" class="form-control">
                     </div>
                 </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Late Minutes</label>
-                        <input type="number" id="editLateMinutes" class="form-control" min="0" value="0">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Overtime Hours</label>
-                        <input type="number" id="editOvertimeHours" class="form-control" min="0" step="0.5" value="0">
-                    </div>
+                <div class="small text-muted mb-3">
+                    Late arrival / overtime are calculated automatically from in/out time against the standard shift (09:00–17:00).
                 </div>
 
                 <div class="mb-3">
@@ -305,18 +286,50 @@
     </div>
 </div>
 
+<style>
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.cal-dow {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6c757d;
+    padding: 4px 0;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.cal-day {
+    position: relative;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    min-height: 64px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.cal-day-empty { border: none; }
+.cal-day-num { font-size: 12px; color: #495057; align-self: flex-start; }
+.cal-day-future { opacity: .45; }
+.cal-day-today { border-color: #0d6efd; border-width: 2px; }
+.cal-day-clickable { cursor: pointer; transition: background-color .15s ease; }
+.cal-day-clickable:hover { background-color: #f8f9fa; }
+.cal-status-badge { font-size: 11px; font-weight: 700; padding: 3px 7px; }
+.cal-not-marked { color: #adb5bd; font-size: 20px; line-height: 1; }
+</style>
+
 <script>
-function openEditModal(btn) {
-    document.getElementById('editStaffId').value      = btn.dataset.staffId;
-    document.getElementById('editDate').value         = btn.dataset.date;
-    document.getElementById('modalStaffName').textContent = btn.dataset.staffName;
-    document.getElementById('modalDate').textContent  = btn.dataset.date;
-    document.getElementById('editStatus').value       = btn.dataset.status || 'Present';
-    document.getElementById('editInTime').value       = btn.dataset.inTime || '';
-    document.getElementById('editOutTime').value      = btn.dataset.outTime || '';
-    document.getElementById('editLateMinutes').value  = btn.dataset.lateMinutes || 0;
-    document.getElementById('editOvertimeHours').value= btn.dataset.overtimeHours || 0;
-    document.getElementById('editRemarks').value      = btn.dataset.remarks || '';
+function openEditModal(cell) {
+    document.getElementById('editDate').value         = cell.dataset.date;
+    document.getElementById('modalDate').textContent  = `${cell.dataset.date} (${cell.dataset.dayName})`;
+    document.getElementById('editStatus').value       = cell.dataset.status || 'Present';
+    document.getElementById('editInTime').value       = cell.dataset.inTime || '';
+    document.getElementById('editOutTime').value      = cell.dataset.outTime || '';
+    document.getElementById('editRemarks').value      = cell.dataset.remarks || '';
 
     const alertEl = document.getElementById('editModalAlert');
     alertEl.className = 'alert d-none';
@@ -327,7 +340,6 @@ function openEditModal(btn) {
 
 function saveAttendance() {
     const btn      = document.getElementById('editSaveBtn');
-    const btnText  = document.getElementById('editSaveBtnText');
     const spinner  = document.getElementById('editSaveSpinner');
     const alertEl  = document.getElementById('editModalAlert');
 
@@ -336,17 +348,15 @@ function saveAttendance() {
     alertEl.className = 'alert d-none';
 
     const payload = {
-        staff_id:       document.getElementById('editStaffId').value,
-        date:           document.getElementById('editDate').value,
-        status:         document.getElementById('editStatus').value,
-        in_time:        document.getElementById('editInTime').value || null,
-        out_time:       document.getElementById('editOutTime').value || null,
-        late_minutes:   parseInt(document.getElementById('editLateMinutes').value) || 0,
-        overtime_hours: parseFloat(document.getElementById('editOvertimeHours').value) || 0,
-        remarks:        document.getElementById('editRemarks').value || null,
+        staff_id: document.getElementById('editStaffId').value,
+        date:     document.getElementById('editDate').value,
+        status:   document.getElementById('editStatus').value,
+        in_time:  document.getElementById('editInTime').value || null,
+        out_time: document.getElementById('editOutTime').value || null,
+        remarks:  document.getElementById('editRemarks').value || null,
     };
 
-    fetch('{{ route(($rp ?? 'finance') . ".payroll.attendance.store") }}', {
+    fetch('{{ route(($rp ?? "finance") . ".payroll.attendance.store") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -372,6 +382,26 @@ function saveAttendance() {
         alertEl.className = 'alert alert-danger';
         alertEl.textContent = 'Network error. Please try again.';
     });
+}
+
+function exportMonth() {
+    const rows = [['Date', 'Day', 'Status', 'In Time', 'Out Time', 'Late (min)', 'OT (hrs)', 'Remarks']];
+    document.querySelectorAll('.cal-day[data-marked="1"]').forEach(cell => {
+        rows.push([
+            cell.dataset.date, cell.dataset.dayName, cell.dataset.status,
+            cell.dataset.inTime || '-', cell.dataset.outTime || '-',
+            cell.dataset.lateMinutes || '0', cell.dataset.overtimeHours || '0',
+            cell.dataset.remarks || '',
+        ]);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance-{{ \Illuminate\Support\Str::slug($staff->name) }}-{{ $year }}-{{ str_pad($month, 2, '0', STR_PAD_LEFT) }}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 </script>
 @endsection

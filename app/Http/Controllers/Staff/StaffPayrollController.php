@@ -187,7 +187,7 @@ class StaffPayrollController extends Controller
             }
 
             return view('institute.payroll.attendance.monthly-detail', compact(
-                'summary', 'staff', 'attendances', 'year', 'month', 'layout', 'isLocked', 'salaryEstimate'
+                'summary', 'staff', 'attendances', 'year', 'month', 'layout', 'rp', 'isLocked', 'salaryEstimate'
             ));
         }
 
