@@ -266,7 +266,7 @@ class PayrollController extends Controller
         $records = $query->get();
 
         if ($records->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'Koi approved/draft salary record nahi mila is month ke liye.'], 422);
+            return response()->json(['success' => false, 'message' => 'No approved/draft salary records found for this month.'], 422);
         }
 
         $paid     = 0;
@@ -292,7 +292,7 @@ class PayrollController extends Controller
 
         return response()->json([
             'success'  => true,
-            'message'  => "{$paid} staff ki salary paid mark ho gayi." . (count($failures) ? ' Kuch failures hue — details dekho.' : ''),
+            'message'  => "Salary marked paid for {$paid} staff members." . (count($failures) ? ' Some records failed — see details.' : ''),
             'paid'     => $paid,
             'failures' => $failures,
         ]);

@@ -10,7 +10,7 @@
         </div>
         <div class="col-md-4 text-end">
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLoanModal">
-                <i class="fas fa-plus me-1"></i> Add Loan/Advance
+                <i class="bi bi-plus-lg me-1"></i> Add Loan/Advance
             </button>
         </div>
     </div>
@@ -78,7 +78,7 @@
                             <td>
                                 @if($loan->status === 'active')
                                     <form method="POST" action="{{ route('finance.payroll.loans.cancel', $loan) }}"
-                                          onsubmit="return confirm('Yeh loan cancel karein?')">
+                                          onsubmit="return confirm('Cancel this loan?')">
                                         @csrf @method('PATCH')
                                         <button class="btn btn-sm btn-outline-danger">Cancel</button>
                                     </form>

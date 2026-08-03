@@ -73,7 +73,7 @@ class PayrollService
                         'marked_days'   => $markedDays,
                         'unmarked_days' => $unmarkedDays,
                         'total_days'    => $effectiveDays,
-                        'message'       => "{$staff->name}: {$unmarkedDays} din ka attendance mark nahi hai ({$markedDays}/{$effectiveDays} din marked)",
+                        'message'       => "{$staff->name}: attendance not marked for {$unmarkedDays} day(s) ({$markedDays}/{$effectiveDays} days marked)",
                     ];
                 }
 
@@ -90,11 +90,12 @@ class PayrollService
                         'staff_id'   => $staff->id,
                         'staff_name' => $staff->name,
                         'type'       => 'missing_expense_account',
-                        'message'    => "{$staff->name}: Salary expense account configure nahi hai. Staff profile mein expense head set karein.",
+                        'message'    => "{$staff->name}: Salary expense account is not configured. Set an expense head in the staff profile.",
                     ];
                 }
 
                 $record = SalaryRecord::firstOrNew([
+                    'institute_id' => $instituteId,
                     'staff_member_id' => $staff->id,
                     'salary_month' => $month,
                     'salary_year' => $year,

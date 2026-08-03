@@ -34,7 +34,7 @@
         </div>
         <div class="col-md-4 text-end">
             <button class="btn btn-primary" onclick="window.print()">
-                <i class="fas fa-print"></i> Print Report
+                <i class="bi bi-printer"></i> Print Report
             </button>
         </div>
     </div>

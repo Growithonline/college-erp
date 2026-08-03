@@ -71,13 +71,13 @@ class StaffLoanController extends Controller
         // Post disbursement journal: Dr Staff Advance Receivable / Cr Cash
         JournalService::safePostStaffLoanDisbursement($loan);
 
-        return back()->with('success', 'Loan/advance record create ho gaya aur accounting entry post ho gayi.');
+        return back()->with('success', 'Loan/advance record created and accounting entry posted.');
     }
 
     public function cancel(StaffLoan $staffLoan)
     {
         abort_if($staffLoan->institute_id !== $this->instituteId(), 403);
-        abort_if($staffLoan->status !== StaffLoan::STATUS_ACTIVE, 422, 'Sirf active loan cancel kiya ja sakta hai.');
+        abort_if($staffLoan->status !== StaffLoan::STATUS_ACTIVE, 422, 'Only an active loan can be cancelled.');
 
         $staffLoan->update(['status' => StaffLoan::STATUS_CANCELLED]);
 

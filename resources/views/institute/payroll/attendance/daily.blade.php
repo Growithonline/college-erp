@@ -9,7 +9,6 @@
     $absentCount  = $attendance->where('status', 'Absent')->count();
     $halfDayCount = $attendance->where('status', 'Half Day')->count();
     $leaveCount   = $attendance->whereIn('status', ['Paid Leave', 'Unpaid Leave'])->count();
-    $otherCount   = $attendance->whereIn('status', ['Holiday', 'Week Off'])->count();
     $notMarked    = $staff->filter(fn($m) => !$attendance->has($m->id))->count();
     $totalStaff   = $staff->count();
 
@@ -22,38 +21,55 @@
         'Holiday'      => 'bg-dark',
         'Week Off'     => 'bg-light text-dark border',
     ];
+
+    // Quick-mark statuses shown as one-click buttons on every row; everything
+    // else (Unpaid Leave, Holiday, Week Off) plus in/out time & remarks live
+    // behind the "More" action so the row stays scannable.
+    $quickStatuses = [
+        'Present'    => ['label' => 'P',  'color' => 'success'],
+        'Absent'     => ['label' => 'A',  'color' => 'danger'],
+        'Half Day'   => ['label' => 'HD', 'color' => 'warning'],
+        'Paid Leave' => ['label' => 'Lv', 'color' => 'info'],
+    ];
+
+    $initials = fn($name) => collect(explode(' ', trim($name)))
+        ->filter()
+        ->map(fn($p) => mb_strtoupper(mb_substr($p, 0, 1)))
+        ->take(2)
+        ->implode('');
 @endphp
 
-<div class="container-fluid py-4">
+<div class="container-fluid py-4" id="attendancePage" data-locked="{{ $isLocked ? '1' : '0' }}">
 
-    {{-- Lock Banner --}}
+    {{-- Lock banner --}}
     @if($isLocked)
     <div class="alert alert-danger d-flex align-items-center mb-3 py-2">
-        <i class="fas fa-lock me-2"></i>
-        <strong>{{ $date->format('F Y') }} locked hai.</strong>
-        <span class="ms-1">Attendance edit nahi hogi. Monthly view se unlock karein.</span>
+        <i class="bi bi-lock-fill me-2"></i>
+        <strong>{{ $date->format('F Y') }} is locked.</strong>
+        <span class="ms-1">Attendance can't be edited. Unlock it from the monthly view first.</span>
     </div>
     @endif
 
-    {{-- Header row --}}
+    {{-- Header --}}
     <div class="row mb-3 align-items-center">
         <div class="col">
             <h1 class="h4 mb-0">Daily Attendance</h1>
+            <div class="text-muted small">Mark today's staff attendance in one click, adjust exceptions as needed.</div>
         </div>
     </div>
 
-    {{-- Date navigation + filter --}}
-    <div class="row mb-3">
-        <div class="col-md-9">
+    {{-- Date navigation + category + search --}}
+    <div class="row mb-3 g-2 align-items-center">
+        <div class="col-md-7">
             <div class="d-flex gap-2 align-items-center flex-wrap">
                 <a href="?date={{ $date->copy()->subDay()->toDateString() }}&category={{ urlencode($category ?? '') }}"
-                   class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-chevron-left"></i>
+                   class="btn btn-outline-secondary btn-sm" title="Previous day">
+                    <i class="bi bi-chevron-left"></i>
                 </a>
                 <form method="GET" class="d-flex gap-2 align-items-center mb-0">
                     <input type="date" name="date" class="form-control form-control-sm"
                            value="{{ $date->toDateString() }}" style="width: 150px;">
-                    <select name="category" class="form-control form-control-sm" style="width: 160px;">
+                    <select name="category" class="form-select form-select-sm" style="width: 160px;">
                         <option value="">All Categories</option>
                         @foreach($categories as $cat)
                             <option value="{{ $cat }}" @selected($category === $cat)>{{ $cat }}</option>
@@ -62,32 +78,45 @@
                     <button type="submit" class="btn btn-primary btn-sm">Filter</button>
                 </form>
                 <a href="?date={{ $date->copy()->addDay()->toDateString() }}&category={{ urlencode($category ?? '') }}"
-                   class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-chevron-right"></i>
+                   class="btn btn-outline-secondary btn-sm" title="Next day">
+                    <i class="bi bi-chevron-right"></i>
                 </a>
-                <span class="badge bg-primary fs-6 ms-1">
-                    {{ $date->format('l, d M Y') }}
-                </span>
+                <span class="badge bg-primary fs-6 ms-1">{{ $date->format('l, d M Y') }}</span>
             </div>
         </div>
-        <div class="col-md-3 text-end">
-            <div class="d-flex gap-2 align-items-center justify-content-end">
-                <select id="bulkStatusSelect" class="form-select form-select-sm" style="width: 150px;">
-                    <option value="Present">Present</option>
-                    <option value="Absent">Absent</option>
-                    <option value="Week Off">Week Off</option>
-                    <option value="Holiday">Holiday</option>
-                    <option value="Paid Leave">Paid Leave</option>
-                    <option value="Half Day">Half Day</option>
-                </select>
-                <button class="btn btn-warning btn-sm" onclick="bulkMark()">
-                    <i class="fas fa-check-square me-1"></i>Mark Selected
-                </button>
+        <div class="col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <input type="text" id="staffSearch" class="form-control" placeholder="Search staff by name…">
             </div>
         </div>
     </div>
 
-    {{-- Summary Stats Bar --}}
+    {{-- Quick actions --}}
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <button type="button" class="btn btn-success btn-sm" id="markAllPresentBtn" @if($isLocked) disabled @endif>
+            <i class="bi bi-check2-all me-1"></i> Mark All Present
+        </button>
+        <button type="button" class="btn btn-outline-success btn-sm" id="markRemainingBtn" @if($isLocked) disabled @endif>
+            <i class="bi bi-check2 me-1"></i> Mark Remaining Present
+            <span class="badge bg-success ms-1" id="remainingBadge">{{ $notMarked }}</span>
+        </button>
+
+        <span class="vr mx-1 d-none d-md-inline"></span>
+
+        <div class="d-flex gap-2 align-items-center ms-md-0">
+            <select id="bulkStatusSelect" class="form-select form-select-sm" style="width: 150px;">
+                @foreach(\App\Models\StaffAttendance::STATUSES as $s)
+                    <option value="{{ $s }}">{{ $s }}</option>
+                @endforeach
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" id="bulkMarkBtn" @if($isLocked) disabled @endif>
+                <i class="bi bi-check-square me-1"></i>Mark Selected
+            </button>
+        </div>
+    </div>
+
+    {{-- Summary Stats --}}
     <div class="row mb-3 g-2" id="summaryBar">
         <div class="col-auto">
             <div class="px-3 py-2 rounded border text-center" style="min-width:90px">
@@ -140,18 +169,16 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0">
+            <table class="table table-hover table-sm mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:4%"></th>
-                        <th style="width:24%">Staff Name</th>
-                        <th style="width:13%">Category</th>
-                        <th style="width:14%">Status</th>
-                        <th style="width:9%">In Time</th>
-                        <th style="width:9%">Out Time</th>
-                        <th style="width:9%">Late (min)</th>
-                        <th style="width:9%">OT (hrs)</th>
-                        <th style="width:9%">Actions</th>
+                        <th style="width:3%"></th>
+                        <th style="width:22%">Staff</th>
+                        <th style="width:10%">Category</th>
+                        <th style="width:13%">Status</th>
+                        <th style="width:16%">Timing</th>
+                        <th style="width:26%">Quick Mark</th>
+                        <th style="width:5%"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -160,14 +187,22 @@
                             $att = $attendance->get($member->id);
                             $statusClass = $att ? ($badgeMap[$att->status] ?? 'bg-secondary') : 'bg-secondary';
                         @endphp
-                        <tr id="row-{{ $member->id }}"
+                        <tr id="row-{{ $member->id }}" data-staff-name="{{ $member->name }}"
                             class="{{ $att && in_array($att->status, ['Absent','Unpaid Leave']) ? 'table-danger bg-opacity-25' : '' }}">
                             <td class="text-center">
                                 <input type="checkbox" class="staff-checkbox" value="{{ $member->id }}">
                             </td>
                             <td>
-                                <strong>{{ $member->name }}</strong><br>
-                                <small class="text-muted">{{ $member->role?->name }}</small>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary fw-bold d-flex align-items-center justify-content-center flex-shrink-0"
+                                         style="width:32px;height:32px;font-size:12px;">
+                                        {{ $initials($member->name) }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold">{{ $member->name }}</div>
+                                        <div class="small text-muted">{{ $member->role?->name }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td>
                                 <span class="badge bg-info text-dark">{{ $member->staff_category }}</span>
@@ -177,12 +212,38 @@
                                     {{ $att?->status ?? 'Not Marked' }}
                                 </span>
                             </td>
-                            <td class="cell-in-time">{{ $att?->in_time?->format('H:i') ?? '-' }}</td>
-                            <td class="cell-out-time">{{ $att?->out_time?->format('H:i') ?? '-' }}</td>
-                            <td class="cell-late">{{ ($att?->late_minutes ?? 0) > 0 ? $att->late_minutes : '-' }}</td>
-                            <td class="cell-ot">{{ ($att?->overtime_hours ?? 0) > 0 ? number_format($att->overtime_hours, 1) : '-' }}</td>
+                            <td class="cell-timing small">
+                                @if($att?->in_time || $att?->out_time)
+                                    <div class="text-nowrap">{{ $att?->in_time?->format('H:i') ?? '—' }} → {{ $att?->out_time?->format('H:i') ?? '—' }}</div>
+                                    <div class="d-flex gap-1 mt-1">
+                                        @if(($att?->late_minutes ?? 0) > 0)
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Late {{ $att->late_minutes }}m</span>
+                                        @endif
+                                        @if(($att?->overtime_hours ?? 0) > 0)
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle">+{{ number_format($att->overtime_hours, 1) }}h OT</span>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary edit-btn"
+                                <div class="btn-group quick-status" role="group">
+                                    @foreach($quickStatuses as $statusName => $cfg)
+                                        @php $isActive = $att?->status === $statusName; @endphp
+                                        <button type="button"
+                                            class="btn btn-sm qs-btn {{ $isActive ? 'btn-' . $cfg['color'] : 'btn-outline-' . $cfg['color'] }}"
+                                            data-status="{{ $statusName }}"
+                                            title="Mark {{ $statusName }}"
+                                            onclick="quickMark({{ $member->id }}, '{{ $statusName }}', this)"
+                                            @if($isLocked) disabled @endif>
+                                            {{ $cfg['label'] }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-link text-muted more-btn p-0"
                                     data-staff-id="{{ $member->id }}"
                                     data-staff-name="{{ $member->name }}"
                                     data-status="{{ $att?->status ?? 'Present' }}"
@@ -192,25 +253,29 @@
                                     data-overtime-hours="{{ $att?->overtime_hours ?? 0 }}"
                                     data-remarks="{{ $att?->remarks ?? '' }}"
                                     onclick="openModal(this)"
-                                    @if($isLocked) disabled title="Month is locked" @endif>
-                                    <i class="fas fa-edit"></i>
+                                    title="More options (time, remarks, other statuses)"
+                                    @if($isLocked) disabled @endif>
+                                    <i class="bi bi-three-dots-vertical fs-5"></i>
                                 </button>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 No staff found for this category
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
+            <div id="noSearchResults" class="text-center text-muted py-4 d-none">
+                No staff match your search.
+            </div>
         </div>
     </div>
 </div>
 
-{{-- Attendance Modal --}}
+{{-- Attendance Detail Modal --}}
 <div class="modal fade" id="attendanceModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -228,17 +293,13 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
                     <select id="modalStatus" class="form-select" required>
-                        <option value="Present">Present</option>
-                        <option value="Absent">Absent</option>
-                        <option value="Half Day">Half Day</option>
-                        <option value="Paid Leave">Paid Leave</option>
-                        <option value="Unpaid Leave">Unpaid Leave</option>
-                        <option value="Holiday">Holiday</option>
-                        <option value="Week Off">Week Off</option>
+                        @foreach(\App\Models\StaffAttendance::STATUSES as $s)
+                            <option value="{{ $s }}">{{ $s }}</option>
+                        @endforeach
                     </select>
                 </div>
 
-                <div class="row g-3 mb-3">
+                <div class="row g-3 mb-2">
                     <div class="col-6">
                         <label class="form-label">In Time</label>
                         <input type="time" id="modalInTime" class="form-control">
@@ -248,16 +309,9 @@
                         <input type="time" id="modalOutTime" class="form-control">
                     </div>
                 </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-6">
-                        <label class="form-label">Late Minutes</label>
-                        <input type="number" id="modalLate" class="form-control" min="0" value="0">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Overtime Hours</label>
-                        <input type="number" id="modalOT" class="form-control" min="0" step="0.5" value="0">
-                    </div>
+                <div class="small text-muted mb-3">
+                    Late arrival / overtime are calculated automatically from in/out time against the standard shift (09:00–17:00) — no need to enter them manually.
+                    <span id="modalCalcPreview" class="fw-semibold"></span>
                 </div>
 
                 <div class="mb-2">
@@ -278,17 +332,12 @@
     </div>
 </div>
 
-{{-- Toast --}}
-<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100">
-    <div id="appToast" class="toast align-items-center border-0 text-white" role="alert" aria-live="assertive">
-        <div class="d-flex">
-            <div class="toast-body fw-semibold" id="toastMsg"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-</div>
-
 <script>
+const STORE_URL = '{{ route(($rp ?? "finance") . ".payroll.attendance.store") }}';
+const BULK_URL  = '{{ route(($rp ?? "finance") . ".payroll.attendance.bulk-mark") }}';
+const CSRF      = document.querySelector('meta[name="csrf-token"]').content;
+const IS_LOCKED = document.getElementById('attendancePage').dataset.locked === '1';
+
 const BADGE = {
     'Present':      'bg-success',
     'Absent':       'bg-danger',
@@ -299,30 +348,35 @@ const BADGE = {
     'Week Off':     'bg-light text-dark border',
     'Not Marked':   'bg-secondary',
 };
+const QUICK_COLORS = { 'Present': 'success', 'Absent': 'danger', 'Half Day': 'warning', 'Paid Leave': 'info' };
 
-function showToast(msg, type = 'success') {
-    const el = document.getElementById('appToast');
-    el.className = `toast align-items-center border-0 text-white bg-${type}`;
-    document.getElementById('toastMsg').textContent = msg;
-    new bootstrap.Toast(el, { delay: 3000 }).show();
+let markedIds = new Set(@json(array_map('intval', $markedIds)));
+
+function apiCall(url, payload) {
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+        body: JSON.stringify(payload),
+    }).then(r => r.json());
 }
 
 function updateSummaryStats() {
-    const rows    = document.querySelectorAll('tbody tr[id^="row-"]');
+    const rows = Array.from(document.querySelectorAll('tbody tr[id^="row-"]'));
     let present = 0, absent = 0, half = 0, leave = 0, notMarked = 0;
     rows.forEach(row => {
         const txt = row.querySelector('.status-badge')?.textContent?.trim() || '';
-        if (txt === 'Present')                         present++;
-        else if (txt === 'Absent')                     absent++;
-        else if (txt === 'Half Day')                   half++;
+        if (txt === 'Present') present++;
+        else if (txt === 'Absent') absent++;
+        else if (txt === 'Half Day') half++;
         else if (txt === 'Paid Leave' || txt === 'Unpaid Leave') leave++;
-        else if (txt === 'Not Marked')                 notMarked++;
+        else if (txt === 'Not Marked') notMarked++;
     });
     document.getElementById('stat-present').textContent   = present;
     document.getElementById('stat-absent').textContent    = absent;
     document.getElementById('stat-half').textContent      = half;
     document.getElementById('stat-leave').textContent     = leave;
     document.getElementById('stat-notmarked').textContent = notMarked;
+    document.getElementById('remainingBadge').textContent = notMarked;
 }
 
 function updateRow(staffId, att) {
@@ -333,25 +387,60 @@ function updateRow(staffId, att) {
     badge.textContent = att.status;
     badge.className   = 'status-badge badge ' + (BADGE[att.status] || 'bg-secondary');
 
-    row.querySelector('.cell-in-time').textContent  = att.in_time  ? att.in_time.substring(0,5)  : '-';
-    row.querySelector('.cell-out-time').textContent = att.out_time ? att.out_time.substring(0,5) : '-';
-    row.querySelector('.cell-late').textContent     = att.late_minutes > 0  ? att.late_minutes  : '-';
-    row.querySelector('.cell-ot').textContent       = att.overtime_hours > 0 ? parseFloat(att.overtime_hours).toFixed(1) : '-';
-
-    // Highlight absent rows
-    row.classList.toggle('table-danger', ['Absent', 'Unpaid Leave'].includes(att.status));
-
-    const btn = row.querySelector('.edit-btn');
-    if (btn) {
-        btn.dataset.status        = att.status;
-        btn.dataset.inTime        = att.in_time  ? att.in_time.substring(0,5)  : '';
-        btn.dataset.outTime       = att.out_time ? att.out_time.substring(0,5) : '';
-        btn.dataset.lateMinutes   = att.late_minutes   || 0;
-        btn.dataset.overtimeHours = att.overtime_hours || 0;
-        btn.dataset.remarks       = att.remarks || '';
+    const timing = row.querySelector('.cell-timing');
+    if (att.in_time || att.out_time) {
+        const inT  = att.in_time  ? att.in_time.substring(0,5)  : '—';
+        const outT = att.out_time ? att.out_time.substring(0,5) : '—';
+        let tags = '';
+        if (att.late_minutes > 0) tags += `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Late ${att.late_minutes}m</span> `;
+        if (att.overtime_hours > 0) tags += `<span class="badge bg-info-subtle text-info border border-info-subtle">+${parseFloat(att.overtime_hours).toFixed(1)}h OT</span>`;
+        timing.innerHTML = `<div class="text-nowrap">${inT} → ${outT}</div>` + (tags ? `<div class="d-flex gap-1 mt-1">${tags}</div>` : '');
+    } else {
+        timing.innerHTML = '<span class="text-muted">—</span>';
     }
 
+    row.querySelectorAll('.qs-btn').forEach(btn => {
+        const s = btn.dataset.status;
+        const color = QUICK_COLORS[s];
+        btn.className = 'btn btn-sm qs-btn ' + (s === att.status ? `btn-${color}` : `btn-outline-${color}`);
+    });
+
+    row.classList.toggle('table-danger', ['Absent', 'Unpaid Leave'].includes(att.status));
+
+    const moreBtn = row.querySelector('.more-btn');
+    if (moreBtn) {
+        moreBtn.dataset.status        = att.status;
+        moreBtn.dataset.inTime        = att.in_time  ? att.in_time.substring(0,5)  : '';
+        moreBtn.dataset.outTime       = att.out_time ? att.out_time.substring(0,5) : '';
+        moreBtn.dataset.lateMinutes   = att.late_minutes   || 0;
+        moreBtn.dataset.overtimeHours = att.overtime_hours || 0;
+        moreBtn.dataset.remarks       = att.remarks || '';
+    }
+
+    if (att.status) markedIds.add(parseInt(staffId));
     updateSummaryStats();
+}
+
+function quickMark(staffId, status, btnEl) {
+    if (IS_LOCKED) return;
+    const row = document.getElementById(`row-${staffId}`);
+    const buttons = row.querySelectorAll('.qs-btn');
+    buttons.forEach(b => b.disabled = true);
+
+    apiCall(STORE_URL, { staff_id: staffId, date: document.getElementById('modalDate').value, status })
+        .then(data => {
+            buttons.forEach(b => b.disabled = false);
+            if (data.success) {
+                updateRow(staffId, data.data);
+                showToast(`${row.dataset.staffName} marked ${status}`, 'success', 2000);
+            } else {
+                showToast(data.message, 'danger');
+            }
+        })
+        .catch(() => {
+            buttons.forEach(b => b.disabled = false);
+            showToast('Network error. Please try again.', 'danger');
+        });
 }
 
 function openModal(btn) {
@@ -360,15 +449,35 @@ function openModal(btn) {
     document.getElementById('modalStatus').value   = btn.dataset.status || 'Present';
     document.getElementById('modalInTime').value   = btn.dataset.inTime || '';
     document.getElementById('modalOutTime').value  = btn.dataset.outTime || '';
-    document.getElementById('modalLate').value     = btn.dataset.lateMinutes || 0;
-    document.getElementById('modalOT').value       = btn.dataset.overtimeHours || 0;
     document.getElementById('modalRemarks').value  = btn.dataset.remarks || '';
 
-    const alert = document.getElementById('modalAlert');
-    alert.className = 'alert d-none';
+    document.getElementById('modalAlert').className = 'alert d-none';
+    updateCalcPreview();
 
     new bootstrap.Modal(document.getElementById('attendanceModal')).show();
 }
+
+function updateCalcPreview() {
+    const inVal  = document.getElementById('modalInTime').value;
+    const outVal = document.getElementById('modalOutTime').value;
+    const preview = document.getElementById('modalCalcPreview');
+    let parts = [];
+    if (inVal) {
+        const lateMin = Math.max(0, toMinutes(inVal) - toMinutes('09:00'));
+        if (lateMin > 0) parts.push(`Late by ${lateMin} min`);
+    }
+    if (outVal) {
+        const otMin = Math.max(0, toMinutes(outVal) - toMinutes('17:00'));
+        if (otMin > 0) parts.push(`OT ${(otMin/60).toFixed(1)}h`);
+    }
+    preview.textContent = parts.length ? ('→ ' + parts.join(', ')) : '';
+}
+function toMinutes(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+}
+document.getElementById('modalInTime').addEventListener('input', updateCalcPreview);
+document.getElementById('modalOutTime').addEventListener('input', updateCalcPreview);
 
 function submitAttendance() {
     const saveBtn = document.getElementById('modalSaveBtn');
@@ -380,31 +489,21 @@ function submitAttendance() {
     spinner.classList.remove('d-none');
     alertEl.className = 'alert d-none';
 
-    fetch('{{ route(($rp ?? 'finance') . ".payroll.attendance.store") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({
-            staff_id:       staffId,
-            date:           document.getElementById('modalDate').value,
-            status:         document.getElementById('modalStatus').value,
-            in_time:        document.getElementById('modalInTime').value  || null,
-            out_time:       document.getElementById('modalOutTime').value || null,
-            late_minutes:   parseInt(document.getElementById('modalLate').value)  || 0,
-            overtime_hours: parseFloat(document.getElementById('modalOT').value)   || 0,
-            remarks:        document.getElementById('modalRemarks').value || null,
-        })
+    apiCall(STORE_URL, {
+        staff_id: staffId,
+        date:     document.getElementById('modalDate').value,
+        status:   document.getElementById('modalStatus').value,
+        in_time:  document.getElementById('modalInTime').value  || null,
+        out_time: document.getElementById('modalOutTime').value || null,
+        remarks:  document.getElementById('modalRemarks').value || null,
     })
-    .then(r => r.json())
     .then(data => {
         saveBtn.disabled = false;
         spinner.classList.add('d-none');
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('attendanceModal')).hide();
             updateRow(staffId, data.data);
-            showToast('Attendance saved successfully');
+            showToast('Attendance saved', 'success');
         } else {
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = data.message;
@@ -418,57 +517,86 @@ function submitAttendance() {
     });
 }
 
-function bulkMark() {
-    const checked = document.querySelectorAll('.staff-checkbox:checked');
-    if (!checked.length) {
-        showToast('Pehle kuch staff select karein', 'warning');
-        return;
-    }
-    const status  = document.getElementById('bulkStatusSelect').value;
-    const staffIds = Array.from(checked).map(c => c.value);
-
-    if (!confirm(`${staffIds.length} staff ko "${status}" mark karein?`)) return;
-
-    fetch('{{ route(($rp ?? 'finance') . ".payroll.attendance.bulk-mark") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({
-            date:      document.getElementById('modalDate').value,
-            staff_ids: staffIds,
-            status:    status
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const failedIds = new Set((data.failures || []).map(f => String(f.staff_id)));
-            checked.forEach(cb => {
-                cb.checked = false;
-                if (!failedIds.has(cb.value)) {
-                    updateRow(cb.value, {
-                        status: status, in_time: null, out_time: null,
-                        late_minutes: 0, overtime_hours: 0, remarks: null
-                    });
-                }
-            });
-            document.getElementById('selectAll').checked = false;
-
-            const msg = data.failures?.length
-                ? `${data.count} marked, ${data.failures.length} failed`
-                : data.message;
-            showToast(msg, data.failures?.length ? 'warning' : 'success');
-        } else {
-            showToast(data.message, 'danger');
-        }
-    })
-    .catch(() => showToast('Network error', 'danger'));
+function visibleStaffIds() {
+    return Array.from(document.querySelectorAll('tbody tr[id^="row-"]'))
+        .filter(row => row.style.display !== 'none')
+        .map(row => row.id.replace('row-', ''));
 }
 
+function bulkApply(staffIds, status, successMsg) {
+    if (!staffIds.length) return;
+    apiCall(BULK_URL, { date: document.getElementById('modalDate').value, staff_ids: staffIds, status })
+        .then(data => {
+            if (data.success) {
+                const failedIds = new Set((data.failures || []).map(f => String(f.staff_id)));
+                staffIds.forEach(id => {
+                    if (!failedIds.has(String(id))) {
+                        updateRow(id, { status, in_time: null, out_time: null, late_minutes: 0, overtime_hours: 0, remarks: null });
+                    }
+                });
+                const msg = data.failures?.length
+                    ? `${data.count} marked, ${data.failures.length} failed`
+                    : successMsg;
+                showToast(msg, data.failures?.length ? 'warning' : 'success');
+            } else {
+                showToast(data.message, 'danger');
+            }
+        })
+        .catch(() => showToast('Network error. Please try again.', 'danger'));
+}
+
+document.getElementById('markAllPresentBtn').addEventListener('click', function () {
+    if (IS_LOCKED) return;
+    const ids = visibleStaffIds();
+    if (!ids.length) return;
+    bulkApply(ids, 'Present', `Marked ${ids.length} staff Present`);
+});
+
+document.getElementById('markRemainingBtn').addEventListener('click', function () {
+    if (IS_LOCKED) return;
+    const ids = visibleStaffIds().filter(id => !markedIds.has(parseInt(id)));
+    if (!ids.length) {
+        showToast('Everyone visible is already marked', 'info');
+        return;
+    }
+    bulkApply(ids, 'Present', `Marked ${ids.length} remaining staff Present`);
+});
+
+document.getElementById('bulkMarkBtn').addEventListener('click', function () {
+    if (IS_LOCKED) return;
+    const checked = document.querySelectorAll('.staff-checkbox:checked');
+    if (!checked.length) {
+        showToast('Select at least one staff member first', 'warning');
+        return;
+    }
+    const status = document.getElementById('bulkStatusSelect').value;
+    const staffIds = Array.from(checked).map(c => c.value);
+
+    if (!confirm(`Mark ${staffIds.length} staff as "${status}"?`)) return;
+
+    bulkApply(staffIds, status, `${staffIds.length} staff marked ${status}`);
+    checked.forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+});
+
+document.getElementById('staffSearch').addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    let anyVisible = false;
+    document.querySelectorAll('tbody tr[id^="row-"]').forEach(row => {
+        const match = row.dataset.staffName.toLowerCase().includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) anyVisible = true;
+    });
+    document.getElementById('noSearchResults').classList.toggle('d-none', anyVisible || !q);
+});
+
 function toggleAll(cb) {
-    document.querySelectorAll('.staff-checkbox').forEach(c => c.checked = cb.checked);
+    document.querySelectorAll('tbody tr[id^="row-"]').forEach(row => {
+        if (row.style.display !== 'none') {
+            const box = row.querySelector('.staff-checkbox');
+            if (box) box.checked = cb.checked;
+        }
+    });
 }
 </script>
 @endsection

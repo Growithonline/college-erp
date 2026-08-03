@@ -35,7 +35,7 @@
         </div>
         <div class="col-md-4 text-end">
             <button class="btn btn-success" id="generateDraftBtn" onclick="generateDraft()">
-                <i class="fas fa-file-invoice me-1"></i> Generate Draft
+                <i class="bi bi-file-earmark-text me-1"></i> Generate Draft
                 <span id="generateSpinner" class="spinner-border spinner-border-sm d-none ms-1"></span>
             </button>
         </div>
@@ -44,7 +44,7 @@
     {{-- Warnings panel (hidden by default, shown after generate) --}}
     <div id="warningsPanel" class="d-none mb-4">
         <div class="alert alert-warning">
-            <h6 class="alert-heading"><i class="fas fa-exclamation-triangle me-1"></i> Attendance Warnings</h6>
+            <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-1"></i> Attendance Warnings</h6>
             <ul id="warningsList" class="mb-0 ps-3 small"></ul>
         </div>
     </div>
@@ -98,7 +98,7 @@
             <div class="d-flex align-items-center gap-2">
                 @if($summary['total_records'] > 0 && $summary['draft_count'] > 0)
                     <button class="btn btn-sm btn-outline-success" onclick="approveAll()">
-                        <i class="fas fa-check-double me-1"></i> Approve All Draft
+                        <i class="bi bi-check2-all me-1"></i> Approve All Draft
                     </button>
                 @endif
                 <span class="badge bg-primary">{{ $summary['draft_count'] }} Draft</span>
@@ -142,7 +142,7 @@
                                 <small class="text-muted">{{ $record->staffMember?->staff_category ?? '—' }}</small>
                                 @if(!$record->expense_account_id)
                                     <br><small class="text-danger">
-                                        <i class="fas fa-exclamation-circle"></i> Expense account missing
+                                        <i class="bi bi-exclamation-circle-fill"></i> Expense account missing
                                     </small>
                                 @endif
                             </td>
@@ -182,11 +182,11 @@
                                     <button class="btn btn-sm btn-outline-success"
                                         onclick="approveSalary({{ $record->id }}, this)"
                                         title="Approve">
-                                        <i class="fas fa-check"></i> Approve
+                                        <i class="bi bi-check-lg"></i> Approve
                                     </button>
                                 @elseif($isApproved || $isPending)
                                     <span class="text-success small">
-                                        <i class="fas fa-check-circle"></i> Approved
+                                        <i class="bi bi-check-circle-fill"></i> Approved
                                     </span>
                                 @endif
                             </td>
@@ -214,7 +214,7 @@ function generateDraft() {
     const month   = parseInt(params.get('month'))    || new Date().getMonth() + 1;
     const category = params.get('category')          || null;
 
-    if (!confirm('Is month ka salary draft generate karein?')) return;
+    if (!confirm('Generate the salary draft for this month?')) return;
 
     btn.disabled = true;
     spinner.classList.remove('d-none');
@@ -257,7 +257,7 @@ function generateDraft() {
 }
 
 function approveSalary(recordId, btn) {
-    if (!confirm('Yeh salary record approve karein?')) return;
+    if (!confirm('Approve this salary record?')) return;
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
@@ -274,14 +274,14 @@ function approveSalary(recordId, btn) {
         if (data.success) { location.reload(); }
         else {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> Approve';
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Approve';
             alert('Error: ' + data.message);
         }
     });
 }
 
 function approveAll() {
-    if (!confirm('Saare draft records approve karein?')) return;
+    if (!confirm('Approve all draft records?')) return;
 
     const draftBtns = document.querySelectorAll('button[onclick^="approveSalary"]');
     const promises  = [];

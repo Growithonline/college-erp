@@ -201,7 +201,7 @@ class AttendanceController extends Controller
 
             return response()->json([
                 'success'      => true,
-                'message'      => "Attendance locked. Salary draft {$draftCount} staff ke liye auto-generate ho gaya.",
+                'message'      => "Attendance locked. Salary draft auto-generated for {$draftCount} staff members.",
                 'draft_count'  => $draftCount,
                 'warnings'     => $warnings,
             ]);

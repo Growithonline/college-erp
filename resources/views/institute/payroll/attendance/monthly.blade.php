@@ -8,9 +8,9 @@
         <div class="col-12">
             <h1 class="h3 d-inline-block me-3">Monthly Attendance Summary</h1>
             @if($isLocked)
-                <span class="badge bg-danger fs-6"><i class="fas fa-lock me-1"></i> Locked</span>
+                <span class="badge bg-danger fs-6"><i class="bi bi-lock-fill me-1"></i> Locked</span>
             @else
-                <span class="badge bg-success fs-6"><i class="fas fa-lock-open me-1"></i> Open</span>
+                <span class="badge bg-success fs-6"><i class="bi bi-unlock-fill me-1"></i> Open</span>
             @endif
         </div>
     </div>
@@ -40,11 +40,11 @@
         <div class="col-md-4 text-end d-flex gap-2 justify-content-end">
             @if($isLocked)
                 <button class="btn btn-warning" onclick="unlockMonth()">
-                    <i class="fas fa-lock-open"></i> Unlock Month
+                    <i class="bi bi-unlock-fill"></i> Unlock Month
                 </button>
             @else
                 <button class="btn btn-danger" onclick="lockMonth()">
-                    <i class="fas fa-lock"></i> Lock This Month
+                    <i class="bi bi-lock-fill"></i> Lock This Month
                 </button>
             @endif
         </div>
@@ -93,7 +93,7 @@
                             <td>
                                 <a href="{{ route(($rp ?? 'finance') . '.payroll.attendance.monthly', ['staff_id' => $item['staff']->id, 'year' => $year, 'month' => $month]) }}"
                                    class="btn btn-sm btn-outline-primary" title="View Detail">
-                                    <i class="fas fa-eye"></i>
+                                    <i class="bi bi-eye"></i>
                                 </a>
                             </td>
                         </tr>
@@ -139,7 +139,7 @@ function lockMonth() {
     const { year, month } = getLockParams();
     const monthName = document.getElementById('filterMonth').options[document.getElementById('filterMonth').selectedIndex].text;
 
-    if (!confirm(`${monthName} ${year} ka attendance lock karein? Lock hone ke baad edit nahi hoga.`)) return;
+    if (!confirm(`Lock attendance for ${monthName} ${year}? It cannot be edited once locked.`)) return;
 
     fetch('{{ route(($rp ?? 'finance') . ".payroll.attendance.lock-month") }}', {
         method: 'POST',
@@ -160,7 +160,7 @@ function unlockMonth() {
     const { year, month } = getLockParams();
     const monthName = document.getElementById('filterMonth').options[document.getElementById('filterMonth').selectedIndex].text;
 
-    if (!confirm(`${monthName} ${year} unlock karein? Attendance dubara edit kiya ja sakega.`)) return;
+    if (!confirm(`Unlock ${monthName} ${year}? Attendance can be edited again.`)) return;
 
     fetch('{{ route(($rp ?? 'finance') . ".payroll.attendance.unlock-month") }}', {
         method: 'POST',

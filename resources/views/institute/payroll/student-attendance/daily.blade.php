@@ -26,10 +26,10 @@
         </div>
         <div class="col-md-5 text-end">
             <button type="button" class="btn btn-success me-2" onclick="bulkMark('Present')">
-                <i class="fas fa-check-double me-1"></i> All Present
+                <i class="bi bi-check2-all me-1"></i> All Present
             </button>
             <button type="button" class="btn btn-danger" onclick="bulkMark('Absent')">
-                <i class="fas fa-times-circle me-1"></i> All Absent
+                <i class="bi bi-x-circle me-1"></i> All Absent
             </button>
         </div>
     </form>
@@ -106,11 +106,11 @@ function bulkMark(status) {
     const ids = [...document.querySelectorAll('.student-cb:checked')].map(c => parseInt(c.value));
     if (ids.length === 0) {
         const allIds = [...document.querySelectorAll('.student-cb')].map(c => parseInt(c.value));
-        if (!confirm(`Saare ${allIds.length} students ko ${status} mark karein?`)) return;
+        if (!confirm(`Mark all ${allIds.length} students as ${status}?`)) return;
         _doBulk(allIds, status);
         return;
     }
-    if (!confirm(`${ids.length} selected students ko ${status} mark karein?`)) return;
+    if (!confirm(`Mark ${ids.length} selected students as ${status}?`)) return;
     _doBulk(ids, status);
 }
 

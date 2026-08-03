@@ -58,8 +58,8 @@
 
     @if($summary['is_shortage'])
         <div class="alert alert-danger">
-            <i class="fas fa-exclamation-triangle me-1"></i>
-            <strong>Attendance Shortage!</strong> {{ $student->name }} ki attendance {{ $summary['percentage'] }}% hai — 75% se kam. Yeh student exam ke liye eligible nahi ho sakta.
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <strong>Attendance Shortage!</strong> {{ $student->name }}'s attendance is {{ $summary['percentage'] }}% — below the 75% requirement. This student may not be eligible for exams.
         </div>
     @endif
 
@@ -94,7 +94,7 @@
                             <td><small class="text-muted">{{ $rec->remarks ?? '' }}</small></td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="text-center text-muted py-3">Is mahine ka koi attendance record nahi hai.</td></tr>
+                        <tr><td colspan="4" class="text-center text-muted py-3">No attendance records for this month.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -10,15 +10,15 @@
         <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
             <a href="{{ route(($rp ?? 'finance') . '.payroll.attendance.monthly', ['year' => $year, 'month' => $month, 'category' => $staff->staff_category]) }}"
                class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left"></i> Back
+                <i class="bi bi-arrow-left"></i> Back
             </a>
             <h1 class="h4 mb-0">{{ $staff->name }}</h1>
             <span class="badge bg-primary">{{ \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y') }}</span>
             <span class="badge bg-info text-dark">{{ $staff->staff_category }}</span>
             @if($isLocked)
-                <span class="badge bg-danger"><i class="fas fa-lock me-1"></i>Locked</span>
+                <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Locked</span>
             @else
-                <span class="badge bg-success"><i class="fas fa-lock-open me-1"></i>Open</span>
+                <span class="badge bg-success"><i class="bi bi-unlock-fill me-1"></i>Open</span>
             @endif
         </div>
     </div>
@@ -112,7 +112,7 @@
     <div class="card mb-4 border-success">
         <div class="card-header bg-success bg-opacity-10 d-flex justify-content-between align-items-center">
             <h6 class="mb-0 text-success fw-semibold">
-                <i class="fas fa-calculator me-1"></i> Expected Salary (Attendance ke aadhar par)
+                <i class="bi bi-calculator me-1"></i> Expected Salary (Attendance ke aadhar par)
             </h6>
             <small class="text-muted">
                 {{ $staff->payroll_type === 'monthly' ? 'Monthly' : 'Daily Wage' }} —
@@ -150,8 +150,8 @@
     </div>
     @elseif($staff->monthly_salary === null && $staff->daily_wage === null)
     <div class="alert alert-warning mb-4">
-        <i class="fas fa-exclamation-triangle me-1"></i>
-        Staff ki salary configure nahi hai. Staff profile mein monthly_salary ya daily_wage set karein.
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        This staff member's salary is not configured. Set a monthly salary or daily wage in the staff profile.
     </div>
     @endif
 
@@ -220,7 +220,7 @@
                                     data-remarks="{{ $att->remarks ?? '' }}"
                                     onclick="openEditModal(this)"
                                     @if($isLocked) disabled title="Month is locked" @endif>
-                                    <i class="fas fa-edit"></i>
+                                    <i class="bi bi-pencil-square"></i>
                                 </button>
                             </td>
                         </tr>

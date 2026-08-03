@@ -32,7 +32,7 @@ class AttendanceService
 
         // Block future-date attendance
         if (Carbon::parse($date)->isAfter(Carbon::today())) {
-            throw new \Exception("Future date ki attendance mark nahi ki ja sakti");
+            throw new \Exception("Attendance cannot be marked for a future date");
         }
 
         $staff = StaffMember::where('institute_id', $instituteId)->findOrFail($staffId);
@@ -53,7 +53,7 @@ class AttendanceService
             $in  = Carbon::createFromFormat('H:i', substr($inTime, 0, 5));
             $out = Carbon::createFromFormat('H:i', substr($outTime, 0, 5));
             if ($out->lte($in)) {
-                throw new \Exception("Out time, in time se pehle ya barabar nahi ho sakta");
+                throw new \Exception("Out time cannot be before or equal to in time");
             }
         }
 
