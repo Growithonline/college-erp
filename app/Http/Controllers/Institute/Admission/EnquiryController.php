@@ -109,9 +109,12 @@ class EnquiryController extends Controller
 
         $staffMembers = StaffMember::where('institute_id', $instituteId)->orderBy('name')->get();
 
+        $openFollowUp = $enquiry->followUps->firstWhere('status', 'open');
+
         return view('institute.admission.enquiries.show', [
             'enquiry'      => $enquiry,
             'staffMembers' => $staffMembers,
+            'openFollowUp' => $openFollowUp,
             'layout'       => $this->viewLayout(),
             'routePrefix'  => $this->routePrefix(),
         ]);

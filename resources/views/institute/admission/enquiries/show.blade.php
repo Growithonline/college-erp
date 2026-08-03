@@ -4,7 +4,7 @@
 
 @section('content')
 
-@php($routePrefix = $routePrefix ?? '')
+@php $routePrefix = $routePrefix ?? ''; @endphp
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0 fw-bold">
@@ -97,7 +97,6 @@
     </div>
 
     <div class="col-md-8">
-        @php $openFollowUp = $enquiry->followUps->firstWhere('status', 'open'); @endphp
         @if($openFollowUp)
             @php $overdue = $openFollowUp->isOverdue(); @endphp
             <div class="alert {{ $overdue ? 'alert-danger' : 'alert-warning' }} border-0 shadow-sm mb-3">
