@@ -637,23 +637,86 @@
                 <i class="bi bi-shield-check" style="font-size:11px;"></i>{{ $rl }}
             </span>
 
-            {{-- Notices bell --}}
+            {{-- Notification bell (notices + my pending follow-ups) --}}
             @php
                 $staffNoticeCount = \App\Models\Notice::forRole($authUser->institute_id, 'staff')
                     ->whereDoesntHave('reads', fn($q) => $q->where('reader_type','staff')->where('reader_id',$authUser->id))
                     ->count();
+                $staffFollowUpsQuery = \App\Models\EnquiryFollowUp::with('enquiry')
+                    ->whereHas('enquiry', fn($q) => $q->where('institute_id', $authUser->institute_id)
+                        ->where('assigned_staff_id', $authUser->id))
+                    ->where('status', 'open');
+                $staffDueFollowUps = (clone $staffFollowUpsQuery)->orderBy('next_follow_up_at')->limit(5)->get();
+                $staffDueFollowUpCount = $staffFollowUpsQuery->count();
+                $staffBellCount = $staffNoticeCount + $staffDueFollowUpCount;
             @endphp
-            <a href="{{ route('staff.notices.index') }}"
-               class="position-relative text-decoration-none text-muted d-flex align-items-center"
-               title="Notices">
-                <i class="bi bi-bell" style="font-size:16px;"></i>
-                @if($staffNoticeCount > 0)
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                          style="font-size:9px;padding:2px 5px;">
-                        {{ $staffNoticeCount > 9 ? '9+' : $staffNoticeCount }}
-                    </span>
-                @endif
-            </a>
+            <div class="dropdown">
+                <button class="btn p-0 border-0 bg-transparent position-relative text-muted d-flex align-items-center"
+                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notifications">
+                    <i class="bi bi-bell" style="font-size:16px;"></i>
+                    @if($staffBellCount > 0)
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              style="font-size:9px;padding:2px 5px;">
+                            {{ $staffBellCount > 9 ? '9+' : $staffBellCount }}
+                        </span>
+                    @endif
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow p-0 overflow-hidden"
+                    style="min-width:300px;max-width:340px;border-radius:10px;">
+                    <li class="px-3 py-2 border-bottom" style="background:#f8fafc;">
+                        <span class="fw-semibold text-dark" style="font-size:13px;">Notifications</span>
+                    </li>
+
+                    @if($staffDueFollowUpCount > 0)
+                        <li class="px-3 pt-2 pb-1">
+                            <small class="text-uppercase text-muted fw-semibold" style="font-size:10px;letter-spacing:.5px;">
+                                <i class="bi bi-clock-fill me-1"></i>My Follow-ups Due
+                            </small>
+                        </li>
+                        @foreach($staffDueFollowUps as $fu)
+                            <li>
+                                <a href="{{ route('staff.enquiries.show', $fu->enquiry_id) }}"
+                                   class="dropdown-item d-flex align-items-start gap-2 py-2 px-3"
+                                   style="white-space:normal;">
+                                    <span class="flex-shrink-0 mt-1" style="color:{{ $fu->isOverdue() ? '#dc2626' : '#f59e0b' }};">
+                                        <i class="bi bi-clock-fill" style="font-size:13px;"></i>
+                                    </span>
+                                    <div>
+                                        <div style="font-size:12px;font-weight:600;color:#1e293b;">{{ $fu->enquiry?->name }}</div>
+                                        <div style="font-size:11px;color:#64748b;">
+                                            {{ $fu->isOverdue() ? 'Overdue' : 'Due' }} &middot; {{ $fu->next_follow_up_at?->format('d M, h:i A') }}
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                        @endforeach
+                    @endif
+
+                    @if($staffNoticeCount > 0)
+                        @if($staffDueFollowUpCount > 0)<li><hr class="dropdown-divider my-0"></li>@endif
+                        <li class="px-3 pt-2 pb-1">
+                            <small class="text-uppercase text-muted fw-semibold" style="font-size:10px;letter-spacing:.5px;">
+                                <i class="bi bi-bell me-1"></i>Notices
+                            </small>
+                        </li>
+                        <li>
+                            <a href="{{ route('staff.notices.index') }}"
+                               class="dropdown-item d-flex align-items-center gap-2 py-2 px-3">
+                                <i class="bi bi-bell-fill text-primary" style="font-size:13px;"></i>
+                                <span style="font-size:12px;">
+                                    {{ $staffNoticeCount }} unread {{ $staffNoticeCount === 1 ? 'notice' : 'notices' }}
+                                </span>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if($staffBellCount === 0)
+                        <li class="px-3 py-3 text-center text-muted" style="font-size:12px;">
+                            <i class="bi bi-check-circle me-1 text-success"></i>No new notifications
+                        </li>
+                    @endif
+                </ul>
+            </div>
 
             {{-- User avatar + name + logout --}}
             <div class="d-flex align-items-center gap-2">

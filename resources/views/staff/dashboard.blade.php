@@ -142,7 +142,60 @@
             </div>
         </div>
     </div>
+
+    <div class="col-6 col-md-3">
+        <a href="{{ route('staff.enquiries.index') }}" class="text-decoration-none">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background:{{ $myPendingFollowUps->isNotEmpty() ? '#fef2f2' : '#f0fdf4' }};">
+                        <i class="bi bi-clock-fill" style="color:{{ $myPendingFollowUps->isNotEmpty() ? '#dc2626' : '#1D9E75' }};"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;">My Pending Follow-ups</div>
+                        <div class="fw-bold" style="font-size:1.4rem;line-height:1.2;color:{{ $myPendingFollowUps->isNotEmpty() ? '#dc2626' : '#1D9E75' }};">{{ $myPendingFollowUps->count() }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </a>
+    </div>
 </div>
+
+{{-- ═══ MY PENDING FOLLOW-UPS ═══ --}}
+@if($myPendingFollowUps->isNotEmpty())
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-clock-fill text-danger"></i>
+            <span class="fw-bold" style="font-size:13px;">My Pending Follow-ups</span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+            <tbody>
+                @foreach($myPendingFollowUps as $enq)
+                    @php $fu = $enq->followUps->first(); @endphp
+                    <tr>
+                        <td class="ps-3">
+                            <a href="{{ route('staff.enquiries.show', $enq->id) }}" class="fw-semibold text-decoration-none">{{ $enq->name }}</a>
+                            <div class="text-muted" style="font-size:11px;">{{ $enq->mobile }}</div>
+                        </td>
+                        <td class="text-muted">"{{ $fu?->note }}"</td>
+                        <td class="text-end pe-3">
+                            @if($fu?->next_follow_up_at)
+                                <span class="badge {{ $fu->next_follow_up_at->isPast() ? 'bg-danger' : 'bg-warning text-dark' }}">
+                                    {{ $fu->next_follow_up_at->isPast() ? 'Overdue' : 'Due' }} — {{ $fu->next_follow_up_at->format('d M, h:i A') }}
+                                </span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
 
 {{-- ═══ QUICK ACTIONS ═══ --}}
 @php

@@ -285,9 +285,14 @@
                 <div class="card border shadow-sm h-100">
                     <div class="card-body py-2 px-3">
                         <div class="fw-semibold small text-primary">
-                            <i class="bi bi-bank me-1"></i>{{ $b['bank']->account_name ?? $b['bank']->bank_name }}
+                            <i class="bi bi-bank me-1"></i>{{ $b['bank']->display_label ?: $b['bank']->bank_name }}
                         </div>
-                        <div class="text-muted" style="font-size:10px">A/c: {{ $b['bank']->account_no }}</div>
+                        <div class="text-muted" style="font-size:10px">
+                            @if($b['bank']->display_label && $b['bank']->display_label !== $b['bank']->bank_name)
+                                {{ $b['bank']->bank_name }} ·
+                            @endif
+                            A/c: {{ $b['bank']->account_no }}
+                        </div>
                         <div class="fw-bold {{ $b['balance'] < 0 ? 'text-danger' : 'text-success' }} mt-1">₹{{ number_format($b['balance'], 2) }}</div>
                         <div class="d-flex flex-wrap gap-2 mt-1">
                             <span style="font-size:10px" class="text-muted">

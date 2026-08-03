@@ -31,7 +31,12 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-6 d-flex gap-2 justify-content-end">
+            <div class="col-md-6 d-flex align-items-center gap-2 justify-content-end">
+                <div class="form-check mb-0 me-2">
+                    <input type="checkbox" class="form-check-input" id="showZeroRows" name="show_zero" value="1"
+                           {{ request()->boolean('show_zero') ? 'checked' : '' }} onchange="this.form.submit()">
+                    <label class="form-check-label small text-muted" for="showZeroRows">Show zero rows in PDF</label>
+                </div>
                 <a href="{{ request()->fullUrlWithQuery(['export' => 'pdf']) }}" class="btn btn-outline-danger btn-sm" target="_blank">
                     <i class="bi bi-file-earmark-pdf me-1"></i> PDF
                 </a>

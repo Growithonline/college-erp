@@ -97,6 +97,26 @@
     </div>
 
     <div class="col-md-8">
+        @php $openFollowUp = $enquiry->followUps->firstWhere('status', 'open'); @endphp
+        @if($openFollowUp)
+            @php $overdue = $openFollowUp->isOverdue(); @endphp
+            <div class="alert {{ $overdue ? 'alert-danger' : 'alert-warning' }} border-0 shadow-sm mb-3">
+                <div class="d-flex align-items-start gap-2">
+                    <i class="bi {{ $overdue ? 'bi-alarm-fill' : 'bi-clock-fill' }} fs-5"></i>
+                    <div>
+                        <div class="fw-bold">
+                            {{ $overdue ? 'Follow-up Overdue' : 'Follow-up Due' }}
+                            — {{ $openFollowUp->next_follow_up_at->format('d M Y, h:i A') }}
+                        </div>
+                        <div class="small mt-1">
+                            Plan from last {{ $openFollowUp->type }}: "{{ $openFollowUp->note }}"
+                        </div>
+                        <div class="small text-muted mt-1">Log the outcome below to resolve this.</div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
                 <h6 class="fw-bold mb-3">Add Follow-up</h6>
@@ -130,8 +150,19 @@
                 <h6 class="fw-bold mb-3">Follow-up History</h6>
                 @forelse($enquiry->followUps as $followUp)
                     <div class="border-bottom pb-2 mb-2">
-                        <div class="d-flex justify-content-between">
-                            <span class="badge bg-light text-dark text-capitalize">{{ $followUp->type }}</span>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="badge bg-light text-dark text-capitalize">{{ $followUp->type }}</span>
+                                @if($followUp->isOpen())
+                                    <span class="badge {{ $followUp->isOverdue() ? 'bg-danger' : 'bg-warning text-dark' }}">
+                                        <i class="bi bi-clock me-1"></i>Pending
+                                    </span>
+                                @elseif($followUp->next_follow_up_at)
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        <i class="bi bi-check2 me-1"></i>Resolved
+                                    </span>
+                                @endif
+                            </div>
                             <span class="small text-muted">{{ $followUp->created_at?->format('d M Y, h:i A') }}</span>
                         </div>
                         <div class="small mt-1">{{ $followUp->note }}</div>

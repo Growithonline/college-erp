@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
+use App\Models\Enquiry;
 use App\Models\Notice;
 use App\Models\Student;
 use App\Models\FeeInvoice;
@@ -241,10 +242,19 @@ class StaffAuthController extends Controller
 
         $dashboardNotices = Notice::forRole($staff->institute_id, 'staff')->limit(5)->get();
 
+        // Enquiries assigned to this staff member with a follow-up still due
+        $myPendingFollowUps = Enquiry::where('institute_id', $staff->institute_id)
+            ->where('assigned_staff_id', $staff->id)
+            ->whereNull('converted_student_id')
+            ->whereHas('followUps', fn($q) => $q->where('status', 'open'))
+            ->with(['followUps' => fn($q) => $q->where('status', 'open')])
+            ->get()
+            ->sortBy(fn($enquiry) => $enquiry->followUps->first()?->next_follow_up_at);
+
         return view('staff.dashboard', compact(
             'staff', 'activeSession',
             'todayCollected', 'todayAdmissions', 'totalStudents',
-            'recentCollections', 'dashboardNotices'
+            'recentCollections', 'dashboardNotices', 'myPendingFollowUps'
         ));
     }
 

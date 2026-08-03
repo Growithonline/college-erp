@@ -24,6 +24,10 @@
     .totals td.grand { background:#e8f5e9; font-weight:bold; font-size:12.5px; color:#000; }
     .section { page-break-inside:avoid; }
 </style>
+@php
+    $visibleIncomeRows = $showZeroRows ? $incomeRows : $incomeRows->filter(fn ($r) => $r['count'] > 0 || $r['amount'] != 0);
+    $visibleExpenseRows = $showZeroRows ? $expenseRows : $expenseRows->filter(fn ($r) => $r['count'] > 0 || $r['amount'] != 0);
+@endphp
 </head>
 <body>
 <h1>{{ $instituteName }}</h1>
@@ -88,7 +92,7 @@ Computerized Receipt: ₹{{ number_format($receiptModeSplit['computerized']['amo
         </tr>
     </thead>
     <tbody>
-        @foreach($incomeRows as $row)
+        @foreach($visibleIncomeRows as $row)
         <tr>
             <td>{{ $row['name'] }}</td>
             <td class="r">{{ $row['count'] }}</td>
@@ -114,7 +118,7 @@ Computerized Receipt: ₹{{ number_format($receiptModeSplit['computerized']['amo
 <table class="data">
     <thead><tr><th>Particular</th><th class="r">Count</th><th class="r">Amount</th></tr></thead>
     <tbody>
-        @foreach($expenseRows as $row)
+        @foreach($visibleExpenseRows as $row)
         <tr><td>{{ $row['name'] }}</td><td class="r">{{ $row['count'] }}</td><td class="r">₹{{ number_format($row['amount'], 2) }}</td></tr>
         @endforeach
     </tbody>

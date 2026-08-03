@@ -184,12 +184,19 @@ class EnquiryController extends Controller
             'next_follow_up_at' => 'nullable|date',
         ]);
 
+        $nextFollowUpAt = $validated['next_follow_up_at'] ?? null;
+
+        // Logging any new follow-up resolves whatever was previously pending —
+        // the old "call back later" reminder is now acted on, not still open.
+        EnquiryFollowUp::where('enquiry_id', $enquiry->id)->where('status', 'open')->update(['status' => 'closed']);
+
         EnquiryFollowUp::create([
             'enquiry_id'        => $enquiry->id,
             'staff_id'          => $this->currentStaffId(),
             'type'              => $validated['type'],
             'note'              => $validated['note'],
-            'next_follow_up_at' => $validated['next_follow_up_at'] ?? null,
+            'next_follow_up_at' => $nextFollowUpAt,
+            'status'            => $nextFollowUpAt ? 'open' : 'closed',
         ]);
 
         return back()->with('success', 'Follow-up added.');

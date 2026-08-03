@@ -1286,13 +1286,16 @@
                 $instituteNoticeCount = \App\Models\Notice::forRole(auth()->user()->institute_id, 'staff')
                     ->whereDoesntHave('reads', fn($q) => $q->where('reader_type','institute')->where('reader_id', auth()->id()))
                     ->count();
-                $walletPendingRequests = \App\Models\WalletExtensionRequest::where('institute_id', auth()->user()->institute_id)
-                    ->where('status', 'pending')
-                    ->latest()
-                    ->limit(5)
-                    ->get();
-                $walletPendingCount = $walletPendingRequests->count();
-                $totalBellCount = $instituteNoticeCount + $walletPendingCount;
+                $walletPendingQuery = \App\Models\WalletExtensionRequest::where('institute_id', auth()->user()->institute_id)
+                    ->where('status', 'pending');
+                $walletPendingRequests = (clone $walletPendingQuery)->latest()->limit(5)->get();
+                $walletPendingCount = $walletPendingQuery->count();
+                $dueFollowUpsQuery = \App\Models\EnquiryFollowUp::with('enquiry')
+                    ->whereHas('enquiry', fn($q) => $q->where('institute_id', auth()->user()->institute_id))
+                    ->where('status', 'open');
+                $dueFollowUps = (clone $dueFollowUpsQuery)->orderBy('next_follow_up_at')->limit(5)->get();
+                $dueFollowUpCount = $dueFollowUpsQuery->count();
+                $totalBellCount = $instituteNoticeCount + $walletPendingCount + $dueFollowUpCount;
             @endphp
             <div class="dropdown">
                 <button class="btn p-0 border-0 bg-transparent position-relative text-muted d-flex align-items-center"
@@ -1349,8 +1352,41 @@
                         </li>
                     @endif
 
-                    @if($instituteNoticeCount > 0)
+                    @if($dueFollowUpCount > 0)
                         @if($walletPendingCount > 0)<li><hr class="dropdown-divider my-0"></li>@endif
+                        <li class="px-3 pt-2 pb-1">
+                            <small class="text-uppercase text-muted fw-semibold" style="font-size:10px;letter-spacing:.5px;">
+                                <i class="bi bi-clock-fill me-1"></i>Follow-ups Due
+                            </small>
+                        </li>
+                        @foreach($dueFollowUps as $fu)
+                            <li>
+                                <a href="{{ route('enquiries.show', $fu->enquiry_id) }}"
+                                   class="dropdown-item d-flex align-items-start gap-2 py-2 px-3"
+                                   style="white-space:normal;">
+                                    <span class="flex-shrink-0 mt-1" style="color:{{ $fu->isOverdue() ? '#dc2626' : '#f59e0b' }};">
+                                        <i class="bi bi-clock-fill" style="font-size:13px;"></i>
+                                    </span>
+                                    <div>
+                                        <div style="font-size:12px;font-weight:600;color:#1e293b;">{{ $fu->enquiry?->name }}</div>
+                                        <div style="font-size:11px;color:#64748b;">
+                                            {{ $fu->isOverdue() ? 'Overdue' : 'Due' }} &middot; {{ $fu->next_follow_up_at?->format('d M, h:i A') }}
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                        @endforeach
+                        <li>
+                            <a href="{{ route('enquiries.index') }}"
+                               class="dropdown-item text-center border-top py-2"
+                               style="font-size:12px;color:#3b82f6;">
+                                View all enquiries →
+                            </a>
+                        </li>
+                    @endif
+
+                    @if($instituteNoticeCount > 0)
+                        @if($walletPendingCount > 0 || $dueFollowUpCount > 0)<li><hr class="dropdown-divider my-0"></li>@endif
                         <li class="px-3 pt-2 pb-1">
                             <small class="text-uppercase text-muted fw-semibold" style="font-size:10px;letter-spacing:.5px;">
                                 <i class="bi bi-bell me-1"></i>Notices

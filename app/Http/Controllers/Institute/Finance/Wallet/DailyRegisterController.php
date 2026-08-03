@@ -108,6 +108,7 @@ class DailyRegisterController extends Controller
             'instituteName'    => Institute::find($instituteId)?->name ?? '',
             'yearLabels'       => $yearLabels,
             'nonCashModes'     => self::NON_CASH_MODES,
+            'showZeroRows'     => $request->boolean('show_zero'),
         ];
 
         if ($request->filled('export')) {
