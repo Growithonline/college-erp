@@ -108,7 +108,7 @@ class WalletDashboardController extends Controller
 
         $cashInHand = $cashIncome - $cashExpenses - $contraTotal;
 
-        // Bank-wise balance (non-cash income + contra deposits - bank expenses)
+        // Bank-wise balance (non-cash income + contra deposits - bank expenses/salary payouts)
         $bankBalances = InstituteBankAccount::where('institute_id', $instituteId)
             ->where('is_active', true)
             ->orderBy('sort_order')->get()
@@ -124,13 +124,34 @@ class WalletDashboardController extends Controller
                     ->where('to_bank_account_id', $bank->id)
                     ->sum('amount');
 
+                $bankExpenses = (float) Expense::where('institute_id', $instituteId)
+                    ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+                    ->where('bank_account_id', $bank->id)
+                    ->where('is_reversed', false)
+                    ->whereNotIn('approval_status', [Expense::STATUS_PENDING, Expense::STATUS_REJECTED])
+                    ->sum('amount');
+
+                $bankSalaryPaid = (float) SalaryRecord::where('institute_id', $instituteId)
+                    ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+                    ->where('bank_account_id', $bank->id)
+                    ->where('status', SalaryRecord::STATUS_PAID)
+                    ->sum('paid_amount');
+
+                $bankDisbursementsPaid = (float) \App\Models\EmployeeSalaryDisbursement::where('institute_id', $instituteId)
+                    ->where('bank_account_id', $bank->id)
+                    ->where('status', 'paid')
+                    ->sum('net_salary');
+
+                $bankOut = $bankExpenses + $bankSalaryPaid + $bankDisbursementsPaid;
+
                 return [
                     'bank'      => $bank,
                     'income'    => $nonCashIncome,
                     'contra_in' => $contraIn,
-                    'balance'   => $nonCashIncome + $contraIn,
+                    'out'       => $bankOut,
+                    'balance'   => $nonCashIncome + $contraIn - $bankOut,
                 ];
-            })->filter(fn($b) => $b['balance'] > 0);
+            });
 
         // Cheque alerts
         $chequePending = ChequePayment::where('institute_id', $instituteId)

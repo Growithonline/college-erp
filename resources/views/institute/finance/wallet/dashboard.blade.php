@@ -276,7 +276,7 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
         <h6 class="mb-0 fw-semibold"><i class="bi bi-bank me-2 text-primary"></i>Bank-wise Balance (Session)</h6>
-        <small class="text-muted">Non-cash income + Cash deposited via Contra</small>
+        <small class="text-muted">Non-cash income + Contra deposits − bank expenses/salary payouts</small>
     </div>
     <div class="card-body">
         <div class="row g-3">
@@ -288,14 +288,19 @@
                             <i class="bi bi-bank me-1"></i>{{ $b['bank']->account_name ?? $b['bank']->bank_name }}
                         </div>
                         <div class="text-muted" style="font-size:10px">A/c: {{ $b['bank']->account_no }}</div>
-                        <div class="fw-bold text-success mt-1">₹{{ number_format($b['balance'], 2) }}</div>
-                        <div class="d-flex gap-2 mt-1">
+                        <div class="fw-bold {{ $b['balance'] < 0 ? 'text-danger' : 'text-success' }} mt-1">₹{{ number_format($b['balance'], 2) }}</div>
+                        <div class="d-flex flex-wrap gap-2 mt-1">
                             <span style="font-size:10px" class="text-muted">
                                 Non-cash: ₹{{ number_format($b['income'], 0) }}
                             </span>
                             @if($b['contra_in'] > 0)
                             <span style="font-size:10px" class="text-info">
                                 + Contra: ₹{{ number_format($b['contra_in'], 0) }}
+                            </span>
+                            @endif
+                            @if($b['out'] > 0)
+                            <span style="font-size:10px" class="text-danger">
+                                − Paid out: ₹{{ number_format($b['out'], 0) }}
                             </span>
                             @endif
                         </div>
