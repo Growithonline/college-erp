@@ -64,11 +64,19 @@
                     <i class="bi bi-chevron-right"></i>
                 </a>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportMonth()">
-                <i class="bi bi-download me-1"></i> Export This Month
-            </button>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="exportMonth()">
+                    <i class="bi bi-download me-1"></i> Export This Month
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="calendarToggleBtn"
+                        data-bs-toggle="collapse" data-bs-target="#calendarBody"
+                        aria-expanded="true" aria-controls="calendarBody" title="Collapse/expand calendar">
+                    <i class="bi bi-chevron-up" id="calendarToggleIcon"></i>
+                </button>
+            </div>
         </div>
 
+        <div class="collapse show" id="calendarBody">
         <div class="card-body">
             <div class="calendar-grid">
                 @foreach(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] as $dow)
@@ -126,6 +134,7 @@
                     @endforeach
                 </div>
             </div>
+        </div>
         </div>
     </div>
 
@@ -323,6 +332,11 @@
 </style>
 
 <script>
+const calendarBody = document.getElementById('calendarBody');
+const calendarIcon = document.getElementById('calendarToggleIcon');
+calendarBody.addEventListener('show.bs.collapse', () => calendarIcon.className = 'bi bi-chevron-up');
+calendarBody.addEventListener('hide.bs.collapse', () => calendarIcon.className = 'bi bi-chevron-down');
+
 function openEditModal(cell) {
     document.getElementById('editDate').value         = cell.dataset.date;
     document.getElementById('modalDate').textContent  = `${cell.dataset.date} (${cell.dataset.dayName})`;
