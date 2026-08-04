@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'center.wallet'      => \App\Http\Middleware\CheckCenterWallet::class,
             'channel.wallet'     => \App\Http\Middleware\CheckChannelWallet::class,
             'embed.cookies'      => \App\Http\Middleware\AllowPublicAdmissionEmbed::class,
+            'policy.accepted'    => \App\Http\Middleware\EnsurePolicyAccepted::class,
         ]);
 
         // Redirect guests to session-expired page (shows portal-specific message & login button)

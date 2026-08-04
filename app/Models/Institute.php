@@ -69,6 +69,11 @@ class Institute extends Model
         return $this->hasMany(Student::class);
     }
 
+    public function policyAcceptances()
+    {
+        return $this->hasMany(InstitutePolicyAcceptance::class);
+    }
+
     // Helper: short_name se Student ID prefix
     public function getStudentPrefix(): string
     {

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Institute\Auth\LoginController;
+use App\Http\Controllers\Institute\ConsentController;
 use App\Http\Controllers\Institute\DashboardController;
 use App\Http\Controllers\Institute\Master\AcademicSessionController;
 use App\Http\Controllers\Institute\Master\SessionViewSwitchController;
@@ -170,7 +171,15 @@ Route::post('/otp-verify', [LoginController::class, 'verifyOtp'])->name('otp.ver
 Route::post('/otp-resend', [LoginController::class, 'resendOtp'])->name('otp.resend')->middleware('throttle:3,1');
 Route::post('/logout',     [LoginController::class, 'logout'])->name('logout');
 
+// ── Institute policy consent (T&C / Privacy / Data Security) ──────────
+// Sits outside 'policy.accepted' so a not-yet-consented admin can reach
+// it — everything else in the institute panel is gated behind consent.
 Route::middleware(['auth'])->group(function () {
+    Route::get ('/consent', [ConsentController::class, 'show'])->name('institute.consent.show');
+    Route::post('/consent', [ConsentController::class, 'accept'])->name('institute.consent.accept')->middleware('throttle:10,1');
+});
+
+Route::middleware(['auth', 'policy.accepted'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('institute.dashboard');
 
