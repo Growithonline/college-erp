@@ -27,6 +27,9 @@ class InstituteController extends Controller
     public function show(Institute $institute)
     {
         $institute->loadCount('students');
+        $institute->load(['policyAcceptances' => function ($query) {
+            $query->latest('accepted_at')->with('acceptedBy:id,name,email');
+        }]);
         return view('super_admin.institutes.show', compact('institute'));
     }
 

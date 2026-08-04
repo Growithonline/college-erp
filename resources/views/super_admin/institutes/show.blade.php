@@ -175,6 +175,53 @@
     </div>
 </div>
 
+{{-- Policy Consent --}}
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pb-0 pt-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-file-earmark-check text-primary me-2"></i>Policy Consent</h6>
+            </div>
+            <div class="card-body">
+                @php
+                    $latestByType = $institute->policyAcceptances->groupBy('document_type')->map->first();
+                @endphp
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr class="text-muted small">
+                            <th>Document</th>
+                            <th>Status</th>
+                            <th>Accepted By</th>
+                            <th>Accepted On</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(config('legal.documents') as $type => $meta)
+                            @php $row = $latestByType[$type] ?? null; @endphp
+                            <tr>
+                                <td class="fw-semibold">{{ $meta['label'] }}</td>
+                                <td>
+                                    @if(!$row)
+                                        <span class="badge bg-secondary-subtle text-secondary">Not Accepted</span>
+                                    @elseif($row->version !== $meta['version'])
+                                        <span class="badge bg-warning-subtle text-warning">Outdated (v{{ $row->version }} → v{{ $meta['version'] }})</span>
+                                    @else
+                                        <span class="badge bg-success-subtle text-success">Accepted — v{{ $row->version }}</span>
+                                    @endif
+                                </td>
+                                <td>{{ $row?->acceptedBy?->name ?? '—' }}</td>
+                                <td>{{ $row?->accepted_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                                <td class="text-muted">{{ $row?->ip_address ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Email SMTP Status --}}
 <div class="row g-3 mt-1">
     <div class="col-12">
