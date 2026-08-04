@@ -56,7 +56,8 @@ class StaffManageController extends Controller
         abort_if($staffMember->institute_id !== $this->staff()->institute_id, 403);
 
         $staffMember->load('role');
+        $canViewSalary = $this->staff()->hasAnyPermission(['salary_manage', 'finance_view', 'payroll_approve']);
 
-        return view('staff.staff-manage.show', compact('staffMember'));
+        return view('staff.staff-manage.show', compact('staffMember', 'canViewSalary'));
     }
 }

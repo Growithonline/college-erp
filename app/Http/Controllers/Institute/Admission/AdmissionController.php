@@ -2313,6 +2313,18 @@ class AdmissionController extends Controller
             $selectedSubjectIds, $selectedMajorIds, $selectedMinorIds,
             $subjectSelection, $yearNumber, &$student, &$studentId
         ) {
+            // Re-check seat availability with a row lock now that we're inside the
+            // transaction — closes the race where two concurrent submissions both pass
+            // the earlier unlocked check for the last open seat.
+            if (!empty($formData['course_stream_id'])) {
+                $lockedSeatCheck = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
+                    (int) $formData['course_stream_id'], $activeSession->id, $formData['admission_type'] ?? null, true
+                );
+                if (!$lockedSeatCheck['available']) {
+                    throw new \RuntimeException("Seats Full! This stream had {$lockedSeatCheck['limit']} seats which are now all filled. No new admission can be created.");
+                }
+            }
+
             $studentId = StudentIdService::generateStudentId($instituteId, $year);
             $student = Student::create([
                 'institute_id'        => $instituteId,
@@ -4095,6 +4107,16 @@ class AdmissionController extends Controller
             &$student,
             &$invoiceId
         ) {
+            // Re-check seat availability with a row lock now that we're inside the
+            // transaction — closes the race where two concurrent submissions both pass
+            // the earlier unlocked check for the last open seat.
+            $lockedSeatCheck = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
+                (int) $request->course_stream_id, $activeSession->id, null, true
+            );
+            if (!$lockedSeatCheck['available']) {
+                throw new DomainException("Seats full. This stream has reached its limit of {$lockedSeatCheck['limit']} seats.");
+            }
+
             $studentId = StudentIdService::generateStudentId($instituteId, $year);
             $invoiceNo = StudentIdService::generateInvoiceId($instituteId, $year);
             $student = Student::create([

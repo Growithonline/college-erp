@@ -118,7 +118,11 @@ class CourseStreamController extends Controller
     // behaviour before this quota existed. Only once an institute explicitly sets a
     // lateral-specific limit do lateral admissions move to their own pool, and get
     // excluded from the general pool's filled-count so the two quotas don't double-count.
-    public static function checkSeatAvailability(int $streamId, int $sessionId, ?string $admissionType = null): array
+    // $lock=true must only be called from inside an open DB::transaction(), right before
+    // the student insert — the lockForUpdate() takes an InnoDB gap lock on the matching
+    // row range so a concurrent admission for the same stream/session can't also pass
+    // this check before either transaction commits (closes the seat-overbooking race).
+    public static function checkSeatAvailability(int $streamId, int $sessionId, ?string $admissionType = null, bool $lock = false): array
     {
         $limits = \App\Models\StreamSessionLimit::where('course_stream_id', $streamId)
             ->where('academic_session_id', $sessionId)
@@ -129,11 +133,14 @@ class CourseStreamController extends Controller
 
         if ($admissionType === 'lateral' && $lateralLimit) {
             $limit  = (int) $lateralLimit->student_limit;
-            $filled = \App\Models\Student::where('course_stream_id', $streamId)
+            $filledQuery = \App\Models\Student::where('course_stream_id', $streamId)
                 ->where('academic_session_id', $sessionId)
                 ->where('admission_type', 'lateral')
-                ->where('status', '!=', 'cancelled')
-                ->count();
+                ->where('status', '!=', 'cancelled');
+            if ($lock) {
+                $filledQuery->lockForUpdate();
+            }
+            $filled = $filledQuery->count();
 
             return [
                 'available' => ($limit - $filled) > 0,
@@ -155,6 +162,10 @@ class CourseStreamController extends Controller
 
         if ($lateralLimit) {
             $filledQuery->where('admission_type', '!=', 'lateral');
+        }
+
+        if ($lock) {
+            $filledQuery->lockForUpdate();
         }
 
         $filled = $filledQuery->count();

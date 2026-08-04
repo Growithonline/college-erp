@@ -20,6 +20,7 @@ use App\Services\WalletService;
 use App\Services\AuditLogService;
 use DomainException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class FeeCollectionController extends Controller
@@ -1237,6 +1238,19 @@ class FeeCollectionController extends Controller
             if ($customTotal > 0 && $customLimit !== null && $customTotal > (float) $customLimit + 0.01) {
                 $needsApproval = true;
             }
+        }
+
+        // Idempotency guard — a double-click or network retry within this window on the
+        // same student/amount/actor must not create two separate invoices.
+        $idempotencyKey = 'fee_collect_lock:' . md5(implode('|', [
+            $instituteId,
+            $student->id,
+            $paidAmount,
+            $request->semester,
+            auth()->guard('staff')->id() ?? auth()->guard('center')->id() ?? auth()->guard('partner')->id() ?? auth()->id(),
+        ]));
+        if (!Cache::add($idempotencyKey, true, 10)) {
+            return back()->with('error', 'This payment was already submitted — please check fee history before retrying.')->withInput();
         }
 
         $invoiceId = null;

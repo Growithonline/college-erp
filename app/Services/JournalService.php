@@ -49,40 +49,52 @@ class JournalService
             }
         }
 
-        return DB::transaction(function () use ($header, $normalizedLines, $instituteId) {
-            $totals = collect($normalizedLines);
+        try {
+            return DB::transaction(function () use ($header, $normalizedLines, $instituteId) {
+                $totals = collect($normalizedLines);
 
-            $entry = JournalEntry::create([
-                'institute_id' => $instituteId,
-                'academic_session_id' => $header['academic_session_id'] ?? null,
-                'date' => $header['date'] ?? now()->toDateString(),
-                'entry_key' => $header['entry_key'] ?? null,
-                'reference_type' => $header['reference_type'] ?? null,
-                'reference_id' => $header['reference_id'] ?? null,
-                'status' => $header['status'] ?? JournalEntry::STATUS_POSTED,
-                'narration' => $header['narration'] ?? null,
-                'total_debit' => $totals->where('entry_type', 'debit')->sum('amount'),
-                'total_credit' => $totals->where('entry_type', 'credit')->sum('amount'),
-                'reversal_of_entry_id' => $header['reversal_of_entry_id'] ?? null,
-                'posted_at' => $header['posted_at'] ?? now(),
-                'created_by' => $header['created_by'] ?? null,
-                'created_by_role' => $header['created_by_role'] ?? null,
-                'meta' => $header['meta'] ?? null,
-            ]);
-
-            foreach ($normalizedLines as $index => $line) {
-                $entry->lines()->create([
-                    'account_id' => $line['account_id'],
-                    'line_no' => $index + 1,
-                    'entry_type' => $line['entry_type'],
-                    'amount' => $line['amount'],
-                    'narration' => $line['narration'] ?? null,
-                    'meta' => $line['meta'] ?? null,
+                $entry = JournalEntry::create([
+                    'institute_id' => $instituteId,
+                    'academic_session_id' => $header['academic_session_id'] ?? null,
+                    'date' => $header['date'] ?? now()->toDateString(),
+                    'entry_key' => $header['entry_key'] ?? null,
+                    'reference_type' => $header['reference_type'] ?? null,
+                    'reference_id' => $header['reference_id'] ?? null,
+                    'status' => $header['status'] ?? JournalEntry::STATUS_POSTED,
+                    'narration' => $header['narration'] ?? null,
+                    'total_debit' => $totals->where('entry_type', 'debit')->sum('amount'),
+                    'total_credit' => $totals->where('entry_type', 'credit')->sum('amount'),
+                    'reversal_of_entry_id' => $header['reversal_of_entry_id'] ?? null,
+                    'posted_at' => $header['posted_at'] ?? now(),
+                    'created_by' => $header['created_by'] ?? null,
+                    'created_by_role' => $header['created_by_role'] ?? null,
+                    'meta' => $header['meta'] ?? null,
                 ]);
-            }
 
-            return $entry->load('lines.account');
-        });
+                foreach ($normalizedLines as $index => $line) {
+                    $entry->lines()->create([
+                        'account_id' => $line['account_id'],
+                        'line_no' => $index + 1,
+                        'entry_type' => $line['entry_type'],
+                        'amount' => $line['amount'],
+                        'narration' => $line['narration'] ?? null,
+                        'meta' => $line['meta'] ?? null,
+                    ]);
+                }
+
+                return $entry->load('lines.account');
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Concurrent request already posted this entry_key (unique constraint on
+            // institute_id+entry_key) — return the existing entry instead of a 500.
+            if ($entryKey && (int) ($e->errorInfo[1] ?? 0) === 1062) {
+                return JournalEntry::with('lines.account')
+                    ->where('institute_id', $instituteId)
+                    ->where('entry_key', $entryKey)
+                    ->firstOrFail();
+            }
+            throw $e;
+        }
     }
 
     public static function reverse(JournalEntry $entry, array $overrides = []): JournalEntry

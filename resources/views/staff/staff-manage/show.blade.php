@@ -37,6 +37,7 @@
             </div>
         </div>
     </div>
+    @if($canViewSalary)
     <div class="col-md-6">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-transparent fw-semibold">Salary Info</div>
@@ -58,5 +59,6 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
 @endsection

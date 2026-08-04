@@ -83,6 +83,8 @@ class StaffNoticeController extends Controller
 
     public function markRead(Notice $notice)
     {
+        abort_if($notice->institute_id !== $this->staff()->institute_id, 404);
+
         \App\Models\NoticeRead::firstOrCreate([
             'notice_id'   => $notice->id,
             'reader_type' => 'staff',
