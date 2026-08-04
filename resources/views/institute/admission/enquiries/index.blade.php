@@ -4,6 +4,8 @@
 
 @section('content')
 
+@php $isStaff = auth()->guard('staff')->check(); @endphp
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold">
@@ -27,16 +29,18 @@
                     <i class="bi bi-box-arrow-up-right"></i>
                 </a>
             </div>
-            <small class="text-muted">Share this link or embed it on your website — students use it to submit enquiries.</small>
+            <small class="text-muted">Share this link with students to submit enquiries.</small>
 
-            <label class="form-label small fw-semibold mb-1 mt-3">Embed on Your Website</label>
-            <div class="input-group">
-                <textarea id="embedCodeInput" class="form-control form-control-sm" rows="2" readonly style="font-family: monospace; font-size: 12px;">&lt;iframe src="{{ $publicUrl }}" style="width:100%;height:800px;border:0;" title="Admission Enquiry"&gt;&lt;/iframe&gt;</textarea>
-                <button type="button" class="btn btn-outline-primary btn-sm" onclick="copyEmbedCode()">
-                    <i class="bi bi-clipboard me-1"></i> Copy
-                </button>
-            </div>
-            <small class="text-muted">Paste this code into your own website's HTML to embed the enquiry form directly.</small>
+            @unless($isStaff)
+                <label class="form-label small fw-semibold mb-1 mt-3">Embed on Your Website</label>
+                <div class="input-group">
+                    <textarea id="embedCodeInput" class="form-control form-control-sm" rows="2" readonly style="font-family: monospace; font-size: 12px;">&lt;iframe src="{{ $publicUrl }}" style="width:100%;height:800px;border:0;" title="Admission Enquiry"&gt;&lt;/iframe&gt;</textarea>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="copyEmbedCode()">
+                        <i class="bi bi-clipboard me-1"></i> Copy
+                    </button>
+                </div>
+                <small class="text-muted">Paste this code into your own website's HTML to embed the enquiry form directly.</small>
+            @endunless
         @else
             <div class="text-warning small">
                 <i class="bi bi-exclamation-triangle me-1"></i>
