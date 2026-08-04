@@ -276,6 +276,13 @@ class StaffPayrollController extends Controller
             'month'    => 'required|integer|min:1|max:12',
             'category' => 'nullable|in:Teaching,Office,Non-Teaching,Guest',
         ]);
+
+        // A payroll manager scoped to specific categories must pick one explicitly —
+        // leaving it blank would otherwise let PayrollService::generateSalaryDraft()
+        // write draft records for every category, including out-of-scope ones.
+        if ($this->staff()->hasRestrictedPayrollCategories() && empty($validated['category'])) {
+            return response()->json(['success' => false, 'message' => 'Select a staff category.'], 422);
+        }
         $this->ensureAllowedPayrollCategory($validated['category'] ?? null);
 
         try {

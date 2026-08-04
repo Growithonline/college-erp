@@ -1421,16 +1421,29 @@ class FeeCollectionController extends Controller
 
         $request->validate(['cancel_reason' => 'required|string|max:255']);
 
-        DB::transaction(function () use ($invoice, $request) {
-            $invoice->update([
+        $cancelled = DB::transaction(function () use ($invoice, $request) {
+            // Re-fetch + lock to prevent double-cancel from two concurrent clicks/requests.
+            $fresh = FeeInvoice::where('id', $invoice->id)->lockForUpdate()->first();
+            if (!$fresh || $fresh->is_cancelled) {
+                return false;
+            }
+
+            $fresh->update([
                 'is_cancelled'  => true,
                 'cancel_reason' => $request->cancel_reason,
                 'cancelled_at'  => now(),
                 'cancelled_by'  => $this->actorId(),
             ]);
 
-            WalletService::onFeeCancel($invoice);
+            WalletService::onFeeCancel($fresh);
+
+            return true;
         });
+
+        if (!$cancelled) {
+            return back()->with('error', 'Invoice already cancelled.');
+        }
+
         AuditLogService::log($this->instituteId(), 'fee', 'fee_cancelled', 'Fee invoice cancelled.', $invoice, [
             'student_id' => $student->id,
             'reason' => $request->cancel_reason,
