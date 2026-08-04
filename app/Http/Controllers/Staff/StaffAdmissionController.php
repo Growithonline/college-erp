@@ -12,6 +12,7 @@ use App\Models\FeePlan;
 use App\Models\ChannelPartner;
 use App\Models\CourseStream;
 use App\Models\CourseType;
+use App\Models\FeeInvoice;
 use App\Models\Student;
 use App\Models\TransportRoute;
 use App\Models\TransportRouteStop;
@@ -577,6 +578,11 @@ class StaffAdmissionController extends Controller
         $this->permCheck('admission_delete');
         abort_if($student->institute_id !== $this->staff()->institute_id, 403);
         abort_if(!$this->staff()->canAccessStudentForAdmissions($student), 403, 'This student is outside your access scope.');
+        abort_if(
+            FeeInvoice::where('student_id', $student->id)->exists(),
+            422,
+            'This student has fee records and cannot be deleted — use deactivate instead.'
+        );
 
         $name = $student->name;
         $student->delete();

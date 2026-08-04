@@ -366,6 +366,7 @@ class StaffPayrollController extends Controller
     {
         $this->permCheck('payroll_approve');
         abort_if($salaryRecord->institute_id !== $this->instituteId(), 403);
+        abort_if((int) $salaryRecord->staff_member_id === (int) $this->staff()->id, 403, 'You cannot process your own salary.');
         $salaryRecord->loadMissing('staffMember');
         $this->ensureAllowedPayrollCategory($salaryRecord->staffMember?->staff_category);
 

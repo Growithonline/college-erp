@@ -356,6 +356,7 @@ class StaffFinanceController extends Controller
             abort(403, 'Permission denied.');
         }
         abort_if($salaryRecord->institute_id !== $this->instituteId(), 403);
+        abort_if((int) $salaryRecord->staff_member_id === (int) $this->staff()->id, 403, 'You cannot process your own salary.');
 
         if (!Schema::hasTable('salary_records')) {
             return redirect()->route('staff.finance.salary.index');
@@ -378,6 +379,7 @@ class StaffFinanceController extends Controller
             abort(403, 'Permission denied.');
         }
         abort_if($salaryRecord->institute_id !== $this->instituteId(), 403);
+        abort_if((int) $salaryRecord->staff_member_id === (int) $this->staff()->id, 403, 'You cannot process your own salary.');
         $salaryRecord->loadMissing('staffMember');
         $this->ensureAllowedPayrollCategory($salaryRecord->staffMember?->staff_category);
 
