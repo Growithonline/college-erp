@@ -107,6 +107,9 @@ class StatementController extends Controller
                 ->where('institute_id', $instituteId)
                 ->findOrFail($request->student_id);
 
+            $actor = auth()->guard('staff')->user();
+            abort_if($actor && !$actor->canAccessStudentForOperations($student), 403, 'This student is outside your access scope.');
+
             $currentContext = WalletService::resolveAcademicContext($student, (int) $student->academic_session_id);
             if (!empty($currentContext['course_part'])) {
                 $student->setRelation('coursePart', $currentContext['course_part']);
@@ -151,6 +154,9 @@ class StatementController extends Controller
             $student = Student::with(['stream.course', 'coursePart', 'session'])
                 ->where('institute_id', $instituteId)
                 ->findOrFail($request->student_id);
+
+            $actor = auth()->guard('staff')->user();
+            abort_if($actor && !$actor->canAccessStudentForOperations($student), 403, 'This student is outside your access scope.');
 
             $currentContext = WalletService::resolveAcademicContext($student, (int) $student->academic_session_id);
             if (!empty($currentContext['course_part'])) {
@@ -360,6 +366,9 @@ class StatementController extends Controller
         $student = Student::with(['stream.course', 'coursePart', 'session'])
             ->where('institute_id', $instituteId)
             ->findOrFail($request->student_id);
+
+        $actor = auth()->guard('staff')->user();
+        abort_if($actor && !$actor->canAccessStudentForOperations($student), 403, 'This student is outside your access scope.');
 
         $history = $this->buildHistory($student, $instituteId);
 

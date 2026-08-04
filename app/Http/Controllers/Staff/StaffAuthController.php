@@ -16,6 +16,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use App\Services\InstituteMailer;
 use Throwable;
 
@@ -36,6 +38,16 @@ class StaffAuthController extends Controller
     private function otpThrottleKey(int $staffId): string
     {
         return "staff_login_otp_throttle:{$staffId}";
+    }
+
+    private function otpAttemptsKey(int $staffId): string
+    {
+        return "staff_login_otp_attempts:{$staffId}";
+    }
+
+    private function loginThrottleKey(string $email): string
+    {
+        return 'staff_login_attempts:' . Str::lower($email);
     }
 
     private function pendingStaff(): ?StaffMember
@@ -69,6 +81,7 @@ class StaffAuthController extends Controller
         ], now()->addMinutes($expiryMinutes));
 
         Cache::put($this->otpThrottleKey($staff->id), true, now()->addSeconds($cooldownSeconds));
+        RateLimiter::clear($this->otpAttemptsKey($staff->id));
     }
 
     public function loginForm()
@@ -86,9 +99,18 @@ class StaffAuthController extends Controller
             'password' => 'required|string',
         ]);
 
+        $throttleKey = $this->loginThrottleKey($request->email);
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($throttleKey) / 60);
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => "Too many failed attempts. Please try again in {$minutes} minute(s)."]);
+        }
+
         $staff = StaffMember::with('role', 'institute')->where('email', $request->email)->first();
 
         if (!$staff || !Hash::check($request->password, $staff->password)) {
+            RateLimiter::hit($throttleKey, 900);
             return back()
                 ->withInput($request->only('email'))
                 ->withErrors(['email' => 'These credentials do not match our records.']);
@@ -97,6 +119,8 @@ class StaffAuthController extends Controller
         if (!$staff->status) {
             return back()->withErrors(['email' => 'Your account has been disabled.']);
         }
+
+        RateLimiter::clear($throttleKey);
 
         try {
             $this->sendOtp($staff, $request->boolean('remember'));
@@ -136,6 +160,13 @@ class StaffAuthController extends Controller
             return redirect()->route('staff.login');
         }
 
+        $attemptsKey = $this->otpAttemptsKey($staff->id);
+        if (RateLimiter::tooManyAttempts($attemptsKey, 5)) {
+            Cache::forget($this->otpCacheKey($staff->id));
+            RateLimiter::clear($attemptsKey);
+            return back()->withErrors(['otp' => 'Too many incorrect attempts. Please request a new OTP.']);
+        }
+
         $otpPayload = Cache::get($this->otpCacheKey($staff->id));
 
         if (!$otpPayload) {
@@ -143,9 +174,11 @@ class StaffAuthController extends Controller
         }
 
         if (!Hash::check($request->otp, $otpPayload['hash'] ?? '')) {
+            RateLimiter::hit($attemptsKey, 300);
             return back()->withErrors(['otp' => 'Incorrect OTP.']);
         }
 
+        RateLimiter::clear($attemptsKey);
         Cache::forget($this->otpCacheKey($staff->id));
         Cache::forget($this->otpThrottleKey($staff->id));
 
@@ -274,7 +307,11 @@ class StaffAuthController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password'         => 'required|min:8|confirmed',
+            'password'         => [
+                'required', 'confirmed', 'min:8',
+                'regex:/[A-Za-z]/', // at least one letter
+                'regex:/[0-9]/',    // at least one number
+            ],
         ]);
 
         $staff = $this->guard()->user();
@@ -283,7 +320,10 @@ class StaffAuthController extends Controller
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
-        $staff->update(['password' => Hash::make($request->password)]);
+        // Saves the new (hashed) password and invalidates the "remember me" cookie on
+        // other devices in one call — the standard Laravel pattern for a password change.
+        $this->guard()->logoutOtherDevices($request->password);
+
         return back()->with('success', 'Password changed successfully!');
     }
 }

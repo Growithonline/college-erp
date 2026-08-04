@@ -2590,12 +2590,23 @@ class AdmissionController extends Controller
     // ─── AJAX — Get subjects for stream ───────────────────────────────
     public function getStreamSeats(Request $request): JsonResponse
     {
-        $streamId  = (int) $request->stream_id;
-        $sessionId = AcademicSession::where('institute_id', $this->instituteId())
+        $instituteId = $this->instituteId();
+
+        $validated = $request->validate([
+            'stream_id' => [
+                'required', 'integer',
+                Rule::exists('course_streams', 'id')
+                    ->whereIn('course_id', function ($q) use ($instituteId) {
+                        $q->select('id')->from('courses')->where('institute_id', $instituteId);
+                    }),
+            ],
+        ]);
+
+        $sessionId = AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)->value('id');
 
         $result = \App\Http\Controllers\Institute\Master\CourseStreamController::checkSeatAvailability(
-            $streamId, $sessionId, $request->string('admission_type')->toString() ?: null
+            (int) $validated['stream_id'], $sessionId, $request->string('admission_type')->toString() ?: null
         );
 
         return response()->json($result);

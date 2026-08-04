@@ -19,7 +19,10 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">New Password</label>
-                        <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" required minlength="8">
+                        <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
+                               required minlength="8" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}"
+                               title="At least 8 characters, including a letter and a number">
+                        <div class="form-text small">At least 8 characters, including a letter and a number.</div>
                         @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="mb-4">

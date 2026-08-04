@@ -15,9 +15,17 @@ class StaffNoticeController extends Controller
         return Auth::guard('staff')->user();
     }
 
+    // can_manage_notices is a legacy per-staff checkbox; hasPermission('notice_post') is
+    // the standard role-based grant — honor either so an institute admin who assigns
+    // notice_post via the normal role-permission UI isn't silently ignored.
+    private function canManageNotices(): bool
+    {
+        return $this->staff()->can_manage_notices || $this->staff()->hasPermission('notice_post');
+    }
+
     private function requireManagePermission(): void
     {
-        if (!$this->staff()->can_manage_notices) {
+        if (!$this->canManageNotices()) {
             abort(403, 'Aapko notices manage karne ki permission nahi hai.');
         }
     }
@@ -27,7 +35,7 @@ class StaffNoticeController extends Controller
         $staff = $this->staff();
 
         // Staff with manage permission → admin-style management table
-        if ($staff->can_manage_notices) {
+        if ($this->canManageNotices()) {
             return app(InstituteNoticeController::class)->index($request);
         }
 
