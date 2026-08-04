@@ -10,6 +10,7 @@ use App\Models\SmsLog;
 use App\Models\User;
 use App\Services\AccountingSetupService;
 use App\Services\SmsService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -31,6 +32,29 @@ class InstituteController extends Controller
             $query->latest('accepted_at')->with('acceptedBy:id,name,email');
         }]);
         return view('super_admin.institutes.show', compact('institute'));
+    }
+
+    public function consentPdf(Institute $institute)
+    {
+        $accepted = $institute->policyAcceptances()
+            ->latest('accepted_at')
+            ->with('acceptedBy:id,name,email')
+            ->get()
+            ->groupBy('document_type')
+            ->map->first();
+
+        abort_if($accepted->isEmpty(), 404, 'No policy has been accepted by this institute yet.');
+
+        $documents = collect(config('legal.documents'))
+            ->only($accepted->keys())
+            ->map(fn ($meta, $type) => $meta + ['acceptance' => $accepted[$type]]);
+
+        $pdf = Pdf::loadView('super_admin.institutes.consent-pdf', [
+            'institute' => $institute,
+            'documents' => $documents,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('consent-' . $institute->institute_uid . '.pdf');
     }
 
     public function toggle(Institute $institute)

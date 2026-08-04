@@ -179,8 +179,13 @@
 <div class="row g-3 mt-1">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pb-0 pt-3">
+            <div class="card-header bg-white border-0 pb-0 pt-3 d-flex align-items-center justify-content-between">
                 <h6 class="fw-bold mb-0"><i class="bi bi-file-earmark-check text-primary me-2"></i>Policy Consent</h6>
+                @if($institute->policyAcceptances->isNotEmpty())
+                    <a href="{{ route('super_admin.institutes.consent-pdf', $institute->id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Download Certificate (PDF)
+                    </a>
+                @endif
             </div>
             <div class="card-body">
                 @php

@@ -27,6 +27,7 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::post('/institutes/{institute}/resend-credentials', [InstituteController::class, 'resendCredentials'])->name('institutes.resend-credentials');
         Route::post('/institutes/{institute}/clean-data',         [InstituteController::class, 'cleanData'])->name('institutes.clean-data');
         Route::get('/institutes/{institute}/export-data',          [InstituteController::class, 'exportData'])->name('institutes.export-data');
+        Route::get('/institutes/{institute}/consent-pdf',           [InstituteController::class, 'consentPdf'])->name('institutes.consent-pdf');
         Route::post('/institutes/{institute}/restore-data',        [InstituteController::class, 'restoreData'])->name('institutes.restore-data');
 
         // Database Backup
