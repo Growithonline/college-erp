@@ -853,7 +853,7 @@
                                 </div>
                                 <div class="mt-2 d-flex flex-wrap gap-1">
                                     @foreach($historyInvoice->items->take(4) as $historyItem)
-                                        <span class="badge bg-light text-dark border">{{ $historyItem->fee_name }}</span>
+                                        <span class="badge bg-light text-dark border">{{ $historyItem->fee_name }}: ₹ {{ number_format((float) $historyItem->amount, 0) }}</span>
                                     @endforeach
                                     @if($historyInvoice->items->count() > 4)
                                         <span class="badge bg-light text-muted border">+{{ $historyInvoice->items->count() - 4 }} more</span>

@@ -336,7 +336,7 @@
                         {{-- Fee Items --}}
                         <td class="hcol_items">
                             @foreach($inv->items as $item)
-                                <span class="fee-item-tag">{{ $item->fee_name }}</span>
+                                <span class="fee-item-tag">{{ $item->fee_name }}: ₹ {{ number_format($item->amount) }}</span>
                             @endforeach
                         </td>
 
