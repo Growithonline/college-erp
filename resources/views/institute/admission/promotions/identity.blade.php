@@ -1,4 +1,4 @@
-@extends('institute.layout')
+@extends(auth()->guard('staff')->check() ? 'staff.layout' : 'institute.layout')
 @section('title', 'Roll No / Form No Assignment')
 @section('breadcrumb', 'Admissions / Academic Identity')
 @section('content')

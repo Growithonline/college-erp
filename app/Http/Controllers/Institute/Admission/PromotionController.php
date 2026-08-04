@@ -140,6 +140,18 @@ class PromotionController extends Controller
         }
     }
 
+    private function ensureStaffCanAccessIdentity(StudentAcademicIdentity $identity): void
+    {
+        $staff = $this->currentStaff();
+
+        if (!$staff) {
+            return;
+        }
+
+        abort_if(!$staff->canAccessAcademicSession((int) $identity->academic_session_id), 403, 'This record is outside your access scope.');
+        abort_if(!$staff->canAccessCourse((int) $identity->course_id), 403, 'This record is outside your access scope.');
+    }
+
     private function promotedBy(): string
     {
         // Check staff guard first — mirrors promotedByRole() so name and role always agree.
@@ -2210,6 +2222,7 @@ class PromotionController extends Controller
 
     public function identityTemplate(Request $request)
     {
+        $this->ensurePromotionAccess();
         $instituteId = $this->instituteId();
         $fields = $this->bulkCorrectionFields($instituteId);
         $headers = array_column($fields, 'label');
@@ -2230,6 +2243,7 @@ class PromotionController extends Controller
     {
         $this->ensurePromotionAccess();
         abort_if($identity->institute_id !== $this->instituteId(), 403);
+        $this->ensureStaffCanAccessIdentity($identity);
         $request->validate([
             'roll_no' => 'nullable|string|max:50',
             'form_no' => 'nullable|string|max:50',
@@ -2724,7 +2738,9 @@ class PromotionController extends Controller
             $query->where('current_semester', $request->integer('current_semester'));
         }
 
-        return $query;
+        // Student (not StudentAcademicIdentity) query — course lives on the stream
+        // relation here, so applyStudentAccessScope() is the correct scope helper.
+        return $this->applyStudentAccessScope($query);
     }
 
     private function bulkCorrectionFields(int $instituteId): array

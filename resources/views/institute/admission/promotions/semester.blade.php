@@ -1,4 +1,4 @@
-@extends('institute.layout')
+@extends(auth()->guard('staff')->check() ? 'staff.layout' : 'institute.layout')
 @section('title', 'Semester Promotion')
 @section('breadcrumb', 'Admissions / Semester Promotion')
 @section('content')
