@@ -54,7 +54,7 @@ class InstituteController extends Controller
             'documents' => $documents,
         ])->setPaper('a4', 'portrait');
 
-        return $pdf->download('consent-' . $institute->institute_uid . '.pdf');
+        return $pdf->download('consent-' . Str::slug($institute->institute_uid) . '.pdf');
     }
 
     public function toggle(Institute $institute)
