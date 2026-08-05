@@ -42,13 +42,9 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('master.master-otp.generate') }}"
-              onsubmit="return confirm('{{ $masterOtp ? 'This replaces your current Master OTP — the old one will stop working immediately. Continue?' : 'Generate a new Master OTP?' }}');">
-            @csrf
-            <button class="btn btn-primary">
-                <i class="bi bi-arrow-repeat me-1"></i> {{ $masterOtp ? 'Reset / Generate New Master OTP' : 'Generate Master OTP' }}
-            </button>
-        </form>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateOtpModal">
+            <i class="bi bi-arrow-repeat me-1"></i> {{ $masterOtp ? 'Reset / Generate New Master OTP' : 'Generate Master OTP' }}
+        </button>
     </div>
 </div>
 
@@ -57,6 +53,35 @@
     The Master OTP automatically stops working at the start of every month — generate a fresh one whenever
     you need it. It only works for <strong>your own</strong> admin login, not for Staff, Center or Channel
     Partner accounts. Every reveal is recorded in the audit log.
+</div>
+
+{{-- Generate/Reset Confirmation Modal --}}
+<div class="modal fade" id="generateOtpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-arrow-repeat me-2 text-primary"></i>{{ $masterOtp ? 'Reset Master OTP' : 'Generate Master OTP' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @if($masterOtp)
+                    <p class="mb-1">Generate a new Master OTP?</p>
+                    <p class="text-muted small mb-0">Your current Master OTP will stop working immediately — this action cannot be undone.</p>
+                @else
+                    <p class="mb-0">A new 6-digit Master OTP will be generated for your admin login.</p>
+                @endif
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ route('master.master-otp.generate') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-arrow-repeat me-1"></i> {{ $masterOtp ? 'Reset' : 'Generate' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
