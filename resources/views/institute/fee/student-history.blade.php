@@ -13,6 +13,10 @@
     $canCancelFee    = $isStaff ? (bool) auth()->guard('staff')->user()?->canCancelFee()     : (!$isCenter && !$isPartner);
     $canViewFeeWallet = $isStaff ? (bool) auth()->guard('staff')->user()?->canViewFeeWallet() : true;
 
+    $identity = $student->currentAcademicIdentity;
+    $rollNo   = $identity?->roll_no ?? $student->roll_no ?? null;
+    $enrollNo = $identity?->enrollment_no_snapshot ?? $student->enrollment_no ?? null;
+
     $totalFine      = $invoices->where('is_cancelled', false)->sum(fn($i) => $i->items->sum('fine'));
     $totalDiscount  = $invoices->where('is_cancelled', false)->sum(fn($i) => (float)($i->discount ?? 0));
     $overallDue     = $sessionBalances->sum(fn($sb) => (float)$sb->main_b < 0 ? abs((float)$sb->main_b) : 0);
@@ -138,7 +142,7 @@
         <h4 class="mb-0 fw-bold">Fee History</h4>
         <small class="text-muted">{{ $student->name }} — {{ $student->student_uid }}</small>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="d-flex gap-2 flex-wrap no-print">
         @if($canCollectFee)
         <a href="{{ route($feeCreateRoute, ['student_id' => $student->id]) }}" class="btn btn-success btn-sm">
             <i class="bi bi-plus-circle me-1"></i> Collect Fee
@@ -152,6 +156,9 @@
         <a href="{{ route($showRoute, $student) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-person me-1"></i> Student Profile
         </a>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Print Fee History
+        </button>
         <a href="{{ route($feeIndexRoute) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
@@ -173,6 +180,12 @@
                 <div class="fw-bold" style="font-size:15px;color:#111827;">{{ $student->name }}</div>
                 <div class="text-muted small mt-1">
                     {{ $student->student_uid }}
+                    @if($rollNo)
+                        &nbsp;•&nbsp; Roll No: {{ $rollNo }}
+                    @endif
+                    @if($enrollNo)
+                        &nbsp;•&nbsp; Enroll No: {{ $enrollNo }}
+                    @endif
                     @if($student->stream?->course)
                         &nbsp;•&nbsp; {{ $student->stream->course->name }}
                         @if($student->stream->name) ({{ $student->stream->name }}) @endif
@@ -238,7 +251,7 @@
                 {{ $invoices->count() }}
             </span>
         </div>
-        <div class="dropdown">
+        <div class="dropdown no-print">
             <button class="btn btn-sm" type="button" data-bs-toggle="dropdown"
                     style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:12px;">
                 <i class="bi bi-layout-three-columns me-1"></i>Columns
@@ -282,7 +295,7 @@
                         <th class="text-end" style="color:#d97706;">Fine</th>
                         <th class="text-end" style="color:#7c3aed;">Discount</th>
                         <th class="text-end" style="color:#dc2626;">Due</th>
-                        <th class="text-center">Actions</th>
+                        <th class="text-center no-print">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -397,7 +410,7 @@
                         </td>
 
                         {{-- Actions --}}
-                        <td class="text-center">
+                        <td class="text-center no-print">
                             <div class="d-flex gap-1 justify-content-center">
                                 <a href="{{ route($receiptRoute, [$student->id, $inv->id]) }}"
                                    class="hist-action-btn print" target="_blank" title="Print Receipt">
