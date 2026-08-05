@@ -97,10 +97,10 @@ table.hist tfoot td {
 .doc-footer .sign .lbl { font-size:10px; font-weight:700; color:#000; }
 
 @media print {
-    body { background:#fff; }
+    html, body { background:#fff !important; height:auto !important; }
     .toolbar { display:none !important; }
-    .sheet-wrap { padding:0; }
-    .sheet { box-shadow:none; margin:0; width:auto; min-height:0; }
+    .sheet-wrap { padding:0; background:#fff; }
+    .sheet { box-shadow:none; margin:0; width:auto; min-height:0; background:#fff; }
     @page { size: A4 portrait; margin:12mm; }
     table.hist { page-break-inside:auto; }
     table.hist tr { page-break-inside:avoid; page-break-after:auto; }
