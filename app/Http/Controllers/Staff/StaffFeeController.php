@@ -85,6 +85,12 @@ class StaffFeeController extends Controller
         return app(InstituteFeeController::class)->studentHistory($student);
     }
 
+    public function historyPrint(Student $student)
+    {
+        $this->ensureFeeViewPermission();
+        return app(InstituteFeeController::class)->historyPrint($student);
+    }
+
     public function studentWallet(Student $student, Request $request)
     {
         $this->ensureFeeWalletPermission();

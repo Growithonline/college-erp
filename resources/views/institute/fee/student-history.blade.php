@@ -7,6 +7,7 @@
     $showRoute       = $isStaff ? 'staff.admissions.show'      : ($isCenter  ? 'center.students.show'        : ($isPartner ? 'partner.students.show'        : 'admissions.show'));
     $feeIndexRoute   = $isStaff ? 'staff.fee.index'            : ($isCenter  ? 'center.fee.index'            : ($isPartner ? 'partner.fee.index'            : 'fee.index'));
     $receiptRoute    = $isStaff ? 'staff.fee.receipt'          : ($isCenter  ? 'center.fee.receipt'          : ($isPartner ? 'partner.fee.receipt'          : 'fee.receipt'));
+    $historyPrintRoute = $isStaff ? 'staff.fee.history-print'  : ($isCenter  ? 'center.fee.history-print'    : ($isPartner ? 'partner.fee.history-print'    : 'fee.history-print'));
     $cancelRoute     = $isStaff ? 'staff.fee.cancel'           : (($isCenter || $isPartner) ? null           : 'fee.cancel');
     $walletRoute     = $isStaff ? 'staff.fee.wallet.student'   : ($isCenter  ? 'center.fee.wallet.student'   : ($isPartner ? 'partner.fee.wallet.student'   : 'fee.wallet.student'));
     $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee()    : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee()  : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true));
@@ -156,9 +157,9 @@
         <a href="{{ route($showRoute, $student) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-person me-1"></i> Student Profile
         </a>
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+        <a href="{{ route($historyPrintRoute, $student) }}" target="_blank" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-printer me-1"></i> Print Fee History
-        </button>
+        </a>
         <a href="{{ route($feeIndexRoute) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>

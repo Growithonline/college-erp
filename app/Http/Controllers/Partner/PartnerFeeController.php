@@ -335,6 +335,31 @@ class PartnerFeeController extends Controller
         ));
     }
 
+    public function historyPrint(Student $student)
+    {
+        $partner = $this->partner();
+        abort_unless($partner->canCollectFee(), 403);
+        abort_if((int) $student->institute_id !== (int) $partner->institute_id, 403, 'Student not found.');
+
+        $student->load(['stream.course', 'session']);
+
+        $invoices = FeeInvoice::with('items')
+            ->where('student_id', $student->id)
+            ->orderBy('payment_date', 'desc')
+            ->get();
+
+        $sessionBalances = StudentWallet::where('student_id', $student->id)
+            ->with('session')
+            ->orderBy('academic_session_id')
+            ->get();
+
+        $totalPaid = $invoices->where('is_cancelled', false)->sum('paid_amount');
+
+        return view('institute.fee.history-print', compact(
+            'student', 'invoices', 'totalPaid', 'sessionBalances'
+        ));
+    }
+
     public function studentWallet(Student $student, Request $request)
     {
         $partner = $this->partner();
