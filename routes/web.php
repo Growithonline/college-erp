@@ -25,6 +25,7 @@ use App\Http\Controllers\Institute\Master\ChannelPartnerController;
 use App\Http\Controllers\Institute\Master\StaffRoleController;
 use App\Http\Controllers\Institute\Master\StaffMemberController;
 use App\Http\Controllers\Institute\Master\OtpMonitorController;
+use App\Http\Controllers\Institute\Master\MasterOtpController;
 use App\Http\Controllers\Institute\Master\DocumentBatchController;
 use App\Http\Controllers\Institute\Master\DocumentDistributionController;
 use App\Http\Controllers\Institute\Master\CourseDocumentFeeController;
@@ -283,6 +284,10 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::delete('staff-members/{staffMember}/documents/{document}', [StaffMemberController::class, 'destroyDocument'])->name('staff-members.documents.destroy');
 
         Route::get('otp-monitor', [OtpMonitorController::class, 'index'])->name('otp-monitor.index');
+
+        Route::get('master-otp',           [MasterOtpController::class, 'index'])->name('master-otp.index');
+        Route::post('master-otp/generate', [MasterOtpController::class, 'generate'])->name('master-otp.generate')->middleware('throttle:10,1');
+        Route::get('master-otp/reveal',    [MasterOtpController::class, 'reveal'])->name('master-otp.reveal')->middleware('throttle:20,1');
 
         // Marksheet & Degree Distribution
         Route::prefix('document-batches')->name('document-batches.')->group(function () {

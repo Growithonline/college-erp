@@ -359,6 +359,12 @@
                         <i class="bi bi-shield-lock"></i> Login OTPs
                     </a></li>
 
+                    {{-- Master OTP (own admin login backup code) --}}
+                    <li><a class="nav-link {{ request()->routeIs('master.master-otp*') ? 'active' : '' }}"
+                           href="{{ route('master.master-otp.index') }}">
+                        <i class="bi bi-key"></i> Master OTP
+                    </a></li>
+
                     {{-- Marksheet & Degree --}}
                     <li>
                         <a class="nav-link d-flex {{ request()->routeIs('master.document-batches*') || request()->routeIs('master.document-distribution*') ? 'active' : '' }}"

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Institute\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\InstituteOtpMail;
 use App\Models\Institute;
+use App\Models\InstituteMasterOtp;
 use App\Models\PlatformSmsSetting;
 use App\Models\User;
 use App\Models\LoginOtp;
+use App\Services\AuditLogService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -94,6 +96,21 @@ class LoginController extends Controller
             return redirect()->route('login');
         }
 
+        $user = User::find($userId);
+
+        $masterOtp = $user
+            ? InstituteMasterOtp::where('institute_id', $user->institute_id)->first()
+            : null;
+
+        if ($masterOtp && $masterOtp->isValidNow() && hash_equals($masterOtp->decryptOtp(), $request->otp)) {
+            AuditLogService::log($user->institute_id, 'security', 'master_otp_login', 'Logged in using institute master OTP.', $user);
+
+            Auth::login($user);
+            session()->forget('otp_user_id');
+
+            return redirect()->route('institute.dashboard');
+        }
+
         $otpRecord = LoginOtp::where('user_id', $userId)
             ->where('is_used', false)
             ->latest()
@@ -117,8 +134,6 @@ class LoginController extends Controller
         }
 
         $otpRecord->update(['is_used' => true]);
-
-        $user = User::find($userId);
 
         Auth::login($user);
 
