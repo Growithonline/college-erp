@@ -23,7 +23,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h4 class="mb-0 fw-bold">Student Wallet</h4>
-        <small class="text-muted">
+        <small class="fw-bold" style="color:#000;">
             {{ $student->name }} — {{ $student->student_uid }}
             @if($rollNo)
                 &nbsp;•&nbsp; Roll No: {{ $rollNo }}

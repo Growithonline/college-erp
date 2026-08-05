@@ -141,7 +141,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold">Fee History</h4>
-        <small class="text-muted">{{ $student->name }} — {{ $student->student_uid }}</small>
+        <small class="fw-bold" style="color:#000;">{{ $student->name }} — {{ $student->student_uid }}</small>
     </div>
     <div class="d-flex gap-2 flex-wrap no-print">
         @if($canCollectFee)
