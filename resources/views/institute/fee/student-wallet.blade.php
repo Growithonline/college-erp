@@ -10,6 +10,10 @@
     $walletRoute     = $isStaff ? 'staff.fee.wallet.student'   : ($isCenter  ? 'center.fee.wallet.student'   : ($isPartner ? 'partner.fee.wallet.student'   : 'fee.wallet.student'));
     $receiptRoute    = $isStaff ? 'staff.fee.receipt'          : ($isCenter  ? 'center.fee.receipt'          : ($isPartner ? 'partner.fee.receipt'          : 'fee.receipt'));
     $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee() : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true));
+
+    $identity = $student->currentAcademicIdentity;
+    $rollNo   = $identity?->roll_no ?? $student->roll_no ?? null;
+    $enrollNo = $identity?->enrollment_no_snapshot ?? $student->enrollment_no ?? null;
 @endphp
 @extends($layout)
 @section('title','Student Wallet')
@@ -19,7 +23,15 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h4 class="mb-0 fw-bold">Student Wallet</h4>
-        <small class="text-muted">{{ $student->name }} — {{ $student->student_uid }}</small>
+        <small class="text-muted">
+            {{ $student->name }} — {{ $student->student_uid }}
+            @if($rollNo)
+                &nbsp;•&nbsp; Roll No: {{ $rollNo }}
+            @endif
+            @if($enrollNo)
+                &nbsp;•&nbsp; Enroll No: {{ $enrollNo }}
+            @endif
+        </small>
     </div>
     <div class="d-flex gap-2">
         @if($canCollectFee)
