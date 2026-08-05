@@ -68,7 +68,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 ══════════════════════════════════════ */
 .a4-sheet {
     width: 210mm;
-    min-height: 148mm;
+    height: 148.5mm;
     background: white;
     margin: 0 auto;
     display: grid;
@@ -89,12 +89,12 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 
 /* Copy badge */
 .copy-badge {
-    display:inline-block; font-size:7.5px; font-weight:700;
+    display:inline-block; font-size:9px; font-weight:700;
     padding:2px 7px; border-radius:20px; text-transform:uppercase;
     letter-spacing:.6px; margin-bottom:5px; align-self:flex-end;
 }
-.copy-student   { background:#dbeafe; color:#1d4ed8; border:1px solid #bfdbfe; }
-.copy-institute { background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; }
+.copy-student   { background:#dbeafe; color:#000; border:1px solid #bfdbfe; }
+.copy-institute { background:#dcfce7; color:#000; border:1px solid #bbf7d0; }
 
 /* Header */
 .r-header {
@@ -106,10 +106,10 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
     background:linear-gradient(90deg,#0f766e,#0891b2);
     border-radius:2px; margin-bottom:5px;
 }
-.r-header .inst  { font-size:13.5px; font-weight:800; color:#0f172a; letter-spacing:.2px; }
-.r-header .title { font-size:8.5px; color:#64748b; text-transform:uppercase;
+.r-header .inst  { font-size:15px; font-weight:800; color:#000; letter-spacing:.2px; }
+.r-header .title { font-size:10px; font-weight:700; color:#000; text-transform:uppercase;
                    letter-spacing:1.5px; margin-top:2px; }
-.r-header .session-tag { font-size:8px; color:#0f766e; font-weight:600;
+.r-header .session-tag { font-size:9.5px; color:#000; font-weight:700;
                           background:#f0fdfa; border:1px solid #99f6e4;
                           border-radius:10px; padding:1px 7px; display:inline-block; margin-top:3px; }
 
@@ -117,20 +117,20 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .r-meta-bar {
     display:flex; justify-content:space-between; align-items:center;
     background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px;
-    padding:4px 7px; margin-bottom:6px; font-size:8.5px;
+    padding:4px 7px; margin-bottom:6px; font-size:10px; font-weight:700;
 }
-.r-meta-bar .inv-no  { font-weight:700; color:#0f172a; font-size:9px; }
-.r-meta-bar .inv-date { color:#475569; text-align:right; line-height:1.5; }
-.r-meta-bar .inv-date b { color:#0f172a; }
+.r-meta-bar .inv-no  { font-weight:700; color:#000; font-size:10.5px; }
+.r-meta-bar .inv-date { color:#000; font-weight:700; text-align:right; line-height:1.5; }
+.r-meta-bar .inv-date b { color:#000; }
 
 /* Info grids */
 .r-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 6px; margin-bottom:6px; }
-.r-row { display:flex; font-size:8.5px; margin-bottom:2.5px; }
-.r-row .lbl { color:#64748b; min-width:62px; flex-shrink:0; font-size:8px; }
-.r-row .val { font-weight:600; color:#1e293b; flex:1; }
-.r-row-full { display:flex; font-size:8.5px; margin-bottom:2.5px; }
-.r-row-full .lbl { color:#64748b; min-width:62px; flex-shrink:0; font-size:8px; }
-.r-row-full .val { font-weight:600; color:#1e293b; }
+.r-row { display:flex; font-size:10px; margin-bottom:2.5px; }
+.r-row .lbl { color:#000; font-weight:700; min-width:62px; flex-shrink:0; font-size:9.5px; }
+.r-row .val { font-weight:700; color:#000; flex:1; }
+.r-row-full { display:flex; font-size:10px; margin-bottom:2.5px; }
+.r-row-full .lbl { color:#000; font-weight:700; min-width:62px; flex-shrink:0; font-size:9.5px; }
+.r-row-full .val { font-weight:700; color:#000; }
 
 /* Section divider */
 .r-divider { border:none; border-top:1px dashed #e2e8f0; margin:5px 0; }
@@ -142,30 +142,30 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 }
 .pay-box-head {
     background:linear-gradient(90deg,#0f766e,#0891b2);
-    color:white; font-size:8.5px; font-weight:700; padding:3px 8px; letter-spacing:.3px;
+    color:white; font-size:10px; font-weight:700; padding:3px 8px; letter-spacing:.3px;
 }
 .pay-box-body { padding:5px 8px; }
 .pay-row { display:flex; justify-content:space-between; align-items:center;
-           font-size:8.5px; padding:2px 0; }
-.pay-row .pay-lbl { color:#475569; }
-.pay-row .pay-val { font-weight:700; color:#0f172a; }
+           font-size:10px; font-weight:700; padding:2px 0; }
+.pay-row .pay-lbl { color:#000; }
+.pay-row .pay-val { font-weight:700; color:#000; }
 .pay-divider { border:none; border-top:1px solid #d1fae5; margin:3px 0; }
-.amount-big { font-size:14px; font-weight:800; color:#15803d; }
-.amount-due { font-size:12px; font-weight:700; }
-.due-zero   { color:#15803d; }
-.due-pos    { color:#dc2626; }
+.amount-big { font-size:15.5px; font-weight:800; color:#000; }
+.amount-due { font-size:13.5px; font-weight:700; color:#000; }
+.due-zero   { color:#000; }
+.due-pos    { color:#000; }
 .mode-chip {
-    display:inline-block; font-size:7.5px; font-weight:700;
+    display:inline-block; font-size:9px; font-weight:700;
     padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.5px;
-    background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe;
+    background:#dbeafe; color:#000; border:1px solid #bfdbfe;
 }
 
 /* Footer */
-.r-note { font-size:7.5px; color:#94a3b8; font-style:italic; margin-top:3px; }
+.r-note { font-size:9px; font-weight:700; color:#000; font-style:italic; margin-top:3px; }
 .r-footer { display:flex; justify-content:space-between; margin-top:auto;
             padding-top:5px; border-top:1px dashed #e2e8f0; }
-.r-sign { border-top:1px solid #94a3b8; width:65px; text-align:center;
-          font-size:7.5px; padding-top:3px; color:#64748b; }
+.r-sign { border-top:1px solid #000; width:65px; text-align:center;
+          font-size:9px; font-weight:700; padding-top:3px; color:#000; }
 
 /* Watermarks */
 .watermark { position:absolute; top:50%; left:50%;
@@ -178,7 +178,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
              color:rgba(220,38,38,0.1); pointer-events:none; white-space:nowrap; }
 .cancelled-bar { background:#fef2f2; border:1.5px solid #fca5a5;
                  border-radius:4px; padding:4px 7px; margin:5px 0;
-                 font-size:8px; color:#dc2626; }
+                 font-size:9.5px; font-weight:700; color:#000; }
 .cancelled-bar b { font-weight:700; }
 
 /* ══════════════════════════════════════
@@ -202,7 +202,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 
     body.print-a4 #a4-view      { display:block !important; }
     body.print-a4 #thermal-view { display:none  !important; }
-    body.print-a4 .a4-sheet     { width:210mm; min-height:148mm; height:auto; border:none; margin:0; }
+    body.print-a4 .a4-sheet     { width:200mm; height:148.5mm; border:none; margin:0 auto; }
 
     body.print-thermal #thermal-view { display:block !important; }
     body.print-thermal #a4-view      { display:none  !important; }
@@ -211,6 +211,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 
     body.print-pdf #a4-view      { display:block !important; }
     body.print-pdf #thermal-view { display:none  !important; }
+    body.print-pdf .a4-sheet     { width:200mm; height:148.5mm; border:none; margin:0 auto; }
 }
 
 body.hide-institute .r-header .inst,
@@ -653,7 +654,7 @@ function syncPageStyle(mode) {
         style.id = '_printPageStyle';
         document.head.appendChild(style);
     }
-    style.textContent = mode === 'thermal' ? thermalPageCss() : '';
+    style.textContent = mode === 'thermal' ? thermalPageCss() : a4PageCss();
 }
 
 function thermalPageCss() {
@@ -661,6 +662,15 @@ function thermalPageCss() {
     const heightMm = sheet ? Math.max(70, Math.ceil(sheet.scrollHeight * 25.4 / 96) + 10) : 140;
     return `@page { size: 80mm ${heightMm}mm; margin: 0mm; }
 @media print { html, body { width:80mm; height:${heightMm}mm; margin:0 !important; padding:0 !important; overflow:hidden !important; } }`;
+}
+
+function a4PageCss() {
+    // Browsers add their own default print margin on top of ours, which was pushing
+    // the 210mm-wide sheet past the printable area and clipping the right copy.
+    // Zeroing the @page margin here and keeping the sheet's own inset (200mm + auto
+    // margin) is what actually keeps it inside the printable area on real printers.
+    return `@page { size: A4 portrait; margin: 0mm; }
+@media print { html, body { width:210mm; margin:0 !important; padding:0 !important; } }`;
 }
 
 function setMode(mode) {
