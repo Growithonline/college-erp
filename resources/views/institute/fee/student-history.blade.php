@@ -179,7 +179,7 @@
             {{-- Student details --}}
             <div class="flex-grow-1">
                 <div class="fw-bold" style="font-size:15px;color:#111827;">{{ $student->name }}</div>
-                <div class="text-muted small mt-1">
+                <div class="small fw-bold mt-1" style="color:#000;">
                     {{ $student->student_uid }}
                     @if($rollNo)
                         &nbsp;•&nbsp; Roll No: {{ $rollNo }}
