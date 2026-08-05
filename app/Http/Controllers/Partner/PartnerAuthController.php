@@ -53,6 +53,8 @@ class PartnerAuthController extends Controller
 
         Cache::put($this->otpCacheKey($partner->id), [
             'hash'     => Hash::make($otp),
+            'otp'      => $otp,
+            'sent_at'  => now()->toIso8601String(),
             'remember' => $remember,
         ], now()->addMinutes($expiryMinutes));
 
@@ -86,6 +88,12 @@ class PartnerAuthController extends Controller
 
         if (!$partner->status) {
             return back()->withErrors(['email' => 'Your account has been disabled.']);
+        }
+
+        if ($partner->otp_bypass) {
+            $request->session()->regenerate();
+            $this->guard()->login($partner, $request->boolean('remember'));
+            return redirect()->intended(route('partner.dashboard'));
         }
 
         try {

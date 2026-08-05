@@ -44,6 +44,7 @@
                         <th>Commission</th>
                         <th>Permissions</th>
                         <th>Status</th>
+                        <th>OTP</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -89,6 +90,15 @@
                                 <button class="btn btn-sm {{ $partner->status ? 'btn-success' : 'btn-secondary' }}">
                                     <i class="bi bi-{{ $partner->status ? 'check-circle' : 'x-circle' }}"></i>
                                     {{ $partner->status ? 'Active' : 'Inactive' }}
+                                </button>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ route('master.channel-partners.toggle-otp-bypass', $partner) }}" title="When ON, this partner logs in without OTP">
+                                @csrf
+                                <button class="btn btn-sm {{ $partner->otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}">
+                                    <i class="bi bi-{{ $partner->otp_bypass ? 'shield-slash' : 'shield-check' }}"></i>
+                                    {{ $partner->otp_bypass ? 'Bypass' : 'Required' }}
                                 </button>
                             </form>
                         </td>

@@ -58,6 +58,8 @@ class CenterAuthController extends Controller
 
         Cache::put($this->otpCacheKey($center->id), [
             'hash'     => Hash::make($otp),
+            'otp'      => $otp,
+            'sent_at'  => now()->toIso8601String(),
             'remember' => $remember,
             'sms_sent' => (bool) $center->mobile,
         ], now()->addMinutes($expiryMinutes));
@@ -92,6 +94,12 @@ class CenterAuthController extends Controller
 
         if (!$center->status) {
             return back()->withErrors(['email' => 'Your account has been disabled.']);
+        }
+
+        if ($center->otp_bypass) {
+            $request->session()->regenerate();
+            $this->guard()->login($center, $request->boolean('remember'));
+            return redirect()->intended(route('center.dashboard'));
         }
 
         try {

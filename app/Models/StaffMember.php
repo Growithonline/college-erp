@@ -10,7 +10,7 @@ class StaffMember extends Authenticatable
     use SoftDeletes;
     protected $fillable = [
         'institute_id', 'staff_role_id', 'name', 'mobile', 'email',
-        'password', 'photo', 'address', 'joining_date', 'salary', 'status',
+        'password', 'photo', 'address', 'joining_date', 'salary', 'status', 'otp_bypass',
         'staff_category', 'payroll_type', 'daily_wage', 'monthly_salary',
         'salary_expense_head_id', 'leave_policy_group', 'bank_account_number',
         'bank_account_holder', 'bank_name', 'bank_ifsc',
@@ -32,6 +32,7 @@ class StaffMember extends Authenticatable
         'daily_wage' => 'decimal:2',
         'monthly_salary' => 'decimal:2',
         'status' => 'boolean',
+        'otp_bypass' => 'boolean',
         'max_discount_percent' => 'integer',
         'max_custom_fee_amount' => 'decimal:2',
         'restrict_course_access' => 'boolean',

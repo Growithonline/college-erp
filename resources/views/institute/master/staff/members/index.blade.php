@@ -59,6 +59,7 @@
                         <th>Joining</th>
                         <th>Salary</th>
                         <th>Status</th>
+                        <th>OTP</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -143,6 +144,15 @@
                                 <button class="btn btn-sm {{ $member->status ? 'btn-success' : 'btn-secondary' }}">
                                     <i class="bi bi-{{ $member->status ? 'check-circle' : 'x-circle' }}"></i>
                                     {{ $member->status ? 'Active' : 'Inactive' }}
+                                </button>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ route('master.staff-members.toggle-otp-bypass', $member) }}" title="When ON, this staff member logs in without OTP">
+                                @csrf
+                                <button class="btn btn-sm {{ $member->otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}">
+                                    <i class="bi bi-{{ $member->otp_bypass ? 'shield-slash' : 'shield-check' }}"></i>
+                                    {{ $member->otp_bypass ? 'Bypass' : 'Required' }}
                                 </button>
                             </form>
                         </td>

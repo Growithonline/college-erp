@@ -13,6 +13,7 @@ use App\Models\CourseType;
 use App\Models\FeeType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Services\AuditLogService;
 use App\Services\InstituteMailer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -251,6 +252,17 @@ class ChannelPartnerController extends Controller
         abort_if($channelPartner->institute_id !== $this->instituteId(), 403);
         $channelPartner->update(['status' => !$channelPartner->status]);
         return back()->with('success', 'Status updated!');
+    }
+
+    public function toggleOtpBypass(ChannelPartner $channelPartner)
+    {
+        abort_if($channelPartner->institute_id !== $this->instituteId(), 403);
+        $channelPartner->update(['otp_bypass' => !$channelPartner->otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'channel_partner', 'partner_otp_bypass_toggled',
+            'Channel partner OTP bypass ' . ($channelPartner->otp_bypass ? 'enabled' : 'disabled') . '.', $channelPartner);
+
+        return back()->with('success', 'OTP bypass ' . ($channelPartner->otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
     private function parseSessionPerms(Request $request): ?array

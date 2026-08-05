@@ -44,6 +44,7 @@
                     <th>City</th>
                     <th>Permissions</th>
                     <th>Status</th>
+                    <th>OTP</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -83,6 +84,15 @@
                               style="font-size:11px;">
                             {{ $c->status ? 'Active' : 'Inactive' }}
                         </span>
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ route('master.centers.toggle-otp-bypass', $c) }}" title="When ON, this center logs in without OTP">
+                            @csrf
+                            <button class="btn btn-sm {{ $c->otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}">
+                                <i class="bi bi-{{ $c->otp_bypass ? 'shield-slash' : 'shield-check' }}"></i>
+                                {{ $c->otp_bypass ? 'Bypass' : 'Required' }}
+                            </button>
+                        </form>
                     </td>
                     <td>
                         <div class="d-flex gap-1">

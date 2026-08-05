@@ -353,6 +353,12 @@
                         </div>
                     </li>
 
+                    {{-- Login OTP Monitor --}}
+                    <li><a class="nav-link {{ request()->routeIs('master.otp-monitor*') ? 'active' : '' }}"
+                           href="{{ route('master.otp-monitor.index') }}">
+                        <i class="bi bi-shield-lock"></i> Login OTPs
+                    </a></li>
+
                     {{-- Marksheet & Degree --}}
                     <li>
                         <a class="nav-link d-flex {{ request()->routeIs('master.document-batches*') || request()->routeIs('master.document-distribution*') ? 'active' : '' }}"

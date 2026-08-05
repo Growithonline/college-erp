@@ -12,6 +12,7 @@ use App\Models\CenterFeeCollectionPermission;
 use App\Models\Course;
 use App\Models\CourseType;
 use App\Models\FeeType;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -271,6 +272,17 @@ class CenterController extends Controller
         abort_if($center->institute_id !== $this->instituteId(), 403);
         $center->update(['status' => !$center->status]);
         return back()->with('success', 'Status updated!');
+    }
+
+    public function toggleOtpBypass(Center $center)
+    {
+        abort_if($center->institute_id !== $this->instituteId(), 403);
+        $center->update(['otp_bypass' => !$center->otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'center', 'center_otp_bypass_toggled',
+            'Center OTP bypass ' . ($center->otp_bypass ? 'enabled' : 'disabled') . '.', $center);
+
+        return back()->with('success', 'OTP bypass ' . ($center->otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
     private function parseSessionPerms(Request $request): ?array

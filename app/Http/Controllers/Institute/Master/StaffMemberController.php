@@ -708,6 +708,17 @@ class StaffMemberController extends Controller
         return back()->with('success', 'Status updated!');
     }
 
+    public function toggleOtpBypass(StaffMember $staffMember)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+        $staffMember->update(['otp_bypass' => !$staffMember->otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'staff', 'staff_otp_bypass_toggled',
+            'Staff OTP bypass ' . ($staffMember->otp_bypass ? 'enabled' : 'disabled') . '.', $staffMember);
+
+        return back()->with('success', 'OTP bypass ' . ($staffMember->otp_bypass ? 'enabled' : 'disabled') . '!');
+    }
+
     private function resolveExpenseHeadId($requestedExpenseHeadId, ?string $staffCategory): ?int
     {
         if ($requestedExpenseHeadId) {

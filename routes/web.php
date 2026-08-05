@@ -24,6 +24,7 @@ use App\Http\Controllers\Institute\Master\AdmissionFormController;
 use App\Http\Controllers\Institute\Master\ChannelPartnerController;
 use App\Http\Controllers\Institute\Master\StaffRoleController;
 use App\Http\Controllers\Institute\Master\StaffMemberController;
+use App\Http\Controllers\Institute\Master\OtpMonitorController;
 use App\Http\Controllers\Institute\Master\DocumentBatchController;
 use App\Http\Controllers\Institute\Master\DocumentDistributionController;
 use App\Http\Controllers\Institute\Master\CourseDocumentFeeController;
@@ -256,12 +257,14 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
 
         Route::resource('centers', CenterController::class);
         Route::post('centers/{center}/toggle',          [CenterController::class, 'toggle'])->name('centers.toggle');
+        Route::post('centers/{center}/toggle-otp-bypass', [CenterController::class, 'toggleOtpBypass'])->name('centers.toggle-otp-bypass');
         Route::get('centers/archived/list',             [CenterController::class, 'trashed'])->name('centers.trashed');
         Route::post('centers/{id}/restore',             [CenterController::class, 'restore'])->name('centers.restore');
         Route::delete('centers/{id}/force-delete',      [CenterController::class, 'forceDelete'])->name('centers.force-delete');
 
         Route::resource('channel-partners', ChannelPartnerController::class);
         Route::post('channel-partners/{channelPartner}/toggle',      [ChannelPartnerController::class, 'toggle'])->name('channel-partners.toggle');
+        Route::post('channel-partners/{channelPartner}/toggle-otp-bypass', [ChannelPartnerController::class, 'toggleOtpBypass'])->name('channel-partners.toggle-otp-bypass');
         Route::get('channel-partners/archived/list',                 [ChannelPartnerController::class, 'trashed'])->name('channel-partners.trashed');
         Route::post('channel-partners/{id}/restore',                 [ChannelPartnerController::class, 'restore'])->name('channel-partners.restore');
         Route::delete('channel-partners/{id}/force-delete',          [ChannelPartnerController::class, 'forceDelete'])->name('channel-partners.force-delete');
@@ -269,6 +272,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::resource('staff-roles', StaffRoleController::class);
         Route::resource('staff-members', StaffMemberController::class);
         Route::post('staff-members/{staffMember}/toggle',            [StaffMemberController::class, 'toggle'])->name('staff-members.toggle');
+        Route::post('staff-members/{staffMember}/toggle-otp-bypass', [StaffMemberController::class, 'toggleOtpBypass'])->name('staff-members.toggle-otp-bypass');
         Route::get('staff-members/archived/list',                    [StaffMemberController::class, 'trashed'])->name('staff-members.trashed');
         Route::post('staff-members/{id}/restore',                    [StaffMemberController::class, 'restore'])->name('staff-members.restore');
         Route::delete('staff-members/{id}/force-delete',             [StaffMemberController::class, 'forceDelete'])->name('staff-members.force-delete');
@@ -277,6 +281,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::delete('staff-members/{staffMember}/bonuses/{bonus}', [StaffMemberController::class, 'destroyBonus'])->name('staff-members.bonuses.destroy');
         Route::post('staff-members/{staffMember}/documents',         [StaffMemberController::class, 'storeDocument'])->name('staff-members.documents.store');
         Route::delete('staff-members/{staffMember}/documents/{document}', [StaffMemberController::class, 'destroyDocument'])->name('staff-members.documents.destroy');
+
+        Route::get('otp-monitor', [OtpMonitorController::class, 'index'])->name('otp-monitor.index');
 
         // Marksheet & Degree Distribution
         Route::prefix('document-batches')->name('document-batches.')->group(function () {
