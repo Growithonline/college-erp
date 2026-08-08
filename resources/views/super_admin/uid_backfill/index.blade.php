@@ -48,12 +48,21 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('super_admin.uid-backfill.run') }}">
-            @csrf
-            <button type="submit" class="btn btn-primary btn-sm">
-                <i class="bi bi-play-fill me-1"></i> Run Backfill
-            </button>
-        </form>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ route('super_admin.uid-backfill.run') }}">
+                @csrf
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-play-fill me-1"></i> Run Backfill
+                </button>
+            </form>
+            <form method="POST" action="{{ route('super_admin.uid-backfill.reset-legacy') }}"
+                  onsubmit="return confirm('Reset all 6-digit Staff/Partner/Center Login IDs so they regenerate in the current 4-digit format? You must click Run Backfill again right after.');">
+                @csrf
+                <button type="submit" class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Legacy 6-digit IDs
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 

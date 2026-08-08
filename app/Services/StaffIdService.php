@@ -116,4 +116,29 @@ class StaffIdService
             'library_staff' => LibraryStaff::whereNull('employee_id')->count(),
         ];
     }
+
+    /**
+     * One-off cleanup: Staff/Partner/Center IDs generated before the switch from
+     * 6-digit to 4-digit sequence padding are nulled out here so the next
+     * backfillMissingUids() run regenerates them in the current 4-digit format.
+     * Library Staff was always 4-digit, so it's untouched.
+     */
+    public static function resetLegacySixDigitIds(): array
+    {
+        $results = ['staff' => 0, 'partner' => 0, 'center' => 0];
+
+        $jobs = [
+            'staff'   => [StaffMember::class, 'staff_uid'],
+            'partner' => [ChannelPartner::class, 'partner_uid'],
+            'center'  => [Center::class, 'center_uid'],
+        ];
+
+        foreach ($jobs as $key => [$modelClass, $column]) {
+            $results[$key] = $modelClass::whereNotNull($column)
+                ->whereRaw("LENGTH(SUBSTRING_INDEX($column, '/', -1)) = 6")
+                ->update([$column => null]);
+        }
+
+        return $results;
+    }
 }

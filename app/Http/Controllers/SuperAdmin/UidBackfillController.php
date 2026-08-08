@@ -27,4 +27,15 @@ class UidBackfillController extends Controller
                 $result['center'] . ' centers, ' .
                 $result['library_staff'] . ' library staff updated.');
     }
+
+    public function resetLegacy()
+    {
+        $result = StaffIdService::resetLegacySixDigitIds();
+
+        return redirect()->route('super_admin.uid-backfill.index')
+            ->with('success', 'Reset ' .
+                $result['staff'] . ' staff, ' .
+                $result['partner'] . ' partners, ' .
+                $result['center'] . ' centers with a 6-digit Login ID. Click "Run Backfill" now to regenerate them in the current 4-digit format.');
+    }
 }

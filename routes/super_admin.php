@@ -48,6 +48,7 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         // Login-UID Backfill (Staff/Partner/Center/Library-Staff)
         Route::get('/uid-backfill',             [UidBackfillController::class, 'index'])->name('uid-backfill.index');
         Route::post('/uid-backfill/run',        [UidBackfillController::class, 'run'])->name('uid-backfill.run');
+        Route::post('/uid-backfill/reset-legacy', [UidBackfillController::class, 'resetLegacy'])->name('uid-backfill.reset-legacy');
 
         // Database Backup
         Route::get('/backup',                   [BackupController::class, 'index'])->name('backup.index');
