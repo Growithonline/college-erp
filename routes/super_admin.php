@@ -3,8 +3,10 @@
 use App\Http\Controllers\SuperAdmin\Auth\LoginController;
 use App\Http\Controllers\SuperAdmin\BackupController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
+use App\Http\Controllers\SuperAdmin\GroupController;
 use App\Http\Controllers\SuperAdmin\InstituteController;
 use App\Http\Controllers\SuperAdmin\SmsSettingController;
+use App\Http\Controllers\SuperAdmin\UidBackfillController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('super-admin')->name('super_admin.')->group(function () {
@@ -29,6 +31,22 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::get('/institutes/{institute}/export-data',          [InstituteController::class, 'exportData'])->name('institutes.export-data');
         Route::get('/institutes/{institute}/consent-pdf',           [InstituteController::class, 'consentPdf'])->name('institutes.consent-pdf');
         Route::post('/institutes/{institute}/restore-data',        [InstituteController::class, 'restoreData'])->name('institutes.restore-data');
+        Route::post('/institutes/{institute}/assign-group',        [InstituteController::class, 'assignGroup'])->name('institutes.assign-group');
+
+        // Groups / Trusts
+        Route::get('/groups',                                     [GroupController::class, 'index'])->name('groups.index');
+        Route::get('/groups/create',                               [GroupController::class, 'create'])->name('groups.create');
+        Route::post('/groups',                                     [GroupController::class, 'store'])->name('groups.store');
+        Route::get('/groups/{group}',                              [GroupController::class, 'show'])->name('groups.show');
+        Route::patch('/groups/{group}/toggle',                     [GroupController::class, 'toggle'])->name('groups.toggle');
+        Route::post('/groups/{group}/institutes',                  [GroupController::class, 'assignInstitute'])->name('groups.institutes.store');
+        Route::post('/groups/{group}/admins',                      [GroupController::class, 'storeAdmin'])->name('groups.admins.store');
+        Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-status', [GroupController::class, 'toggleAdminStatus'])->name('groups.admins.toggle-status');
+        Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-reset-permission', [GroupController::class, 'toggleResetPermission'])->name('groups.admins.toggle-reset-permission');
+
+        // Login-UID Backfill (Staff/Partner/Center/Library-Staff)
+        Route::get('/uid-backfill',             [UidBackfillController::class, 'index'])->name('uid-backfill.index');
+        Route::post('/uid-backfill/run',        [UidBackfillController::class, 'run'])->name('uid-backfill.run');
 
         // Database Backup
         Route::get('/backup',                   [BackupController::class, 'index'])->name('backup.index');

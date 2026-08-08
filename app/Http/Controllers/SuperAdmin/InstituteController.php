@@ -4,11 +4,13 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInstituteRequest;
+use App\Models\Group;
 use App\Models\Institute;
 use App\Mail\InstituteCredentialMail;
 use App\Models\SmsLog;
 use App\Models\User;
 use App\Services\AccountingSetupService;
+use App\Services\AuditLogService;
 use App\Services\SmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -30,8 +32,9 @@ class InstituteController extends Controller
         $institute->loadCount('students');
         $institute->load(['policyAcceptances' => function ($query) {
             $query->latest('accepted_at')->with('acceptedBy:id,name,email');
-        }]);
-        return view('super_admin.institutes.show', compact('institute'));
+        }, 'group']);
+        $groups = Group::where('status', true)->orderBy('name')->get(['id', 'name']);
+        return view('super_admin.institutes.show', compact('institute', 'groups'));
     }
 
     public function consentPdf(Institute $institute)
@@ -63,6 +66,15 @@ class InstituteController extends Controller
         return back()->with('success', 'Institute status updated.');
     }
 
+    public function assignGroup(Request $request, Institute $institute)
+    {
+        $request->validate(['group_id' => 'nullable|exists:groups,id']);
+
+        $institute->update(['group_id' => $request->group_id]);
+
+        return back()->with('success', $request->group_id ? 'Institute assigned to group.' : 'Institute removed from group.');
+    }
+
     public function updateBranding(Request $request, Institute $institute)
     {
         $request->validate([
@@ -92,6 +104,10 @@ class InstituteController extends Controller
             ->firstOrFail();
 
         $user->update(['password' => Hash::make($request->password)]);
+
+        AuditLogService::log($institute->id, 'institute', 'owner_password_reset', 'Institute-owner password reset by Super Admin.', $user, [
+            'notify_email' => $request->boolean('notify_email'),
+        ]);
 
         if ($request->boolean('notify_email')) {
             Mail::mailer('smtp')->raw(

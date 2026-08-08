@@ -35,7 +35,7 @@ class AuditLogService
 
     private static function resolveActor(): array
     {
-        foreach (['staff', 'center', 'partner', 'web'] as $guard) {
+        foreach (['super_admin', 'group_admin', 'staff', 'center', 'partner', 'web'] as $guard) {
             if (auth()->guard($guard)->check()) {
                 return [$guard, auth()->guard($guard)->id()];
             }

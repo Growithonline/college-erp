@@ -37,6 +37,10 @@ return [
             'driver'   => 'session',
             'provider' => 'students',
         ],
+        'group_admin' => [
+            'driver'   => 'session',
+            'provider' => 'group_admins',
+        ],
     ],
 
     'providers' => [
@@ -68,6 +72,10 @@ return [
         'students' => [
             'driver' => 'eloquent',
             'model'  => App\Models\Student::class,
+        ],
+        'group_admins' => [
+            'driver' => 'eloquent',
+            'model'  => App\Models\GroupAdmin::class,
         ],
     ],
 

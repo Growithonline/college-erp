@@ -14,6 +14,13 @@
             <span class="badge bg-secondary ms-1">{{ $trashedCount }}</span>
         </a>
         @endif
+        <form method="POST" action="{{ route('master.staff-members.notify-login-id') }}" class="d-inline"
+              onsubmit="return confirm('Email every active staff member their new Login ID?');">
+            @csrf
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-envelope-check me-1"></i> Notify Login ID
+            </button>
+        </form>
         <a href="{{ route('master.staff-members.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg me-1"></i> Add Staff
         </a>
@@ -77,6 +84,7 @@
                         <td>
                             <a href="{{ route('master.staff-members.show', $member) }}" class="fw-semibold text-decoration-none">{{ $member->name }}</a>
                             <div><small class="text-muted">{{ $member->email }}</small></div>
+                            <div><small class="text-muted" style="font-family:monospace;">{{ $member->staff_uid ?? '—' }}</small></div>
                         </td>
                         <td>
                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle">

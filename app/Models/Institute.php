@@ -11,6 +11,7 @@ class Institute extends Model
 
     protected $fillable = [
         'institute_uid',
+        'group_id',
         'name',
         'short_name',
         'mobile',
@@ -57,6 +58,11 @@ class Institute extends Model
     public function users()
     {
         return $this->hasMany(User::class);
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(Group::class);
     }
 
     public function academicSessions()

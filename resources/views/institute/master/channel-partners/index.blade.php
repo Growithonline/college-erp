@@ -15,6 +15,13 @@
             <span class="badge bg-secondary ms-1">{{ $trashedCount }}</span>
         </a>
         @endif
+        <form method="POST" action="{{ route('master.channel-partners.notify-login-id') }}" class="d-inline"
+              onsubmit="return confirm('Email every active channel partner their new Login ID?');">
+            @csrf
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-envelope-check me-1"></i> Notify Login ID
+            </button>
+        </form>
         <a href="{{ route('master.channel-partners.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg me-1"></i> Add Partner
         </a>
@@ -55,6 +62,7 @@
                         <td>
                             <div class="fw-semibold">{{ $partner->name }}</div>
                             <small class="text-muted">{{ $partner->email }}</small>
+                            <div><small class="text-muted" style="font-family:monospace;">{{ $partner->partner_uid ?? '—' }}</small></div>
                         </td>
                         <td>
                             <div class="small">{{ $partner->mobile }}</div>

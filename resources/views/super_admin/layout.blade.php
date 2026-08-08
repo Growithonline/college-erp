@@ -61,8 +61,14 @@
         <a href="{{ route('super_admin.institutes.create') }}" class="{{ request()->routeIs('super_admin.institutes.create') ? 'active' : '' }}">
             <i class="bi bi-plus-circle"></i> Add Institute
         </a>
+        <a href="{{ route('super_admin.groups.index') }}" class="{{ request()->routeIs('super_admin.groups.*') ? 'active' : '' }}">
+            <i class="bi bi-diagram-3"></i> Groups / Trusts
+        </a>
         <a href="{{ route('super_admin.sms.index') }}" class="{{ request()->routeIs('super_admin.sms.*') ? 'active' : '' }}">
             <i class="bi bi-phone"></i> SMS Management
+        </a>
+        <a href="{{ route('super_admin.uid-backfill.index') }}" class="{{ request()->routeIs('super_admin.uid-backfill.*') ? 'active' : '' }}">
+            <i class="bi bi-upc-scan"></i> Login-ID Backfill
         </a>
         <a href="{{ route('super_admin.backup.index') }}" class="{{ request()->routeIs('super_admin.backup.*') ? 'active' : '' }}">
             <i class="bi bi-database-down"></i> Database Backup

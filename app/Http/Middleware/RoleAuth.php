@@ -28,6 +28,12 @@ class RoleAuth
             return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'disabled']);
         }
 
+        // Deactivating the parent Group must immediately cut off access for all its Group Admins too
+        if ($guard === 'group_admin' && !$user->group?->status) {
+            Auth::guard($guard)->logout();
+            return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'disabled']);
+        }
+
         // Share guard user with all views
         view()->share('authUser',  $user);
         view()->share('authGuard', $guard);

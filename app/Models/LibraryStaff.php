@@ -168,14 +168,6 @@ class LibraryStaff extends Authenticatable
 
     public static function generateEmployeeId(int $instituteId): string
     {
-        $year = date('Y');
-        $last = static::where('institute_id', $instituteId)
-            ->where('employee_id', 'like', "LIB-{$year}-%")
-            ->orderByDesc('id')
-            ->value('employee_id');
-
-        $num = $last ? ((int) substr($last, -4)) + 1 : 1;
-
-        return 'LIB-' . $year . '-' . str_pad($num, 4, '0', STR_PAD_LEFT);
+        return \App\Services\StaffIdService::generateLibraryStaffId($instituteId, (int) date('Y'));
     }
 }

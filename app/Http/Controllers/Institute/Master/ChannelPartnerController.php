@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Services\AuditLogService;
 use App\Services\InstituteMailer;
+use App\Services\StaffIdService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -51,6 +52,44 @@ class ChannelPartnerController extends Controller
         return view('institute.master.channel-partners.index', compact('partners', 'trashedCount'));
     }
 
+    public function notifyLoginIds()
+    {
+        $instituteId = $this->instituteId();
+        $institute = \App\Models\Institute::find($instituteId);
+
+        $partners = ChannelPartner::where('institute_id', $instituteId)
+            ->where('status', true)
+            ->whereNotNull('partner_uid')
+            ->get();
+
+        $sent = 0;
+        $failed = 0;
+
+        foreach ($partners as $partner) {
+            try {
+                InstituteMailer::send($instituteId, $partner->email, new \App\Mail\LoginIdNotificationMail(
+                    institute: $institute,
+                    recipientName: $partner->name,
+                    portalLabel: 'Channel Partner Portal',
+                    loginIdLabel: 'Partner ID',
+                    loginId: $partner->partner_uid,
+                    loginUrl: route('partner.login'),
+                ));
+                $sent++;
+            } catch (Throwable $e) {
+                \Log::warning('Login-ID notification failed', ['channel_partner_id' => $partner->id, 'error' => $e->getMessage()]);
+                $failed++;
+            }
+        }
+
+        $message = "Login ID emailed to {$sent} channel partner(s).";
+        if ($failed > 0) {
+            $message .= " {$failed} email(s) failed to send — check logs.";
+        }
+
+        return back()->with($failed > 0 ? 'error' : 'success', $message);
+    }
+
     public function create()
     {
         return view('institute.master.channel-partners.create', $this->formData());
@@ -61,7 +100,7 @@ class ChannelPartnerController extends Controller
         $request->validate([
             'name'                => 'required|string|max:100',
             'mobile'              => 'required|digits:10',
-            'email'               => ['required', 'email', Rule::unique('channel_partners', 'email')->whereNull('deleted_at')],
+            'email'               => ['required', 'email', Rule::unique('channel_partners', 'email')->where('institute_id', $this->instituteId())->whereNull('deleted_at')],
             'address'             => 'nullable|string|max:255',
             'city'                => 'nullable|string|max:50',
             'state'               => 'nullable|string|max:50',
@@ -78,6 +117,7 @@ class ChannelPartnerController extends Controller
 
         $partner = ChannelPartner::create([
             'institute_id'         => $this->instituteId(),
+            'partner_uid'          => StaffIdService::generatePartnerId($this->instituteId(), (int) date('Y')),
             'name'                 => strtoupper($request->name),
             'mobile'               => $request->mobile,
             'email'                => $request->email,

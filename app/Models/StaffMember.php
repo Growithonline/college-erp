@@ -9,7 +9,7 @@ class StaffMember extends Authenticatable
 {
     use SoftDeletes;
     protected $fillable = [
-        'institute_id', 'staff_role_id', 'name', 'mobile', 'email',
+        'institute_id', 'staff_uid', 'staff_role_id', 'name', 'mobile', 'email',
         'password', 'photo', 'address', 'joining_date', 'salary', 'status', 'otp_bypass',
         'staff_category', 'payroll_type', 'daily_wage', 'monthly_salary',
         'salary_expense_head_id', 'leave_policy_group', 'bank_account_number',

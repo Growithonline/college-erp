@@ -19,7 +19,7 @@ class Center extends Authenticatable
     ];
 
     protected $fillable = [
-        'institute_id', 'name', 'code', 'mobile', 'email',
+        'institute_id', 'center_uid', 'name', 'code', 'mobile', 'email',
         'password', 'address', 'city', 'state', 'status', 'otp_bypass',
         // Feature flags
         'can_add_admission', 'can_view_students', 'can_collect_fee',

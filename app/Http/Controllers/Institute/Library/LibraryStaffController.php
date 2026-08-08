@@ -36,6 +36,44 @@ class LibraryStaffController extends Controller
         return view('institute.library.staff.index', compact('staff'));
     }
 
+    public function notifyLoginIds()
+    {
+        $instituteId = $this->instituteId();
+        $institute = \App\Models\Institute::find($instituteId);
+
+        $members = LibraryStaff::where('institute_id', $instituteId)
+            ->where('status', true)
+            ->whereNotNull('employee_id')
+            ->get();
+
+        $sent = 0;
+        $failed = 0;
+
+        foreach ($members as $member) {
+            try {
+                InstituteMailer::send($instituteId, $member->email, new \App\Mail\LoginIdNotificationMail(
+                    institute: $institute,
+                    recipientName: $member->name,
+                    portalLabel: 'Library Staff Portal',
+                    loginIdLabel: 'Employee ID',
+                    loginId: $member->employee_id,
+                    loginUrl: route('library_staff.login'),
+                ));
+                $sent++;
+            } catch (Throwable $e) {
+                \Log::warning('Login-ID notification failed', ['library_staff_id' => $member->id, 'error' => $e->getMessage()]);
+                $failed++;
+            }
+        }
+
+        $message = "Login ID emailed to {$sent} library staff member(s).";
+        if ($failed > 0) {
+            $message .= " {$failed} email(s) failed to send — check logs.";
+        }
+
+        return back()->with($failed > 0 ? 'error' : 'success', $message);
+    }
+
     public function create()
     {
         $staffMembers = StaffMember::where('institute_id', $this->instituteId())
@@ -52,7 +90,7 @@ class LibraryStaffController extends Controller
 
         $data = $request->validate([
             'name'             => 'required|string|max:100',
-            'email'            => 'required|email|max:150|unique:library_staff,email',
+            'email'            => ['required', 'email', 'max:150', Rule::unique('library_staff', 'email')->where('institute_id', $instituteId)],
             'phone'            => 'required|string|max:20|unique:library_staff,phone',
             'photo'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'gender'           => 'nullable|in:male,female,other',
@@ -150,7 +188,7 @@ class LibraryStaffController extends Controller
 
         $data = $request->validate([
             'name'             => 'required|string|max:100',
-            'email'            => ['required', 'email', 'max:150', Rule::unique('library_staff', 'email')->ignore($libraryStaff->id)],
+            'email'            => ['required', 'email', 'max:150', Rule::unique('library_staff', 'email')->where('institute_id', $instituteId)->ignore($libraryStaff->id)],
             'phone'            => ['required', 'string', 'max:20', Rule::unique('library_staff', 'phone')->ignore($libraryStaff->id)],
             'photo'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'remove_photo'     => 'nullable|boolean',

@@ -19,6 +19,7 @@ use App\Mail\StaffCredentialsMail;
 use App\Services\AccountingSetupService;
 use App\Services\InstituteMailer;
 use App\Services\AuditLogService;
+use App\Services\StaffIdService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -103,6 +104,44 @@ class StaffMemberController extends Controller
         return view('institute.master.staff.members.index', compact('staff', 'hasCoursePermTable', 'hasOverridesTable', 'trashedCount'));
     }
 
+    public function notifyLoginIds()
+    {
+        $instituteId = $this->instituteId();
+        $institute = \App\Models\Institute::find($instituteId);
+
+        $members = StaffMember::where('institute_id', $instituteId)
+            ->where('status', true)
+            ->whereNotNull('staff_uid')
+            ->get();
+
+        $sent = 0;
+        $failed = 0;
+
+        foreach ($members as $member) {
+            try {
+                InstituteMailer::send($instituteId, $member->email, new \App\Mail\LoginIdNotificationMail(
+                    institute: $institute,
+                    recipientName: $member->name,
+                    portalLabel: 'Staff Portal',
+                    loginIdLabel: 'Staff ID',
+                    loginId: $member->staff_uid,
+                    loginUrl: route('staff.login'),
+                ));
+                $sent++;
+            } catch (Throwable $e) {
+                \Log::warning('Login-ID notification failed', ['staff_member_id' => $member->id, 'error' => $e->getMessage()]);
+                $failed++;
+            }
+        }
+
+        $message = "Login ID emailed to {$sent} staff member(s).";
+        if ($failed > 0) {
+            $message .= " {$failed} email(s) failed to send — check logs.";
+        }
+
+        return back()->with($failed > 0 ? 'error' : 'success', $message);
+    }
+
     public function create()
     {
         AccountingSetupService::bootstrapInstitute($this->instituteId());
@@ -150,7 +189,7 @@ class StaffMemberController extends Controller
             'staff_role_id' => ['required', Rule::exists('staff_roles', 'id')->where('institute_id', $this->instituteId())],
             'name'          => 'required|string|max:100',
             'mobile'        => 'required|digits:10',
-            'email'         => ['required', 'email', Rule::unique('staff_members', 'email')->whereNull('deleted_at')],
+            'email'         => ['required', 'email', Rule::unique('staff_members', 'email')->where('institute_id', $this->instituteId())->whereNull('deleted_at')],
             'joining_date'  => 'nullable|date',
             'salary'        => 'nullable|numeric|min:0',
             'staff_category' => 'required|in:Teaching,Office,Non-Teaching,Guest',
@@ -231,6 +270,7 @@ class StaffMemberController extends Controller
             $staffMember = DB::transaction(function () use ($request, $expenseHeadId, $monthlySalary, $dailyWage, $plainPassword) {
                 $staffMember = StaffMember::create([
                     'institute_id'  => $this->instituteId(),
+                    'staff_uid'     => StaffIdService::generateStaffId($this->instituteId(), (int) date('Y')),
                     'staff_role_id' => $request->staff_role_id,
                     'name'          => strtoupper($request->name),
                     'mobile'        => $request->mobile,

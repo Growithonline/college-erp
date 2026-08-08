@@ -17,7 +17,7 @@ class ChannelPartner extends Authenticatable
     ];
 
     protected $fillable = [
-        'institute_id', 'name', 'mobile', 'email', 'password',
+        'institute_id', 'partner_uid', 'name', 'mobile', 'email', 'password',
         'address', 'city', 'state', 'commission_percent', 'status', 'otp_bypass',
         // Feature flags
         'can_add_admission', 'can_view_students', 'can_collect_fee',

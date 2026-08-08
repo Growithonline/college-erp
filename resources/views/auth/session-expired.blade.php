@@ -7,6 +7,7 @@
         'student'       => ['route' => 'student.login',       'name' => 'Student Portal'],
         'library_staff' => ['route' => 'library_staff.login', 'name' => 'Library Staff Portal'],
         'super_admin'   => ['route' => 'super_admin.login',   'name' => 'Super Admin'],
+        'group_admin'   => ['route' => 'group_admin.login',   'name' => 'Group Admin Portal'],
     ];
 
     $reasons = [

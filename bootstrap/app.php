@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Redirect guests to session-expired page (shows portal-specific message & login button)
         $middleware->redirectGuestsTo(function ($request) {
             if ($request->is('super-admin/*')) return route('session.expired', ['guard' => 'super_admin', 'reason' => 'unauthenticated']);
+            if ($request->is('group-admin/*')) return route('session.expired', ['guard' => 'group_admin', 'reason' => 'unauthenticated']);
             if ($request->is('center/*'))      return route('session.expired', ['guard' => 'center',      'reason' => 'unauthenticated']);
             if ($request->is('staff/*'))       return route('session.expired', ['guard' => 'staff',       'reason' => 'unauthenticated']);
             if ($request->is('partner/*'))     return route('session.expired', ['guard' => 'partner',     'reason' => 'unauthenticated']);

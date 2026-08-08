@@ -13,6 +13,7 @@ use App\Models\Course;
 use App\Models\CourseType;
 use App\Models\FeeType;
 use App\Services\AuditLogService;
+use App\Services\StaffIdService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -51,6 +52,44 @@ class CenterController extends Controller
         return view('institute.master.centers.index', compact('centers', 'trashedCount'));
     }
 
+    public function notifyLoginIds()
+    {
+        $instituteId = $this->instituteId();
+        $institute = \App\Models\Institute::find($instituteId);
+
+        $centers = Center::where('institute_id', $instituteId)
+            ->where('status', true)
+            ->whereNotNull('center_uid')
+            ->get();
+
+        $sent = 0;
+        $failed = 0;
+
+        foreach ($centers as $center) {
+            try {
+                InstituteMailer::send($instituteId, $center->email, new \App\Mail\LoginIdNotificationMail(
+                    institute: $institute,
+                    recipientName: $center->name,
+                    portalLabel: 'Center Portal',
+                    loginIdLabel: 'Center ID',
+                    loginId: $center->center_uid,
+                    loginUrl: route('center.login'),
+                ));
+                $sent++;
+            } catch (Throwable $e) {
+                \Log::warning('Login-ID notification failed', ['center_id' => $center->id, 'error' => $e->getMessage()]);
+                $failed++;
+            }
+        }
+
+        $message = "Login ID emailed to {$sent} center(s).";
+        if ($failed > 0) {
+            $message .= " {$failed} email(s) failed to send — check logs.";
+        }
+
+        return back()->with($failed > 0 ? 'error' : 'success', $message);
+    }
+
     public function create()
     {
         return view('institute.master.centers.create', $this->formData());
@@ -62,7 +101,7 @@ class CenterController extends Controller
             'name'                => 'required|string|max:100',
             'code'                => 'nullable|string|max:20',
             'mobile'              => 'nullable|digits:10',
-            'email'               => ['required', 'email', Rule::unique('centers', 'email')->whereNull('deleted_at')],
+            'email'               => ['required', 'email', Rule::unique('centers', 'email')->where('institute_id', $this->instituteId())->whereNull('deleted_at')],
             'city'                => 'nullable|string|max:50',
             'address'             => 'nullable|string|max:255',
             'state'               => 'nullable|string|max:50',
@@ -79,6 +118,7 @@ class CenterController extends Controller
 
             $center = Center::create([
                 'institute_id'         => $this->instituteId(),
+                'center_uid'           => StaffIdService::generateCenterId($this->instituteId(), (int) date('Y')),
                 'name'                 => strtoupper($request->name),
                 'code'                 => $request->code ? strtoupper($request->code) : null,
                 'mobile'               => $request->mobile,

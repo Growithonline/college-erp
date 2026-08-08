@@ -15,9 +15,18 @@
         <h4 class="mb-0 fw-bold"><i class="bi bi-person-workspace me-2 text-primary"></i>Library Staff</h4>
         <small class="text-muted">{{ $staff->count() }} member(s) registered</small>
     </div>
-    <a href="{{ route('library.staff.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i> Add Library Staff
-    </a>
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ route('library.staff.notify-login-id') }}" class="d-inline"
+              onsubmit="return confirm('Email every active library staff member their new Login ID?');">
+            @csrf
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-envelope-check me-1"></i> Notify Login ID
+            </button>
+        </form>
+        <a href="{{ route('library.staff.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Library Staff
+        </a>
+    </div>
 </div>
 
 @if($staff->isEmpty())

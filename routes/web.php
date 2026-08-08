@@ -257,6 +257,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::delete('fee-structure/subject-fees/{subjectFeeRule}',  [SubjectFeeRuleController::class, 'destroy'])->name('fee-structure.subject-fees.destroy');
 
         Route::resource('centers', CenterController::class);
+        Route::post('centers/notify-login-id',          [CenterController::class, 'notifyLoginIds'])->name('centers.notify-login-id');
         Route::post('centers/{center}/toggle',          [CenterController::class, 'toggle'])->name('centers.toggle');
         Route::post('centers/{center}/toggle-otp-bypass', [CenterController::class, 'toggleOtpBypass'])->name('centers.toggle-otp-bypass');
         Route::get('centers/archived/list',             [CenterController::class, 'trashed'])->name('centers.trashed');
@@ -264,6 +265,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::delete('centers/{id}/force-delete',      [CenterController::class, 'forceDelete'])->name('centers.force-delete');
 
         Route::resource('channel-partners', ChannelPartnerController::class);
+        Route::post('channel-partners/notify-login-id',               [ChannelPartnerController::class, 'notifyLoginIds'])->name('channel-partners.notify-login-id');
         Route::post('channel-partners/{channelPartner}/toggle',      [ChannelPartnerController::class, 'toggle'])->name('channel-partners.toggle');
         Route::post('channel-partners/{channelPartner}/toggle-otp-bypass', [ChannelPartnerController::class, 'toggleOtpBypass'])->name('channel-partners.toggle-otp-bypass');
         Route::get('channel-partners/archived/list',                 [ChannelPartnerController::class, 'trashed'])->name('channel-partners.trashed');
@@ -272,6 +274,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
 
         Route::resource('staff-roles', StaffRoleController::class);
         Route::resource('staff-members', StaffMemberController::class);
+        Route::post('staff-members/notify-login-id',                 [StaffMemberController::class, 'notifyLoginIds'])->name('staff-members.notify-login-id');
         Route::post('staff-members/{staffMember}/toggle',            [StaffMemberController::class, 'toggle'])->name('staff-members.toggle');
         Route::post('staff-members/{staffMember}/toggle-otp-bypass', [StaffMemberController::class, 'toggleOtpBypass'])->name('staff-members.toggle-otp-bypass');
         Route::get('staff-members/archived/list',                    [StaffMemberController::class, 'trashed'])->name('staff-members.trashed');
@@ -380,6 +383,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/',                           [LibraryStaffController::class, 'index'])->name('index');
         Route::get('/create',                     [LibraryStaffController::class, 'create'])->name('create');
         Route::post('/',                          [LibraryStaffController::class, 'store'])->name('store');
+        Route::post('/notify-login-id',            [LibraryStaffController::class, 'notifyLoginIds'])->name('notify-login-id');
         Route::get('/login-logs',                 [LibraryStaffController::class, 'loginLogs'])->name('login-logs');
         Route::get('/activity-logs',              [LibraryStaffController::class, 'activityLogs'])->name('activity-logs');
         Route::get('/{libraryStaff}/edit',        [LibraryStaffController::class, 'edit'])->name('edit');
@@ -795,6 +799,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
 });
 
 require __DIR__.'/super_admin.php';
+require __DIR__.'/group_admin.php';
 
 // ── LIBRARY routes — accessible to both institute admin AND library staff ──
 Route::middleware(['lib.dual.auth'])->group(function () {

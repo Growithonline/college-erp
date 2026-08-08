@@ -407,6 +407,32 @@
             </div>
         </div>
     </div>
+
+    {{-- Group / Trust --}}
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pb-0 pt-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-diagram-3 text-primary me-2"></i>Group / Trust</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">
+                    Current: <strong>{{ $institute->group->name ?? 'Standalone (no group)' }}</strong>
+                </p>
+                <form method="POST" action="{{ route('super_admin.institutes.assign-group', $institute->id) }}" class="d-flex gap-2">
+                    @csrf
+                    <select name="group_id" class="form-select form-select-sm">
+                        <option value="">Standalone (no group)</option>
+                        @foreach($groups as $g)
+                            <option value="{{ $g->id }}" @selected($institute->group_id === $g->id)>{{ $g->name }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                        <i class="bi bi-check2 me-1"></i> Save
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Data Backup / Restore --}}
