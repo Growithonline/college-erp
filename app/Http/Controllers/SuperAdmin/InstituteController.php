@@ -4,13 +4,19 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInstituteRequest;
+use App\Mail\InstituteCredentialMail;
+use App\Mail\LoginIdNotificationMail;
+use App\Models\Center;
+use App\Models\ChannelPartner;
 use App\Models\Group;
 use App\Models\Institute;
-use App\Mail\InstituteCredentialMail;
+use App\Models\LibraryStaff;
 use App\Models\SmsLog;
+use App\Models\StaffMember;
 use App\Models\User;
 use App\Services\AccountingSetupService;
 use App\Services\AuditLogService;
+use App\Services\InstituteMailer;
 use App\Services\SmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -73,6 +79,56 @@ class InstituteController extends Controller
         $institute->update(['group_id' => $request->group_id]);
 
         return back()->with('success', $request->group_id ? 'Institute assigned to group.' : 'Institute removed from group.');
+    }
+
+    /**
+     * Emails every active Staff/Channel-Partner/Center/Library-Staff member of this
+     * institute their new Login ID — same underlying mail as the per-institute
+     * "Notify Login ID" buttons, triggerable centrally when the platform operator
+     * doesn't hold the institute-owner's own login.
+     */
+    public function notifyAllLoginIds(Institute $institute)
+    {
+        $jobs = [
+            'staff'         => [StaffMember::class, 'staff_uid', 'Staff Portal', 'Staff ID', 'staff.login'],
+            'partner'       => [ChannelPartner::class, 'partner_uid', 'Channel Partner Portal', 'Partner ID', 'partner.login'],
+            'center'        => [Center::class, 'center_uid', 'Center Portal', 'Center ID', 'center.login'],
+            'library_staff' => [LibraryStaff::class, 'employee_id', 'Library Staff Portal', 'Employee ID', 'library_staff.login'],
+        ];
+
+        $sent = ['staff' => 0, 'partner' => 0, 'center' => 0, 'library_staff' => 0];
+        $failed = 0;
+
+        foreach ($jobs as $key => [$modelClass, $uidColumn, $portalLabel, $idLabel, $routeName]) {
+            $records = $modelClass::where('institute_id', $institute->id)
+                ->where('status', true)
+                ->whereNotNull($uidColumn)
+                ->get();
+
+            foreach ($records as $record) {
+                try {
+                    InstituteMailer::send($institute->id, $record->email, new LoginIdNotificationMail(
+                        institute: $institute,
+                        recipientName: $record->name,
+                        portalLabel: $portalLabel,
+                        loginIdLabel: $idLabel,
+                        loginId: $record->{$uidColumn},
+                        loginUrl: route($routeName),
+                    ));
+                    $sent[$key]++;
+                } catch (\Throwable $e) {
+                    \Log::warning('Login-ID notification failed', ['model' => $modelClass, 'id' => $record->id, 'error' => $e->getMessage()]);
+                    $failed++;
+                }
+            }
+        }
+
+        $message = "Login ID emailed to {$sent['staff']} staff, {$sent['partner']} partners, {$sent['center']} centers, {$sent['library_staff']} library staff.";
+        if ($failed > 0) {
+            $message .= " {$failed} email(s) failed to send — check logs.";
+        }
+
+        return back()->with($failed > 0 ? 'error' : 'success', $message);
     }
 
     public function updateBranding(Request $request, Institute $institute)

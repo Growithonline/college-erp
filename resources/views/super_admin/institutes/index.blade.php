@@ -113,6 +113,13 @@
                                    class="btn btn-sm btn-outline-primary py-0 px-2" title="View">
                                     <i class="bi bi-eye" style="font-size:11px;"></i>
                                 </a>
+                                <form method="POST" action="{{ route('super_admin.institutes.notify-login-ids', $inst->id) }}" class="d-inline"
+                                      onsubmit="return confirm('Email every active Staff/Partner/Center/Library-Staff member of {{ addslashes($inst->name) }} their Login ID?');">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-info py-0 px-2" title="Notify Login ID (all roles)">
+                                        <i class="bi bi-envelope-check" style="font-size:11px;"></i>
+                                    </button>
+                                </form>
                                 <form method="POST" action="{{ route('super_admin.institutes.toggle', $inst->id) }}" class="d-inline">
                                     @csrf @method('PATCH')
                                     <button type="submit"

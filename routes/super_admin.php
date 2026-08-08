@@ -32,6 +32,7 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::get('/institutes/{institute}/consent-pdf',           [InstituteController::class, 'consentPdf'])->name('institutes.consent-pdf');
         Route::post('/institutes/{institute}/restore-data',        [InstituteController::class, 'restoreData'])->name('institutes.restore-data');
         Route::post('/institutes/{institute}/assign-group',        [InstituteController::class, 'assignGroup'])->name('institutes.assign-group');
+        Route::post('/institutes/{institute}/notify-login-ids',    [InstituteController::class, 'notifyAllLoginIds'])->name('institutes.notify-login-ids');
 
         // Groups / Trusts
         Route::get('/groups',                                     [GroupController::class, 'index'])->name('groups.index');

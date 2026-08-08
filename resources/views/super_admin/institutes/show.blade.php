@@ -27,6 +27,22 @@
     <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
     @endif
     <div class="ms-auto d-flex gap-2">
+        <form id="form-notify-login-ids" method="POST" action="{{ route('super_admin.institutes.notify-login-ids', $institute->id) }}">
+            @csrf
+            <button type="button" class="btn btn-sm btn-outline-info"
+                onclick="openConfirm({
+                    formId:  'form-notify-login-ids',
+                    icon:    '✉️',
+                    iconBg:  '#eff6ff',
+                    iconColor: '#3b82f6',
+                    title:   'Notify Login IDs?',
+                    message: 'Every active Staff, Channel Partner, Center, and Library Staff member of this institute will be emailed their Login ID.',
+                    confirmText: 'Yes, Notify All',
+                    confirmClass: 'btn-primary'
+                })">
+                <i class="bi bi-envelope-check me-1"></i> Notify Login IDs
+            </button>
+        </form>
         <form id="form-resend" method="POST" action="{{ route('super_admin.institutes.resend-credentials', $institute->id) }}">
             @csrf
             <button type="button" class="btn btn-sm btn-outline-primary"
