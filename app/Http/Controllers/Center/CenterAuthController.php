@@ -80,20 +80,20 @@ class CenterAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+            'center_uid' => 'required|string',
+            'password'   => 'required|string',
         ]);
 
-        $center = Center::where('email', $request->email)->first();
+        $center = Center::where('center_uid', $request->center_uid)->first();
 
         if (!$center || !Hash::check($request->password, $center->password)) {
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => 'These credentials do not match our records.']);
+                ->withInput($request->only('center_uid'))
+                ->withErrors(['center_uid' => 'These credentials do not match our records.']);
         }
 
         if (!$center->status) {
-            return back()->withErrors(['email' => 'Your account has been disabled.']);
+            return back()->withErrors(['center_uid' => 'Your account has been disabled.']);
         }
 
         if ($center->otp_bypass) {
@@ -107,8 +107,8 @@ class CenterAuthController extends Controller
         } catch (Throwable $e) {
             report($e);
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => 'Failed to send OTP email. Please try again.']);
+                ->withInput($request->only('center_uid'))
+                ->withErrors(['center_uid' => 'Failed to send OTP email. Please try again.']);
         }
 
         session([self::OTP_SESSION_KEY => $center->id]);

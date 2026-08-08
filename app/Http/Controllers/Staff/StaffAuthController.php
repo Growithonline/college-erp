@@ -45,9 +45,9 @@ class StaffAuthController extends Controller
         return "staff_login_otp_attempts:{$staffId}";
     }
 
-    private function loginThrottleKey(string $email): string
+    private function loginThrottleKey(string $staffUid): string
     {
-        return 'staff_login_attempts:' . Str::lower($email);
+        return 'staff_login_attempts:' . Str::lower($staffUid);
     }
 
     private function pendingStaff(): ?StaffMember
@@ -97,29 +97,29 @@ class StaffAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+            'staff_uid' => 'required|string',
+            'password'  => 'required|string',
         ]);
 
-        $throttleKey = $this->loginThrottleKey($request->email);
+        $throttleKey = $this->loginThrottleKey($request->staff_uid);
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $minutes = (int) ceil(RateLimiter::availableIn($throttleKey) / 60);
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => "Too many failed attempts. Please try again in {$minutes} minute(s)."]);
+                ->withInput($request->only('staff_uid'))
+                ->withErrors(['staff_uid' => "Too many failed attempts. Please try again in {$minutes} minute(s)."]);
         }
 
-        $staff = StaffMember::with('role', 'institute')->where('email', $request->email)->first();
+        $staff = StaffMember::with('role', 'institute')->where('staff_uid', $request->staff_uid)->first();
 
         if (!$staff || !Hash::check($request->password, $staff->password)) {
             RateLimiter::hit($throttleKey, 900);
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => 'These credentials do not match our records.']);
+                ->withInput($request->only('staff_uid'))
+                ->withErrors(['staff_uid' => 'These credentials do not match our records.']);
         }
 
         if (!$staff->status) {
-            return back()->withErrors(['email' => 'Your account has been disabled.']);
+            return back()->withErrors(['staff_uid' => 'Your account has been disabled.']);
         }
 
         RateLimiter::clear($throttleKey);
@@ -136,8 +136,8 @@ class StaffAuthController extends Controller
             report($e);
 
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => 'Failed to send OTP email. Please try again.']);
+                ->withInput($request->only('staff_uid'))
+                ->withErrors(['staff_uid' => 'Failed to send OTP email. Please try again.']);
         }
 
         session([self::OTP_SESSION_KEY => $staff->id]);

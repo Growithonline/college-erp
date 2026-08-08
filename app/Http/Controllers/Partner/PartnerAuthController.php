@@ -74,20 +74,20 @@ class PartnerAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+            'partner_uid' => 'required|string',
+            'password'    => 'required|string',
         ]);
 
-        $partner = ChannelPartner::where('email', $request->email)->first();
+        $partner = ChannelPartner::where('partner_uid', $request->partner_uid)->first();
 
         if (!$partner || !Hash::check($request->password, $partner->password)) {
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => 'These credentials do not match our records.']);
+                ->withInput($request->only('partner_uid'))
+                ->withErrors(['partner_uid' => 'These credentials do not match our records.']);
         }
 
         if (!$partner->status) {
-            return back()->withErrors(['email' => 'Your account has been disabled.']);
+            return back()->withErrors(['partner_uid' => 'Your account has been disabled.']);
         }
 
         if ($partner->otp_bypass) {
@@ -101,8 +101,8 @@ class PartnerAuthController extends Controller
         } catch (Throwable $e) {
             report($e);
             return back()
-                ->withInput($request->only('email'))
-                ->withErrors(['email' => 'Failed to send OTP email. Please try again.']);
+                ->withInput($request->only('partner_uid'))
+                ->withErrors(['partner_uid' => 'Failed to send OTP email. Please try again.']);
         }
 
         session([self::OTP_SESSION_KEY => $partner->id]);

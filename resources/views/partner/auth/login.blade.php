@@ -80,11 +80,11 @@
                 @csrf
 
                 <div class="mb-3">
-                    <label class="form-label">Email Address</label>
-                    <input type="email" name="email"
-                           class="form-control @error('email') is-invalid @enderror"
-                           value="{{ old('email') }}"
-                           placeholder="your@email.com" required autofocus>
+                    <label class="form-label">Partner ID</label>
+                    <input type="text" name="partner_uid"
+                           class="form-control @error('partner_uid') is-invalid @enderror"
+                           value="{{ old('partner_uid') }}"
+                           placeholder="e.g. BBA/PTR/2026/0001" required autofocus>
                 </div>
 
                 <div class="mb-3">

@@ -98,7 +98,7 @@
             <div class="brand-icon"><i class="bi bi-journals"></i></div>
             <h5 class="fw-bold mb-1" style="color:#0c4a6e;">Library Staff Portal</h5>
             <p class="text-muted mb-0" style="font-size:13px;">
-                Enter your email and password to receive a login OTP.
+                Enter your Employee ID and password to receive a login OTP.
             </p>
         </div>
 
@@ -106,13 +106,13 @@
             @csrf
 
             <div class="mb-3">
-                <label class="form-label" for="email">Email Address</label>
-                <input type="email" name="email" id="email"
-                       class="form-control @error('email') is-invalid @enderror"
-                       value="{{ old('email') }}"
-                       placeholder="Enter your registered email"
-                       autocomplete="email" autofocus>
-                @error('email')
+                <label class="form-label" for="employee_id">Employee ID</label>
+                <input type="text" name="employee_id" id="employee_id"
+                       class="form-control @error('employee_id') is-invalid @enderror"
+                       value="{{ old('employee_id') }}"
+                       placeholder="e.g. BBA/LIB/2026/0001"
+                       autocomplete="off" autofocus>
+                @error('employee_id')
                     <div class="invalid-feedback d-block">
                         <i class="bi bi-exclamation-circle"></i> {{ $message }}
                     </div>
@@ -160,7 +160,7 @@
     @if(session('success'))
         showToast('success', '{{ addslashes(session('success')) }}');
     @endif
-    @if($errors->any() && !$errors->has('email') && !$errors->has('password'))
+    @if($errors->any() && !$errors->has('employee_id') && !$errors->has('password'))
         showToast('error', '{{ addslashes($errors->first()) }}');
     @endif
 })();

@@ -66,8 +66,8 @@
                             </tr>
                             <tr>
                                 <td style="padding:16px 24px;border-bottom:1px solid #e2e8f0;">
-                                    <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600;">Login Email</p>
-                                    <p style="margin:4px 0 0;font-size:15px;color:#1e293b;font-weight:600;">{{ $center->email }}</p>
+                                    <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;font-weight:600;">Center ID (use this to login)</p>
+                                    <p style="margin:4px 0 0;font-size:15px;color:#1e293b;font-weight:600;font-family:'Courier New',monospace;">{{ $center->center_uid }}</p>
                                 </td>
                             </tr>
                             <tr>

@@ -39,7 +39,7 @@ class LibraryStaffAuthController extends Controller
     private function otpCacheKey(int $id): string    { return "lib_staff_otp:{$id}"; }
     private function otpThrottleKey(int $id): string { return "lib_staff_otp_throttle:{$id}"; }
     private function otpHourlyKey(int $id): string   { return "lib_staff_otp_hourly:{$id}"; }
-    private function pwFailKey(string $email): string { return "lib_staff_pw_fail:" . hash('sha256', strtolower(trim($email))); }
+    private function pwFailKey(string $employeeId): string { return "lib_staff_pw_fail:" . hash('sha256', strtolower(trim($employeeId))); }
 
     private function pendingStaff(): ?LibraryStaff
     {
@@ -60,63 +60,63 @@ class LibraryStaffAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email|max:150',
-            'password' => 'required|string',
+            'employee_id' => 'required|string|max:150',
+            'password'    => 'required|string',
         ]);
 
-        $email       = trim($request->email);
-        $pwFailKey   = $this->pwFailKey($email);
+        $employeeId  = trim($request->employee_id);
+        $pwFailKey   = $this->pwFailKey($employeeId);
         $pwFailCount = (int) Cache::get($pwFailKey, 0);
 
         if ($pwFailCount >= self::MAX_PW_ATTEMPTS) {
-            return back()->withInput($request->only('email'))
-                ->withErrors(['email' => 'Too many failed login attempts. Please try again in ' . self::PW_LOCK_MINUTES . ' minute(s).']);
+            return back()->withInput($request->only('employee_id'))
+                ->withErrors(['employee_id' => 'Too many failed login attempts. Please try again in ' . self::PW_LOCK_MINUTES . ' minute(s).']);
         }
 
-        $staff = LibraryStaff::where('email', $email)->first();
+        $staff = LibraryStaff::where('employee_id', $employeeId)->first();
 
-        // Always run bcrypt to prevent timing-based email enumeration.
+        // Always run bcrypt to prevent timing-based enumeration.
         // password_verify() is used directly — Hash::check() throws on dummy hashes in Laravel 12.
         $dummyHash  = '$2y$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
         $hashToCheck = ($staff && $staff->password) ? $staff->password : $dummyHash;
         $passwordOk  = password_verify($request->password, $hashToCheck);
 
         if (!$staff || !$staff->password || !$passwordOk) {
-            // Increment per-account failure counter (keyed by email hash, not staff ID)
+            // Increment per-account failure counter (keyed by employee_id hash, not staff ID)
             Cache::put($pwFailKey, $pwFailCount + 1, now()->addMinutes(self::PW_LOCK_MINUTES));
-            return back()->withInput($request->only('email'))
-                ->withErrors(['email' => 'Invalid email or password.']);
+            return back()->withInput($request->only('employee_id'))
+                ->withErrors(['employee_id' => 'Invalid Employee ID or password.']);
         }
 
         // Successful password — reset failure counter
         Cache::forget($pwFailKey);
 
         if (!$staff->status) {
-            return back()->withErrors(['email' => 'Your account has been deactivated. Please contact the administrator.']);
+            return back()->withErrors(['employee_id' => 'Your account has been deactivated. Please contact the administrator.']);
         }
 
         if ($staff->isLocked()) {
             $mins = (int) now()->diffInMinutes($staff->locked_until, false);
             return back()->withErrors([
-                'email' => "Your account is temporarily locked. Please try again in {$mins} minute(s).",
+                'employee_id' => "Your account is temporarily locked. Please try again in {$mins} minute(s).",
             ]);
         }
 
         $hourlyCount = (int) Cache::get($this->otpHourlyKey($staff->id), 0);
         if ($hourlyCount >= self::MAX_OTP_SENDS_PER_HOUR) {
-            return back()->withErrors(['email' => 'Too many OTP requests. Please try again after some time.']);
+            return back()->withErrors(['employee_id' => 'Too many OTP requests. Please try again after some time.']);
         }
 
         if (Cache::has($this->otpThrottleKey($staff->id))) {
-            return back()->withErrors(['email' => 'Please wait a moment before requesting another OTP.']);
+            return back()->withErrors(['employee_id' => 'Please wait a moment before requesting another OTP.']);
         }
 
         try {
             $this->sendOtp($staff);
         } catch (Throwable $e) {
             report($e);
-            return back()->withInput($request->only('email'))
-                ->withErrors(['email' => 'Failed to send OTP email. Please try again.']);
+            return back()->withInput($request->only('employee_id'))
+                ->withErrors(['employee_id' => 'Failed to send OTP email. Please try again.']);
         }
 
         session([self::OTP_SESSION_KEY => $staff->id]);
@@ -146,7 +146,7 @@ class LibraryStaffAuthController extends Controller
         if ($staff->isLocked()) {
             session()->forget(self::OTP_SESSION_KEY);
             return redirect()->route('library_staff.login')
-                ->withErrors(['email' => 'Your account has been locked. Please try again later.']);
+                ->withErrors(['employee_id' => 'Your account has been locked. Please try again later.']);
         }
 
         $otpPayload = Cache::get($this->otpCacheKey($staff->id));
@@ -177,7 +177,7 @@ class LibraryStaffAuthController extends Controller
                 $this->notifyAdminOfLock($staff, $request->ip(), $lockedUntil->format('d M Y, h:i A'));
 
                 return redirect()->route('library_staff.login')
-                    ->withErrors(['email' => 'Account locked for ' . self::LOCK_MINUTES . ' minutes due to multiple failed OTP attempts. The administrator has been notified.']);
+                    ->withErrors(['employee_id' => 'Account locked for ' . self::LOCK_MINUTES . ' minutes due to multiple failed OTP attempts. The administrator has been notified.']);
             }
 
             return back()->withErrors([

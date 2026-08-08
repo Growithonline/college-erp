@@ -40,7 +40,7 @@
                         </td>
                     </tr>
                     <tr style="border-bottom:1px solid #e0f2fe;">
-                        <td style="padding:7px 0;color:#64748b;">Login Email</td>
+                        <td style="padding:7px 0;color:#64748b;">Contact Email</td>
                         <td style="padding:7px 0;font-weight:600;">{{ $libraryStaff->email }}</td>
                     </tr>
                     @if($plainPassword)
