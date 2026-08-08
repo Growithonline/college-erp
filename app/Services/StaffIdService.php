@@ -48,25 +48,25 @@ class StaffIdService
         });
     }
 
-    // Format: BBA/STF/2026/000001
+    // Format: BBA/STF/2026/0001
     public static function generateStaffId(int $instituteId, int $year): string
     {
         $seq = self::nextSeq(StaffIdCounter::class, $instituteId, $year);
-        return self::shortName($instituteId) . '/STF/' . $year . '/' . str_pad($seq, 6, '0', STR_PAD_LEFT);
+        return self::shortName($instituteId) . '/STF/' . $year . '/' . str_pad($seq, 4, '0', STR_PAD_LEFT);
     }
 
-    // Format: BBA/PTR/2026/000001
+    // Format: BBA/PTR/2026/0001
     public static function generatePartnerId(int $instituteId, int $year): string
     {
         $seq = self::nextSeq(PartnerIdCounter::class, $instituteId, $year);
-        return self::shortName($instituteId) . '/PTR/' . $year . '/' . str_pad($seq, 6, '0', STR_PAD_LEFT);
+        return self::shortName($instituteId) . '/PTR/' . $year . '/' . str_pad($seq, 4, '0', STR_PAD_LEFT);
     }
 
-    // Format: BBA/CTR/2026/000001
+    // Format: BBA/CTR/2026/0001
     public static function generateCenterId(int $instituteId, int $year): string
     {
         $seq = self::nextSeq(CenterIdCounter::class, $instituteId, $year);
-        return self::shortName($instituteId) . '/CTR/' . $year . '/' . str_pad($seq, 6, '0', STR_PAD_LEFT);
+        return self::shortName($instituteId) . '/CTR/' . $year . '/' . str_pad($seq, 4, '0', STR_PAD_LEFT);
     }
 
     // Format: BBA/LIB/2026/0001
