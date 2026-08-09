@@ -37,6 +37,9 @@
                 <tr>
                     <th>Institute</th>
                     <th>Short Name</th>
+                    <th>Institute ID</th>
+                    <th>Owner Name</th>
+                    <th>Login Email</th>
                     <th class="text-end">Students</th>
                     @if($groupAdmin->can_reset_institute_password)
                         <th class="text-end">Action</th>
@@ -48,6 +51,9 @@
                     <tr>
                         <td>{{ $institute->name }}</td>
                         <td>{{ $institute->short_name }}</td>
+                        <td style="font-family:monospace;">{{ $institute->institute_uid }}</td>
+                        <td>{{ $institute->owner_name }}</td>
+                        <td>{{ $institute->owner_email }}</td>
                         <td class="text-end">{{ $institute->students_count }}</td>
                         @if($groupAdmin->can_reset_institute_password)
                         <td class="text-end">
@@ -94,7 +100,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-4">No institutes assigned to this group yet.</td>
+                        <td colspan="7" class="text-center text-muted py-4">No institutes assigned to this group yet.</td>
                     </tr>
                 @endforelse
             </tbody>

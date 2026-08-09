@@ -71,6 +71,9 @@
                 <tr>
                     <th>Institute</th>
                     <th>Short Name</th>
+                    <th>Institute ID</th>
+                    <th>Owner Name</th>
+                    <th>Login Email</th>
                     <th class="text-end">Today's Collection</th>
                     <th class="text-end">Total Students</th>
                 </tr>
@@ -80,12 +83,15 @@
                     <tr>
                         <td>{{ $row['institute']->name }}</td>
                         <td>{{ $row['institute']->short_name }}</td>
+                        <td style="font-family:monospace;">{{ $row['institute']->institute_uid }}</td>
+                        <td>{{ $row['institute']->owner_name }}</td>
+                        <td>{{ $row['institute']->owner_email }}</td>
                         <td class="text-end">₹{{ number_format($row['today_collected'], 2) }}</td>
                         <td class="text-end">{{ $row['total_students'] }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-4">No institutes assigned to this group yet.</td>
+                        <td colspan="7" class="text-center text-muted py-4">No institutes assigned to this group yet.</td>
                     </tr>
                 @endforelse
             </tbody>
