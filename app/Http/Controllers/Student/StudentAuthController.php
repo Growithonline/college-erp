@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Mail\StudentOtpMail;
+use App\Mail\StudentRecoveryOtpMail;
 use App\Models\FeeInvoice;
 use App\Models\Notice;
 use App\Models\NoticeRead;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use App\Services\InstituteMailer;
+use Throwable;
 
 class StudentAuthController extends Controller
 {
@@ -189,6 +191,190 @@ class StudentAuthController extends Controller
         }
 
         return back()->with('success', 'A new OTP has been sent.');
+    }
+
+    // ── Account Recovery (Know Student ID / Forgot Password) ──────────
+
+    private const RECOVER_SESSION_KEY  = 'student_recover_id';
+    private const RECOVER_MODE_KEY     = 'student_recover_mode';
+    private const RECOVER_VERIFIED_KEY = 'student_recover_verified_id';
+
+    private function recoverOtpCacheKey(int $id): string
+    {
+        return "student_recover_otp:{$id}";
+    }
+
+    private function recoverOtpThrottleKey(int $id): string
+    {
+        return "student_recover_otp_throttle:{$id}";
+    }
+
+    private function pendingRecoverStudent(): ?Student
+    {
+        $id = session(self::RECOVER_SESSION_KEY);
+        return $id ? Student::find($id) : null;
+    }
+
+    private function sendRecoveryOtp(Student $student): void
+    {
+        $otp      = (string) random_int(100000, 999999);
+        $platform = PlatformSmsSetting::current();
+        $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
+        $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
+
+        InstituteMailer::send($student->institute_id, $student->email, new StudentRecoveryOtpMail($student, $otp));
+
+        Cache::put($this->recoverOtpCacheKey($student->id), [
+            'hash' => Hash::make($otp),
+        ], now()->addMinutes($expiryMinutes));
+
+        Cache::put($this->recoverOtpThrottleKey($student->id), true, now()->addSeconds($cooldownSeconds));
+    }
+
+    public function recoverForm()
+    {
+        return view('student.auth.recover');
+    }
+
+    public function recoverSendOtp(Request $request)
+    {
+        $request->validate([
+            'mode'      => 'required|in:know_id,forgot_password',
+            'email'     => 'required|email',
+            'aadhar_no' => 'required|digits:12',
+        ]);
+
+        $student = Student::where('email', $request->email)
+            ->where('aadhar_no', $request->aadhar_no)
+            ->first();
+
+        if (!$student || !$student->email) {
+            return back()
+                ->withInput($request->only('mode', 'email'))
+                ->withErrors(['email' => 'No student found matching this email and Aadhar number.']);
+        }
+
+        try {
+            $this->sendRecoveryOtp($student);
+        } catch (Throwable $e) {
+            report($e);
+            return back()
+                ->withInput($request->only('mode', 'email'))
+                ->withErrors(['email' => 'Failed to send OTP. Please try again.']);
+        }
+
+        session([
+            self::RECOVER_SESSION_KEY => $student->id,
+            self::RECOVER_MODE_KEY    => $request->mode,
+        ]);
+
+        return redirect()->route('student.recover.otp.form')->with('success', 'OTP has been sent to your registered email.');
+    }
+
+    public function recoverOtpForm()
+    {
+        $student = $this->pendingRecoverStudent();
+        if (!$student) {
+            return redirect()->route('student.recover');
+        }
+        return view('student.auth.recover-otp', compact('student'));
+    }
+
+    public function recoverVerifyOtp(Request $request)
+    {
+        $request->validate(['otp' => 'required|digits:6']);
+
+        $student = $this->pendingRecoverStudent();
+        if (!$student) {
+            return redirect()->route('student.recover');
+        }
+
+        $otpPayload = Cache::get($this->recoverOtpCacheKey($student->id));
+        if (!$otpPayload) {
+            return back()->withErrors(['otp' => 'OTP expired. Please start again.']);
+        }
+
+        if (!Hash::check($request->otp, $otpPayload['hash'] ?? '')) {
+            return back()->withErrors(['otp' => 'Incorrect OTP.']);
+        }
+
+        Cache::forget($this->recoverOtpCacheKey($student->id));
+        Cache::forget($this->recoverOtpThrottleKey($student->id));
+
+        $mode = session(self::RECOVER_MODE_KEY);
+        session()->forget([self::RECOVER_SESSION_KEY, self::RECOVER_MODE_KEY]);
+
+        if ($mode === 'know_id') {
+            return redirect()->route('student.recover.result')->with('recovered_student_uid', $student->student_uid);
+        }
+
+        session([self::RECOVER_VERIFIED_KEY => $student->id]);
+        return redirect()->route('student.recover.reset-password.form');
+    }
+
+    public function recoverResendOtp()
+    {
+        $student = $this->pendingRecoverStudent();
+        if (!$student) {
+            return redirect()->route('student.recover');
+        }
+
+        if (Cache::has($this->recoverOtpThrottleKey($student->id))) {
+            $cooldown = PlatformSmsSetting::current()?->otp_resend_cooldown_seconds ?? 30;
+            return back()->withErrors(['otp' => "Please wait {$cooldown} seconds before requesting a new OTP."]);
+        }
+
+        try {
+            $this->sendRecoveryOtp($student);
+        } catch (Throwable $e) {
+            report($e);
+            return back()->withErrors(['otp' => 'Failed to resend OTP. Please try again.']);
+        }
+
+        return back()->with('success', 'A new OTP has been sent.');
+    }
+
+    public function recoverResultId()
+    {
+        if (!session('recovered_student_uid')) {
+            return redirect()->route('student.recover');
+        }
+        return view('student.auth.recover-result');
+    }
+
+    public function recoverResetPasswordForm()
+    {
+        if (!session(self::RECOVER_VERIFIED_KEY)) {
+            return redirect()->route('student.recover');
+        }
+        return view('student.auth.recover-reset-password');
+    }
+
+    public function recoverResetPassword(Request $request)
+    {
+        $studentId = session(self::RECOVER_VERIFIED_KEY);
+        if (!$studentId) {
+            return redirect()->route('student.recover');
+        }
+
+        $request->validate([
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        $student = Student::find($studentId);
+        if (!$student) {
+            session()->forget(self::RECOVER_VERIFIED_KEY);
+            return redirect()->route('student.recover');
+        }
+
+        $student->update([
+            'password'    => Hash::make($request->password),
+            'first_login' => false,
+        ]);
+
+        session()->forget(self::RECOVER_VERIFIED_KEY);
+
+        return redirect()->route('student.login')->with('success', 'Password reset successfully! Please login with your new password.');
     }
 
     // ── After Login ──────────────────────────────────────────────────

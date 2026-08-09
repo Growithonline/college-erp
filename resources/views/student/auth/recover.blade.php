@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Login — Gaurangi Technologies</title>
+    <title>Account Recovery — Student</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -28,23 +28,21 @@
         .form-control{border-radius:10px;height:44px;border:1.5px solid #e5e7eb;font-size:14px;color:#111827;background:#f9fafb;transition:border-color .18s,box-shadow .18s,background .18s;}
         .form-control:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12);background:#fff;outline:none;}
         .form-control.is-invalid{border-color:#ef4444;}
-        .input-group .form-control{border-radius:10px 0 0 10px;}
-        .eye-btn{border:1.5px solid #e5e7eb;border-left:none;border-radius:0 10px 10px 0;background:#f9fafb;color:#9ca3af;padding:0 12px;cursor:pointer;transition:color .15s;}
-        .eye-btn:hover{color:#2563EB;}
         .btn-submit{height:46px;border-radius:10px;font-size:14px;font-weight:600;background:linear-gradient(135deg,#1e3a8a,#2563EB);border:none;color:#fff;letter-spacing:.02em;transition:all .18s ease;width:100%;}
         .btn-submit:hover{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);box-shadow:0 6px 20px rgba(37,99,235,.35);transform:translateY(-1px);}
         .btn-submit:active{transform:translateY(0);box-shadow:none;}
-        .form-check-input:checked{background-color:#2563EB;border-color:#2563EB;}
-        .card-foot{background:#f8fafc;border-top:1px solid #f1f5f9;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;}
+        .card-foot{background:#f8fafc;border-top:1px solid #f1f5f9;padding:14px 28px;display:flex;align-items:center;justify-content:center;}
         .back-link{font-size:12px;color:#6b7280;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:color .15s;}
         .back-link:hover{color:#2563EB;}
         .gt-foot{display:flex;align-items:center;gap:6px;font-size:10px;color:#9ca3af;}
-        .gt-foot img{height:16px;opacity:.6;}
         .alert-box{border-radius:10px;border:none;font-size:13px;padding:10px 14px;margin-bottom:16px;}
         .alert-danger-box{background:#fef2f2;color:#dc2626;border-left:3px solid #ef4444;}
-        .alert-info-box{background:#eff6ff;color:#1d4ed8;border-left:3px solid #3b82f6;}
         .powered-by{text-align:center;padding:10px 0 8px;font-size:11.5px;color:#94a3b8;background:#f8fafc;margin:0;border-top:1px solid #f1f5f9;}
         .powered-by strong{color:#6366f1;font-weight:600;}
+        .mode-tabs{display:flex;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:20px;gap:4px;}
+        .mode-tab{flex:1;text-align:center;padding:9px 8px;border-radius:8px;font-size:12.5px;font-weight:600;color:#64748b;cursor:pointer;transition:all .18s ease;user-select:none;}
+        .mode-tab.active{background:#fff;color:#1d4ed8;box-shadow:0 2px 6px rgba(0,0,0,.08);}
+        .hint-text{font-size:12px;color:#6b7280;margin-bottom:18px;line-height:1.5;}
     </style>
 </head>
 <body>
@@ -62,26 +60,12 @@
                 <img src="{{ asset('images/logog.png') }}" alt="Gaurangi Technologies" style="height:38px;width:auto;filter:brightness(0) invert(1);opacity:.88;">
             </div>
             <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:0 0 14px;position:relative;z-index:2;">
-            <div class="portal-icon"><i class="bi bi-mortarboard-fill"></i></div>
-            <h5>Student Login</h5>
-            <p>Login with your Student ID and password</p>
+            <div class="portal-icon"><i class="bi bi-shield-lock-fill"></i></div>
+            <h5>Account Recovery</h5>
+            <p>Verify your identity to continue</p>
         </div>
 
         <div class="card-body-wrap">
-
-            @if(session('error'))
-            <div class="alert-box alert-danger-box d-flex align-items-center gap-2">
-                <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-                <span>{{ session('error') }}</span>
-            </div>
-            @endif
-
-            @if(session('info'))
-            <div class="alert-box alert-info-box d-flex align-items-center gap-2">
-                <i class="bi bi-info-circle-fill flex-shrink-0"></i>
-                <span>{{ session('info') }}</span>
-            </div>
-            @endif
 
             @if($errors->any())
             <div class="alert-box alert-danger-box d-flex align-items-center gap-2">
@@ -90,55 +74,47 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('student.login.submit') }}">
+            <div class="mode-tabs">
+                <div class="mode-tab" data-mode="know_id" onclick="setMode('know_id')">
+                    <i class="bi bi-person-badge me-1"></i>Know My Student ID
+                </div>
+                <div class="mode-tab" data-mode="forgot_password" onclick="setMode('forgot_password')">
+                    <i class="bi bi-key me-1"></i>Forgot Password
+                </div>
+            </div>
+
+            <p class="hint-text" id="modeHint"></p>
+
+            <form method="POST" action="{{ route('student.recover.send-otp') }}">
                 @csrf
+                <input type="hidden" name="mode" id="modeInput" value="{{ old('mode', request('mode', 'know_id')) }}">
 
                 <div class="mb-3">
-                    <label class="form-label">Student ID</label>
-                    <input type="text" name="student_uid"
-                           class="form-control @error('student_uid') is-invalid @enderror"
-                           value="{{ old('student_uid') }}"
-                           placeholder="Enter your Student ID" required autofocus>
+                    <label class="form-label">Registered Email</label>
+                    <input type="email" name="email"
+                           class="form-control @error('email') is-invalid @enderror"
+                           value="{{ old('email') }}"
+                           placeholder="you@example.com" required autofocus>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Password</label>
-                    <div class="input-group">
-                        <input type="password" name="password" id="pwdInput"
-                               class="form-control @error('password') is-invalid @enderror"
-                               placeholder="Enter your password" required>
-                        <button type="button" class="eye-btn" onclick="togglePwd()">
-                            <i class="bi bi-eye" id="eyeIcon"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="remember" id="remember">
-                        <label class="form-check-label" for="remember" style="font-size:13px;color:#6b7280;">Remember me</label>
-                    </div>
-                    <a href="{{ route('student.recover', ['mode' => 'forgot_password']) }}" style="font-size:12.5px;color:#2563EB;font-weight:600;text-decoration:none;">
-                        Forgot Password?
-                    </a>
+                <div class="mb-4">
+                    <label class="form-label">Aadhar Number</label>
+                    <input type="text" name="aadhar_no" maxlength="12" inputmode="numeric"
+                           class="form-control @error('aadhar_no') is-invalid @enderror"
+                           value="{{ old('aadhar_no') }}"
+                           placeholder="12-digit Aadhar number" required>
                 </div>
 
                 <button type="submit" class="btn-submit">
-                    <i class="bi bi-box-arrow-in-right me-2"></i>Login to Student Portal
+                    <i class="bi bi-send-check me-2"></i>Send OTP
                 </button>
             </form>
-
-            <div class="text-center mt-3">
-                <a href="{{ route('student.recover', ['mode' => 'know_id']) }}" style="font-size:12.5px;color:#6b7280;font-weight:600;text-decoration:none;">
-                    <i class="bi bi-person-badge me-1"></i>Know your Student ID?
-                </a>
-            </div>
 
         </div>
 
         <div class="card-foot">
-            <a href="{{ url('/') }}" class="back-link">
-                <i class="bi bi-arrow-left"></i> Portal Selection
+            <a href="{{ route('student.login') }}" class="back-link">
+                <i class="bi bi-arrow-left"></i> Back to login
             </a>
         </div>
         <p class="powered-by">Powered by <strong>Gaurangi Technologies</strong></p>
@@ -146,7 +122,16 @@
 </div>
 
 <script>
-function togglePwd(){const i=document.getElementById('pwdInput'),e=document.getElementById('eyeIcon');i.type=i.type==='password'?'text':'password';e.className=i.type==='text'?'bi bi-eye-slash':'bi bi-eye';}
+function setMode(mode) {
+    document.getElementById('modeInput').value = mode;
+    document.querySelectorAll('.mode-tab').forEach(function (el) {
+        el.classList.toggle('active', el.dataset.mode === mode);
+    });
+    document.getElementById('modeHint').textContent = mode === 'know_id'
+        ? 'We will verify your email and Aadhar number, then show your Student ID.'
+        : 'We will verify your email and Aadhar number, then let you set a new password.';
+}
+setMode(document.getElementById('modeInput').value || 'know_id');
 </script>
 </body>
 </html>

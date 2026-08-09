@@ -1507,6 +1507,16 @@ Route::prefix('student')->name('student.')->group(function () {
     Route::middleware('guest:student')->group(function () {
         Route::get('login',  [StudentAuthController::class, 'loginForm'])->name('login');
         Route::post('login', [StudentAuthController::class, 'login'])->name('login.submit')->middleware('throttle:5,1');
+
+        // Account Recovery — Know Student ID / Forgot Password
+        Route::get('recover',                 [StudentAuthController::class, 'recoverForm'])->name('recover');
+        Route::post('recover/send-otp',       [StudentAuthController::class, 'recoverSendOtp'])->name('recover.send-otp')->middleware('throttle:5,1');
+        Route::get('recover/otp',             [StudentAuthController::class, 'recoverOtpForm'])->name('recover.otp.form');
+        Route::post('recover/otp/verify',     [StudentAuthController::class, 'recoverVerifyOtp'])->name('recover.otp.verify')->middleware('throttle:5,1');
+        Route::post('recover/otp/resend',     [StudentAuthController::class, 'recoverResendOtp'])->name('recover.otp.resend')->middleware('throttle:3,1');
+        Route::get('recover/student-id',      [StudentAuthController::class, 'recoverResultId'])->name('recover.result');
+        Route::get('recover/reset-password',  [StudentAuthController::class, 'recoverResetPasswordForm'])->name('recover.reset-password.form');
+        Route::post('recover/reset-password', [StudentAuthController::class, 'recoverResetPassword'])->name('recover.reset-password');
     });
 
     Route::get('otp',         [StudentAuthController::class, 'showOtpForm'])->name('otp.form');
