@@ -71,9 +71,7 @@ class LoginController extends Controller
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
-        // Saves the new (hashed) password and invalidates the "remember me" cookie on
-        // other devices in one call — the standard Laravel pattern for a password change.
-        Auth::guard('group_admin')->logoutOtherDevices($request->password);
+        $groupAdmin->update(['password' => Hash::make($request->password)]);
 
         return back()->with('success', 'Password changed successfully!');
     }

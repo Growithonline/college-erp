@@ -332,9 +332,7 @@ class StaffAuthController extends Controller
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
-        // Saves the new (hashed) password and invalidates the "remember me" cookie on
-        // other devices in one call — the standard Laravel pattern for a password change.
-        $this->guard()->logoutOtherDevices($request->password);
+        $staff->update(['password' => Hash::make($request->password)]);
 
         return back()->with('success', 'Password changed successfully!');
     }
