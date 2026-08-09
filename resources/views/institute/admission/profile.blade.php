@@ -473,130 +473,172 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
 
             {{-- ===== Personal & Family ===== --}}
             <div class="tab-pane fade" id="family-pane" role="tabpanel" aria-labelledby="family-tab" tabindex="0">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm mb-3 mb-md-0">
-                            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                                <span class="fw-bold small"><i class="bi bi-person me-2"></i>Personal Details</span>
-                            </div>
-                            <div class="card-body p-0">
-                                @foreach([
-                                    'Category'         => strtoupper($snapVal('category', $student->category)),
-                                    'Special Category' => strtoupper($snapVal('special_category', $student->special_category)),
-                                    'Nationality'      => ucfirst($snapVal('nationality', $student->nationality)),
-                                    'Religion'         => ucfirst($snapVal('religion', $student->religion)),
-                                    'Student Type'     => ucfirst($snapVal('student_type', $student->student_type)),
-                                    'Marital Status'   => ucfirst($snapVal('marital_status', $student->marital_status)),
-                                    'Aadhar No.'       => $snapVal('aadhar_no', $student->aadhar_no),
-                                    'APAAR No.'        => $snapVal('apaar_no', $student->apaar_no),
-                                    'Email'            => $snapVal('email', $student->email),
-                                ] as $lbl => $val)
-                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                                    <div class="text-muted" style="width:130px;flex-shrink:0;">{{ $lbl }}</div>
-                                    <div class="fw-semibold">{{ $val }}</div>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
+                @php
+                    $personalFields = [
+                        'Category'         => strtoupper($snapVal('category', $student->category)),
+                        'Special Category' => strtoupper($snapVal('special_category', $student->special_category)),
+                        'Nationality'      => ucfirst($snapVal('nationality', $student->nationality)),
+                        'Religion'         => ucfirst($snapVal('religion', $student->religion)),
+                        'Student Type'     => ucfirst($snapVal('student_type', $student->student_type)),
+                        'Marital Status'   => ucfirst($snapVal('marital_status', $student->marital_status)),
+                        'Aadhar No.'       => $snapVal('aadhar_no', $student->aadhar_no),
+                        'APAAR No.'        => $snapVal('apaar_no', $student->apaar_no),
+                        'Email'            => $snapVal('email', $student->email),
+                    ];
+                    $parentFields = [
+                        'Father Name'       => $snapVal('father_name', $student->father_name),
+                        'Father Mobile'     => $snapVal('father_mobile', $student->father_mobile),
+                        'Father Occupation' => $snapVal('father_occupation', $student->father_occupation),
+                        'Mother Name'       => $snapVal('mother_name', $student->mother_name),
+                        'Mother Mobile'     => $snapVal('mother_mobile', $student->mother_mobile),
+                        'Guardian Name'     => $snapVal('guardian_name', $student->guardian_name),
+                        'Guardian Mobile'   => $snapVal('guardian_mobile', $student->guardian_mobile),
+                    ];
+                @endphp
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header py-2" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-person me-2"></i>Personal Details</span>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                                <span class="fw-bold small"><i class="bi bi-people me-2"></i>Parent Details</span>
-                            </div>
-                            <div class="card-body p-0">
-                                @foreach([
-                                    'Father Name'       => $snapVal('father_name', $student->father_name),
-                                    'Father Mobile'     => $snapVal('father_mobile', $student->father_mobile),
-                                    'Father Occupation' => $snapVal('father_occupation', $student->father_occupation),
-                                    'Mother Name'       => $snapVal('mother_name', $student->mother_name),
-                                    'Mother Mobile'     => $snapVal('mother_mobile', $student->mother_mobile),
-                                    'Guardian Name'     => $snapVal('guardian_name', $student->guardian_name),
-                                    'Guardian Mobile'   => $snapVal('guardian_mobile', $student->guardian_mobile),
-                                ] as $lbl => $val)
-                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                                    <div class="text-muted" style="width:130px;flex-shrink:0;">{{ $lbl }}</div>
-                                    <div class="fw-semibold">{{ $val }}</div>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light" style="font-size:12px;">
+                                <tr>
+                                    @foreach(array_keys($personalFields) as $lbl)
+                                    <th class="text-nowrap">{{ $lbl }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody style="font-size:12px;">
+                                <tr>
+                                    @foreach($personalFields as $val)
+                                    <td class="fw-semibold text-nowrap">{{ $val }}</td>
+                                    @endforeach
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header py-2" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-people me-2"></i>Parent Details</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light" style="font-size:12px;">
+                                <tr>
+                                    @foreach(array_keys($parentFields) as $lbl)
+                                    <th class="text-nowrap">{{ $lbl }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody style="font-size:12px;">
+                                <tr>
+                                    @foreach($parentFields as $val)
+                                    <td class="fw-semibold text-nowrap">{{ $val }}</td>
+                                    @endforeach
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
             {{-- ===== Address ===== --}}
             <div class="tab-pane fade" id="address-pane" role="tabpanel" aria-labelledby="address-tab" tabindex="0">
-                <div class="card border-0 shadow-sm" style="max-width:600px;">
+                @php
+                    $addressFields = [
+                        'Village/City'  => $snapVal('perm_village', $student->perm_village),
+                        'Post'          => $snapVal('perm_post', $student->perm_post),
+                        'Thana'         => $snapVal('perm_thana', $student->perm_thana),
+                        'District'      => $snapVal('perm_district', $student->perm_district),
+                        'State'         => $snapVal('perm_state', $student->perm_state),
+                        'Pin Code'      => $snapVal('perm_pincode', $student->perm_pincode),
+                        'Comm. Address' => (bool)($ps !== null ? ($ps['comm_same_as_perm'] ?? false) : $student->comm_same_as_perm)
+                            ? 'Same as above'
+                            : $snapVal('comm_address', $student->comm_address),
+                    ];
+                @endphp
+                <div class="card border-0 shadow-sm">
                     <div class="card-header py-2" style="background:#1e293b;color:white;">
                         <span class="fw-bold small"><i class="bi bi-geo-alt me-2"></i>Address Details</span>
                     </div>
-                    <div class="card-body p-0">
-                        @foreach([
-                            'Village/City'  => $snapVal('perm_village', $student->perm_village),
-                            'Post'          => $snapVal('perm_post', $student->perm_post),
-                            'Thana'         => $snapVal('perm_thana', $student->perm_thana),
-                            'District'      => $snapVal('perm_district', $student->perm_district),
-                            'State'         => $snapVal('perm_state', $student->perm_state),
-                            'Pin Code'      => $snapVal('perm_pincode', $student->perm_pincode),
-                            'Comm. Address' => (bool)($ps !== null ? ($ps['comm_same_as_perm'] ?? false) : $student->comm_same_as_perm)
-                                ? 'Same as above'
-                                : $snapVal('comm_address', $student->comm_address),
-                        ] as $lbl => $val)
-                        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                            <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
-                            <div class="fw-semibold">{{ $val }}</div>
-                        </div>
-                        @endforeach
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light" style="font-size:12px;">
+                                <tr>
+                                    @foreach(array_keys($addressFields) as $lbl)
+                                    <th class="text-nowrap">{{ $lbl }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody style="font-size:12px;">
+                                <tr>
+                                    @foreach($addressFields as $val)
+                                    <td class="fw-semibold text-nowrap">{{ $val }}</td>
+                                    @endforeach
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
             {{-- ===== Academic & Office ===== --}}
             <div class="tab-pane fade" id="academic-pane" role="tabpanel" aria-labelledby="academic-tab" tabindex="0">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm mb-3">
-                            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                                <span class="fw-bold small"><i class="bi bi-briefcase me-2"></i>Office Details</span>
-                            </div>
-                            <div class="card-body p-0">
-                                @php
-                                    $admissionSource = $selectedIdentity?->admission_source_snapshot ?? $student->admission_source ?? 'direct';
-                                    $admissionSourceId = $selectedIdentity?->admission_source_id_snapshot ?? $student->admission_source_id;
-                                    $admSrcDisplay = ucwords(str_replace('_', ' ', $admissionSource));
-                                    if ($admissionSource === 'center' && $admissionSourceId) {
-                                        $n = \App\Models\Center::find($admissionSourceId)?->name;
-                                        if ($n) $admSrcDisplay .= ' — ' . $n;
-                                    } elseif ($admissionSource === 'channel_partner' && $admissionSourceId) {
-                                        $n = \App\Models\ChannelPartner::find($admissionSourceId)?->name;
-                                        if ($n) $admSrcDisplay .= ' — ' . $n;
-                                    }
-                                @endphp
-                                @foreach([
-                                    'Serial No.'       => $serialNo,
-                                    'Form No.'         => $formNo,
-                                    'SR No.'           => $srNo,
-                                    'Enrollment No.'   => $enrollmentNo,
-                                    'Roll No.'         => $rollNo,
-                                    'Exam Form No.'    => $examFormNo,
-                                    'UIN No.'          => $uinNo,
-                                    'Reference No.'    => $referenceNo,
-                                    'Submitted Date'   => $submittedDate,
-                                    'Admission Type'   => ucfirst($selectedIdentity?->admission_type ?? $student->admission_type ?? 'new'),
-                                    'Admission Source' => $admSrcDisplay,
-                                    'Gap Year'         => $student->gap_year ? 'Yes' : 'No',
-                                    'Admission Date'   => $admissionDate,
-                                    'Academic Session' => $sessName,
-                                ] as $lbl => $val)
-                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
-                                    <div class="fw-semibold">{{ $val }}</div>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
+                @php
+                    $admissionSource = $selectedIdentity?->admission_source_snapshot ?? $student->admission_source ?? 'direct';
+                    $admissionSourceId = $selectedIdentity?->admission_source_id_snapshot ?? $student->admission_source_id;
+                    $admSrcDisplay = ucwords(str_replace('_', ' ', $admissionSource));
+                    if ($admissionSource === 'center' && $admissionSourceId) {
+                        $n = \App\Models\Center::find($admissionSourceId)?->name;
+                        if ($n) $admSrcDisplay .= ' — ' . $n;
+                    } elseif ($admissionSource === 'channel_partner' && $admissionSourceId) {
+                        $n = \App\Models\ChannelPartner::find($admissionSourceId)?->name;
+                        if ($n) $admSrcDisplay .= ' — ' . $n;
+                    }
+                    $officeFields = [
+                        'Serial No.'       => $serialNo,
+                        'Form No.'         => $formNo,
+                        'SR No.'           => $srNo,
+                        'Enrollment No.'   => $enrollmentNo,
+                        'Roll No.'         => $rollNo,
+                        'Exam Form No.'    => $examFormNo,
+                        'UIN No.'          => $uinNo,
+                        'Reference No.'    => $referenceNo,
+                        'Submitted Date'   => $submittedDate,
+                        'Admission Type'   => ucfirst($selectedIdentity?->admission_type ?? $student->admission_type ?? 'new'),
+                        'Admission Source' => $admSrcDisplay,
+                        'Gap Year'         => $student->gap_year ? 'Yes' : 'No',
+                        'Admission Date'   => $admissionDate,
+                        'Academic Session' => $sessName,
+                    ];
+                @endphp
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header py-2" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-briefcase me-2"></i>Office Details</span>
                     </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light" style="font-size:12px;">
+                                <tr>
+                                    @foreach(array_keys($officeFields) as $lbl)
+                                    <th class="text-nowrap">{{ $lbl }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody style="font-size:12px;">
+                                <tr>
+                                    @foreach($officeFields as $val)
+                                    <td class="fw-semibold text-nowrap">{{ $val }}</td>
+                                    @endforeach
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="row g-3">
                     <div class="col-md-6">
                         @if(($selectedSubjects ?? collect())->count())
                         <div class="card border-0 shadow-sm mb-3">
@@ -622,28 +664,41 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
                         @endif
 
                         @if($hasScholarship)
+                        @php
+                            $scholarshipFields = [
+                                'Scholarship Name'      => $snapVal('scholarship_name', $student->scholarship_name),
+                                'Scholarship Type'      => ucfirst($snapVal('scholarship_type', $student->scholarship_type)),
+                                'Authority'             => $snapVal('scholarship_authority', $student->scholarship_authority),
+                                'Reference No.'         => $snapVal('scholarship_ref_no', $student->scholarship_ref_no),
+                                'Applied Date'          => $ps !== null
+                                    ? (isset($ps['scholarship_applied_date']) ? \Carbon\Carbon::parse($ps['scholarship_applied_date'])->format('d-m-Y') : '—')
+                                    : ($student->scholarship_applied_date?->format('d-m-Y') ?? '—'),
+                                'Scholarship Amount'    => $ps !== null
+                                    ? (($ps['scholarship_amount'] ?? null) ? '₹'.number_format($ps['scholarship_amount'], 2) : '—')
+                                    : ($student->scholarship_amount ? '₹'.number_format($student->scholarship_amount, 2) : '—'),
+                            ];
+                        @endphp
                         <div class="card border-0 shadow-sm mb-3">
                             <div class="card-header py-2" style="background:#1e293b;color:white;">
                                 <span class="fw-bold small"><i class="bi bi-award me-2"></i>Scholarship Details</span>
                             </div>
-                            <div class="card-body p-0">
-                                @foreach([
-                                    'Scholarship Name'      => $snapVal('scholarship_name', $student->scholarship_name),
-                                    'Scholarship Type'      => ucfirst($snapVal('scholarship_type', $student->scholarship_type)),
-                                    'Authority'             => $snapVal('scholarship_authority', $student->scholarship_authority),
-                                    'Reference No.'         => $snapVal('scholarship_ref_no', $student->scholarship_ref_no),
-                                    'Applied Date'          => $ps !== null
-                                        ? (isset($ps['scholarship_applied_date']) ? \Carbon\Carbon::parse($ps['scholarship_applied_date'])->format('d-m-Y') : '—')
-                                        : ($student->scholarship_applied_date?->format('d-m-Y') ?? '—'),
-                                    'Scholarship Amount'    => $ps !== null
-                                        ? (($ps['scholarship_amount'] ?? null) ? '₹'.number_format($ps['scholarship_amount'], 2) : '—')
-                                        : ($student->scholarship_amount ? '₹'.number_format($student->scholarship_amount, 2) : '—'),
-                                ] as $lbl => $val)
-                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
-                                    <div class="fw-semibold">{{ $val }}</div>
-                                </div>
-                                @endforeach
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light" style="font-size:12px;">
+                                        <tr>
+                                            @foreach(array_keys($scholarshipFields) as $lbl)
+                                            <th class="text-nowrap">{{ $lbl }}</th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+                                    <tbody style="font-size:12px;">
+                                        <tr>
+                                            @foreach($scholarshipFields as $val)
+                                            <td class="fw-semibold text-nowrap">{{ $val }}</td>
+                                            @endforeach
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                         @endif
@@ -763,7 +818,7 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
 
             {{-- ===== Transport ===== --}}
             <div class="tab-pane fade" id="transport-pane" role="tabpanel" aria-labelledby="transport-tab" tabindex="0">
-                <div class="card border-0 shadow-sm {{ $allTransport->count() > 1 ? 'mb-3' : '' }}">
+                <div class="card border-0 shadow-sm {{ $allTransport->count() >= 1 ? 'mb-3' : '' }}">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
                         <span class="fw-bold small"><i class="bi bi-bus-front me-2"></i>Transport Details</span>
                         @if($transport)
@@ -773,8 +828,8 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
                         @endif
                     </div>
                     @if($transport)
-                    <div class="card-body p-0">
-                        @foreach([
+                    @php
+                        $transportFields = [
                             'Route'          => $transport->route?->name ?? '—',
                             'Stop'           => $transport->stop?->stop_name ?? '—',
                             'Vehicle'        => $transport->vehicle ? ($transport->vehicle->vehicle_no ?? $transport->vehicle->name ?? '—') : '—',
@@ -785,14 +840,25 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
                             'Start Date'     => $transport->start_date?->format('d-m-Y') ?? '—',
                             'End Date'       => $transport->end_date?->format('d-m-Y') ?? '—',
                             'Remarks'        => $transport->remarks ?? '—',
-                        ] as $lbl => $val)
-                        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                            <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>
-                            <div class="fw-semibold {{ $lbl === 'Balance Due' && $transport->balance > 0 ? 'text-danger' : ($lbl === 'Balance Due' ? 'text-success' : '') }}">
-                                {{ $val }}
-                            </div>
-                        </div>
-                        @endforeach
+                        ];
+                    @endphp
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light" style="font-size:12px;">
+                                <tr>
+                                    @foreach(array_keys($transportFields) as $lbl)
+                                    <th class="text-nowrap">{{ $lbl }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody style="font-size:12px;">
+                                <tr>
+                                    @foreach($transportFields as $lbl => $val)
+                                    <td class="fw-semibold text-nowrap {{ $lbl === 'Balance Due' && $transport->balance > 0 ? 'text-danger' : ($lbl === 'Balance Due' ? 'text-success' : '') }}">{{ $val }}</td>
+                                    @endforeach
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     @else
                     <div class="card-body py-3 text-center text-muted small">
@@ -801,11 +867,11 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
                     @endif
                 </div>
 
-                @if($allTransport->count() > 1)
+                @if($allTransport->count() >= 1)
                 <div class="card border-0 shadow-sm">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
-                        <span class="fw-bold small"><i class="bi bi-arrow-left-right me-2"></i>Route Change History</span>
-                        <span class="badge bg-secondary">{{ $allTransport->count() }} records</span>
+                        <span class="fw-bold small"><i class="bi bi-arrow-left-right me-2"></i>Transport History</span>
+                        <span class="badge bg-secondary">{{ $allTransport->count() }} record{{ $allTransport->count() > 1 ? 's' : '' }}</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
