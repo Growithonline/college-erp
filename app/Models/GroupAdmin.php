@@ -15,6 +15,7 @@ class GroupAdmin extends Authenticatable
         'email',
         'password',
         'can_reset_institute_password',
+        'can_create_institutes',
         'status',
     ];
 
@@ -25,6 +26,7 @@ class GroupAdmin extends Authenticatable
 
     protected $casts = [
         'can_reset_institute_password' => 'boolean',
+        'can_create_institutes' => 'boolean',
         'status' => 'boolean',
     ];
 

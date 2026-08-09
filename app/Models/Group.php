@@ -6,10 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class Group extends Model
 {
-    protected $fillable = ['name', 'status'];
+    protected $fillable = [
+        'name',
+        'status',
+        'institute_quota',
+        'per_institute_student_limit',
+        'institute_subscription_type',
+        'institute_subscription_end',
+    ];
 
     protected $casts = [
         'status' => 'boolean',
+        'institute_subscription_end' => 'date',
     ];
 
     public function institutes()

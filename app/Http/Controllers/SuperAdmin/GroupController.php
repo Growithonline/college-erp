@@ -55,6 +55,25 @@ class GroupController extends Controller
         return back()->with('success', 'Group status updated.');
     }
 
+    public function update(Request $request, Group $group)
+    {
+        $request->validate([
+            'institute_quota'             => 'nullable|integer|min:1',
+            'per_institute_student_limit' => 'nullable|integer|min:1',
+            'institute_subscription_type' => 'nullable|in:fixed,lifetime',
+            'institute_subscription_end'  => 'required_if:institute_subscription_type,fixed|nullable|date|after:today',
+        ]);
+
+        $group->update([
+            'institute_quota'             => $request->institute_quota,
+            'per_institute_student_limit' => $request->per_institute_student_limit,
+            'institute_subscription_type' => $request->institute_subscription_type,
+            'institute_subscription_end'  => $request->institute_subscription_type === 'fixed' ? $request->institute_subscription_end : null,
+        ]);
+
+        return back()->with('success', 'Group settings updated.');
+    }
+
     public function assignInstitute(Request $request, Group $group)
     {
         $request->validate(['institute_id' => 'required|exists:institutes,id']);
@@ -116,5 +135,13 @@ class GroupController extends Controller
 
         $groupAdmin->update(['can_reset_institute_password' => !$groupAdmin->can_reset_institute_password]);
         return back()->with('success', 'Password-reset permission updated.');
+    }
+
+    public function toggleCreatePermission(Group $group, GroupAdmin $groupAdmin)
+    {
+        abort_unless($groupAdmin->group_id === $group->id, 404);
+
+        $groupAdmin->update(['can_create_institutes' => !$groupAdmin->can_create_institutes]);
+        return back()->with('success', 'Institute-creation permission updated.');
     }
 }

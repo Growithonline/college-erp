@@ -40,10 +40,12 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::post('/groups',                                     [GroupController::class, 'store'])->name('groups.store');
         Route::get('/groups/{group}',                              [GroupController::class, 'show'])->name('groups.show');
         Route::patch('/groups/{group}/toggle',                     [GroupController::class, 'toggle'])->name('groups.toggle');
+        Route::patch('/groups/{group}',                            [GroupController::class, 'update'])->name('groups.update');
         Route::post('/groups/{group}/institutes',                  [GroupController::class, 'assignInstitute'])->name('groups.institutes.store');
         Route::post('/groups/{group}/admins',                      [GroupController::class, 'storeAdmin'])->name('groups.admins.store');
         Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-status', [GroupController::class, 'toggleAdminStatus'])->name('groups.admins.toggle-status');
         Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-reset-permission', [GroupController::class, 'toggleResetPermission'])->name('groups.admins.toggle-reset-permission');
+        Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-create-permission', [GroupController::class, 'toggleCreatePermission'])->name('groups.admins.toggle-create-permission');
 
         // Login-UID Backfill (Staff/Partner/Center/Library-Staff)
         Route::get('/uid-backfill',             [UidBackfillController::class, 'index'])->name('uid-backfill.index');

@@ -6,6 +6,27 @@
 
 @section('content')
 
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        @if($group)
+            @if($remaining === null)
+                <span class="badge bg-primary-subtle text-primary">Unlimited institute slots</span>
+            @else
+                <span class="badge bg-primary-subtle text-primary">{{ $remaining }} of {{ $group->institute_quota }} institute slot(s) remaining</span>
+            @endif
+        @endif
+    </div>
+    @if($groupAdmin->can_create_institutes)
+        @if($remaining === 0)
+            <span class="text-muted small">Institute quota reached — contact the platform administrator.</span>
+        @else
+            <a href="{{ route('group_admin.institutes.create') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Add Institute
+            </a>
+        @endif
+    @endif
+</div>
+
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white">
         <h6 class="mb-0">Institutes in {{ $groupAdmin->group->name ?? 'this group' }}</h6>

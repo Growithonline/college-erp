@@ -18,7 +18,7 @@ class StoreInstituteRequest extends FormRequest
             'name'       => 'required|string|max:255',
             'short_name' => 'required|string|max:10|alpha_num',
             'mobile' => 'required|string|max:20',
-            'email' => 'required|email|unique:institutes,email',
+            'email' => 'required|email',
 
             'image' => 'nullable|file|max:2048|extensions:jpg,jpeg,png',
             'primary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -36,7 +36,7 @@ class StoreInstituteRequest extends FormRequest
             'owner_whatsapp' => 'nullable|string|max:20',
             'owner_address' => 'nullable|string|max:500',
 
-            'owner_identity_proof' => 'nullable|file|max:2048',
+            'owner_identity_proof' => 'nullable|file|max:2048|extensions:jpg,jpeg,png,pdf',
 
             // SaaS
             'student_limit' => 'required|integer|min:1',

@@ -32,8 +32,13 @@
     {{-- Institutes in this group --}}
     <div class="col-md-6">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-0 pb-0 pt-3">
+            <div class="card-header bg-white border-0 pb-0 pt-3 d-flex align-items-center justify-content-between">
                 <h6 class="fw-bold mb-0"><i class="bi bi-building text-primary me-2"></i>Institutes ({{ $group->institutes_count }})</h6>
+                @if($group->institute_quota === null)
+                    <span class="badge bg-primary-subtle text-primary">Unlimited</span>
+                @else
+                    <span class="badge bg-primary-subtle text-primary">{{ $group->institutes_count }} / {{ $group->institute_quota }}</span>
+                @endif
             </div>
             <div class="card-body">
                 <table class="table table-sm table-borderless mb-3">
@@ -96,13 +101,22 @@
                             <td>
                                 <div class="fw-semibold">{{ $admin->name }}</div>
                                 <div class="text-muted" style="font-size:11px;">{{ $admin->email }}</div>
-                                <form method="POST" action="{{ route('super_admin.groups.admins.toggle-reset-permission', [$group->id, $admin->id]) }}" class="mt-1">
-                                    @csrf @method('PATCH')
-                                    <button type="submit" class="btn btn-sm btn-outline-{{ $admin->can_reset_institute_password ? 'warning' : 'secondary' }} py-0 px-2" style="font-size:10px;">
-                                        <i class="bi bi-key"></i>
-                                        {{ $admin->can_reset_institute_password ? 'Can reset passwords' : 'Cannot reset passwords' }}
-                                    </button>
-                                </form>
+                                <div class="d-flex gap-1 mt-1 flex-wrap">
+                                    <form method="POST" action="{{ route('super_admin.groups.admins.toggle-reset-permission', [$group->id, $admin->id]) }}">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-outline-{{ $admin->can_reset_institute_password ? 'warning' : 'secondary' }} py-0 px-2" style="font-size:10px;">
+                                            <i class="bi bi-key"></i>
+                                            {{ $admin->can_reset_institute_password ? 'Can reset passwords' : 'Cannot reset passwords' }}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('super_admin.groups.admins.toggle-create-permission', [$group->id, $admin->id]) }}">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-outline-{{ $admin->can_create_institutes ? 'warning' : 'secondary' }} py-0 px-2" style="font-size:10px;">
+                                            <i class="bi bi-building-add"></i>
+                                            {{ $admin->can_create_institutes ? 'Can create institutes' : 'Cannot create institutes' }}
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                             <td class="text-center">
                                 @if($admin->status)
@@ -150,5 +164,55 @@
         </div>
     </div>
 </div>
+
+<div class="row g-3 mt-1">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pb-0 pt-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-sliders text-warning me-2"></i>Institute Quota & Limits</h6>
+                <p class="text-muted small mb-0 mt-1">Applied to every institute the Group-Admin creates themselves.</p>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('super_admin.groups.update', $group->id) }}">
+                    @csrf @method('PATCH')
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small mb-1">Institute Quota</label>
+                            <input type="number" name="institute_quota" min="1" class="form-control form-control-sm"
+                                   value="{{ $group->institute_quota }}" placeholder="Leave blank for unlimited">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small mb-1">Student Limit per Institute</label>
+                            <input type="number" name="per_institute_student_limit" min="1" class="form-control form-control-sm"
+                                   value="{{ $group->per_institute_student_limit }}" placeholder="Required before Group-Admin can create">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small mb-1">Subscription</label>
+                            <select name="institute_subscription_type" id="subscriptionTypeSelect" class="form-select form-select-sm">
+                                <option value="" @selected(!$group->institute_subscription_type)>-- Select --</option>
+                                <option value="fixed" @selected($group->institute_subscription_type === 'fixed')>Fixed end date</option>
+                                <option value="lifetime" @selected($group->institute_subscription_type === 'lifetime')>Lifetime access</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="subscriptionEndWrap" style="{{ $group->institute_subscription_type === 'fixed' ? '' : 'display:none;' }}">
+                            <label class="form-label fw-semibold small mb-1">Subscription End Date</label>
+                            <input type="date" name="institute_subscription_end" class="form-control form-control-sm"
+                                   value="{{ $group->institute_subscription_end?->toDateString() }}">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('subscriptionTypeSelect').addEventListener('change', function () {
+    document.getElementById('subscriptionEndWrap').style.display = this.value === 'fixed' ? '' : 'none';
+});
+</script>
 
 @endsection

@@ -11,13 +11,11 @@ use App\Models\ChannelPartner;
 use App\Models\Group;
 use App\Models\Institute;
 use App\Models\LibraryStaff;
-use App\Models\SmsLog;
 use App\Models\StaffMember;
 use App\Models\User;
-use App\Services\AccountingSetupService;
 use App\Services\AuditLogService;
 use App\Services\InstituteMailer;
-use App\Services\SmsService;
+use App\Services\InstituteProvisioningService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,97 +184,15 @@ class InstituteController extends Controller
 
     public function store(StoreInstituteRequest $request)
     {
-        // ── Step 1: DB transaction (only real failures abort here) ──────────
+        $data = $request->validated();
+        $data['group_id']             = null;
+        $data['image']                = $request->file('image');
+        $data['owner_identity_proof'] = $request->file('owner_identity_proof');
+
         try {
-            DB::beginTransaction();
-
-            $uid = $this->generateInstituteUID();
-
-            $imagePath = $request->hasFile('image')
-                ? $request->file('image')->store('institutes/images', 'public')
-                : null;
-
-            $identityProofPath = $request->hasFile('owner_identity_proof')
-                ? $request->file('owner_identity_proof')
-                    ->store('institutes/identity_proofs', 'public')
-                : null;
-
-            $institute = Institute::create([
-                'institute_uid'        => $uid,
-                'name'                 => $request->name,
-                'short_name'           => strtoupper($request->short_name),
-                'mobile'               => $request->mobile,
-                'email'                => $request->email,
-                'image'                => $imagePath,
-                'primary_color'        => $request->primary_color,
-                'address'              => $request->address,
-                'city'                 => $request->city,
-                'state'                => $request->state,
-                'pincode'              => $request->pincode,
-                'owner_name'           => $request->owner_name,
-                'owner_mobile'         => $request->owner_mobile,
-                'owner_email'          => $request->owner_email,
-                'owner_whatsapp'       => $request->owner_whatsapp,
-                'owner_address'        => $request->owner_address,
-                'owner_identity_proof' => $identityProofPath,
-                'student_limit'        => $request->student_limit,
-                'subscription_start'   => $request->subscription_start ?? now(),
-                'subscription_end'     => $request->subscription_end,
-                'status'               => 'active',
-            ]);
-
-            $plainPassword = Str::random(10);
-
-            $user = User::create([
-                'institute_id' => $institute->id,
-                'name'         => $request->owner_name,
-                'email'        => $request->owner_email,
-                'mobile'       => $request->owner_mobile,
-                'password'     => Hash::make($plainPassword),
-            ]);
-            // 'role' is not mass-assignable — set directly to prevent privilege escalation
-            $user->role = 'institute_admin';
-            $user->save();
-
-            \Database\Seeders\StaffRoleSeeder::createDefaultRoles($institute->id);
-            AccountingSetupService::bootstrapInstitute($institute->id);
-
-            DB::commit();
-
+            app(InstituteProvisioningService::class)->create($data);
         } catch (\Throwable $e) {
-            DB::rollBack();
             return back()->withErrors(['error' => 'Something went wrong. ' . $e->getMessage()]);
-        }
-
-        // ── Step 2: Email — completely outside DB transaction ────────────────
-        try {
-            Mail::mailer('smtp')->to($user->email)->send(new InstituteCredentialMail(
-                ownerName:     $request->input('owner_name'),
-                instituteName: $request->input('name'),
-                instituteUid:  $uid,
-                email:         $user->email,
-                password:      $plainPassword,
-                loginUrl:      url('/login'),
-                logoUrl:       asset('images/logog.png'),
-            ));
-        } catch (\Throwable $mailEx) {
-            \Log::warning('Institute welcome email failed', [
-                'institute_id' => $institute->id,
-                'error'        => $mailEx->getMessage(),
-            ]);
-        }
-
-        // ── Step 3: SMS — fire-and-forget ────────────────────────────────────
-        try {
-            if (! empty($request->owner_mobile) && SmsService::isPlatformConfigured()) {
-                $smsMessage = "Welcome to College ERP! Institute ID: {$uid} | Email: {$user->email} | Password: {$plainPassword} | Login: " . url('/login') . " | Please change your password after first login.";
-                SmsService::sendFromPlatform($request->owner_mobile, $smsMessage, SmsLog::TYPE_WELCOME, $institute->id);
-            }
-        } catch (\Throwable $smsEx) {
-            \Log::warning('Institute welcome SMS failed', [
-                'institute_id' => $institute->id,
-                'error'        => $smsEx->getMessage(),
-            ]);
         }
 
         return redirect()
@@ -977,12 +893,4 @@ class InstituteController extends Controller
         flush();
     }
 
-    private function generateInstituteUID(): string
-    {
-        $year = now()->year;
-
-        $count = Institute::whereYear('created_at', $year)->lockForUpdate()->count() + 1;
-
-        return 'GT/' . $year . '/' . str_pad($count, 4, '0', STR_PAD_LEFT);
-    }
 }
