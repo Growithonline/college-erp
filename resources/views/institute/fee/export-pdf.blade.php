@@ -6,7 +6,7 @@
     <style>
         @page { size: A4 landscape; margin: 7mm 6mm 7mm 6mm; }
         * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 7.5px; color: #000; margin:0; padding:0; line-height:1.2; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #000; margin:0; padding:0; line-height:1.3; }
 
         /* ── Header ── */
         .hdr { display:table; width:100%; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:4px; }
@@ -18,16 +18,16 @@
             color:#000; overflow:hidden; background:#f0f0f0;
         }
         .logo-box img { width:36px; height:36px; object-fit:cover; border-radius:4px; display:block; }
-        .inst-name { font-size:14px; font-weight:900; color:#000; }
-        .inst-sub  { font-size:7.5px; color:#000; font-weight:700; }
-        .hdr-r { text-align:right; font-size:7px; color:#000; font-weight:600; white-space:nowrap; }
+        .inst-name { font-size:16px; font-weight:900; color:#000; }
+        .inst-sub  { font-size:9px; color:#000; font-weight:700; }
+        .hdr-r { text-align:right; font-size:8.5px; color:#000; font-weight:600; white-space:nowrap; }
         .hdr-r div { margin-bottom:1px; }
 
         /* ── Summary row ── */
         .sum-bar { margin-bottom:4px; }
         .sum-bar span {
             display:inline-block; border-radius:3px; padding:2px 7px; margin-right:4px;
-            font-size:7px; font-weight:800; white-space:nowrap; border:1px solid #000; color:#000;
+            font-size:8.5px; font-weight:800; white-space:nowrap; border:1px solid #000; color:#000;
         }
         .s-green  { background:#c8f5d8; }
         .s-blue   { background:#c8e0ff; }
@@ -37,7 +37,7 @@
         /* ── Mode breakdown inline badges ── */
         .mb {
             display:inline-block; border-radius:3px; padding:1px 5px; margin-right:3px;
-            font-size:6.5px; font-weight:800; white-space:nowrap; border:1px solid #aaa; color:#000;
+            font-size:8px; font-weight:800; white-space:nowrap; border:1px solid #aaa; color:#000;
         }
         .m-cash   { background:#c8f5d8; }
         .m-upi    { background:#c8e0ff; }
@@ -50,21 +50,21 @@
         /* ── Table ── */
         table.t { width:100%; border-collapse:collapse; table-layout:fixed; }
         table.t thead th {
-            background:#1e3a5f; color:#fff; font-size:6.5px; font-weight:800;
-            padding:2px 2px; text-align:left; white-space:nowrap; overflow:hidden;
+            background:#1e3a5f; color:#fff; font-size:8.5px; font-weight:800;
+            padding:4px 3px; text-align:left; white-space:nowrap; overflow:hidden;
         }
         table.t thead th.r { text-align:right; }
         table.t thead th.c { text-align:center; }
         table.t tbody td {
-            padding:2px 2px; font-size:6.5px; font-weight:600; color:#000;
+            padding:4px 3px; font-size:8.5px; font-weight:600; color:#000;
             border-bottom:1px solid #bbb; vertical-align:middle;
-            overflow:hidden; white-space:nowrap;
+            white-space:normal; word-wrap:break-word; overflow-wrap:break-word;
         }
         table.t tbody tr:nth-child(even) { background:#f0f0f0; }
         table.t tbody tr.cx { background:#ffe0e0 !important; }
         table.t tfoot td {
-            background:#d0d8e8; font-weight:800; font-size:7.5px; color:#000;
-            padding:3px; border-top:2px solid #555;
+            background:#d0d8e8; font-weight:800; font-size:9.5px; color:#000;
+            padding:4px 3px; border-top:2px solid #555;
         }
         .r   { text-align:right; }
         .c   { text-align:center; }
@@ -76,7 +76,7 @@
         /* ── Footer ── */
         .ftr { margin-top:4px; border-top:1px solid #000; padding-top:3px;
                display:table; width:100%; }
-        .ftr-l, .ftr-r { display:table-cell; font-size:6.5px; color:#000; font-weight:600; }
+        .ftr-l, .ftr-r { display:table-cell; font-size:8px; color:#000; font-weight:600; }
         .ftr-r { text-align:right; }
 
         @media print {
@@ -149,22 +149,22 @@
 <table class="t" cellspacing="0" cellpadding="0">
     <thead>
         <tr>
-            <th class="c" style="width:13px;">#</th>
-            <th style="width:46px;">Invoice No</th>
-            <th style="width:33px;">Date</th>
-            <th style="width:86px;">Student</th>
-            <th style="width:50px;">Student ID</th>
-            <th style="width:66px;">Course / Year</th>
-            <th style="width:40px;">Father Name</th>
-            <th style="width:56px;">Fee Items</th>
-            <th style="width:44px;">Txn Ref / Bank</th>
-            <th style="width:40px;">Collected By</th>
-            <th style="width:28px;">Mode</th>
-            <th class="r" style="width:33px;">Collected</th>
-            <th class="r" style="width:22px;">Fine</th>
-            <th class="r" style="width:26px;">Discount</th>
-            <th class="r" style="width:26px;">Due</th>
-            <th class="r" style="width:33px;">Total</th>
+            <th class="c" style="width:2%;">#</th>
+            <th style="width:7%;">Invoice No</th>
+            <th style="width:5%;">Date</th>
+            <th style="width:14%;">Student</th>
+            <th style="width:8%;">Student ID</th>
+            <th style="width:10%;">Course / Year</th>
+            <th style="width:6%;">Father Name</th>
+            <th style="width:9%;">Fee Items</th>
+            <th style="width:7%;">Txn Ref / Bank</th>
+            <th style="width:6%;">Collected By</th>
+            <th style="width:4%;">Mode</th>
+            <th class="r" style="width:5%;">Collected</th>
+            <th class="r" style="width:3%;">Fine</th>
+            <th class="r" style="width:4%;">Discount</th>
+            <th class="r" style="width:4%;">Due</th>
+            <th class="r" style="width:6%;">Total</th>
         </tr>
     </thead>
     <tbody>
@@ -194,15 +194,15 @@
                 {{ $inv->invoice_no }}@if($inv->is_cancelled) <span style="font-size:5.5px;">[X]</span>@endif
             </td>
             <td style="color:#000;">{{ $inv->payment_date?->format('d/m/Y') }}</td>
-            <td class="fw">{{ Str::limit($student?->name ?? '—', 24) }}</td>
+            <td class="fw">{{ $student?->name ?? '—' }}</td>
             <td style="color:#000;">{{ $student?->student_uid ?? '—' }}</td>
-            <td style="color:#000;">{{ Str::limit($courseLine, 25) }}</td>
-            <td style="color:#000;">{{ Str::limit($student?->father_name ?? '—', 15) }}</td>
-            <td style="color:#000;">{{ Str::limit($inv->items->pluck('fee_name')->implode(', '), 26) ?: '—' }}</td>
+            <td style="color:#000;">{{ $courseLine }}</td>
+            <td style="color:#000;">{{ $student?->father_name ?? '—' }}</td>
+            <td style="color:#000;">{{ $inv->items->pluck('fee_name')->implode(', ') ?: '—' }}</td>
             <td style="color:#000;">
-                {{ Str::limit($inv->transaction_ref ?? '—', 12) }}@if($inv->bank_name) /{{ Str::limit($inv->bank_name, 6) }}@endif
+                {{ $inv->transaction_ref ?? '—' }}@if($inv->bank_name) / {{ $inv->bank_name }}@endif
             </td>
-            <td style="color:#000;">{{ Str::limit($inv->collected_by ?? '—', 14) }}</td>
+            <td style="color:#000;">{{ $inv->collected_by ?? '—' }}</td>
             <td>
                 <span class="mb {{ $modeCssMap[$inv->payment_mode] ?? '' }}">{{ strtoupper($inv->payment_mode) }}</span>
             </td>
