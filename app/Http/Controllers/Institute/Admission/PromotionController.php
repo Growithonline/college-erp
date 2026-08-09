@@ -633,6 +633,20 @@ class PromotionController extends Controller
 
         $subjectIds = $mappings->pluck('subject_id')->unique()->values();
 
+        // course_stream_subjects.subject_role can be 'both' — meaning the plan lets a
+        // student pick EITHER major or minor for that subject, not that they have both
+        // roles at once. Copying it verbatim onto student_subjects wipes out whichever
+        // one the student actually chose. Fall back to the student's own most recent
+        // non-'both' role for the subject when the plan is flexible.
+        $priorRoles = StudentSubject::where('student_id', $student->id)
+            ->whereIn('subject_id', $subjectIds->all())
+            ->where('subject_role', '!=', 'both')
+            ->orderByDesc('academic_session_id')
+            ->orderByDesc('year_number')
+            ->get()
+            ->groupBy('subject_id')
+            ->map(fn($rows) => $rows->first()->subject_role);
+
         StudentSubject::where('student_id', $student->id)
             ->where('academic_session_id', $sessionId)
             ->where('year_number', $targetPart->year_number)
@@ -640,6 +654,11 @@ class PromotionController extends Controller
             ->delete();
 
         foreach ($mappings as $mapping) {
+            $resolvedRole = $mapping->subject_role;
+            if ($resolvedRole === 'both' && $priorRoles->has($mapping->subject_id)) {
+                $resolvedRole = $priorRoles->get($mapping->subject_id);
+            }
+
             StudentSubject::updateOrCreate(
                 [
                     'student_id'          => $student->id,
@@ -648,7 +667,7 @@ class PromotionController extends Controller
                     'year_number'         => $targetPart->year_number,
                 ],
                 [
-                    'subject_role'     => $mapping->subject_role ?? 'compulsory',
+                    'subject_role'     => $resolvedRole ?? 'compulsory',
                     'is_auto_included' => !$mapping->is_chooseable,
                 ]
             );

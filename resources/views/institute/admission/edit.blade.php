@@ -1016,6 +1016,10 @@ const initialStreamId = @json((string) $selectedStreamId);
 const initialPartId = @json((string) $selectedPartId);
 const preselectedMajorIds = @json($selectedMajorIds);
 const preselectedMinorIds = @json($selectedMinorIds);
+// Subjects actually assigned to the student right now (from student_subjects) —
+// used to keep them visible/selectable even if the stream's current subject
+// plan no longer lists them, so editing never silently drops an assigned subject.
+const currentAssignedSubjectsData = @json($currentAssignedSubjects);
 const currentAcademicFee = Number(@json((float) ($currentSnapshot['recalculable_total'] ?? 0)));
 const currentSubjectFee = Number(@json($currentSubjectFee));
 const currentPracticalFee = Number(@json($currentPracticalFee));
@@ -1334,18 +1338,62 @@ function renderSubjects(data) {
     editMinorMin = rule.minor_min ?? 0;
     editMinorMax = rule.minor_max ?? 99;
 
-    const compulsory    = subjects.filter(s => s.role === 'compulsory' || !s.is_chooseable);
-    const majorSubjects = subjects.filter(s => ['major', 'both'].includes(s.role));
-    const minorSubjects = subjects.filter(s => ['minor', 'optional', 'both'].includes(s.role));
-
     // Restore selections only when stream/part unchanged
     const streamUnchanged = document.getElementById('editStreamSelect')?.value == initialStreamId;
     const partUnchanged   = document.getElementById('editPartSelect')?.value == initialPartId;
     const usePreselected  = streamUnchanged && partUnchanged;
+
+    // The stream's subject plan can change after a student was assigned a subject
+    // (subject deactivated / removed from this stream-year). If that happens, the
+    // subject silently disappears from every list below and re-saving the form
+    // would drop it (and its fee) even though nothing was actually changed.
+    // Graft in any currently-assigned subject the plan no longer lists.
+    let legacyCount = 0;
+    if (usePreselected) {
+        const planIds = new Set(subjects.map(s => String(s.id)));
+        currentAssignedSubjectsData.forEach(a => {
+            if (planIds.has(String(a.id))) return;
+            legacyCount++;
+            subjects.push({
+                id: a.id,
+                name: a.name,
+                code: a.code,
+                has_practical: a.has_practical,
+                is_chooseable: true,
+                legacy: true,
+                role: a.role_label === 'Compulsory' ? 'compulsory'
+                    : a.role_label === 'Minor' ? 'minor'
+                    : a.role_label === 'Major & Minor' ? 'both'
+                    : 'major',
+            });
+        });
+    }
+
+    const compulsory    = subjects.filter(s => s.role === 'compulsory' || !s.is_chooseable);
+    const majorSubjects = subjects.filter(s => ['major', 'both'].includes(s.role));
+    const minorSubjects = subjects.filter(s => ['minor', 'optional', 'both'].includes(s.role));
+
     const restoreMajors   = usePreselected ? preselectedMajorIds : [];
     const restoreMinors   = usePreselected ? preselectedMinorIds.filter(id => !preselectedMajorIds.includes(id)) : [];
 
+    // Never let TomSelect's item cap silently truncate a restore — if the student
+    // already has more majors/minors than the current rule allows, raise the cap
+    // just enough to show all of them; the admin can then trim it down manually.
+    const majorAvailIds = majorSubjects.map(s => String(s.id));
+    const minorAvailIds = minorSubjects.map(s => String(s.id));
+    const restoreMajorsAvail = restoreMajors.filter(id => majorAvailIds.includes(String(id))).length;
+    const restoreMinorsAvail = restoreMinors.filter(id => minorAvailIds.includes(String(id))).length;
+    if (restoreMajorsAvail > editMajorMax) editMajorMax = restoreMajorsAvail;
+    if (restoreMinorsAvail > editMinorMax) editMinorMax = restoreMinorsAvail;
+
     let html = '';
+    if (legacyCount > 0) {
+        html += `<div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12px;">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            ${legacyCount} currently-assigned subject${legacyCount > 1 ? 's are' : ' is'} marked "not in current plan" below —
+            this stream/year's subject list has changed since assignment. Leave selected to keep as-is; only remove if intentional.
+        </div>`;
+    }
 
     // Compulsory
     if (compulsory.length) {
@@ -1358,6 +1406,7 @@ function renderSubjects(data) {
                 <span class="small fw-semibold">${s.name}</span>
                 ${s.code ? `<span class="text-muted small"> (${s.code})</span>` : ''}
                 ${s.has_practical ? '<span class="badge bg-warning text-dark ms-1" style="font-size:9px;">Practical</span>' : ''}
+                ${s.legacy ? '<span class="badge bg-secondary ms-1" style="font-size:9px;">Not in current plan</span>' : ''}
             </div>`;
         });
         html += `</div></div>`;
@@ -1373,7 +1422,7 @@ function renderSubjects(data) {
             </label>
             <select id="editMajorSelect" name="selected_major_subjects[]" multiple placeholder="Select major subject...">`;
         majorSubjects.forEach(s => {
-            html += `<option value="${s.id}">${s.name}${s.code ? ' (' + s.code + ')' : ''}${s.has_practical ? ' 🔬' : ''}</option>`;
+            html += `<option value="${s.id}">${s.name}${s.code ? ' (' + s.code + ')' : ''}${s.has_practical ? ' 🔬' : ''}${s.legacy ? ' — not in current plan' : ''}</option>`;
         });
         html += `</select></div>`;
     }
@@ -1389,7 +1438,7 @@ function renderSubjects(data) {
             <div id="editMinorCountBadge" class="mb-1"></div>
             <select id="editMinorSelect" name="selected_minor_subjects[]" multiple placeholder="Select minor subject...">`;
         minorSubjects.forEach(s => {
-            html += `<option value="${s.id}">${s.name}${s.code ? ' (' + s.code + ')' : ''}${s.has_practical ? ' 🔬' : ''}</option>`;
+            html += `<option value="${s.id}">${s.name}${s.code ? ' (' + s.code + ')' : ''}${s.has_practical ? ' 🔬' : ''}${s.legacy ? ' — not in current plan' : ''}</option>`;
         });
         html += `</select></div>`;
     }
