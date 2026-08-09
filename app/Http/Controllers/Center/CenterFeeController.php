@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Center;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Institute\Fee\FeeCollectionController as InstituteFeeController;
+use App\Http\Controllers\Institute\Fee\WalletController as InstituteWalletController;
 use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\FeeInvoice;
@@ -578,5 +579,14 @@ class CenterFeeController extends Controller
             'student', 'sessions', 'selectedSession', 'selectedSessionId',
             'transactions', 'summary', 'pendingFees', 'feePlanInfo', 'sessionBalances'
         ));
+    }
+
+    public function walletPrint(Student $student, Request $request)
+    {
+        $center = $this->center();
+        abort_unless($center->canCollectFee(), 403);
+        abort_if((int) $student->institute_id !== (int) $center->institute_id, 403, 'Student not found.');
+
+        return app(InstituteWalletController::class)->walletPrint($student, $request);
     }
 }

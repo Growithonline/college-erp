@@ -408,6 +408,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/{student}/history/print',     [FeeCollectionController::class, 'historyPrint'])->name('history-print');
         Route::get('/{student}/receipt/{invoice}', [FeeCollectionController::class, 'receipt'])->name('receipt');
         Route::get('/{student}/wallet',            [WalletController::class, 'studentWallet'])->name('wallet.student');
+        Route::get('/{student}/wallet/print',       [WalletController::class, 'walletPrint'])->name('wallet.student-print');
         Route::post('/{student}/invoice/{invoice}/cancel', [FeeCollectionController::class, 'cancel'])->name('cancel');
         Route::get('/practical-tokens', [PracticalFeeTokenController::class, 'index'])->name('practical-tokens.index');
         Route::get('/practical-tokens/create', [PracticalFeeTokenController::class, 'create'])->name('practical-tokens.create');
@@ -1075,6 +1076,7 @@ Route::prefix('center')->name('center.')->group(function () {
         Route::get('fee/{student}/history',           [CenterFeeController::class, 'studentHistory'])->name('fee.student-history');
         Route::get('fee/{student}/history/print',     [CenterFeeController::class, 'historyPrint'])->name('fee.history-print');
         Route::get('fee/{student}/wallet',            [CenterFeeController::class, 'studentWallet'])->name('fee.wallet.student');
+        Route::get('fee/{student}/wallet/print',       [CenterFeeController::class, 'walletPrint'])->name('fee.wallet.student-print');
 
         // Admission Documents
         Route::prefix('admission-documents')->name('admission.documents.')->group(function () {
@@ -1223,6 +1225,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('fee/{student}/history',           [StaffFeeController::class, 'studentHistory'])->name('fee.student-history');
         Route::get('fee/{student}/history/print',     [StaffFeeController::class, 'historyPrint'])->name('fee.history-print');
         Route::get('fee/{student}/wallet',            [StaffFeeController::class, 'studentWallet'])->name('fee.wallet.student');
+        Route::get('fee/{student}/wallet/print',       [StaffFeeController::class, 'walletPrint'])->name('fee.wallet.student-print');
         Route::post('fee/{student}/invoice/{invoice}/cancel', [StaffFeeController::class, 'cancel'])->name('fee.cancel');
         Route::get('fee/approvals',                    [FeeApprovalController::class, 'index'])->name('fee.approvals.index');
         Route::post('fee/approvals/{invoice}/approve',  [FeeApprovalController::class, 'approve'])->name('fee.approvals.approve');
@@ -1458,6 +1461,7 @@ Route::prefix('partner')->name('partner.')->group(function () {
         Route::get('fee/{student}/history',           [PartnerFeeController::class, 'studentHistory'])->name('fee.student-history');
         Route::get('fee/{student}/history/print',     [PartnerFeeController::class, 'historyPrint'])->name('fee.history-print');
         Route::get('fee/{student}/wallet',            [PartnerFeeController::class, 'studentWallet'])->name('fee.wallet.student');
+        Route::get('fee/{student}/wallet/print',       [PartnerFeeController::class, 'walletPrint'])->name('fee.wallet.student-print');
 
         // Reports (only if can_download_reports)
         Route::get('reports',                [PartnerReportController::class, 'index'])->name('reports.index');

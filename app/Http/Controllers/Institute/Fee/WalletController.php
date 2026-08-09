@@ -163,4 +163,45 @@ class WalletController extends Controller
             'feePlanInfo'
         ));
     }
+
+    public function walletPrint(Student $student, Request $request)
+    {
+        if ($student->institute_id !== $this->instituteId()) {
+            abort(403);
+        }
+        if ($staff = $this->currentStaff()) {
+            abort_if(!$staff->canAccessStudentForOperations($student), 403, 'This student is outside your access scope.');
+        }
+
+        $student->load(['stream.course', 'coursePart']);
+        $instituteId = $this->instituteId();
+
+        $sessions = AcademicSession::where('institute_id', $instituteId)
+            ->orderBy('name')
+            ->get();
+
+        $selectedSessionId = $request->session_id
+            ?? $student->academic_session_id
+            ?? AcademicSession::where('institute_id', $instituteId)
+                ->where('is_active', true)
+                ->value('id');
+
+        $selectedSession = $sessions->firstWhere('id', $selectedSessionId);
+
+        $transactions = StudentTransaction::where('student_id', $student->id)
+            ->where('academic_session_id', $selectedSessionId)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $summary = WalletService::getStudentSummary($student, (int) $selectedSessionId);
+        $pendingFees = WalletService::buildPendingRows($student, (int) $selectedSessionId);
+
+        return view('institute.fee.wallet-print', compact(
+            'student',
+            'selectedSession',
+            'transactions',
+            'summary',
+            'pendingFees'
+        ));
+    }
 }

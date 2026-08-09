@@ -97,6 +97,12 @@ class StaffFeeController extends Controller
         return app(InstituteWalletController::class)->studentWallet($student, $request);
     }
 
+    public function walletPrint(Student $student, Request $request)
+    {
+        $this->ensureFeeWalletPermission();
+        return app(InstituteWalletController::class)->walletPrint($student, $request);
+    }
+
     public function export(Request $request)
     {
         $this->ensureFeeViewPermission();

@@ -8,6 +8,7 @@
     $feeIndexRoute   = $isStaff ? 'staff.fee.index'            : ($isCenter  ? 'center.fee.index'            : ($isPartner ? 'partner.fee.index'            : 'fee.index'));
     $feeHistoryRoute = $isStaff ? 'staff.fee.student-history'  : ($isCenter  ? 'center.fee.student-history'  : ($isPartner ? 'partner.fee.student-history'  : 'fee.student-history'));
     $walletRoute     = $isStaff ? 'staff.fee.wallet.student'   : ($isCenter  ? 'center.fee.wallet.student'   : ($isPartner ? 'partner.fee.wallet.student'   : 'fee.wallet.student'));
+    $walletPrintRoute = $isStaff ? 'staff.fee.wallet.student-print' : ($isCenter ? 'center.fee.wallet.student-print' : ($isPartner ? 'partner.fee.wallet.student-print' : 'fee.wallet.student-print'));
     $receiptRoute    = $isStaff ? 'staff.fee.receipt'          : ($isCenter  ? 'center.fee.receipt'          : ($isPartner ? 'partner.fee.receipt'          : 'fee.receipt'));
     $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee() : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true));
 
@@ -41,6 +42,10 @@
         @endif
         <a href="{{ route($showRoute, $student->id) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-person me-1"></i>Profile
+        </a>
+        <a href="{{ route($walletPrintRoute, ['student' => $student->id, 'session_id' => $selectedSessionId]) }}"
+           target="_blank" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-printer me-1"></i>Print
         </a>
         <a href="{{ route($feeHistoryRoute, $student->id) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Back
