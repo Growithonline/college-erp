@@ -623,6 +623,10 @@
                            href="{{ route('students.index') }}">
                         <i class="bi bi-list-ul"></i> All Students
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('students.login-access') ? 'active' : '' }}"
+                           href="{{ route('students.login-access') }}">
+                        <i class="bi bi-shield-lock"></i> Login Access
+                    </a></li>
                     <li><hr class="my-1"></li>
                     <li><a class="nav-link {{ request()->routeIs('reports.admission') ? 'active' : '' }}"
                            href="{{ route('reports.admission') }}">

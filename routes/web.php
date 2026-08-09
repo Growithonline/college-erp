@@ -611,6 +611,9 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/wallet',       [StudentDirectoryController::class, 'wallet'])->name('wallet');
         Route::get('/history',      [StudentDirectoryController::class, 'feeHistory'])->name('history');
         Route::get('/ajax-search',  [StudentDirectoryController::class, 'ajaxSearch'])->name('ajax-search');
+        Route::get('/login-access', [StudentDirectoryController::class, 'loginAccessIndex'])->name('login-access');
+        Route::post('/login-access/bulk-send-credentials', [AdmissionController::class, 'bulkSendCredentials'])->name('login-access.bulk-send-credentials');
+        Route::post('/login-access/bulk-update-access',    [AdmissionController::class, 'bulkUpdateLoginAccess'])->name('login-access.bulk-update-access');
     });
 
     Route::prefix('reports')->name('reports.')->group(function () {

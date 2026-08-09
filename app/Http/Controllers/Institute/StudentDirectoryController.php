@@ -35,6 +35,11 @@ class StudentDirectoryController extends Controller
         return $this->listStudents($request, true);
     }
 
+    public function loginAccessIndex(Request $request)
+    {
+        return $this->listStudents($request, false, 'institute.students.login-access');
+    }
+
     public function export(Request $request)
     {
         $type = $request->input('export', 'pdf');
@@ -145,7 +150,7 @@ class StudentDirectoryController extends Controller
         return $this->exportCsv($expHeaders, $expRows, $filename . '.csv');
     }
 
-    private function listStudents(Request $request, bool $quickOnly)
+    private function listStudents(Request $request, bool $quickOnly, string $view = 'institute.students.index')
     {
         $instituteId   = $this->instituteId();
         $activeSession = AcademicSession::where('institute_id', $instituteId)
@@ -245,7 +250,7 @@ class StudentDirectoryController extends Controller
         $centersMap  = $centerIds->isNotEmpty()  ? Center::whereIn('id', $centerIds)->pluck('name', 'id')  : collect();
         $partnersMap = $partnerIds->isNotEmpty() ? ChannelPartner::whereIn('id', $partnerIds)->pluck('name', 'id') : collect();
 
-        return view('institute.students.index', compact(
+        return view($view, compact(
             'students', 'activeSession', 'sessions', 'courseTypes', 'courses', 'streams',
             'sessionId', 'quickOnly', 'centersMap', 'partnersMap', 'studentTypes', 'maxSemester'
         ));

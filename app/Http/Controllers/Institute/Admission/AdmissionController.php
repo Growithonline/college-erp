@@ -447,6 +447,53 @@ class AdmissionController extends Controller
         return back()->with('success', 'Login access updated!');
     }
 
+    public function bulkSendCredentials(Request $request)
+    {
+        $request->validate([
+            'student_ids'   => 'required|array|min:1',
+            'student_ids.*' => 'integer',
+        ]);
+
+        $students = Student::where('institute_id', $this->instituteId())
+            ->whereIn('id', $request->student_ids)
+            ->get();
+
+        foreach ($students as $student) {
+            $this->sendStudentCredentials($student);
+        }
+
+        AuditLogService::log($this->instituteId(), 'admission', 'student_login_credentials_bulk_sent',
+            'Login details sent to ' . $students->count() . ' student(s).');
+
+        return back()->with('success', 'Login details sent to ' . $students->count() . ' student(s).');
+    }
+
+    public function bulkUpdateLoginAccess(Request $request)
+    {
+        $request->validate([
+            'student_ids'      => 'required|array|min:1',
+            'student_ids.*'    => 'integer',
+            'mode'             => 'required|in:allowed,blocked,suspended',
+            'suspended_until'  => 'required_if:mode,suspended|nullable|date|after_or_equal:today',
+        ]);
+
+        $students = Student::where('institute_id', $this->instituteId())
+            ->whereIn('id', $request->student_ids)
+            ->get();
+
+        foreach ($students as $student) {
+            $student->update([
+                'login_blocked'    => $request->mode === 'blocked',
+                'suspended_until'  => $request->mode === 'suspended' ? $request->suspended_until : null,
+            ]);
+        }
+
+        AuditLogService::log($this->instituteId(), 'admission', 'student_login_access_bulk_updated',
+            'Login access set to ' . $request->mode . ' for ' . $students->count() . ' student(s).');
+
+        return back()->with('success', 'Login access updated for ' . $students->count() . ' student(s).');
+    }
+
     private function sendStudentCredentials(Student $student): void
     {
         $plainPassword = Str::random(10);
