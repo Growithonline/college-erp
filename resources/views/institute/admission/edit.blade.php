@@ -482,9 +482,13 @@
 
             {{-- Name --}}
             <div class="{{ ($formConfig['gender']['enabled'] ?? false) ? 'col-md-8' : 'col-12' }}">
-                <label class="form-label small fw-semibold">Student Name <span class="text-danger">*</span></label>
+                <label class="form-label small fw-semibold">
+                    Student Name <span class="text-danger">*</span>
+                    @if($isStaff)<i class="bi bi-lock-fill text-muted ms-1" title="Only admin can edit this field" style="font-size:11px;"></i>@endif
+                </label>
                 <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                       value="{{ old('name', $student->name) }}" required>
+                       value="{{ old('name', $student->name) }}" required
+                       @if($isStaff) readonly style="background:#f1f3f5;cursor:not-allowed;" @endif>
                 @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
@@ -530,9 +534,13 @@
             {{-- Father Name --}}
             @if($formConfig['father_name']['enabled'] ?? false)
             <div class="col-md-6">
-                <label class="form-label small fw-semibold">Father Name</label>
+                <label class="form-label small fw-semibold">
+                    Father Name
+                    @if($isStaff)<i class="bi bi-lock-fill text-muted ms-1" title="Only admin can edit this field" style="font-size:11px;"></i>@endif
+                </label>
                 <input type="text" name="father_name" class="form-control form-control-sm"
-                       value="{{ old('father_name', $student->father_name) }}">
+                       value="{{ old('father_name', $student->father_name) }}"
+                       @if($isStaff) readonly style="background:#f1f3f5;cursor:not-allowed;" @endif>
             </div>
             @endif
 
@@ -548,9 +556,13 @@
             {{-- Mother Name --}}
             @if($formConfig['mother_name']['enabled'] ?? false)
             <div class="col-md-6">
-                <label class="form-label small fw-semibold">Mother Name</label>
+                <label class="form-label small fw-semibold">
+                    Mother Name
+                    @if($isStaff)<i class="bi bi-lock-fill text-muted ms-1" title="Only admin can edit this field" style="font-size:11px;"></i>@endif
+                </label>
                 <input type="text" name="mother_name" class="form-control form-control-sm"
-                       value="{{ old('mother_name', $student->mother_name) }}">
+                       value="{{ old('mother_name', $student->mother_name) }}"
+                       @if($isStaff) readonly style="background:#f1f3f5;cursor:not-allowed;" @endif>
             </div>
             @endif
 

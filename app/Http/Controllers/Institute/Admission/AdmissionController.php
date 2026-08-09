@@ -3595,13 +3595,16 @@ class AdmissionController extends Controller
 
         $oldSnapshot = StudentAcademicChangeService::buildSnapshot($student);
 
-        DB::transaction(function () use ($request, $validated, $student, $stream, $selectedPart, $subjectSelection, $oldSnapshot) {
+        // Name, Father Name & Mother Name are admin-only — staff can view but not change them.
+        $isStaffRequest = auth()->guard('staff')->check();
+
+        DB::transaction(function () use ($request, $validated, $student, $stream, $selectedPart, $subjectSelection, $oldSnapshot, $isStaffRequest) {
             $sessionId = (int) $student->academic_session_id;
             $oldYearNumber = (int) ($oldSnapshot['course_part_year'] ?? ($student->coursePart?->year_number ?? 1));
             $oldRoleMap = StudentAcademicChangeService::currentRoleMap($student, $sessionId, $oldYearNumber);
 
             $updateData = [
-                'name'                => $validated['name'],
+                'name'                => $isStaffRequest ? $student->name : $validated['name'],
                 'mobile'              => $validated['mobile'] ?? null,
                 'email'               => $request->input('email', $student->email),
                 'dob'                 => $request->input('dob', $student->dob),
@@ -3625,10 +3628,10 @@ class AdmissionController extends Controller
                 'marital_status'      => $request->input('marital_status', $student->marital_status),
                 'aadhar_no'           => $request->input('aadhar_no', $student->aadhar_no),
                 'apaar_no'            => $request->input('apaar_no', $student->apaar_no),
-                'father_name'         => $request->input('father_name', $student->father_name),
+                'father_name'         => $isStaffRequest ? $student->father_name : $request->input('father_name', $student->father_name),
                 'father_mobile'       => $request->input('father_mobile', $student->father_mobile),
                 'father_occupation'   => $request->input('father_occupation', $student->father_occupation),
-                'mother_name'         => $request->input('mother_name', $student->mother_name),
+                'mother_name'         => $isStaffRequest ? $student->mother_name : $request->input('mother_name', $student->mother_name),
                 'mother_mobile'       => $request->input('mother_mobile', $student->mother_mobile),
                 'mother_occupation'   => $request->input('mother_occupation', $student->mother_occupation),
                 'guardian_name'       => $request->input('guardian_name', $student->guardian_name),
