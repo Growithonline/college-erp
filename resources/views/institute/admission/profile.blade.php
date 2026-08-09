@@ -328,169 +328,34 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-6">
+@php
+    $transport = $student->activeTransportAllocation;
+    $allTransport = $student->transportAllocations->sortByDesc('id');
+    $hasFeeRecords = $canViewFeeDetails && (($feeSummary['total_charged'] ?? 0) > 0 || ($feeSummary['total_paid'] ?? 0) > 0);
+    $feeIsClear = $feeSummary['is_clear'] ?? true;
+    $feeDue = $feeSummary['total_due'] ?? 0;
+    $hasScholarship = $ps ? !empty($ps['has_scholarship']) : $student->has_scholarship;
+    $eduRows = $ps ? ($ps['education'] ?? []) : ($student->educationDetails?->map(fn($e) => (array) $e->toArray())->all() ?? []);
+    $hasHistory = ($academicChangeLogs ?? collect())->isNotEmpty();
+    $docCanVerify = !$isStaff || auth()->guard('staff')->user()?->hasPermission('document_verify');
+    $docCanUpload = !$isStaff || auth()->guard('staff')->user()?->hasPermission('document_upload');
+    $docCanDelete = !$isStaff || auth()->guard('staff')->user()?->hasPermission('document_delete');
+@endphp
 
-        {{-- Personal --}}
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                <span class="fw-bold small"><i class="bi bi-person me-2"></i>Personal Details</span>
-            </div>
-            <div class="card-body p-0">
-                @foreach([
-                    'Category'         => strtoupper($snapVal('category', $student->category)),
-                    'Special Category' => strtoupper($snapVal('special_category', $student->special_category)),
-                    'Nationality'      => ucfirst($snapVal('nationality', $student->nationality)),
-                    'Religion'         => ucfirst($snapVal('religion', $student->religion)),
-                    'Student Type'     => ucfirst($snapVal('student_type', $student->student_type)),
-                    'Marital Status'   => ucfirst($snapVal('marital_status', $student->marital_status)),
-                    'Aadhar No.'       => $snapVal('aadhar_no', $student->aadhar_no),
-                    'APAAR No.'        => $snapVal('apaar_no', $student->apaar_no),
-                    'Email'            => $snapVal('email', $student->email),
-                ] as $lbl => $val)
-                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
-                    <div class="fw-semibold">{{ $val }}</div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Parent --}}
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                <span class="fw-bold small"><i class="bi bi-people me-2"></i>Parent Details</span>
-            </div>
-            <div class="card-body p-0">
-                @foreach([
-                    'Father Name'       => $snapVal('father_name', $student->father_name),
-                    'Father Mobile'     => $snapVal('father_mobile', $student->father_mobile),
-                    'Father Occupation' => $snapVal('father_occupation', $student->father_occupation),
-                    'Mother Name'       => $snapVal('mother_name', $student->mother_name),
-                    'Mother Mobile'     => $snapVal('mother_mobile', $student->mother_mobile),
-                    'Guardian Name'     => $snapVal('guardian_name', $student->guardian_name),
-                    'Guardian Mobile'   => $snapVal('guardian_mobile', $student->guardian_mobile),
-                ] as $lbl => $val)
-                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
-                    <div class="fw-semibold">{{ $val }}</div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-
-    </div>
-    <div class="col-md-6">
-
-        {{-- Address --}}
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                <span class="fw-bold small"><i class="bi bi-geo-alt me-2"></i>Address Details</span>
-            </div>
-            <div class="card-body p-0">
-                @foreach([
-                    'Village/City'  => $snapVal('perm_village', $student->perm_village),
-                    'Post'          => $snapVal('perm_post', $student->perm_post),
-                    'Thana'         => $snapVal('perm_thana', $student->perm_thana),
-                    'District'      => $snapVal('perm_district', $student->perm_district),
-                    'State'         => $snapVal('perm_state', $student->perm_state),
-                    'Pin Code'      => $snapVal('perm_pincode', $student->perm_pincode),
-                    'Comm. Address' => (bool)($ps !== null ? ($ps['comm_same_as_perm'] ?? false) : $student->comm_same_as_perm)
-                        ? 'Same as above'
-                        : $snapVal('comm_address', $student->comm_address),
-                ] as $lbl => $val)
-                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
-                    <div class="fw-semibold">{{ $val }}</div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Office --}}
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                <span class="fw-bold small"><i class="bi bi-briefcase me-2"></i>Office Details</span>
-            </div>
-            <div class="card-body p-0">
-                @php
-                    $admissionSource = $selectedIdentity?->admission_source_snapshot ?? $student->admission_source ?? 'direct';
-                    $admissionSourceId = $selectedIdentity?->admission_source_id_snapshot ?? $student->admission_source_id;
-                    $admSrcDisplay = ucwords(str_replace('_', ' ', $admissionSource));
-                    if ($admissionSource === 'center' && $admissionSourceId) {
-                        $n = \App\Models\Center::find($admissionSourceId)?->name;
-                        if ($n) $admSrcDisplay .= ' — ' . $n;
-                    } elseif ($admissionSource === 'channel_partner' && $admissionSourceId) {
-                        $n = \App\Models\ChannelPartner::find($admissionSourceId)?->name;
-                        if ($n) $admSrcDisplay .= ' — ' . $n;
-                    }
-                @endphp
-                @foreach([
-                    'Serial No.'       => $serialNo,
-                    'Form No.'         => $formNo,
-                    'SR No.'           => $srNo,
-                    'Enrollment No.'   => $enrollmentNo,
-                    'Roll No.'         => $rollNo,
-                    'Exam Form No.'    => $examFormNo,
-                    'UIN No.'          => $uinNo,
-                    'Reference No.'    => $referenceNo,
-                    'Submitted Date'   => $submittedDate,
-                    'Admission Type'   => ucfirst($selectedIdentity?->admission_type ?? $student->admission_type ?? 'new'),
-                    'Admission Source' => $admSrcDisplay,
-                    'Gap Year'         => $student->gap_year ? 'Yes' : 'No',
-                    'Admission Date'   => $admissionDate,
-                    'Academic Session' => $sessName,
-                ] as $lbl => $val)
-                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
-                    <div class="fw-semibold">{{ $val }}</div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- Subjects --}}
-        @if(($selectedSubjects ?? collect())->count())
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-header py-2" style="background:#1e293b;color:white;">
-                <span class="fw-bold small"><i class="bi bi-list-check me-2"></i>Subjects</span>
-            </div>
-            <div class="card-body">
-                @php
-                    $byRole = collect($selectedSubjects)
-                        ->groupBy('subject_role');
-                @endphp
-                @foreach(['compulsory'=>'success','major'=>'primary','minor'=>'info','optional'=>'secondary','recorded'=>'dark'] as $role => $color)
-                @if($byRole->has($role))
-                <div class="mb-2">
-                    <span class="small text-muted fw-semibold">{{ ucfirst(str_replace('_', ' ', $role)) }}:</span>
-                    @foreach($byRole[$role] as $ss)
-                    <span class="badge bg-{{ $color }} ms-1">{{ $ss->name ?? '—' }}</span>
-                    @endforeach
-                </div>
-                @endif
-                @endforeach
-            </div>
-        </div>
-        @endif
-
-    </div>
-</div>
-
-{{-- Fee Summary for selected session --}}
+{{-- Fee Due Alert — page-level, visible regardless of active tab --}}
 @if($isTerminalStudent)
-<div class="alert border-0 shadow-sm mb-3 {{ !$feeSummary['is_clear'] ? 'alert-danger' : 'alert-success' }}">
+<div class="alert border-0 shadow-sm mb-3 {{ !$feeIsClear ? 'alert-danger' : 'alert-success' }}">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div>
-            <i class="bi bi-{{ !$feeSummary['is_clear'] ? 'exclamation-triangle-fill' : 'check-circle-fill' }} me-2"></i>
+            <i class="bi bi-{{ !$feeIsClear ? 'exclamation-triangle-fill' : 'check-circle-fill' }} me-2"></i>
             <strong>{{ ucwords(str_replace('_', ' ', $student->status)) }}</strong> —
-            @if(!$feeSummary['is_clear'])
-                This student has an outstanding due of <strong>₹{{ number_format($feeSummary['total_due'], 2) }}</strong>. Fee collection is blocked until the due is cleared.
+            @if(!$feeIsClear)
+                This student has an outstanding due of <strong>₹{{ number_format($feeDue, 2) }}</strong>. Fee collection is blocked until the due is cleared.
             @else
                 This student has no outstanding dues.
             @endif
         </div>
-        @if(!$feeSummary['is_clear'])
+        @if(!$feeIsClear)
         <a href="{{ route($walletRoute, ['student' => $student->id, 'session_id' => $selectedSessionId]) }}"
            class="btn btn-sm btn-outline-danger fw-semibold">
             <i class="bi bi-wallet me-1"></i> View Due Details
@@ -500,314 +365,579 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
 </div>
 @endif
 
-@if($canViewFeeDetails && ($feeSummary['total_charged'] > 0 || $feeSummary['total_paid'] > 0))
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
-        <span class="fw-bold small"><i class="bi bi-wallet me-2"></i>Fee Summary — {{ $sessName }}</span>
-        <a href="{{ route($walletRoute, ['student' => $student->id, 'session_id' => $selectedSessionId]) }}"
-           class="btn btn-sm btn-outline-light py-0 px-2" style="font-size:11px;">
-            Full History <i class="bi bi-arrow-right ms-1"></i>
-        </a>
-    </div>
-    <div class="card-body p-0">
-        <div class="row g-0 text-center">
-            <div class="col border-end py-3">
-                <div class="small text-muted mb-1">Total Charged</div>
-                <div class="fw-bold text-danger">₹{{ number_format($feeSummary['total_charged'], 2) }}</div>
-            </div>
-            <div class="col border-end py-3">
-                <div class="small text-muted mb-1">Total Paid</div>
-                <div class="fw-bold text-success">₹{{ number_format($feeSummary['total_paid'], 2) }}</div>
-            </div>
-            @if(($feeSummary['total_fine'] ?? 0) > 0)
-            <div class="col border-end py-3">
-                <div class="small text-muted mb-1">Total Fine</div>
-                <div class="fw-bold text-warning">₹{{ number_format($feeSummary['total_fine'], 2) }}</div>
-            </div>
-            @endif
-            @if(($feeSummary['total_discount'] ?? 0) > 0)
-            <div class="col border-end py-3">
-                <div class="small text-muted mb-1">Total Discount</div>
-                <div class="fw-bold text-purple" style="color:#7c3aed;">₹{{ number_format($feeSummary['total_discount'], 2) }}</div>
-            </div>
-            @endif
-            <div class="col py-3">
-                <div class="small text-muted mb-1">Pending Due</div>
-                <div class="fw-bold {{ $feeSummary['is_clear'] ? 'text-success' : 'text-warning' }}">
-                    @if($feeSummary['is_clear'])
-                        <i class="bi bi-check-circle me-1"></i>Clear
-                    @else
-                        ₹{{ number_format($feeSummary['total_due'], 2) }}
+{{-- Tabbed Profile Content --}}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white pt-3 px-3 pb-0">
+        <ul class="nav nav-tabs card-header-tabs flex-nowrap overflow-auto" id="profileTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-semibold text-nowrap" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview-pane" type="button" role="tab" aria-controls="overview-pane" aria-selected="true">
+                    <i class="bi bi-grid-1x2 me-1"></i>Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-nowrap" id="family-tab" data-bs-toggle="tab" data-bs-target="#family-pane" type="button" role="tab" aria-controls="family-pane" aria-selected="false">
+                    <i class="bi bi-people me-1"></i>Personal &amp; Family
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-nowrap" id="address-tab" data-bs-toggle="tab" data-bs-target="#address-pane" type="button" role="tab" aria-controls="address-pane" aria-selected="false">
+                    <i class="bi bi-geo-alt me-1"></i>Address
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-nowrap" id="academic-tab" data-bs-toggle="tab" data-bs-target="#academic-pane" type="button" role="tab" aria-controls="academic-pane" aria-selected="false">
+                    <i class="bi bi-mortarboard me-1"></i>Academic &amp; Office
+                </button>
+            </li>
+            @if($hasFeeRecords || $isTerminalStudent)
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-nowrap" id="fee-tab" data-bs-toggle="tab" data-bs-target="#fee-pane" type="button" role="tab" aria-controls="fee-pane" aria-selected="false">
+                    <i class="bi bi-wallet2 me-1"></i>Fee
+                    @if(!$feeIsClear)
+                    <span class="badge bg-danger ms-1" style="font-size:9px;">Due</span>
                     @endif
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-@endif
-
-@if(($academicChangeLogs ?? collect())->isNotEmpty())
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header py-2" style="background:#1e293b;color:white;">
-        <span class="fw-bold small"><i class="bi bi-arrow-left-right me-2"></i>Academic Change History</span>
+                </button>
+            </li>
+            @endif
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-nowrap" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents-pane" type="button" role="tab" aria-controls="documents-pane" aria-selected="false">
+                    <i class="bi bi-paperclip me-1"></i>Documents
+                    @if($pendingRequiredDocs > 0)
+                    <span class="badge bg-danger ms-1" style="font-size:9px;">{{ $pendingRequiredDocs }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-nowrap" id="transport-tab" data-bs-toggle="tab" data-bs-target="#transport-pane" type="button" role="tab" aria-controls="transport-pane" aria-selected="false">
+                    <i class="bi bi-bus-front me-1"></i>Transport
+                    @if($transport && $transport->is_active)
+                    <span class="badge bg-success ms-1" style="font-size:9px;">Active</span>
+                    @endif
+                </button>
+            </li>
+            @if($hasHistory)
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold text-nowrap" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab" aria-controls="history-pane" aria-selected="false">
+                    <i class="bi bi-clock-history me-1"></i>History
+                </button>
+            </li>
+            @endif
+        </ul>
     </div>
     <div class="card-body">
-        <div class="d-flex flex-column gap-3">
-            @foreach($academicChangeLogs as $log)
-            @php
-                $oldSnapshot = $log->old_snapshot ?? [];
-                $newSnapshot = $log->new_snapshot ?? [];
-                $oldSubjects = $oldSnapshot['subject_names'] ?? [];
-                $newSubjects = $newSnapshot['subject_names'] ?? [];
-            @endphp
-            <div class="border rounded-3 p-3" style="background:#fafafa;">
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
-                    <div>
-                        <div class="fw-semibold small">{{ $log->reason ?: 'Academic correction' }}</div>
-                        <div class="text-muted small">
-                            {{ $log->created_at?->format('d M Y h:i A') ?? '—' }}
-                            @if($log->actor_name)
-                                • By {{ $log->actor_name }}
-                            @endif
-                            @if($log->actor_type)
-                                <span class="text-uppercase">({{ $log->actor_type }})</span>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <div class="small text-muted">Fee Adjustment</div>
-                        <div class="fw-bold {{ (float) $log->fee_delta > 0 ? 'text-danger' : ((float) $log->fee_delta < 0 ? 'text-success' : 'text-muted') }}">
-                            {{ (float) $log->fee_delta > 0 ? '+' : ((float) $log->fee_delta < 0 ? '-' : '') }}₹{{ number_format(abs((float) $log->fee_delta), 2) }}
-                        </div>
-                    </div>
-                </div>
+        <div class="tab-content" id="profileTabContent">
 
-                <div class="row g-3 mb-2">
-                    <div class="col-md-6">
-                        <div class="small text-muted fw-semibold mb-1">Before</div>
-                        <div class="small"><span class="text-muted">Course:</span> <span class="fw-semibold">{{ $oldSnapshot['course_name'] ?? '—' }}</span></div>
-                        <div class="small"><span class="text-muted">Stream:</span> <span class="fw-semibold">{{ $oldSnapshot['stream_name'] ?? '—' }}</span></div>
-                        <div class="small"><span class="text-muted">Part:</span> <span class="fw-semibold">{{ $oldSnapshot['course_part_name'] ?? '—' }}</span></div>
-                        <div class="small"><span class="text-muted">Academic Fee:</span> <span class="fw-semibold text-danger">₹{{ number_format((float) $log->old_academic_fee, 2) }}</span></div>
-                        @if(!empty($oldSubjects))
-                        <div class="mt-2">
-                            @foreach($oldSubjects as $subjectName)
-                                <span class="badge bg-light text-dark border me-1 mb-1">{{ $subjectName }}</span>
-                            @endforeach
-                        </div>
-                        @endif
-                    </div>
-                    <div class="col-md-6">
-                        <div class="small text-muted fw-semibold mb-1">After</div>
-                        <div class="small"><span class="text-muted">Course:</span> <span class="fw-semibold">{{ $newSnapshot['course_name'] ?? '—' }}</span></div>
-                        <div class="small"><span class="text-muted">Stream:</span> <span class="fw-semibold">{{ $newSnapshot['stream_name'] ?? '—' }}</span></div>
-                        <div class="small"><span class="text-muted">Part:</span> <span class="fw-semibold">{{ $newSnapshot['course_part_name'] ?? '—' }}</span></div>
-                        <div class="small"><span class="text-muted">Academic Fee:</span> <span class="fw-semibold text-primary">₹{{ number_format((float) $log->new_academic_fee, 2) }}</span></div>
-                        @if(!empty($newSubjects))
-                        <div class="mt-2">
-                            @foreach($newSubjects as $subjectName)
-                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary me-1 mb-1">{{ $subjectName }}</span>
-                            @endforeach
-                        </div>
-                        @endif
-                    </div>
-                </div>
+            {{-- ===== Overview ===== --}}
+            <div class="tab-pane fade show active" id="overview-pane" role="tabpanel" aria-labelledby="overview-tab" tabindex="0">
+                @php
+                    $addressLine = collect([
+                        $snapVal('perm_village', $student->perm_village),
+                        $snapVal('perm_district', $student->perm_district),
+                        $snapVal('perm_state', $student->perm_state),
+                    ])->filter(fn($v) => $v && $v !== '—')->implode(', ') ?: '—';
 
-                <div class="d-flex justify-content-between flex-wrap gap-2 small border-top pt-2">
-                    <div><span class="text-muted">Wallet After:</span> <span class="fw-semibold {{ (float) $log->wallet_balance_after >= 0 ? 'text-success' : 'text-danger' }}">₹{{ number_format(abs((float) $log->wallet_balance_after), 2) }} {{ (float) $log->wallet_balance_after >= 0 ? 'Advance' : 'Due' }}</span></div>
-                    @if($log->notes)
-                    <div class="text-muted">{{ $log->notes }}</div>
+                    $overviewTiles = [
+                        ['icon' => 'person-heart', 'label' => 'Father', 'value' => $snapVal('father_name', $student->father_name), 'sub' => $snapVal('father_mobile', $student->father_mobile)],
+                        ['icon' => 'person-heart', 'label' => 'Mother', 'value' => $snapVal('mother_name', $student->mother_name), 'sub' => $snapVal('mother_mobile', $student->mother_mobile)],
+                    ];
+                    if ($snapVal('guardian_name', $student->guardian_name) !== '—') {
+                        $overviewTiles[] = ['icon' => 'person-badge', 'label' => 'Guardian', 'value' => $snapVal('guardian_name', $student->guardian_name), 'sub' => $snapVal('guardian_mobile', $student->guardian_mobile)];
+                    }
+                    $overviewTiles[] = ['icon' => 'geo-alt', 'label' => 'Address', 'value' => $addressLine, 'sub' => $snapVal('perm_pincode', $student->perm_pincode) !== '—' ? 'PIN '.$snapVal('perm_pincode', $student->perm_pincode) : null];
+                    $overviewTiles[] = ['icon' => 'hash', 'label' => 'Roll No.', 'value' => $rollNo, 'sub' => null];
+                    $overviewTiles[] = ['icon' => 'card-checklist', 'label' => 'Enrollment No.', 'value' => $enrollmentNo, 'sub' => null];
+                    $overviewTiles[] = ['icon' => 'calendar-check', 'label' => 'Admission Date', 'value' => $admissionDate, 'sub' => ucfirst($selectedIdentity?->admission_type ?? $student->admission_type ?? 'new').' admission'];
+                @endphp
+                <div class="row g-3">
+                    @foreach($overviewTiles as $tile)
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 rounded-3 h-100" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                            <div class="text-muted mb-1" style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;"><i class="bi bi-{{ $tile['icon'] }} me-1"></i>{{ $tile['label'] }}</div>
+                            <div class="fw-bold" style="font-size:14px;">{{ $tile['value'] }}</div>
+                            @if($tile['sub'])<div class="small text-muted">{{ $tile['sub'] }}</div>@endif
+                        </div>
+                    </div>
+                    @endforeach
+                    @if($hasFeeRecords)
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 rounded-3 h-100" style="background:{{ $feeIsClear ? '#f0fdf4' : '#fef2f2' }};border:1px solid {{ $feeIsClear ? '#bbf7d0' : '#fecaca' }};">
+                            <div class="text-muted mb-1" style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;"><i class="bi bi-wallet2 me-1"></i>Fee Status</div>
+                            <div class="fw-bold {{ $feeIsClear ? 'text-success' : 'text-danger' }}" style="font-size:14px;">
+                                {{ $feeIsClear ? 'Clear' : '₹'.number_format($feeDue, 2).' Due' }}
+                            </div>
+                        </div>
+                    </div>
                     @endif
                 </div>
             </div>
-            @endforeach
-        </div>
-    </div>
-</div>
-@endif
 
-{{-- Education --}}
-{{-- Documents Verification Panel --}}
-@php
-    $docCanVerify = !$isStaff || auth()->guard('staff')->user()?->hasPermission('document_verify');
-    $docCanUpload = !$isStaff || auth()->guard('staff')->user()?->hasPermission('document_upload');
-    $docCanDelete = !$isStaff || auth()->guard('staff')->user()?->hasPermission('document_delete');
-@endphp
-@include('institute.admission._documents-verify', [
-    'student'   => $student,
-    'canVerify' => $docCanVerify,
-    'canUpload' => $docCanUpload,
-    'canDelete' => $docCanDelete,
-])
-
-@php
-    $eduRows = $ps ? ($ps['education'] ?? []) : ($student->educationDetails?->map(fn($e) => (array) $e->toArray())->all() ?? []);
-@endphp
-@if(count($eduRows))
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header py-2" style="background:#1e293b;color:white;">
-        <span class="fw-bold small"><i class="bi bi-mortarboard me-2"></i>Education Details</span>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-            <thead class="table-light" style="font-size:12px;">
-                <tr>
-                    <th>Exam</th>
-                    <th>Stream</th>
-                    <th>Institute</th>
-                    <th>Roll No.</th>
-                    <th>Year</th>
-                    <th>District</th>
-                    <th>Division</th>
-                    <th>Board/University</th>
-                    <th>Marks</th>
-                    <th>Max</th>
-                    <th>%</th>
-                </tr>
-            </thead>
-            <tbody style="font-size:12px;">
-                @foreach($eduRows as $edu)
-                @php $edu = (array) $edu; @endphp
-                <tr>
-                    <td class="fw-semibold text-primary">{{ strtoupper($edu['exam_name'] ?? '') }}</td>
-                    <td>{{ isset($edu['education_stream']) && $edu['education_stream'] ? strtoupper($edu['education_stream']) : '—' }}</td>
-                    <td>{{ $edu['institute_name'] ?? '—' }}</td>
-                    <td>{{ $edu['roll_number'] ?? '—' }}</td>
-                    <td>{{ $edu['passing_year'] ?? '—' }}</td>
-                    <td>{{ $edu['district'] ?? '—' }}</td>
-                    <td>{{ isset($edu['division']) && $edu['division'] ? strtoupper($edu['division']) : '—' }}</td>
-                    <td>{{ $edu['board_university'] ?? '—' }}</td>
-                    <td>{{ $edu['obtained_marks'] ?? '—' }}</td>
-                    <td>{{ $edu['max_marks'] ?? '—' }}</td>
-                    <td>{{ isset($edu['percentage']) && $edu['percentage'] ? $edu['percentage'].'%' : '—' }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-</div>
-@endif
-
-
-{{-- Scholarship Details --}}
-@if($ps ? !empty($ps['has_scholarship']) : $student->has_scholarship)
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header py-2" style="background:#1e293b;color:white;">
-        <span class="fw-bold small"><i class="bi bi-award me-2"></i>Scholarship Details</span>
-    </div>
-    <div class="card-body p-0">
-        @foreach([
-            'Scholarship Name'      => $snapVal('scholarship_name', $student->scholarship_name),
-            'Scholarship Type'      => ucfirst($snapVal('scholarship_type', $student->scholarship_type)),
-            'Authority'             => $snapVal('scholarship_authority', $student->scholarship_authority),
-            'Reference No.'         => $snapVal('scholarship_ref_no', $student->scholarship_ref_no),
-            'Applied Date'          => $ps !== null
-                ? (isset($ps['scholarship_applied_date']) ? \Carbon\Carbon::parse($ps['scholarship_applied_date'])->format('d-m-Y') : '—')
-                : ($student->scholarship_applied_date?->format('d-m-Y') ?? '—'),
-            'Scholarship Amount'    => $ps !== null
-                ? (($ps['scholarship_amount'] ?? null) ? '₹'.number_format($ps['scholarship_amount'], 2) : '—')
-                : ($student->scholarship_amount ? '₹'.number_format($student->scholarship_amount, 2) : '—'),
-        ] as $lbl => $val)
-        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-            <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>
-            <div class="fw-semibold">{{ $val }}</div>
-        </div>
-        @endforeach
-    </div>
-</div>
-@endif
-
-{{-- Transport Details --}}
-@php $transport = $student->activeTransportAllocation; @endphp
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
-        <span class="fw-bold small"><i class="bi bi-bus-front me-2"></i>Transport Details</span>
-        @if($transport)
-            <span class="badge {{ $transport->is_active ? 'bg-success' : 'bg-secondary' }}">
-                {{ $transport->is_active ? 'Active' : 'Inactive' }}
-            </span>
-        @endif
-    </div>
-    @if($transport)
-    <div class="card-body p-0">
-        @foreach([
-            'Route'          => $transport->route?->name ?? '—',
-            'Stop'           => $transport->stop?->stop_name ?? '—',
-            'Vehicle'        => $transport->vehicle ? ($transport->vehicle->vehicle_no ?? $transport->vehicle->name ?? '—') : '—',
-            'Driver'         => $transport->driver?->name ?? '—',
-            'Fee Amount'     => $transport->fee_amount ? '₹' . number_format($transport->fee_amount, 2) : '—',
-            'Paid Amount'    => $transport->paid_amount ? '₹' . number_format($transport->paid_amount, 2) : '₹0.00',
-            'Balance Due'    => ($transport->balance > 0 ? '₹' . number_format($transport->balance, 2) : 'Clear'),
-            'Start Date'     => $transport->start_date?->format('d-m-Y') ?? '—',
-            'End Date'       => $transport->end_date?->format('d-m-Y') ?? '—',
-            'Remarks'        => $transport->remarks ?? '—',
-        ] as $lbl => $val)
-        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
-            <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>
-            <div class="fw-semibold {{ $lbl === 'Balance Due' && $transport->balance > 0 ? 'text-danger' : ($lbl === 'Balance Due' ? 'text-success' : '') }}">
-                {{ $val }}
+            {{-- ===== Personal & Family ===== --}}
+            <div class="tab-pane fade" id="family-pane" role="tabpanel" aria-labelledby="family-tab" tabindex="0">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm mb-3 mb-md-0">
+                            <div class="card-header py-2" style="background:#1e293b;color:white;">
+                                <span class="fw-bold small"><i class="bi bi-person me-2"></i>Personal Details</span>
+                            </div>
+                            <div class="card-body p-0">
+                                @foreach([
+                                    'Category'         => strtoupper($snapVal('category', $student->category)),
+                                    'Special Category' => strtoupper($snapVal('special_category', $student->special_category)),
+                                    'Nationality'      => ucfirst($snapVal('nationality', $student->nationality)),
+                                    'Religion'         => ucfirst($snapVal('religion', $student->religion)),
+                                    'Student Type'     => ucfirst($snapVal('student_type', $student->student_type)),
+                                    'Marital Status'   => ucfirst($snapVal('marital_status', $student->marital_status)),
+                                    'Aadhar No.'       => $snapVal('aadhar_no', $student->aadhar_no),
+                                    'APAAR No.'        => $snapVal('apaar_no', $student->apaar_no),
+                                    'Email'            => $snapVal('email', $student->email),
+                                ] as $lbl => $val)
+                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                                    <div class="text-muted" style="width:130px;flex-shrink:0;">{{ $lbl }}</div>
+                                    <div class="fw-semibold">{{ $val }}</div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header py-2" style="background:#1e293b;color:white;">
+                                <span class="fw-bold small"><i class="bi bi-people me-2"></i>Parent Details</span>
+                            </div>
+                            <div class="card-body p-0">
+                                @foreach([
+                                    'Father Name'       => $snapVal('father_name', $student->father_name),
+                                    'Father Mobile'     => $snapVal('father_mobile', $student->father_mobile),
+                                    'Father Occupation' => $snapVal('father_occupation', $student->father_occupation),
+                                    'Mother Name'       => $snapVal('mother_name', $student->mother_name),
+                                    'Mother Mobile'     => $snapVal('mother_mobile', $student->mother_mobile),
+                                    'Guardian Name'     => $snapVal('guardian_name', $student->guardian_name),
+                                    'Guardian Mobile'   => $snapVal('guardian_mobile', $student->guardian_mobile),
+                                ] as $lbl => $val)
+                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                                    <div class="text-muted" style="width:130px;flex-shrink:0;">{{ $lbl }}</div>
+                                    <div class="fw-semibold">{{ $val }}</div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        @endforeach
-    </div>
-    @else
-    <div class="card-body py-3 text-center text-muted small">
-        <i class="bi bi-bus-front me-1"></i> No transport allocation for this student.
-    </div>
-    @endif
-</div>
 
-{{-- Transport Route Change History --}}
-@php $allTransport = $student->transportAllocations->sortByDesc('id'); @endphp
-@if($allTransport->count() > 1)
-<div class="card border-0 shadow-sm mb-3">
-    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
-        <span class="fw-bold small"><i class="bi bi-arrow-left-right me-2"></i>Route Change History</span>
-        <span class="badge bg-secondary">{{ $allTransport->count() }} records</span>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0" style="font-size:12px;">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-3">#</th>
-                        <th>Route</th>
-                        <th>Stop</th>
-                        <th class="text-end">Fee</th>
-                        <th class="text-end">Paid</th>
-                        <th class="text-end">Balance</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($allTransport as $i => $ta)
-                    <tr class="{{ $ta->is_active ? 'table-success' : '' }}">
-                        <td class="ps-3 text-muted">{{ $allTransport->count() - $i }}</td>
-                        <td class="fw-semibold">{{ $ta->route?->name ?? '—' }}</td>
-                        <td class="text-muted">{{ $ta->stop?->stop_name ?? '—' }}</td>
-                        <td class="text-end">₹{{ number_format((float)$ta->fee_amount, 2) }}</td>
-                        <td class="text-end text-success">₹{{ number_format((float)$ta->paid_amount, 2) }}</td>
-                        <td class="text-end {{ $ta->balance > 0 ? 'text-danger fw-semibold' : 'text-success' }}">
-                            {{ $ta->balance > 0 ? '₹'.number_format($ta->balance,2) : '✓ Clear' }}
-                        </td>
-                        <td>{{ $ta->start_date?->format('d M Y') ?? '—' }}</td>
-                        <td>{{ $ta->end_date?->format('d M Y') ?? '—' }}</td>
-                        <td>
-                            @if($ta->is_active)
-                                <span class="badge bg-success">Active</span>
-                            @else
-                                <span class="badge bg-secondary">Closed</span>
+            {{-- ===== Address ===== --}}
+            <div class="tab-pane fade" id="address-pane" role="tabpanel" aria-labelledby="address-tab" tabindex="0">
+                <div class="card border-0 shadow-sm" style="max-width:600px;">
+                    <div class="card-header py-2" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-geo-alt me-2"></i>Address Details</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @foreach([
+                            'Village/City'  => $snapVal('perm_village', $student->perm_village),
+                            'Post'          => $snapVal('perm_post', $student->perm_post),
+                            'Thana'         => $snapVal('perm_thana', $student->perm_thana),
+                            'District'      => $snapVal('perm_district', $student->perm_district),
+                            'State'         => $snapVal('perm_state', $student->perm_state),
+                            'Pin Code'      => $snapVal('perm_pincode', $student->perm_pincode),
+                            'Comm. Address' => (bool)($ps !== null ? ($ps['comm_same_as_perm'] ?? false) : $student->comm_same_as_perm)
+                                ? 'Same as above'
+                                : $snapVal('comm_address', $student->comm_address),
+                        ] as $lbl => $val)
+                        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                            <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
+                            <div class="fw-semibold">{{ $val }}</div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- ===== Academic & Office ===== --}}
+            <div class="tab-pane fade" id="academic-pane" role="tabpanel" aria-labelledby="academic-tab" tabindex="0">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header py-2" style="background:#1e293b;color:white;">
+                                <span class="fw-bold small"><i class="bi bi-briefcase me-2"></i>Office Details</span>
+                            </div>
+                            <div class="card-body p-0">
+                                @php
+                                    $admissionSource = $selectedIdentity?->admission_source_snapshot ?? $student->admission_source ?? 'direct';
+                                    $admissionSourceId = $selectedIdentity?->admission_source_id_snapshot ?? $student->admission_source_id;
+                                    $admSrcDisplay = ucwords(str_replace('_', ' ', $admissionSource));
+                                    if ($admissionSource === 'center' && $admissionSourceId) {
+                                        $n = \App\Models\Center::find($admissionSourceId)?->name;
+                                        if ($n) $admSrcDisplay .= ' — ' . $n;
+                                    } elseif ($admissionSource === 'channel_partner' && $admissionSourceId) {
+                                        $n = \App\Models\ChannelPartner::find($admissionSourceId)?->name;
+                                        if ($n) $admSrcDisplay .= ' — ' . $n;
+                                    }
+                                @endphp
+                                @foreach([
+                                    'Serial No.'       => $serialNo,
+                                    'Form No.'         => $formNo,
+                                    'SR No.'           => $srNo,
+                                    'Enrollment No.'   => $enrollmentNo,
+                                    'Roll No.'         => $rollNo,
+                                    'Exam Form No.'    => $examFormNo,
+                                    'UIN No.'          => $uinNo,
+                                    'Reference No.'    => $referenceNo,
+                                    'Submitted Date'   => $submittedDate,
+                                    'Admission Type'   => ucfirst($selectedIdentity?->admission_type ?? $student->admission_type ?? 'new'),
+                                    'Admission Source' => $admSrcDisplay,
+                                    'Gap Year'         => $student->gap_year ? 'Yes' : 'No',
+                                    'Admission Date'   => $admissionDate,
+                                    'Academic Session' => $sessName,
+                                ] as $lbl => $val)
+                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
+                                    <div class="fw-semibold">{{ $val }}</div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        @if(($selectedSubjects ?? collect())->count())
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header py-2" style="background:#1e293b;color:white;">
+                                <span class="fw-bold small"><i class="bi bi-list-check me-2"></i>Subjects</span>
+                            </div>
+                            <div class="card-body">
+                                @php
+                                    $byRole = collect($selectedSubjects)->groupBy('subject_role');
+                                @endphp
+                                @foreach(['compulsory'=>'success','major'=>'primary','minor'=>'info','optional'=>'secondary','recorded'=>'dark'] as $role => $color)
+                                @if($byRole->has($role))
+                                <div class="mb-2">
+                                    <span class="small text-muted fw-semibold">{{ ucfirst(str_replace('_', ' ', $role)) }}:</span>
+                                    @foreach($byRole[$role] as $ss)
+                                    <span class="badge bg-{{ $color }} ms-1">{{ $ss->name ?? '—' }}</span>
+                                    @endforeach
+                                </div>
+                                @endif
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($hasScholarship)
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header py-2" style="background:#1e293b;color:white;">
+                                <span class="fw-bold small"><i class="bi bi-award me-2"></i>Scholarship Details</span>
+                            </div>
+                            <div class="card-body p-0">
+                                @foreach([
+                                    'Scholarship Name'      => $snapVal('scholarship_name', $student->scholarship_name),
+                                    'Scholarship Type'      => ucfirst($snapVal('scholarship_type', $student->scholarship_type)),
+                                    'Authority'             => $snapVal('scholarship_authority', $student->scholarship_authority),
+                                    'Reference No.'         => $snapVal('scholarship_ref_no', $student->scholarship_ref_no),
+                                    'Applied Date'          => $ps !== null
+                                        ? (isset($ps['scholarship_applied_date']) ? \Carbon\Carbon::parse($ps['scholarship_applied_date'])->format('d-m-Y') : '—')
+                                        : ($student->scholarship_applied_date?->format('d-m-Y') ?? '—'),
+                                    'Scholarship Amount'    => $ps !== null
+                                        ? (($ps['scholarship_amount'] ?? null) ? '₹'.number_format($ps['scholarship_amount'], 2) : '—')
+                                        : ($student->scholarship_amount ? '₹'.number_format($student->scholarship_amount, 2) : '—'),
+                                ] as $lbl => $val)
+                                <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                                    <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $lbl }}</div>
+                                    <div class="fw-semibold">{{ $val }}</div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                @if(count($eduRows))
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header py-2" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-mortarboard me-2"></i>Education Details</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light" style="font-size:12px;">
+                                <tr>
+                                    <th>Exam</th>
+                                    <th>Stream</th>
+                                    <th>Institute</th>
+                                    <th>Roll No.</th>
+                                    <th>Year</th>
+                                    <th>District</th>
+                                    <th>Division</th>
+                                    <th>Board/University</th>
+                                    <th>Marks</th>
+                                    <th>Max</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody style="font-size:12px;">
+                                @foreach($eduRows as $edu)
+                                @php $edu = (array) $edu; @endphp
+                                <tr>
+                                    <td class="fw-semibold text-primary">{{ strtoupper($edu['exam_name'] ?? '') }}</td>
+                                    <td>{{ isset($edu['education_stream']) && $edu['education_stream'] ? strtoupper($edu['education_stream']) : '—' }}</td>
+                                    <td>{{ $edu['institute_name'] ?? '—' }}</td>
+                                    <td>{{ $edu['roll_number'] ?? '—' }}</td>
+                                    <td>{{ $edu['passing_year'] ?? '—' }}</td>
+                                    <td>{{ $edu['district'] ?? '—' }}</td>
+                                    <td>{{ isset($edu['division']) && $edu['division'] ? strtoupper($edu['division']) : '—' }}</td>
+                                    <td>{{ $edu['board_university'] ?? '—' }}</td>
+                                    <td>{{ $edu['obtained_marks'] ?? '—' }}</td>
+                                    <td>{{ $edu['max_marks'] ?? '—' }}</td>
+                                    <td>{{ isset($edu['percentage']) && $edu['percentage'] ? $edu['percentage'].'%' : '—' }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            {{-- ===== Fee ===== --}}
+            @if($hasFeeRecords || $isTerminalStudent)
+            <div class="tab-pane fade" id="fee-pane" role="tabpanel" aria-labelledby="fee-tab" tabindex="0">
+                @if($hasFeeRecords)
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-wallet me-2"></i>Fee Summary — {{ $sessName }}</span>
+                        <a href="{{ route($walletRoute, ['student' => $student->id, 'session_id' => $selectedSessionId]) }}"
+                           class="btn btn-sm btn-outline-light py-0 px-2" style="font-size:11px;">
+                            Full History <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="row g-0 text-center">
+                            <div class="col border-end py-3">
+                                <div class="small text-muted mb-1">Total Charged</div>
+                                <div class="fw-bold text-danger">₹{{ number_format($feeSummary['total_charged'], 2) }}</div>
+                            </div>
+                            <div class="col border-end py-3">
+                                <div class="small text-muted mb-1">Total Paid</div>
+                                <div class="fw-bold text-success">₹{{ number_format($feeSummary['total_paid'], 2) }}</div>
+                            </div>
+                            @if(($feeSummary['total_fine'] ?? 0) > 0)
+                            <div class="col border-end py-3">
+                                <div class="small text-muted mb-1">Total Fine</div>
+                                <div class="fw-bold text-warning">₹{{ number_format($feeSummary['total_fine'], 2) }}</div>
+                            </div>
                             @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                            @if(($feeSummary['total_discount'] ?? 0) > 0)
+                            <div class="col border-end py-3">
+                                <div class="small text-muted mb-1">Total Discount</div>
+                                <div class="fw-bold text-purple" style="color:#7c3aed;">₹{{ number_format($feeSummary['total_discount'], 2) }}</div>
+                            </div>
+                            @endif
+                            <div class="col py-3">
+                                <div class="small text-muted mb-1">Pending Due</div>
+                                <div class="fw-bold {{ $feeIsClear ? 'text-success' : 'text-warning' }}">
+                                    @if($feeIsClear)
+                                        <i class="bi bi-check-circle me-1"></i>Clear
+                                    @else
+                                        ₹{{ number_format($feeDue, 2) }}
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @else
+                <div class="text-center text-muted small py-4">
+                    <i class="bi bi-wallet2 me-1"></i> No fee records for this session yet.
+                </div>
+                @endif
+            </div>
+            @endif
+
+            {{-- ===== Documents ===== --}}
+            <div class="tab-pane fade" id="documents-pane" role="tabpanel" aria-labelledby="documents-tab" tabindex="0">
+                @include('institute.admission._documents-verify', [
+                    'student'   => $student,
+                    'canVerify' => $docCanVerify,
+                    'canUpload' => $docCanUpload,
+                    'canDelete' => $docCanDelete,
+                ])
+            </div>
+
+            {{-- ===== Transport ===== --}}
+            <div class="tab-pane fade" id="transport-pane" role="tabpanel" aria-labelledby="transport-tab" tabindex="0">
+                <div class="card border-0 shadow-sm {{ $allTransport->count() > 1 ? 'mb-3' : '' }}">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-bus-front me-2"></i>Transport Details</span>
+                        @if($transport)
+                            <span class="badge {{ $transport->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                {{ $transport->is_active ? 'Active' : 'Inactive' }}
+                            </span>
+                        @endif
+                    </div>
+                    @if($transport)
+                    <div class="card-body p-0">
+                        @foreach([
+                            'Route'          => $transport->route?->name ?? '—',
+                            'Stop'           => $transport->stop?->stop_name ?? '—',
+                            'Vehicle'        => $transport->vehicle ? ($transport->vehicle->vehicle_no ?? $transport->vehicle->name ?? '—') : '—',
+                            'Driver'         => $transport->driver?->name ?? '—',
+                            'Fee Amount'     => $transport->fee_amount ? '₹' . number_format($transport->fee_amount, 2) : '—',
+                            'Paid Amount'    => $transport->paid_amount ? '₹' . number_format($transport->paid_amount, 2) : '₹0.00',
+                            'Balance Due'    => ($transport->balance > 0 ? '₹' . number_format($transport->balance, 2) : 'Clear'),
+                            'Start Date'     => $transport->start_date?->format('d-m-Y') ?? '—',
+                            'End Date'       => $transport->end_date?->format('d-m-Y') ?? '—',
+                            'Remarks'        => $transport->remarks ?? '—',
+                        ] as $lbl => $val)
+                        <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
+                            <div class="text-muted" style="width:160px;flex-shrink:0;">{{ $lbl }}</div>
+                            <div class="fw-semibold {{ $lbl === 'Balance Due' && $transport->balance > 0 ? 'text-danger' : ($lbl === 'Balance Due' ? 'text-success' : '') }}">
+                                {{ $val }}
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @else
+                    <div class="card-body py-3 text-center text-muted small">
+                        <i class="bi bi-bus-front me-1"></i> No transport allocation for this student.
+                    </div>
+                    @endif
+                </div>
+
+                @if($allTransport->count() > 1)
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-arrow-left-right me-2"></i>Route Change History</span>
+                        <span class="badge bg-secondary">{{ $allTransport->count() }} records</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0" style="font-size:12px;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">#</th>
+                                        <th>Route</th>
+                                        <th>Stop</th>
+                                        <th class="text-end">Fee</th>
+                                        <th class="text-end">Paid</th>
+                                        <th class="text-end">Balance</th>
+                                        <th>Start</th>
+                                        <th>End</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($allTransport as $i => $ta)
+                                    <tr class="{{ $ta->is_active ? 'table-success' : '' }}">
+                                        <td class="ps-3 text-muted">{{ $allTransport->count() - $i }}</td>
+                                        <td class="fw-semibold">{{ $ta->route?->name ?? '—' }}</td>
+                                        <td class="text-muted">{{ $ta->stop?->stop_name ?? '—' }}</td>
+                                        <td class="text-end">₹{{ number_format((float)$ta->fee_amount, 2) }}</td>
+                                        <td class="text-end text-success">₹{{ number_format((float)$ta->paid_amount, 2) }}</td>
+                                        <td class="text-end {{ $ta->balance > 0 ? 'text-danger fw-semibold' : 'text-success' }}">
+                                            {{ $ta->balance > 0 ? '₹'.number_format($ta->balance,2) : '✓ Clear' }}
+                                        </td>
+                                        <td>{{ $ta->start_date?->format('d M Y') ?? '—' }}</td>
+                                        <td>{{ $ta->end_date?->format('d M Y') ?? '—' }}</td>
+                                        <td>
+                                            @if($ta->is_active)
+                                                <span class="badge bg-success">Active</span>
+                                            @else
+                                                <span class="badge bg-secondary">Closed</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            {{-- ===== History ===== --}}
+            @if($hasHistory)
+            <div class="tab-pane fade" id="history-pane" role="tabpanel" aria-labelledby="history-tab" tabindex="0">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header py-2" style="background:#1e293b;color:white;">
+                        <span class="fw-bold small"><i class="bi bi-arrow-left-right me-2"></i>Academic Change History</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-3">
+                            @foreach($academicChangeLogs as $log)
+                            @php
+                                $oldSnapshot = $log->old_snapshot ?? [];
+                                $newSnapshot = $log->new_snapshot ?? [];
+                                $oldSubjects = $oldSnapshot['subject_names'] ?? [];
+                                $newSubjects = $newSnapshot['subject_names'] ?? [];
+                            @endphp
+                            <div class="border rounded-3 p-3" style="background:#fafafa;">
+                                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                                    <div>
+                                        <div class="fw-semibold small">{{ $log->reason ?: 'Academic correction' }}</div>
+                                        <div class="text-muted small">
+                                            {{ $log->created_at?->format('d M Y h:i A') ?? '—' }}
+                                            @if($log->actor_name)
+                                                • By {{ $log->actor_name }}
+                                            @endif
+                                            @if($log->actor_type)
+                                                <span class="text-uppercase">({{ $log->actor_type }})</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="small text-muted">Fee Adjustment</div>
+                                        <div class="fw-bold {{ (float) $log->fee_delta > 0 ? 'text-danger' : ((float) $log->fee_delta < 0 ? 'text-success' : 'text-muted') }}">
+                                            {{ (float) $log->fee_delta > 0 ? '+' : ((float) $log->fee_delta < 0 ? '-' : '') }}₹{{ number_format(abs((float) $log->fee_delta), 2) }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-2">
+                                    <div class="col-md-6">
+                                        <div class="small text-muted fw-semibold mb-1">Before</div>
+                                        <div class="small"><span class="text-muted">Course:</span> <span class="fw-semibold">{{ $oldSnapshot['course_name'] ?? '—' }}</span></div>
+                                        <div class="small"><span class="text-muted">Stream:</span> <span class="fw-semibold">{{ $oldSnapshot['stream_name'] ?? '—' }}</span></div>
+                                        <div class="small"><span class="text-muted">Part:</span> <span class="fw-semibold">{{ $oldSnapshot['course_part_name'] ?? '—' }}</span></div>
+                                        <div class="small"><span class="text-muted">Academic Fee:</span> <span class="fw-semibold text-danger">₹{{ number_format((float) $log->old_academic_fee, 2) }}</span></div>
+                                        @if(!empty($oldSubjects))
+                                        <div class="mt-2">
+                                            @foreach($oldSubjects as $subjectName)
+                                                <span class="badge bg-light text-dark border me-1 mb-1">{{ $subjectName }}</span>
+                                            @endforeach
+                                        </div>
+                                        @endif
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted fw-semibold mb-1">After</div>
+                                        <div class="small"><span class="text-muted">Course:</span> <span class="fw-semibold">{{ $newSnapshot['course_name'] ?? '—' }}</span></div>
+                                        <div class="small"><span class="text-muted">Stream:</span> <span class="fw-semibold">{{ $newSnapshot['stream_name'] ?? '—' }}</span></div>
+                                        <div class="small"><span class="text-muted">Part:</span> <span class="fw-semibold">{{ $newSnapshot['course_part_name'] ?? '—' }}</span></div>
+                                        <div class="small"><span class="text-muted">Academic Fee:</span> <span class="fw-semibold text-primary">₹{{ number_format((float) $log->new_academic_fee, 2) }}</span></div>
+                                        @if(!empty($newSubjects))
+                                        <div class="mt-2">
+                                            @foreach($newSubjects as $subjectName)
+                                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary me-1 mb-1">{{ $subjectName }}</span>
+                                            @endforeach
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between flex-wrap gap-2 small border-top pt-2">
+                                    <div><span class="text-muted">Wallet After:</span> <span class="fw-semibold {{ (float) $log->wallet_balance_after >= 0 ? 'text-success' : 'text-danger' }}">₹{{ number_format(abs((float) $log->wallet_balance_after), 2) }} {{ (float) $log->wallet_balance_after >= 0 ? 'Advance' : 'Due' }}</span></div>
+                                    @if($log->notes)
+                                    <div class="text-muted">{{ $log->notes }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
         </div>
     </div>
 </div>
-@endif
 
 @endsection
