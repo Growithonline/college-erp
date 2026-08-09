@@ -44,6 +44,7 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::post('/groups/{group}/institutes',                  [GroupController::class, 'assignInstitute'])->name('groups.institutes.store');
         Route::post('/groups/{group}/admins',                      [GroupController::class, 'storeAdmin'])->name('groups.admins.store');
         Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-status', [GroupController::class, 'toggleAdminStatus'])->name('groups.admins.toggle-status');
+        Route::post('/groups/{group}/admins/{groupAdmin}/reset-password', [GroupController::class, 'resetAdminPassword'])->name('groups.admins.reset-password');
         Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-reset-permission', [GroupController::class, 'toggleResetPermission'])->name('groups.admins.toggle-reset-permission');
         Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-create-permission', [GroupController::class, 'toggleCreatePermission'])->name('groups.admins.toggle-create-permission');
 

@@ -126,12 +126,52 @@
                                 @endif
                             </td>
                             <td class="text-end">
-                                <form method="POST" action="{{ route('super_admin.groups.admins.toggle-status', [$group->id, $admin->id]) }}">
-                                    @csrf @method('PATCH')
-                                    <button type="submit" class="btn btn-sm btn-outline-{{ $admin->status ? 'danger' : 'success' }} py-0 px-2">
-                                        <i class="bi bi-{{ $admin->status ? 'slash-circle' : 'check-circle' }}" style="font-size:11px;"></i>
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" title="Reset Password"
+                                            data-bs-toggle="modal" data-bs-target="#resetAdminPwdModal{{ $admin->id }}">
+                                        <i class="bi bi-key" style="font-size:11px;"></i>
                                     </button>
-                                </form>
+                                    <form method="POST" action="{{ route('super_admin.groups.admins.toggle-status', [$group->id, $admin->id]) }}">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-outline-{{ $admin->status ? 'danger' : 'success' }} py-0 px-2">
+                                            <i class="bi bi-{{ $admin->status ? 'slash-circle' : 'check-circle' }}" style="font-size:11px;"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <div class="modal fade" id="resetAdminPwdModal{{ $admin->id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form method="POST" action="{{ route('super_admin.groups.admins.reset-password', [$group->id, $admin->id]) }}">
+                                                @csrf
+                                                <div class="modal-header">
+                                                    <h6 class="modal-title">Reset Password — {{ $admin->name }}</h6>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body text-start">
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-semibold">New Password</label>
+                                                        <input type="password" name="password" class="form-control form-control-sm" minlength="8" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-semibold">Confirm Password</label>
+                                                        <input type="password" name="password_confirmation" class="form-control form-control-sm" minlength="8" required>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="notify_email" id="notifyAdminEmail{{ $admin->id }}" value="1" checked>
+                                                        <label class="form-check-label small" for="notifyAdminEmail{{ $admin->id }}">
+                                                            Send new password to {{ $admin->email }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-sm btn-danger">Reset Password</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         @empty

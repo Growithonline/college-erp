@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Models\GroupAdmin;
 use App\Models\Institute;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -119,6 +120,35 @@ class GroupController extends Controller
         }
 
         return back()->with('success', 'Group admin created and credentials sent to email.');
+    }
+
+    public function resetAdminPassword(Request $request, Group $group, GroupAdmin $groupAdmin)
+    {
+        abort_unless($groupAdmin->group_id === $group->id, 404);
+
+        $request->validate([
+            'password'              => 'required|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ]);
+
+        $groupAdmin->update(['password' => Hash::make($request->password)]);
+
+        AuditLogService::log(null, 'group_admin', 'password_reset', 'Group-Admin password reset by Super Admin.', $groupAdmin, [
+            'notify_email' => $request->boolean('notify_email'),
+        ]);
+
+        if ($request->boolean('notify_email')) {
+            Mail::mailer('smtp')->raw(
+                "Hello {$groupAdmin->name},\n\n" .
+                "Your password for College ERP Group Admin access has been reset by the Super Admin.\n\n" .
+                "New Password: {$request->password}\n\n" .
+                "Login URL: " . url('/group-admin/login') . "\n\n" .
+                "Please change your password after logging in.",
+                fn($m) => $m->to($groupAdmin->email)->subject('Password Reset — College ERP')
+            );
+        }
+
+        return back()->with('success', 'Group admin password updated successfully.');
     }
 
     public function toggleAdminStatus(Group $group, GroupAdmin $groupAdmin)

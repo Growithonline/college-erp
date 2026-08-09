@@ -58,6 +58,9 @@
         <a href="{{ route('group_admin.institutes.index') }}" class="{{ request()->routeIs('group_admin.institutes.*') ? 'active' : '' }}">
             <i class="bi bi-building"></i> Institutes
         </a>
+        <a href="{{ route('group_admin.change-password') }}" class="{{ request()->routeIs('group_admin.change-password') ? 'active' : '' }}">
+            <i class="bi bi-lock"></i> Change Password
+        </a>
     </div>
     <div class="ga-footer">
         <form method="POST" action="{{ route('group_admin.logout') }}">
