@@ -8,11 +8,11 @@
         * { box-sizing: border-box; }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 7px;
+            font-size: 9.5px;
             color: #000;
             margin: 0;
             padding: 4mm 2mm 2mm 2mm;
-            line-height: 1.25;
+            line-height: 1.3;
             font-weight: 600;
         }
 
@@ -26,9 +26,9 @@
             color:#000; overflow:hidden; background:#e8e8e8;
         }
         .logo-box img { width:38px; height:38px; object-fit:cover; border-radius:4px; display:block; }
-        .inst-name  { font-size:15px; font-weight:800; color:#000; letter-spacing:0.2px; }
-        .inst-sub   { font-size:7.5px; color:#000; font-weight:600; margin-top:1px; }
-        .hdr-r { text-align:right; font-size:6.5px; color:#000; font-weight:600; white-space:nowrap; }
+        .inst-name  { font-size:16px; font-weight:800; color:#000; letter-spacing:0.2px; }
+        .inst-sub   { font-size:9px; color:#000; font-weight:600; margin-top:1px; }
+        .hdr-r { text-align:right; font-size:8.5px; color:#000; font-weight:600; white-space:nowrap; }
         .hdr-r div  { margin-bottom:2px; }
         .hdr-r strong { font-weight:800; color:#000; }
 
@@ -38,9 +38,9 @@
         table.t thead th {
             background:#1e3a5f;
             color:#fff;
-            font-size:6.5px;
+            font-size:8.5px;
             font-weight:800;
-            padding:3px 2px;
+            padding:4px 3px;
             text-align:left;
             white-space:nowrap;
             overflow:hidden;
@@ -49,20 +49,20 @@
         table.t thead th.c { text-align:center; }
 
         table.t tbody td {
-            padding:2px 3px;
-            font-size:6.5px;
+            padding:3px 3px;
+            font-size:8.5px;
             font-weight:600;
             color:#000;
             border-bottom:0.5px solid #bbb;
             border-right:0.5px solid #ddd;
             vertical-align:middle;
-            overflow:hidden;
-            white-space:nowrap;
+            white-space:normal;
+            word-wrap:break-word;
+            overflow-wrap:break-word;
         }
         table.t tbody tr:nth-child(even) td { background:#efefef; }
         table.t tbody td.c { text-align:center; }
-        table.t tbody td.wrap { white-space:normal; }
-        .sub { font-size:5.5px; font-weight:600; color:#000; display:block; margin-top:1px; }
+        .sub { font-size:7px; font-weight:600; color:#000; display:block; margin-top:1px; }
 
         /* ── Footer ── */
         .ftr {
@@ -72,7 +72,7 @@
             display:table;
             width:100%;
         }
-        .ftr-l, .ftr-r { display:table-cell; font-size:6px; color:#000; font-weight:600; }
+        .ftr-l, .ftr-r { display:table-cell; font-size:8px; color:#000; font-weight:600; }
         .ftr-r { text-align:right; }
 
         @media print {
@@ -119,21 +119,21 @@
 {{-- ── TABLE ───────────────────────────────────────────────── --}}
 <table class="t" cellspacing="0" cellpadding="0">
     <colgroup>
-        <col style="width:12px;">   {{-- # --}}
-        <col style="width:24px;">   {{-- Session --}}
-        <col style="width:50px;">   {{-- Student ID --}}
-        <col style="width:68px;">   {{-- Student Name --}}
-        <col style="width:52px;">   {{-- Father Name --}}
-        <col style="width:52px;">   {{-- Mother Name --}}
-        <col style="width:28px;">   {{-- Roll No --}}
-        <col style="width:34px;">   {{-- Enroll No --}}
-        <col style="width:28px;">   {{-- UIN No --}}
-        <col style="width:54px;">   {{-- Course --}}
-        <col style="width:30px;">   {{-- Year/Sem --}}
-        <col style="width:44px;">   {{-- Admitted By --}}
-        <col style="width:38px;">   {{-- Source --}}
-        <col style="width:28px;">   {{-- Adm. Date --}}
-        <col style="width:22px;">   {{-- Status --}}
+        <col style="width:2%;">    {{-- # --}}
+        <col style="width:4%;">    {{-- Session --}}
+        <col style="width:9%;">    {{-- Student ID --}}
+        <col style="width:12%;">   {{-- Student Name --}}
+        <col style="width:9%;">    {{-- Father Name --}}
+        <col style="width:9%;">    {{-- Mother Name --}}
+        <col style="width:5%;">    {{-- Roll No --}}
+        <col style="width:6%;">    {{-- Enroll No --}}
+        <col style="width:5%;">    {{-- UIN No --}}
+        <col style="width:10%;">   {{-- Course --}}
+        <col style="width:5%;">    {{-- Year/Sem --}}
+        <col style="width:8%;">    {{-- Admitted By --}}
+        <col style="width:7%;">    {{-- Source --}}
+        <col style="width:5%;">    {{-- Adm. Date --}}
+        <col style="width:4%;">    {{-- Status --}}
     </colgroup>
     <thead>
         <tr>
@@ -160,10 +160,10 @@
             $pdfSrc = $student->admission_source ?? 'direct';
             $pdfSourceName = match($pdfSrc) {
                 'center'  => ($centersMap[$student->admission_source_id] ?? null)
-                                ? 'Ctr: ' . \Illuminate\Support\Str::limit($centersMap[$student->admission_source_id], 14)
+                                ? 'Ctr: ' . $centersMap[$student->admission_source_id]
                                 : 'Center',
                 'partner', 'channel_partner' => ($partnersMap[$student->admission_source_id] ?? null)
-                                ? 'Prt: ' . \Illuminate\Support\Str::limit($partnersMap[$student->admission_source_id], 14)
+                                ? 'Prt: ' . $partnersMap[$student->admission_source_id]
                                 : 'Partner',
                 default   => 'Direct',
             };
@@ -178,27 +178,27 @@
             <td class="c">{{ $i + 1 }}</td>
             <td>{{ $student->session?->name ?? '—' }}</td>
             <td style="font-weight:700;">{{ $student->student_uid ?? '—' }}</td>
-            <td class="wrap">
-                {{ \Illuminate\Support\Str::limit($student->name, 24) }}
+            <td>
+                {{ $student->name }}
                 @if($student->mobile)
                     <span class="sub">{{ $student->mobile }}</span>
                 @endif
             </td>
-            <td>{{ \Illuminate\Support\Str::limit($student->father_name ?: '—', 18) }}</td>
-            <td>{{ \Illuminate\Support\Str::limit($student->mother_name ?: '—', 18) }}</td>
+            <td>{{ $student->father_name ?: '—' }}</td>
+            <td>{{ $student->mother_name ?: '—' }}</td>
             <td>{{ $student->roll_no ?: '—' }}</td>
             <td>{{ $student->enrollment_no ?: '—' }}</td>
             <td>{{ $student->uin_no ?: '—' }}</td>
-            <td class="wrap">
-                {{ \Illuminate\Support\Str::limit($student->stream?->course?->name ?? '—', 20) }}
+            <td>
+                {{ $student->stream?->course?->name ?? '—' }}
                 @if($student->stream?->name)
-                    <span class="sub">{{ \Illuminate\Support\Str::limit($student->stream->name, 18) }}</span>
+                    <span class="sub">{{ $student->stream->name }}</span>
                 @endif
             </td>
             <td>
                 {{ $student->coursePart?->year_label ?? '—' }}@if($student->current_semester) / S{{ $student->current_semester }}@endif
             </td>
-            <td class="wrap">{{ \Illuminate\Support\Str::limit($pdfAdmittedBy, 20) }}</td>
+            <td>{{ $pdfAdmittedBy }}</td>
             <td>{{ $pdfSourceName }}</td>
             <td style="white-space:nowrap;">{{ $student->admission_date?->format('d/m/Y') ?? '—' }}</td>
             <td style="font-weight:700;">{{ ucfirst($student->status ?? 'pending') }}</td>
