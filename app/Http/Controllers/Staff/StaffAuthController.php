@@ -122,6 +122,10 @@ class StaffAuthController extends Controller
             return back()->withErrors(['staff_uid' => 'Your account has been disabled.']);
         }
 
+        if ($staff->isLoginBlocked()) {
+            return back()->withErrors(['staff_uid' => 'Your ID is blocked. Contact admin.']);
+        }
+
         RateLimiter::clear($throttleKey);
 
         if ($staff->otp_bypass) {

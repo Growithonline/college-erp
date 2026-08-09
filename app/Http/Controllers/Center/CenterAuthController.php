@@ -96,6 +96,10 @@ class CenterAuthController extends Controller
             return back()->withErrors(['center_uid' => 'Your account has been disabled.']);
         }
 
+        if ($center->login_blocked) {
+            return back()->withErrors(['center_uid' => 'Your ID is blocked. Contact admin.']);
+        }
+
         if ($center->otp_bypass) {
             $request->session()->regenerate();
             $this->guard()->login($center, $request->boolean('remember'));

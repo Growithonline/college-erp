@@ -11,6 +11,7 @@ class StaffMember extends Authenticatable
     protected $fillable = [
         'institute_id', 'staff_uid', 'staff_role_id', 'name', 'mobile', 'email',
         'password', 'photo', 'address', 'joining_date', 'salary', 'status', 'otp_bypass',
+        'login_blocked', 'suspended_until',
         'staff_category', 'payroll_type', 'daily_wage', 'monthly_salary',
         'salary_expense_head_id', 'leave_policy_group', 'bank_account_number',
         'bank_account_holder', 'bank_name', 'bank_ifsc',
@@ -33,6 +34,8 @@ class StaffMember extends Authenticatable
         'monthly_salary' => 'decimal:2',
         'status' => 'boolean',
         'otp_bypass' => 'boolean',
+        'login_blocked' => 'boolean',
+        'suspended_until' => 'date',
         'max_discount_percent' => 'integer',
         'max_custom_fee_amount' => 'decimal:2',
         'restrict_course_access' => 'boolean',
@@ -49,6 +52,14 @@ class StaffMember extends Authenticatable
         'tds_monthly'                => 'decimal:2',
         'professional_tax_monthly'   => 'decimal:2',
     ];
+
+    public function isLoginBlocked(): bool
+    {
+        if ($this->login_blocked) {
+            return true;
+        }
+        return $this->suspended_until && now()->toDateString() <= $this->suspended_until->toDateString();
+    }
 
     public function institute() { return $this->belongsTo(Institute::class); }
     public function role()      { return $this->belongsTo(StaffRole::class, 'staff_role_id'); }

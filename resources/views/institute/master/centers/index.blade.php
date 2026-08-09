@@ -52,6 +52,7 @@
                     <th>Permissions</th>
                     <th>Status</th>
                     <th>OTP</th>
+                    <th>Login</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -99,6 +100,16 @@
                             <button class="btn btn-sm {{ $c->otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}">
                                 <i class="bi bi-{{ $c->otp_bypass ? 'shield-slash' : 'shield-check' }}"></i>
                                 {{ $c->otp_bypass ? 'Bypass' : 'Required' }}
+                            </button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ route('master.centers.toggle-login-block', $c) }}" title="When blocked, this center cannot log in but still appears as an admission source">
+                            @csrf
+                            <button class="btn btn-sm {{ $c->login_blocked ? 'btn-danger' : 'btn-outline-success' }}"
+                                    onclick="return confirm('{{ $c->login_blocked ? 'Unblock login for this center?' : 'Block login for this center? They will no longer be able to log in, but will still show up in the admission source list.' }}');">
+                                <i class="bi bi-{{ $c->login_blocked ? 'lock-fill' : 'unlock-fill' }}"></i>
+                                {{ $c->login_blocked ? 'Blocked' : 'Allowed' }}
                             </button>
                         </form>
                     </td>

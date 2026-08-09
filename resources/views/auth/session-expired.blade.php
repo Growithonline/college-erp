@@ -14,6 +14,7 @@
         'inactivity'      => ['icon' => 'bi-hourglass-split',  'color' => '#f59e0b', 'rgb' => '245,158,11', 'title' => 'Session Expired',    'msg' => 'You were automatically logged out due to inactivity.',          'redirect' => true],
         'kicked'          => ['icon' => 'bi-shield-x',         'color' => '#f97316', 'rgb' => '249,115,22', 'title' => 'Session Terminated',  'msg' => 'Your account was signed in from another device or location.',   'redirect' => true],
         'disabled'        => ['icon' => 'bi-person-fill-slash', 'color' => '#ef4444', 'rgb' => '239,68,68',  'title' => 'Account Disabled',   'msg' => 'Your account has been disabled. Please contact your admin.',    'redirect' => false],
+        'blocked'         => ['icon' => 'bi-slash-circle',      'color' => '#ef4444', 'rgb' => '239,68,68',  'title' => 'Login Blocked',      'msg' => 'Your ID is blocked. Please contact your admin.',                             'redirect' => false],
         'unauthenticated' => ['icon' => 'bi-lock-fill',        'color' => '#818cf8', 'rgb' => '129,140,248','title' => 'Session Expired',     'msg' => 'Your session has expired. Please log in again to continue.',   'redirect' => true],
     ];
 
@@ -414,7 +415,7 @@
             <div class="divider"></div>
 
             <div class="btn-row">
-                @if(!($r === 'disabled'))
+                @if(!in_array($r, ['disabled', 'blocked']))
                     <a href="{{ $loginUrl }}" class="btn btn-login" id="loginBtn">
                         <i class="bi bi-box-arrow-in-right"></i> Login Again
                     </a>

@@ -18,7 +18,7 @@ class ChannelPartner extends Authenticatable
 
     protected $fillable = [
         'institute_id', 'partner_uid', 'name', 'mobile', 'email', 'password',
-        'address', 'city', 'state', 'commission_percent', 'status', 'otp_bypass',
+        'address', 'city', 'state', 'commission_percent', 'status', 'otp_bypass', 'login_blocked',
         // Feature flags
         'can_add_admission', 'can_view_students', 'can_collect_fee',
         // Admission controls
@@ -42,6 +42,7 @@ class ChannelPartner extends Authenticatable
         'can_collect_fee'      => 'boolean',
         'status'               => 'boolean',
         'otp_bypass'           => 'boolean',
+        'login_blocked'        => 'boolean',
         'commission_percent'   => 'decimal:2',
         'allowed_courses'      => 'array',
         'allowed_sessions'     => 'array',
@@ -51,6 +52,11 @@ class ChannelPartner extends Authenticatable
         'restrict_fee_collection_types'  => 'boolean',
         'can_download_reports'           => 'boolean',
     ];
+
+    public function isLoginBlocked(): bool
+    {
+        return (bool) $this->login_blocked;
+    }
 
     // ── Relationships ─────────────────────────────────────────────────────
 

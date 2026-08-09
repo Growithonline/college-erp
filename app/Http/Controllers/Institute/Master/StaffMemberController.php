@@ -759,6 +759,26 @@ class StaffMemberController extends Controller
         return back()->with('success', 'OTP bypass ' . ($staffMember->otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
+    public function updateLoginAccess(Request $request, StaffMember $staffMember)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+
+        $request->validate([
+            'mode'             => 'required|in:allowed,blocked,suspended',
+            'suspended_until'  => 'required_if:mode,suspended|nullable|date|after_or_equal:today',
+        ]);
+
+        $staffMember->update([
+            'login_blocked'    => $request->mode === 'blocked',
+            'suspended_until'  => $request->mode === 'suspended' ? $request->suspended_until : null,
+        ]);
+
+        AuditLogService::log($this->instituteId(), 'staff', 'staff_login_access_updated',
+            'Staff login access set to ' . $request->mode . '.', $staffMember);
+
+        return back()->with('success', 'Login access updated!');
+    }
+
     private function resolveExpenseHeadId($requestedExpenseHeadId, ?string $staffCategory): ?int
     {
         if ($requestedExpenseHeadId) {

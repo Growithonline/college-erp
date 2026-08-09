@@ -101,6 +101,10 @@ class StudentAuthController extends Controller
             return back()->withErrors(['student_uid' => 'Your portal access has been disabled. Contact admin.']);
         }
 
+        if ($student->isLoginBlocked()) {
+            return back()->withErrors(['student_uid' => 'Your ID is blocked. Contact admin.']);
+        }
+
         // If no email, skip OTP and login directly
         if (!$student->email) {
             $request->session()->regenerate();

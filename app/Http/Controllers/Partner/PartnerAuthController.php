@@ -90,6 +90,10 @@ class PartnerAuthController extends Controller
             return back()->withErrors(['partner_uid' => 'Your account has been disabled.']);
         }
 
+        if ($partner->login_blocked) {
+            return back()->withErrors(['partner_uid' => 'Your ID is blocked. Contact admin.']);
+        }
+
         if ($partner->otp_bypass) {
             $request->session()->regenerate();
             $this->guard()->login($partner, $request->boolean('remember'));

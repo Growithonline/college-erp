@@ -28,6 +28,12 @@ class RoleAuth
             return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'disabled']);
         }
 
+        // Login-blocked / suspended check — status active rahe, sirf login access cut karo
+        if (method_exists($user, 'isLoginBlocked') && $user->isLoginBlocked()) {
+            Auth::guard($guard)->logout();
+            return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'blocked']);
+        }
+
         // Deactivating the parent Group must immediately cut off access for all its Group Admins too
         if ($guard === 'group_admin' && !$user->group?->status) {
             Auth::guard($guard)->logout();

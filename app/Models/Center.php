@@ -20,7 +20,7 @@ class Center extends Authenticatable
 
     protected $fillable = [
         'institute_id', 'center_uid', 'name', 'code', 'mobile', 'email',
-        'password', 'address', 'city', 'state', 'status', 'otp_bypass',
+        'password', 'address', 'city', 'state', 'status', 'otp_bypass', 'login_blocked',
         // Feature flags
         'can_add_admission', 'can_view_students', 'can_collect_fee',
         // Admission controls
@@ -44,6 +44,7 @@ class Center extends Authenticatable
         'can_collect_fee'      => 'boolean',
         'status'               => 'boolean',
         'otp_bypass'           => 'boolean',
+        'login_blocked'        => 'boolean',
         'allowed_courses'      => 'array',
         'allowed_sessions'     => 'array',
         'allowed_pay_modes'    => 'array',
@@ -52,6 +53,11 @@ class Center extends Authenticatable
         'restrict_fee_collection_types'  => 'boolean',
         'can_download_reports'           => 'boolean',
     ];
+
+    public function isLoginBlocked(): bool
+    {
+        return (bool) $this->login_blocked;
+    }
 
     // ── Relationships ─────────────────────────────────────────────────────
 

@@ -305,6 +305,17 @@ class ChannelPartnerController extends Controller
         return back()->with('success', 'OTP bypass ' . ($channelPartner->otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
+    public function toggleLoginBlock(ChannelPartner $channelPartner)
+    {
+        abort_if($channelPartner->institute_id !== $this->instituteId(), 403);
+        $channelPartner->update(['login_blocked' => !$channelPartner->login_blocked]);
+
+        AuditLogService::log($this->instituteId(), 'channel_partner', 'partner_login_block_toggled',
+            'Channel partner login ' . ($channelPartner->login_blocked ? 'blocked' : 'unblocked') . '.', $channelPartner);
+
+        return back()->with('success', 'Login ' . ($channelPartner->login_blocked ? 'blocked' : 'unblocked') . '!');
+    }
+
     private function parseSessionPerms(Request $request): ?array
     {
         $input = $request->input('session_perms', []);

@@ -260,6 +260,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('centers/notify-login-id',          [CenterController::class, 'notifyLoginIds'])->name('centers.notify-login-id');
         Route::post('centers/{center}/toggle',          [CenterController::class, 'toggle'])->name('centers.toggle');
         Route::post('centers/{center}/toggle-otp-bypass', [CenterController::class, 'toggleOtpBypass'])->name('centers.toggle-otp-bypass');
+        Route::post('centers/{center}/toggle-login-block', [CenterController::class, 'toggleLoginBlock'])->name('centers.toggle-login-block');
         Route::get('centers/archived/list',             [CenterController::class, 'trashed'])->name('centers.trashed');
         Route::post('centers/{id}/restore',             [CenterController::class, 'restore'])->name('centers.restore');
         Route::delete('centers/{id}/force-delete',      [CenterController::class, 'forceDelete'])->name('centers.force-delete');
@@ -268,6 +269,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('channel-partners/notify-login-id',               [ChannelPartnerController::class, 'notifyLoginIds'])->name('channel-partners.notify-login-id');
         Route::post('channel-partners/{channelPartner}/toggle',      [ChannelPartnerController::class, 'toggle'])->name('channel-partners.toggle');
         Route::post('channel-partners/{channelPartner}/toggle-otp-bypass', [ChannelPartnerController::class, 'toggleOtpBypass'])->name('channel-partners.toggle-otp-bypass');
+        Route::post('channel-partners/{channelPartner}/toggle-login-block', [ChannelPartnerController::class, 'toggleLoginBlock'])->name('channel-partners.toggle-login-block');
         Route::get('channel-partners/archived/list',                 [ChannelPartnerController::class, 'trashed'])->name('channel-partners.trashed');
         Route::post('channel-partners/{id}/restore',                 [ChannelPartnerController::class, 'restore'])->name('channel-partners.restore');
         Route::delete('channel-partners/{id}/force-delete',          [ChannelPartnerController::class, 'forceDelete'])->name('channel-partners.force-delete');
@@ -277,6 +279,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('staff-members/notify-login-id',                 [StaffMemberController::class, 'notifyLoginIds'])->name('staff-members.notify-login-id');
         Route::post('staff-members/{staffMember}/toggle',            [StaffMemberController::class, 'toggle'])->name('staff-members.toggle');
         Route::post('staff-members/{staffMember}/toggle-otp-bypass', [StaffMemberController::class, 'toggleOtpBypass'])->name('staff-members.toggle-otp-bypass');
+        Route::post('staff-members/{staffMember}/login-access', [StaffMemberController::class, 'updateLoginAccess'])->name('staff-members.login-access');
         Route::get('staff-members/archived/list',                    [StaffMemberController::class, 'trashed'])->name('staff-members.trashed');
         Route::post('staff-members/{id}/restore',                    [StaffMemberController::class, 'restore'])->name('staff-members.restore');
         Route::delete('staff-members/{id}/force-delete',             [StaffMemberController::class, 'forceDelete'])->name('staff-members.force-delete');
@@ -746,6 +749,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
     Route::post('admissions', [AdmissionController::class, 'store'])->name('admissions.store');
     Route::get('admissions/{student}', [AdmissionController::class, 'show'])->name('admissions.show');
     Route::post('admissions/{student}/resend-credentials', [AdmissionController::class, 'resendCredentials'])->name('admissions.resend-credentials');
+    Route::post('admissions/{student}/login-access', [AdmissionController::class, 'updateLoginAccess'])->name('admissions.login-access');
 
     // Admission Documents (shared across all guards)
     Route::prefix('admission-documents')->name('admission.documents.')->group(function () {

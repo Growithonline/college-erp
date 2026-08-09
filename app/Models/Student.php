@@ -27,6 +27,7 @@ class Student extends Authenticatable
         'course_type_id', 'course_stream_id', 'course_part_id', 'fee_plan_id', 'current_semester',
         'photo', 'status',
         'password', 'portal_enabled', 'first_login',
+        'login_blocked', 'suspended_until',
         'has_scholarship', 'scholarship_name', 'scholarship_type',
         'scholarship_authority', 'scholarship_applied_date',
         'scholarship_amount', 'scholarship_ref_no',
@@ -49,7 +50,18 @@ class Student extends Authenticatable
         'scholarship_applied_date' => 'date',
         'scholarship_amount'       => 'decimal:2',
         'approved_at' => 'datetime',
+        'portal_enabled'    => 'boolean',
+        'login_blocked'     => 'boolean',
+        'suspended_until'   => 'date',
     ];
+
+    public function isLoginBlocked(): bool
+    {
+        if ($this->login_blocked) {
+            return true;
+        }
+        return $this->suspended_until && now()->toDateString() <= $this->suspended_until->toDateString();
+    }
 
     // ── Relationships ────────────────────────────────────────────────────
     public function institute()        { return $this->belongsTo(Institute::class); }

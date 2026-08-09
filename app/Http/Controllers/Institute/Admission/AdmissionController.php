@@ -427,6 +427,26 @@ class AdmissionController extends Controller
         ]);
     }
 
+    public function updateLoginAccess(Request $request, Student $student)
+    {
+        if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);
+
+        $request->validate([
+            'mode'             => 'required|in:allowed,blocked,suspended',
+            'suspended_until'  => 'required_if:mode,suspended|nullable|date|after_or_equal:today',
+        ]);
+
+        $student->update([
+            'login_blocked'    => $request->mode === 'blocked',
+            'suspended_until'  => $request->mode === 'suspended' ? $request->suspended_until : null,
+        ]);
+
+        AuditLogService::log($this->instituteId(), 'admission', 'student_login_access_updated',
+            'Student login access set to ' . $request->mode . '.', $student);
+
+        return back()->with('success', 'Login access updated!');
+    }
+
     private function sendStudentCredentials(Student $student): void
     {
         $plainPassword = Str::random(10);

@@ -325,6 +325,17 @@ class CenterController extends Controller
         return back()->with('success', 'OTP bypass ' . ($center->otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
+    public function toggleLoginBlock(Center $center)
+    {
+        abort_if($center->institute_id !== $this->instituteId(), 403);
+        $center->update(['login_blocked' => !$center->login_blocked]);
+
+        AuditLogService::log($this->instituteId(), 'center', 'center_login_block_toggled',
+            'Center login ' . ($center->login_blocked ? 'blocked' : 'unblocked') . '.', $center);
+
+        return back()->with('success', 'Login ' . ($center->login_blocked ? 'blocked' : 'unblocked') . '!');
+    }
+
     private function parseSessionPerms(Request $request): ?array
     {
         $input = $request->input('session_perms', []);

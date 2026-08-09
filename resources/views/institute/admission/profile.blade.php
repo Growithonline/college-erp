@@ -186,6 +186,15 @@
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('resendCredsModal').style.display='flex'">
             <i class="bi bi-key me-1"></i> Reset Portal Login
         </button>
+        @php
+            $loginState = $student->login_blocked
+                ? 'blocked'
+                : (($student->suspended_until && now()->toDateString() <= $student->suspended_until->toDateString()) ? 'suspended' : 'allowed');
+        @endphp
+        <button type="button" class="btn btn-sm {{ $loginState === 'allowed' ? 'btn-outline-success' : 'btn-danger' }}" onclick="document.getElementById('loginAccessModal').style.display='flex'">
+            <i class="bi bi-{{ $loginState === 'allowed' ? 'unlock-fill' : 'lock-fill' }} me-1"></i>
+            {{ $loginState === 'allowed' ? 'Login: Allowed' : ($loginState === 'blocked' ? 'Login: Blocked' : 'Login: Suspended') }}
+        </button>
         @endif
     </div>
 </div>
@@ -225,6 +234,47 @@
         </form>
     </div>
 </div>
+
+{{-- Login Access Modal --}}
+@if(!$isStaff)
+<div id="loginAccessModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+        <h6 class="fw-bold mb-1"><i class="bi bi-shield-lock text-primary me-2"></i>Manage Login Access</h6>
+        <p class="text-muted mb-3" style="font-size:13px;">
+            Blocking login does not affect this student's admission record, fee history, or their name appearing as an admission source elsewhere — only their ability to log in to the student portal.
+        </p>
+        <form method="POST" action="{{ route('admissions.login-access', $student) }}">
+            @csrf
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="mode" id="studentModeAllowed" value="allowed" {{ $loginState === 'allowed' ? 'checked' : '' }}>
+                <label class="form-check-label" for="studentModeAllowed">Allowed — normal login</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="mode" id="studentModeBlocked" value="blocked" {{ $loginState === 'blocked' ? 'checked' : '' }}>
+                <label class="form-check-label" for="studentModeBlocked">Blocked — until manually unblocked</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="mode" id="studentModeSuspended" value="suspended" {{ $loginState === 'suspended' ? 'checked' : '' }}>
+                <label class="form-check-label" for="studentModeSuspended">Suspended until a date — auto-restores after</label>
+            </div>
+            <input type="date" class="form-control mt-2" name="suspended_until" id="studentSuspendedUntilInput"
+                   value="{{ $student->suspended_until?->format('Y-m-d') }}"
+                   style="display:{{ $loginState === 'suspended' ? 'block' : 'none' }};">
+            <div class="d-flex gap-2 justify-content-end mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('loginAccessModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+        document.getElementById('studentSuspendedUntilInput').style.display = this.value === 'suspended' ? 'block' : 'none';
+    });
+});
+</script>
+@endif
 
 {{-- Header Card --}}
 <div class="card border-0 shadow-sm mb-4" style="background:linear-gradient(135deg,#1e293b,#0f4c81);color:white;">

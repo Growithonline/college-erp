@@ -67,6 +67,7 @@
                         <th>Salary</th>
                         <th>Status</th>
                         <th>OTP</th>
+                        <th>Login</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -165,6 +166,18 @@
                             </form>
                         </td>
                         <td>
+                            @php
+                                $loginState = $member->login_blocked
+                                    ? 'blocked'
+                                    : (($member->suspended_until && now()->toDateString() <= $member->suspended_until->toDateString()) ? 'suspended' : 'allowed');
+                            @endphp
+                            <button type="button" class="btn btn-sm {{ $loginState === 'allowed' ? 'btn-outline-success' : 'btn-danger' }}"
+                                    onclick="openLoginAccessModal('{{ route('master.staff-members.login-access', $member) }}', '{{ addslashes($member->name) }}', '{{ $loginState }}', '{{ $member->suspended_until?->format('Y-m-d') }}')">
+                                <i class="bi bi-{{ $loginState === 'allowed' ? 'unlock-fill' : 'lock-fill' }}"></i>
+                                {{ $loginState === 'allowed' ? 'Allowed' : ($loginState === 'blocked' ? 'Blocked' : 'Suspended') }}
+                            </button>
+                        </td>
+                        <td>
                             <div class="d-flex gap-1">
                                 <a href="{{ route('master.staff-members.show', $member) }}"
                                    class="btn btn-outline-secondary btn-sm" title="View Profile"><i class="bi bi-eye"></i></a>
@@ -206,8 +219,61 @@
     </div>
 </div>
 
+{{-- Login Access Modal --}}
+<div class="modal fade" id="loginAccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form id="loginAccessForm" method="POST">
+                @csrf
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock me-2 text-primary"></i>Manage Login Access</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Set login access for <strong id="loginAccessTargetName"></strong></p>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="mode" id="modeAllowed" value="allowed">
+                        <label class="form-check-label" for="modeAllowed">Allowed — normal login</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="mode" id="modeBlocked" value="blocked">
+                        <label class="form-check-label" for="modeBlocked">Blocked — until manually unblocked</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="mode" id="modeSuspended" value="suspended">
+                        <label class="form-check-label" for="modeSuspended">Suspended until a date — auto-restores after</label>
+                    </div>
+                    <input type="date" class="form-control mt-2" name="suspended_until" id="suspendedUntilInput" style="display:none;">
+                    <p class="text-muted small mt-2 mb-0">Login access does not affect this staff member's records or reports — only their ability to log in.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
+var _loginAccessModal = new bootstrap.Modal(document.getElementById('loginAccessModal'));
+
+function openLoginAccessModal(url, name, state, suspendedUntil) {
+    document.getElementById('loginAccessForm').action = url;
+    document.getElementById('loginAccessTargetName').textContent = name;
+    document.getElementById('mode' + state.charAt(0).toUpperCase() + state.slice(1)).checked = true;
+    document.getElementById('suspendedUntilInput').style.display = state === 'suspended' ? 'block' : 'none';
+    document.getElementById('suspendedUntilInput').value = suspendedUntil || '';
+    _loginAccessModal.show();
+}
+
+document.querySelectorAll('#loginAccessForm input[name="mode"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+        document.getElementById('suspendedUntilInput').style.display = this.value === 'suspended' ? 'block' : 'none';
+    });
+});
+
 var _deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 var _deleteUrl   = '';
 
