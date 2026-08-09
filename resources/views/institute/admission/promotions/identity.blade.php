@@ -91,7 +91,7 @@
                     <option value="">All Records</option>
                     <option value="both" {{ request('pending')=='both' ? 'selected':'' }}>Both Missing</option>
                     <option value="roll" {{ request('pending')=='roll' ? 'selected':'' }}>Roll No Missing</option>
-                    <option value="form" {{ request('pending')=='form' ? 'selected':'' }}>Form No Missing</option>
+                    <option value="form" {{ request('pending')=='form' ? 'selected':'' }}>Serial No Missing</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -104,6 +104,21 @@
                 <input type="text" name="search" value="{{ request('search') }}"
                        class="form-control form-control-sm" placeholder="Name, UID...">
             </div>
+
+            <div class="col-12">
+                <label class="form-label small fw-semibold mb-1 d-block">Fields to Edit</label>
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach($allFieldOptions as $key => $label)
+                    <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input" type="checkbox" name="fields[]" value="{{ $key }}"
+                               id="field_{{ $key }}" {{ in_array($key, $selectedFields, true) ? 'checked' : '' }}
+                               onchange="this.form.submit()">
+                        <label class="form-check-label small" for="field_{{ $key }}">{{ $label }}</label>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="col-md-2 d-flex gap-1">
                 <button class="btn btn-primary btn-sm flex-fill"><i class="bi bi-search"></i> Filter</button>
                 <a href="{{ route('admissions.promote.identity') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
@@ -137,15 +152,26 @@
                         <th>Course / Year</th>
                         <th>Session</th>
                         <th>Source</th>
-                        <th style="width:140px;">Form No</th>
-                        <th style="width:140px;">Roll No</th>
+                        @foreach($selectedFields as $key)
+                        <th style="width:140px;">{{ $allFieldOptions[$key] ?? $key }}</th>
+                        @endforeach
                         <th class="text-center">Status</th>
                         <th class="text-center">Quick Save</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($identities as $i => $ident)
-                    <tr class="{{ (is_null($ident->roll_no) || is_null($ident->form_no)) ? 'table-warning bg-opacity-50' : '' }}">
+                    @php
+                        $rowValues = [];
+                        foreach ($selectedFields as $key) {
+                            $rowValues[$key] = in_array($key, ['roll_no', 'form_no'], true)
+                                ? $ident->{$key}
+                                : ($ident->student->{$key} ?? null);
+                        }
+                        $filledCount = collect($rowValues)->filter(fn($v) => filled($v))->count();
+                        $totalCount  = count($rowValues);
+                    @endphp
+                    <tr class="{{ ($totalCount > 0 && $filledCount < $totalCount) ? 'table-warning bg-opacity-50' : '' }}">
                         <td class="ps-3 text-muted small">{{ $identities->firstItem() + $i }}</td>
                         <td>
                             <div class="fw-semibold">{{ $ident->student->name ?? '—' }}</div>
@@ -161,26 +187,21 @@
                                 {{ ucfirst($ident->source) }}
                             </span>
                         </td>
+                        @foreach($selectedFields as $key)
                         <td>
-                            <input type="text" name="identities[{{ $ident->id }}][form_no]"
-                                   class="form-control form-control-sm {{ is_null($ident->form_no) ? 'border-warning' : '' }}"
-                                   value="{{ $ident->form_no }}"
-                                   placeholder="Form No..."
+                            <input type="text" name="identities[{{ $ident->id }}][{{ $key }}]"
+                                   class="form-control form-control-sm {{ is_null($rowValues[$key]) ? 'border-warning' : '' }}"
+                                   value="{{ $rowValues[$key] }}"
+                                   placeholder="{{ $allFieldOptions[$key] ?? $key }}..."
                                    style="width:130px;">
                         </td>
-                        <td>
-                            <input type="text" name="identities[{{ $ident->id }}][roll_no]"
-                                   class="form-control form-control-sm {{ is_null($ident->roll_no) ? 'border-warning' : '' }}"
-                                   value="{{ $ident->roll_no }}"
-                                   placeholder="Roll No..."
-                                   style="width:130px;">
-                        </td>
+                        @endforeach
                         <td class="text-center">
-                            @if($ident->roll_no && $ident->form_no)
+                            @if($totalCount > 0 && $filledCount === $totalCount)
                                 <span class="badge bg-success bg-opacity-15 text-success border" style="font-size:10px;">
                                     <i class="bi bi-check"></i> Complete
                                 </span>
-                            @elseif($ident->roll_no || $ident->form_no)
+                            @elseif($filledCount > 0)
                                 <span class="badge bg-warning bg-opacity-20 text-warning-emphasis border" style="font-size:10px;">
                                     <i class="bi bi-dash"></i> Partial
                                 </span>
@@ -204,7 +225,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center py-5 text-muted">
+                        <td colspan="{{ 7 + count($selectedFields) }}" class="text-center py-5 text-muted">
                             <i class="bi bi-person-badge fs-2 d-block mb-2"></i>No records found
                         </td>
                     </tr>
@@ -224,14 +245,21 @@
 
 <script>
 function quickSave(form, identId) {
-    // Get row values and submit
+    // Copy every visible field's current value for this row into the mini quick-save form
     const row = form.closest('tr');
-    const rollInput = row.querySelector(`input[name="identities[${identId}][roll_no]"]`);
-    const formInput = row.querySelector(`input[name="identities[${identId}][form_no]"]`);
-    if (rollInput) form.querySelector('input[name="roll_no"]') || form.insertAdjacentHTML('beforeend',
-        `<input type="hidden" name="roll_no" value="${rollInput.value}">`);
-    if (formInput) form.querySelector('input[name="form_no"]') || form.insertAdjacentHTML('beforeend',
-        `<input type="hidden" name="form_no" value="${formInput.value}">`);
+    row.querySelectorAll('input[type="text"]').forEach(function (input) {
+        const match = input.name.match(/^identities\[\d+\]\[([a-zA-Z0-9_]+)\]$/);
+        if (!match) return;
+        const key = match[1];
+        let hidden = form.querySelector('input[name="' + key + '"]');
+        if (!hidden) {
+            hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = key;
+            form.appendChild(hidden);
+        }
+        hidden.value = input.value;
+    });
     return true;
 }
 </script>

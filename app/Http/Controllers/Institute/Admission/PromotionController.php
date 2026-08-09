@@ -727,6 +727,33 @@ class PromotionController extends Controller
         }
     }
 
+    /**
+     * Office-Details fields (besides the core Serial No. / Roll No.) that an admin has
+     * enabled via Form Builder, available for the Roll/Form No page's dynamic field-picker.
+     * These map straight to Student columns — no per-session identity tracking needed.
+     */
+    private function officeExtraFieldOptions(int $instituteId): array
+    {
+        $candidates = ['institute_form_no', 'sr_no', 'enrollment_no', 'exam_form_no', 'uin_no', 'reference_no'];
+
+        $labels = [];
+        foreach ((AdmissionFormController::getSections('admission')['office']['fields'] ?? []) as $field) {
+            $labels[$field['key']] = $field['label'];
+        }
+
+        $formConfig = AdmissionFormController::getActiveConfig($instituteId, 'admission');
+
+        $options = [];
+        foreach ($candidates as $key) {
+            $config = $formConfig[$key] ?? [];
+            if (($config['section_enabled'] ?? true) && ($config['enabled'] ?? false)) {
+                $options[$key] = $labels[$key] ?? ucfirst(str_replace('_', ' ', $key));
+            }
+        }
+
+        return $options;
+    }
+
     private function shouldSyncStudentIdentityFields(StudentAcademicIdentity $identity): bool
     {
         $student = Student::select('id', 'academic_session_id', 'current_semester')
@@ -1976,6 +2003,19 @@ class PromotionController extends Controller
         $this->applyIdentityAccessScope($pendingCountQuery);
         $pendingCount = $pendingCountQuery->count();
 
+        // Serial No. & Roll No. are always offered — they're this page's core purpose and
+        // stay available even if an institute hasn't explicitly enabled them in Form Builder.
+        $coreFieldOptions = ['form_no' => 'Serial No.', 'roll_no' => 'Roll No.'];
+        $allFieldOptions  = $coreFieldOptions + $this->officeExtraFieldOptions($instituteId);
+
+        $selectedFields = array_values(array_intersect(
+            (array) $request->query('fields', []),
+            array_keys($allFieldOptions)
+        ));
+        if (empty($selectedFields)) {
+            $selectedFields = array_keys($coreFieldOptions);
+        }
+
         return view('institute.admission.promotions.identity', compact(
             'identities',
             'sessions',
@@ -1983,7 +2023,9 @@ class PromotionController extends Controller
             'courseParts',
             'sessionId',
             'activeSession',
-            'pendingCount'
+            'pendingCount',
+            'allFieldOptions',
+            'selectedFields'
         ));
     }
 
@@ -2244,12 +2286,19 @@ class PromotionController extends Controller
         $this->ensurePromotionAccess();
         abort_if($identity->institute_id !== $this->instituteId(), 403);
         $this->ensureStaffCanAccessIdentity($identity);
-        $request->validate([
+
+        $extraFieldOptions = $this->officeExtraFieldOptions($identity->institute_id);
+
+        $rules = [
             'roll_no' => 'nullable|string|max:50',
             'form_no' => 'nullable|string|max:50',
-        ]);
+        ];
+        foreach ($extraFieldOptions as $key => $label) {
+            $rules[$key] = 'nullable|string|max:100';
+        }
+        $request->validate($rules);
 
-        if ($request->roll_no) {
+        if ($request->has('roll_no') && $request->roll_no) {
             $exists = StudentAcademicIdentity::where('institute_id', $identity->institute_id)
                 ->where('academic_session_id', $identity->academic_session_id)
                 ->where('semester_at_time', $identity->semester_at_time)
@@ -2264,7 +2313,7 @@ class PromotionController extends Controller
             }
         }
 
-        if ($request->form_no) {
+        if ($request->has('form_no') && $request->form_no) {
             $exists = StudentAcademicIdentity::where('institute_id', $identity->institute_id)
                 ->where('academic_session_id', $identity->academic_session_id)
                 ->where('semester_at_time', $identity->semester_at_time)
@@ -2279,22 +2328,38 @@ class PromotionController extends Controller
             }
         }
 
-        $identity->update([
-            'roll_no' => $request->roll_no ?: $identity->roll_no,
-            'form_no' => $request->form_no ?: $identity->form_no,
-        ]);
+        $identityUpdate = [];
+        if ($request->has('roll_no')) {
+            $identityUpdate['roll_no'] = $request->roll_no ?: $identity->roll_no;
+        }
+        if ($request->has('form_no')) {
+            $identityUpdate['form_no'] = $request->form_no ?: $identity->form_no;
+        }
+        if ($identityUpdate) {
+            $identity->update($identityUpdate);
+        }
 
         if ($this->shouldSyncStudentIdentityFields($identity)) {
-            $update = [];
-            if ($request->roll_no) {
-                $update['roll_no'] = $request->roll_no;
+            $syncUpdate = [];
+            if ($request->has('roll_no') && $request->roll_no) {
+                $syncUpdate['roll_no'] = $request->roll_no;
             }
-            if ($request->form_no) {
-                $update['sr_no'] = $request->form_no;
+            if ($request->has('form_no') && $request->form_no) {
+                $syncUpdate['sr_no'] = $request->form_no;
             }
-            if ($update) {
-                Student::where('id', $identity->student_id)->update($update);
+            if ($syncUpdate) {
+                Student::where('id', $identity->student_id)->update($syncUpdate);
             }
+        }
+
+        $studentUpdate = [];
+        foreach ($extraFieldOptions as $key => $label) {
+            if ($request->has($key)) {
+                $studentUpdate[$key] = $request->input($key) ?: null;
+            }
+        }
+        if ($studentUpdate) {
+            Student::where('id', $identity->student_id)->update($studentUpdate);
         }
 
         return back()->with('success', 'Identity updated.');
@@ -2319,6 +2384,8 @@ class PromotionController extends Controller
         }
 
         $request->validate(['identities' => 'required|array']);
+
+        $extraFieldOptions = $this->officeExtraFieldOptions($instituteId);
 
         $errors = [];
         $updated = 0;
@@ -2363,22 +2430,38 @@ class PromotionController extends Controller
                 }
             }
 
-            $identity->update([
-                'roll_no' => $rollNo,
-                'form_no' => $formNo,
-            ]);
+            $identityUpdate = [];
+            if (array_key_exists('roll_no', $data)) {
+                $identityUpdate['roll_no'] = $rollNo;
+            }
+            if (array_key_exists('form_no', $data)) {
+                $identityUpdate['form_no'] = $formNo;
+            }
+            if ($identityUpdate) {
+                $identity->update($identityUpdate);
+            }
 
             if ($this->shouldSyncStudentIdentityFields($identity)) {
-                $studentUpdate = [];
+                $syncUpdate = [];
                 if ($rollNo) {
-                    $studentUpdate['roll_no'] = $rollNo;
+                    $syncUpdate['roll_no'] = $rollNo;
                 }
                 if ($formNo) {
-                    $studentUpdate['sr_no'] = $formNo;
+                    $syncUpdate['sr_no'] = $formNo;
                 }
-                if ($studentUpdate) {
-                    Student::where('id', $identity->student_id)->update($studentUpdate);
+                if ($syncUpdate) {
+                    Student::where('id', $identity->student_id)->update($syncUpdate);
                 }
+            }
+
+            $studentUpdate = [];
+            foreach ($extraFieldOptions as $key => $label) {
+                if (array_key_exists($key, $data)) {
+                    $studentUpdate[$key] = $data[$key] !== '' ? $data[$key] : null;
+                }
+            }
+            if ($studentUpdate) {
+                Student::where('id', $identity->student_id)->update($studentUpdate);
             }
 
             $updated++;
