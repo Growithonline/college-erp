@@ -32,6 +32,16 @@ class InstituteController extends Controller
         return view('group_admin.institutes.index', compact('groupAdmin', 'institutes', 'group', 'remaining'));
     }
 
+    public function show(Institute $institute)
+    {
+        $groupAdmin = Auth::guard('group_admin')->user();
+        abort_unless($institute->group_id === $groupAdmin->group_id, 403);
+
+        $institute->loadCount('students');
+
+        return view('group_admin.institutes.show', compact('groupAdmin', 'institute'));
+    }
+
     public function create()
     {
         $groupAdmin = Auth::guard('group_admin')->user();

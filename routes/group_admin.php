@@ -20,6 +20,7 @@ Route::prefix('group-admin')->name('group_admin.')->group(function () {
         Route::get('/institutes', [InstituteController::class, 'index'])->name('institutes.index');
         Route::get('/institutes/create', [InstituteController::class, 'create'])->name('institutes.create');
         Route::post('/institutes', [InstituteController::class, 'store'])->name('institutes.store');
+        Route::get('/institutes/{institute}', [InstituteController::class, 'show'])->name('institutes.show');
         Route::post('/institutes/{institute}/reset-password', [InstituteController::class, 'resetPassword'])->name('institutes.reset-password');
     });
 });

@@ -41,9 +41,7 @@
                     <th>Owner Name</th>
                     <th>Login Email</th>
                     <th class="text-end">Students</th>
-                    @if($groupAdmin->can_reset_institute_password)
-                        <th class="text-end">Action</th>
-                    @endif
+                    <th class="text-end">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,13 +53,21 @@
                         <td>{{ $institute->owner_name }}</td>
                         <td>{{ $institute->owner_email }}</td>
                         <td class="text-end">{{ $institute->students_count }}</td>
-                        @if($groupAdmin->can_reset_institute_password)
                         <td class="text-end">
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
-                                    data-bs-toggle="modal" data-bs-target="#resetPwdModal{{ $institute->id }}">
-                                <i class="bi bi-key me-1"></i> Reset Password
-                            </button>
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{{ route('group_admin.institutes.show', $institute->id) }}"
+                                   class="btn btn-sm btn-outline-primary py-0 px-2" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                @if($groupAdmin->can_reset_institute_password)
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
+                                        data-bs-toggle="modal" data-bs-target="#resetPwdModal{{ $institute->id }}">
+                                    <i class="bi bi-key"></i>
+                                </button>
+                                @endif
+                            </div>
 
+                            @if($groupAdmin->can_reset_institute_password)
                             <div class="modal fade" id="resetPwdModal{{ $institute->id }}" tabindex="-1">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
@@ -95,8 +101,8 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                         </td>
-                        @endif
                     </tr>
                 @empty
                     <tr>
