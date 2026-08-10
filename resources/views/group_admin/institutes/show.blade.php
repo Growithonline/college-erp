@@ -7,67 +7,142 @@
 
 @section('content')
 
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('group_admin.institutes.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Back
-    </a>
-    @if($institute->image)
-        <img src="{{ asset('storage/' . $institute->image) }}" alt="{{ $institute->name }}"
-             class="rounded border" style="height:42px;width:42px;object-fit:contain;background:#f8f9fa;">
-    @else
-        <div class="rounded border d-flex align-items-center justify-content-center bg-light"
-             style="height:42px;width:42px;flex-shrink:0;">
-            <i class="bi bi-building text-muted" style="font-size:18px;"></i>
-        </div>
-    @endif
-    <h5 class="mb-0 fw-bold">{{ $institute->name }}</h5>
-    @if($institute->status === 'active')
-        <span class="badge bg-success-subtle text-success">Active</span>
-    @else
-        <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
-    @endif
+@php
+    $isExpired    = $institute->subscription_end && now()->gt($institute->subscription_end);
+    $expiringSoon = $institute->subscription_end && !$isExpired && now()->addDays(30)->gte($institute->subscription_end);
+    $daysLeft     = $institute->subscription_end && !$isExpired ? (int) floor(now()->diffInDays($institute->subscription_end)) : null;
+    $studentPct   = $institute->student_limit ? min(100, round(($institute->students_count / $institute->student_limit) * 100)) : 0;
+@endphp
 
-    @if($groupAdmin->can_reset_institute_password)
-        <div class="ms-auto">
-            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#resetPwdModal">
+<a href="{{ route('group_admin.institutes.index') }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left me-1"></i> Back to Institutes
+</a>
+
+{{-- Hero --}}
+<div class="ip-hero mb-4">
+    <div class="ip-hero-bg"></div>
+    <div class="d-flex align-items-center gap-3 flex-wrap position-relative">
+        @if($institute->image)
+            <img src="{{ asset('storage/' . $institute->image) }}" alt="{{ $institute->name }}" class="ip-avatar">
+        @else
+            <div class="ip-avatar d-flex align-items-center justify-content-center">
+                <i class="bi bi-building" style="font-size:34px;color:#fff;"></i>
+            </div>
+        @endif
+        <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h4 class="mb-0 fw-bold text-white">{{ $institute->name }}</h4>
+                @if($institute->status === 'active')
+                    <span class="badge bg-success">Active</span>
+                @else
+                    <span class="badge bg-secondary">Inactive</span>
+                @endif
+            </div>
+            <div class="ip-hero-sub mt-1">
+                <i class="bi bi-upc-scan me-1"></i>{{ $institute->institute_uid }}
+                <span class="mx-2">&bull;</span>
+                <i class="bi bi-geo-alt me-1"></i>{{ $institute->city ?? 'Location not set' }}@if($institute->state), {{ $institute->state }}@endif
+            </div>
+        </div>
+        @if($groupAdmin->can_reset_institute_password)
+            <button type="button" class="btn btn-light btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#resetPwdModal">
                 <i class="bi bi-key me-1"></i> Reset Password
             </button>
-        </div>
+        @endif
+    </div>
+</div>
 
-        <div class="modal fade" id="resetPwdModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <form method="POST" action="{{ route('group_admin.institutes.reset-password', $institute->id) }}">
-                        @csrf
-                        <div class="modal-header">
-                            <h6 class="modal-title">Reset Password — {{ $institute->name }}</h6>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label small fw-semibold">New Password</label>
-                                <input type="password" name="password" class="form-control form-control-sm" minlength="8" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-semibold">Confirm Password</label>
-                                <input type="password" name="password_confirmation" class="form-control form-control-sm" minlength="8" required>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="notify_email" id="notifyEmail" value="1" checked>
-                                <label class="form-check-label small" for="notifyEmail">
-                                    Send new password to owner's email ({{ $institute->owner_email }})
-                                </label>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-sm btn-danger">Reset Password</button>
-                        </div>
-                    </form>
+@if($groupAdmin->can_reset_institute_password)
+<div class="modal fade" id="resetPwdModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('group_admin.institutes.reset-password', $institute->id) }}">
+                @csrf
+                <div class="modal-header">
+                    <h6 class="modal-title">Reset Password — {{ $institute->name }}</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">New Password</label>
+                        <input type="password" name="password" class="form-control form-control-sm" minlength="8" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Confirm Password</label>
+                        <input type="password" name="password_confirmation" class="form-control form-control-sm" minlength="8" required>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="notify_email" id="notifyEmail" value="1" checked>
+                        <label class="form-check-label small" for="notifyEmail">
+                            Send new password to owner's email ({{ $institute->owner_email }})
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Stat strip --}}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="ip-stat">
+            <div class="ip-stat-icon" style="background:#ede9fe;"><i class="bi bi-people-fill" style="color:#7c3aed;"></i></div>
+            <div class="flex-grow-1">
+                <div class="text-muted small">Students</div>
+                <div class="fw-bold">{{ number_format($institute->students_count) }} / {{ number_format($institute->student_limit ?? 0) }}</div>
+                <div class="progress mt-1" style="height:4px;">
+                    <div class="progress-bar bg-purple" style="width:{{ $studentPct }}%;background:#7c3aed;"></div>
                 </div>
             </div>
         </div>
-    @endif
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="ip-stat">
+            <div class="ip-stat-icon" style="background:{{ $institute->subscription_end === null ? '#e0f2fe' : ($isExpired ? '#fee2e2' : ($expiringSoon ? '#fef9c3' : '#dcfce7')) }};">
+                <i class="bi {{ $institute->subscription_end === null ? 'bi-infinity' : ($isExpired ? 'bi-x-circle-fill' : 'bi-check-circle-fill') }}"
+                   style="color:{{ $institute->subscription_end === null ? '#0284c7' : ($isExpired ? '#dc2626' : ($expiringSoon ? '#ca8a04' : '#16a34a')) }};"></i>
+            </div>
+            <div>
+                <div class="text-muted small">Subscription</div>
+                <div class="fw-bold">
+                    @if($institute->subscription_end === null) Lifetime
+                    @elseif($isExpired) Expired
+                    @elseif($expiringSoon) Expiring Soon
+                    @else Active
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="ip-stat">
+            <div class="ip-stat-icon" style="background:#dbeafe;"><i class="bi bi-calendar-event" style="color:#2563eb;"></i></div>
+            <div>
+                <div class="text-muted small">Days Remaining</div>
+                <div class="fw-bold">
+                    @if($daysLeft !== null) {{ $daysLeft }} days
+                    @elseif($isExpired) <span class="text-danger">Expired</span>
+                    @else —
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="ip-stat">
+            <div class="ip-stat-icon" style="background:#fee2e2;"><i class="bi bi-clock-history" style="color:#dc2626;"></i></div>
+            <div>
+                <div class="text-muted small">Member Since</div>
+                <div class="fw-bold">{{ $institute->created_at?->format('d M Y') }}</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -78,22 +153,12 @@
                 <h6 class="fw-bold mb-0"><i class="bi bi-building text-primary me-2"></i>Institute Details</h6>
             </div>
             <div class="card-body">
-                <table class="table table-sm table-borderless mb-0">
-                    <tr><td class="text-muted fw-semibold" style="width:40%">Institute ID</td><td class="fw-bold">{{ $institute->institute_uid }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Name</td><td>{{ $institute->name }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Short Name</td><td>{{ $institute->short_name }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Mobile</td><td>{{ $institute->mobile }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Email</td><td>{{ $institute->email }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Address</td><td>{{ $institute->address ?? '—' }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">City / State</td><td>{{ $institute->city }}@if($institute->state), {{ $institute->state }}@endif @if($institute->pincode) — {{ $institute->pincode }}@endif</td></tr>
-                    <tr><td class="text-muted fw-semibold">Students</td>
-                        <td>
-                            <span class="badge bg-primary-subtle text-primary">
-                                {{ number_format($institute->students_count) }} / {{ number_format($institute->student_limit ?? 0) }}
-                            </span>
-                        </td>
-                    </tr>
-                </table>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-upc-scan"></i> Institute ID</div><div class="ip-value fw-bold">{{ $institute->institute_uid }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-signpost"></i> Short Name</div><div class="ip-value">{{ $institute->short_name }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-telephone"></i> Mobile</div><div class="ip-value">{{ $institute->mobile }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-envelope"></i> Email</div><div class="ip-value">{{ $institute->email }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-geo-alt"></i> Address</div><div class="ip-value">{{ $institute->address ?? '—' }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-map"></i> City / State</div><div class="ip-value">{{ $institute->city ?? '—' }}@if($institute->state), {{ $institute->state }}@endif @if($institute->pincode) — {{ $institute->pincode }}@endif</div></div>
             </div>
         </div>
     </div>
@@ -105,80 +170,82 @@
                 <h6 class="fw-bold mb-0"><i class="bi bi-person text-success me-2"></i>Owner Details</h6>
             </div>
             <div class="card-body">
-                <table class="table table-sm table-borderless mb-0">
-                    <tr><td class="text-muted fw-semibold" style="width:40%">Owner Name</td><td>{{ $institute->owner_name }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Mobile</td><td>{{ $institute->owner_mobile }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Login Email</td><td>{{ $institute->owner_email }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">WhatsApp</td><td>{{ $institute->owner_whatsapp ?? '—' }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Address</td><td>{{ $institute->owner_address ?? '—' }}</td></tr>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    {{-- Subscription --}}
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pb-0 pt-3">
-                <h6 class="fw-bold mb-0"><i class="bi bi-calendar-check text-warning me-2"></i>Subscription</h6>
-            </div>
-            <div class="card-body">
-                @php
-                    $isExpired    = $institute->subscription_end && now()->gt($institute->subscription_end);
-                    $expiringSoon = $institute->subscription_end && !$isExpired && now()->addDays(30)->gte($institute->subscription_end);
-                @endphp
-                <table class="table table-sm table-borderless mb-0">
-                    <tr>
-                        <td class="text-muted fw-semibold" style="width:40%">Start Date</td>
-                        <td>{{ $institute->subscription_start ? \Carbon\Carbon::parse($institute->subscription_start)->format('d M Y') : '—' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted fw-semibold">End Date</td>
-                        <td>
-                            @if($institute->subscription_end)
-                                <span class="text-{{ $isExpired ? 'danger' : ($expiringSoon ? 'warning' : 'success') }} fw-semibold">
-                                    {{ \Carbon\Carbon::parse($institute->subscription_end)->format('d M Y') }}
-                                </span>
-                                @if($isExpired) <span class="badge bg-danger-subtle text-danger ms-1">Expired</span>
-                                @elseif($expiringSoon) <span class="badge bg-warning-subtle text-warning ms-1">Expiring Soon</span>
-                                @else <span class="badge bg-success-subtle text-success ms-1">Active</span>
-                                @endif
-                            @else
-                                <span class="badge bg-info-subtle text-info">Lifetime</span>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted fw-semibold">Days Remaining</td>
-                        <td>
-                            @if($institute->subscription_end && !$isExpired)
-                                {{ now()->diffInDays($institute->subscription_end) }} days
-                            @elseif($isExpired)
-                                <span class="text-danger">Expired</span>
-                            @else —
-                            @endif
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    {{-- System Info --}}
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pb-0 pt-3">
-                <h6 class="fw-bold mb-0"><i class="bi bi-info-circle text-info me-2"></i>System Info</h6>
-            </div>
-            <div class="card-body">
-                <table class="table table-sm table-borderless mb-0">
-                    <tr><td class="text-muted fw-semibold" style="width:40%">Onboarded On</td><td>{{ $institute->created_at?->format('d M Y, h:i A') }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Student Limit</td><td>{{ number_format($institute->student_limit ?? 0) }}</td></tr>
-                    <tr><td class="text-muted fw-semibold">Current Students</td><td>{{ number_format($institute->students_count) }}</td></tr>
-                </table>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-person-badge"></i> Owner Name</div><div class="ip-value">{{ $institute->owner_name }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-telephone"></i> Mobile</div><div class="ip-value">{{ $institute->owner_mobile }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-envelope-check"></i> Login Email</div><div class="ip-value">{{ $institute->owner_email }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-whatsapp"></i> WhatsApp</div><div class="ip-value">{{ $institute->owner_whatsapp ?? '—' }}</div></div>
+                <div class="ip-row"><div class="ip-label"><i class="bi bi-geo-alt"></i> Address</div><div class="ip-value">{{ $institute->owner_address ?? '—' }}</div></div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.ip-hero {
+    position: relative;
+    border-radius: 16px;
+    padding: 28px;
+    overflow: hidden;
+}
+.ip-hero-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, #4338ca 0%, #6366f1 55%, #818cf8 100%);
+}
+.ip-hero-bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 90% -10%, rgba(255,255,255,.15) 0%, transparent 55%);
+}
+.ip-avatar {
+    height: 76px; width: 76px; flex-shrink: 0;
+    border-radius: 16px; object-fit: contain;
+    background: rgba(255,255,255,.15);
+    border: 2px solid rgba(255,255,255,.35);
+    padding: 6px;
+}
+.ip-hero-sub {
+    color: rgba(255,255,255,.85);
+    font-size: 13px;
+}
+.ip-stat {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 100%;
+}
+.ip-stat-icon {
+    width: 40px; height: 40px; flex-shrink: 0;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+}
+.ip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.ip-row:last-child { border-bottom: none; padding-bottom: 0; }
+.ip-label {
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ip-value {
+    text-align: right;
+    font-size: 14px;
+    word-break: break-word;
+}
+</style>
 
 @endsection
