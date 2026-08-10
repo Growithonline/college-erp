@@ -1984,28 +1984,48 @@ class PromotionController extends Controller
             ->realOnly();
         $this->applyIdentityAccessScope($query);
 
-        if ($sessionId) {
-            $query->where('academic_session_id', $sessionId);
-        }
-        if ($request->course_id) {
-            $query->where('course_id', $request->course_id);
-        }
-        if ($request->course_part_id) {
-            $query->where('course_part_id', $request->course_part_id);
-        }
-        if ($request->current_semester) {
-            $query->where('semester_at_time', $request->current_semester);
-        }
+        $applyIdentityFilters = function ($q) use ($sessionId, $request) {
+            // Only currently-active students — this page manages ongoing office
+            // numbers for enrolled students, not passed-out/dropped history.
+            $q->whereHas('student', fn($sq) => $sq->where('status', 'active'));
+            if ($sessionId) {
+                $q->where('academic_session_id', $sessionId);
+            }
+            if ($request->course_id) {
+                $q->where('course_id', $request->course_id);
+            }
+            if ($request->course_part_id) {
+                $q->where('course_part_id', $request->course_part_id);
+            }
+            if ($request->current_semester) {
+                $q->where('semester_at_time', $request->current_semester);
+            }
+            if ($request->pending === 'roll') {
+                $q->whereNull('roll_no');
+            }
+            if ($request->search) {
+                $s = $this->escapeLike($request->search);
+                $q->whereHas('student', fn($sq) => $sq->where('name', 'like', "%{$s}%")
+                    ->orWhere('student_uid', 'like', "%{$s}%"));
+            }
+        };
+        $applyIdentityFilters($query);
+
+        // The id of each student's latest (current-stage) identity row — a promoted
+        // student has multiple identity rows (pre- and post-promotion) in the same
+        // session, and editing an older, superseded row here would silently corrupt
+        // that semester's frozen snapshot. By default only these rows are listed;
+        // when a specific Source is picked to inspect history, older rows are still
+        // shown but marked read-only in the view.
+        $latestIdQuery = StudentAcademicIdentity::where('institute_id', $instituteId)->realOnly();
+        $this->applyIdentityAccessScope($latestIdQuery);
+        $applyIdentityFilters($latestIdQuery);
+        $latestIds = $latestIdQuery->groupBy('student_id')->selectRaw('MAX(id) as id')->pluck('id');
+
         if ($request->filled('source')) {
             $query->where('source', $request->source);
-        }
-        if ($request->pending === 'roll') {
-            $query->whereNull('roll_no');
-        }
-        if ($request->search) {
-            $s = $this->escapeLike($request->search);
-            $query->whereHas('student', fn($q) => $q->where('name', 'like', "%{$s}%")
-                ->orWhere('student_uid', 'like', "%{$s}%"));
+        } else {
+            $query->whereIn('id', $latestIds);
         }
 
         $identities = $query->orderBy('academic_session_id')
@@ -2014,9 +2034,19 @@ class PromotionController extends Controller
             ->paginate(50)
             ->withQueryString();
 
+        // Banner should reflect the whole session regardless of the course/part/search
+        // filters above — but still only current-stage rows for active students.
+        $sessionLatestIdQuery = StudentAcademicIdentity::where('institute_id', $instituteId)
+            ->where('academic_session_id', $sessionId)
+            ->realOnly()
+            ->whereHas('student', fn($sq) => $sq->where('status', 'active'));
+        $this->applyIdentityAccessScope($sessionLatestIdQuery);
+        $sessionLatestIds = $sessionLatestIdQuery->groupBy('student_id')->selectRaw('MAX(id) as id')->pluck('id');
+
         $pendingCountQuery = StudentAcademicIdentity::where('institute_id', $instituteId)
             ->where('academic_session_id', $sessionId)
             ->realOnly()
+            ->whereIn('id', $sessionLatestIds)
             ->whereNull('roll_no');
         $this->applyIdentityAccessScope($pendingCountQuery);
         $pendingCount = $pendingCountQuery->count();
@@ -2045,7 +2075,8 @@ class PromotionController extends Controller
             'activeSession',
             'pendingCount',
             'allFieldOptions',
-            'selectedFields'
+            'selectedFields',
+            'latestIds'
         ));
     }
 

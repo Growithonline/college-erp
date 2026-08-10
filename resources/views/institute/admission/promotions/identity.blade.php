@@ -177,8 +177,12 @@
                         }
                         $filledCount = collect($rowValues)->filter(fn($v) => filled($v))->count();
                         $totalCount  = count($rowValues);
+                        // Superseded — a newer identity exists for this student, so this row
+                        // is a frozen historical snapshot. Editing it here would silently
+                        // corrupt that semester's record; only viewable, never editable.
+                        $isStale = !$latestIds->contains($ident->id);
                     @endphp
-                    <tr class="{{ ($totalCount > 0 && $filledCount < $totalCount) ? 'table-warning bg-opacity-50' : '' }}">
+                    <tr class="{{ $isStale ? 'opacity-75' : (($totalCount > 0 && $filledCount < $totalCount) ? 'table-warning bg-opacity-50' : '') }}">
                         <td class="ps-3 text-muted small">{{ $identities->firstItem() + $i }}</td>
                         <td>
                             <div class="fw-semibold">{{ $ident->student->name ?? '—' }}</div>
@@ -186,7 +190,12 @@
                         </td>
                         <td>
                             <div class="small">{{ $ident->course->name ?? '—' }}</div>
-                            <div class="text-muted" style="font-size:11px;">{{ $ident->student->coursePart->year_label ?? '—' }}</div>
+                            <div class="text-muted" style="font-size:11px;">
+                                {{ $ident->coursePart->year_label ?? '—' }}
+                                @if($ident->semester_at_time)
+                                <span class="badge bg-primary text-white ms-1" style="font-size:9px;">Sem {{ $ident->semester_at_time }}</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="small text-muted">{{ $ident->session->name ?? '—' }}</td>
                         <td>
@@ -200,6 +209,11 @@
                             <span class="badge {{ $sourceBadge }}" style="font-size:10px;">
                                 {{ ucwords(str_replace('_', ' ', $ident->source)) }}
                             </span>
+                            @if($isStale)
+                            <span class="badge bg-secondary text-white ms-1" style="font-size:9px;" title="A newer record exists for this student — read-only">
+                                <i class="bi bi-lock-fill"></i> Superseded
+                            </span>
+                            @endif
                         </td>
                         @foreach($selectedFields as $key)
                         <td>
@@ -207,25 +221,31 @@
                                    class="form-control form-control-sm {{ is_null($rowValues[$key]) ? 'border-warning' : '' }}"
                                    value="{{ $rowValues[$key] }}"
                                    placeholder="{{ $allFieldOptions[$key] ?? $key }}..."
-                                   style="width:130px;">
+                                   style="width:130px;"
+                                   {{ $isStale ? 'readonly disabled' : '' }}>
                         </td>
                         @endforeach
                         <td class="text-center">
                             @if($totalCount > 0 && $filledCount === $totalCount)
-                                <span class="badge bg-success bg-opacity-15 text-success border" style="font-size:10px;">
+                                <span class="badge bg-success text-white" style="font-size:10px;">
                                     <i class="bi bi-check"></i> Complete
                                 </span>
                             @elseif($filledCount > 0)
-                                <span class="badge bg-warning bg-opacity-20 text-warning-emphasis border" style="font-size:10px;">
+                                <span class="badge bg-warning text-dark" style="font-size:10px;">
                                     <i class="bi bi-dash"></i> Partial
                                 </span>
                             @else
-                                <span class="badge bg-danger bg-opacity-15 text-danger border" style="font-size:10px;">
+                                <span class="badge bg-danger text-white" style="font-size:10px;">
                                     <i class="bi bi-x"></i> Pending
                                 </span>
                             @endif
                         </td>
                         <td class="text-center">
+                            @if($isStale)
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Read-only — superseded record">
+                                    <i class="bi bi-lock-fill"></i>
+                                </button>
+                            @else
                             {{-- Quick individual save --}}
                             <form method="POST" action="{{ route('admissions.promote.identity.update', $ident) }}"
                                   style="display:inline;" onsubmit="return quickSave(this, {{ $ident->id }})">
@@ -235,6 +255,7 @@
                                     <i class="bi bi-save"></i>
                                 </button>
                             </form>
+                            @endif
                         </td>
                     </tr>
                     @empty
