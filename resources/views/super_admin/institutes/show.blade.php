@@ -27,6 +27,9 @@
     <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
     @endif
     <div class="ms-auto d-flex gap-2">
+        <a href="{{ route('super_admin.institutes.edit', $institute->id) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
         <form id="form-notify-login-ids" method="POST" action="{{ route('super_admin.institutes.notify-login-ids', $institute->id) }}">
             @csrf
             <button type="button" class="btn btn-sm btn-outline-info"

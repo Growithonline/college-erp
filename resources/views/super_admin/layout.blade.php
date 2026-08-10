@@ -70,6 +70,9 @@
         <a href="{{ route('super_admin.uid-backfill.index') }}" class="{{ request()->routeIs('super_admin.uid-backfill.*') ? 'active' : '' }}">
             <i class="bi bi-upc-scan"></i> Login-ID Backfill
         </a>
+        <a href="{{ route('super_admin.audit-logs.index') }}" class="{{ request()->routeIs('super_admin.audit-logs.*') ? 'active' : '' }}">
+            <i class="bi bi-shield-check"></i> Audit Log
+        </a>
         <a href="{{ route('super_admin.backup.index') }}" class="{{ request()->routeIs('super_admin.backup.*') ? 'active' : '' }}">
             <i class="bi bi-database-down"></i> Database Backup
         </a>

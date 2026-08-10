@@ -44,11 +44,24 @@
                 <i class="bi bi-geo-alt me-1"></i>{{ $institute->city ?? 'Location not set' }}@if($institute->state), {{ $institute->state }}@endif
             </div>
         </div>
-        @if($groupAdmin->can_reset_institute_password)
-            <button type="button" class="btn btn-light btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#resetPwdModal">
-                <i class="bi bi-key me-1"></i> Reset Password
-            </button>
-        @endif
+        <div class="d-flex gap-2">
+            <a href="{{ route('group_admin.institutes.edit', $institute->id) }}" class="btn btn-light btn-sm fw-semibold">
+                <i class="bi bi-pencil me-1"></i> Edit
+            </a>
+            <form method="POST" action="{{ route('group_admin.institutes.toggle', $institute->id) }}"
+                  onsubmit="return confirm('{{ $institute->status === 'active' ? 'Deactivate this institute? Its staff and owner will no longer be able to log in.' : 'Activate this institute again?' }}');">
+                @csrf @method('PATCH')
+                <button type="submit" class="btn btn-sm fw-semibold {{ $institute->status === 'active' ? 'btn-outline-light' : 'btn-light' }}">
+                    <i class="bi bi-{{ $institute->status === 'active' ? 'slash-circle' : 'check-circle' }} me-1"></i>
+                    {{ $institute->status === 'active' ? 'Deactivate' : 'Activate' }}
+                </button>
+            </form>
+            @if($groupAdmin->can_reset_institute_password)
+                <button type="button" class="btn btn-light btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#resetPwdModal">
+                    <i class="bi bi-key me-1"></i> Reset Password
+                </button>
+            @endif
+        </div>
     </div>
 </div>
 

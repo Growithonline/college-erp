@@ -27,6 +27,18 @@
     @endif
 </div>
 
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ route('group_admin.institutes.index') }}" class="d-flex gap-2">
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search by name, short name, or institute ID..." value="{{ request('search') }}">
+            <button type="submit" class="btn btn-primary btn-sm text-nowrap"><i class="bi bi-search me-1"></i>Search</button>
+            @if(request()->filled('search'))
+                <a href="{{ route('group_admin.institutes.index') }}" class="btn btn-outline-secondary btn-sm text-nowrap">Clear</a>
+            @endif
+        </form>
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white">
         <h6 class="mb-0">Institutes in {{ $groupAdmin->group->name ?? 'this group' }}</h6>
@@ -41,6 +53,7 @@
                     <th>Owner Name</th>
                     <th>Login Email</th>
                     <th class="text-end">Students</th>
+                    <th>Status</th>
                     <th class="text-end">Action</th>
                 </tr>
             </thead>
@@ -53,12 +66,31 @@
                         <td>{{ $institute->owner_name }}</td>
                         <td>{{ $institute->owner_email }}</td>
                         <td class="text-end">{{ $institute->students_count }}</td>
+                        <td>
+                            @if($institute->status === 'active')
+                                <span class="badge bg-success-subtle text-success">Active</span>
+                            @else
+                                <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+                            @endif
+                        </td>
                         <td class="text-end">
                             <div class="d-flex gap-1 justify-content-end">
                                 <a href="{{ route('group_admin.institutes.show', $institute->id) }}"
                                    class="btn btn-sm btn-outline-primary py-0 px-2" title="View">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                <a href="{{ route('group_admin.institutes.edit', $institute->id) }}"
+                                   class="btn btn-sm btn-outline-secondary py-0 px-2" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="POST" action="{{ route('group_admin.institutes.toggle', $institute->id) }}"
+                                      onsubmit="return confirm('{{ $institute->status === 'active' ? 'Deactivate this institute?' : 'Activate this institute?' }}');">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="btn btn-sm py-0 px-2 {{ $institute->status === 'active' ? 'btn-outline-danger' : 'btn-outline-success' }}"
+                                            title="{{ $institute->status === 'active' ? 'Deactivate' : 'Activate' }}">
+                                        <i class="bi bi-{{ $institute->status === 'active' ? 'slash-circle' : 'check-circle' }}"></i>
+                                    </button>
+                                </form>
                                 @if($groupAdmin->can_reset_institute_password)
                                 <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
                                         data-bs-toggle="modal" data-bs-target="#resetPwdModal{{ $institute->id }}">
@@ -106,12 +138,18 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">No institutes assigned to this group yet.</td>
+                        <td colspan="8" class="text-center text-muted py-4">No institutes found.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
+    @if($institutes->hasPages())
+    <div class="p-3 border-top d-flex align-items-center justify-content-between">
+        <small class="text-muted">Showing {{ $institutes->firstItem() }}–{{ $institutes->lastItem() }} of {{ $institutes->total() }} institute(s)</small>
+        {{ $institutes->links() }}
+    </div>
+    @endif
 </div>
 
 @endsection

@@ -21,6 +21,9 @@ Route::prefix('group-admin')->name('group_admin.')->group(function () {
         Route::get('/institutes/create', [InstituteController::class, 'create'])->name('institutes.create');
         Route::post('/institutes', [InstituteController::class, 'store'])->name('institutes.store');
         Route::get('/institutes/{institute}', [InstituteController::class, 'show'])->name('institutes.show');
+        Route::get('/institutes/{institute}/edit', [InstituteController::class, 'edit'])->name('institutes.edit');
+        Route::put('/institutes/{institute}', [InstituteController::class, 'update'])->name('institutes.update');
+        Route::patch('/institutes/{institute}/toggle', [InstituteController::class, 'toggle'])->name('institutes.toggle');
         Route::post('/institutes/{institute}/reset-password', [InstituteController::class, 'resetPassword'])->name('institutes.reset-password');
     });
 });

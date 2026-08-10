@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SuperAdmin\Auth\LoginController;
+use App\Http\Controllers\SuperAdmin\AuditLogController;
 use App\Http\Controllers\SuperAdmin\BackupController;
 use App\Http\Controllers\SuperAdmin\DashboardController;
 use App\Http\Controllers\SuperAdmin\GroupController;
@@ -23,6 +24,8 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::get('/institutes/create', [InstituteController::class, 'create'])->name('institutes.create');
         Route::post('/institutes',       [InstituteController::class, 'store'])->name('institutes.store');
         Route::get('/institutes/{institute}',       [InstituteController::class, 'show'])->name('institutes.show');
+        Route::get('/institutes/{institute}/edit',  [InstituteController::class, 'edit'])->name('institutes.edit');
+        Route::put('/institutes/{institute}',       [InstituteController::class, 'update'])->name('institutes.update');
         Route::patch('/institutes/{institute}/toggle', [InstituteController::class, 'toggle'])->name('institutes.toggle');
         Route::post('/institutes/{institute}/branding', [InstituteController::class, 'updateBranding'])->name('institutes.branding');
         Route::post('/institutes/{institute}/reset-password', [InstituteController::class, 'resetPassword'])->name('institutes.reset-password');
@@ -47,6 +50,9 @@ Route::prefix('super-admin')->name('super_admin.')->group(function () {
         Route::post('/groups/{group}/admins/{groupAdmin}/reset-password', [GroupController::class, 'resetAdminPassword'])->name('groups.admins.reset-password');
         Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-reset-permission', [GroupController::class, 'toggleResetPermission'])->name('groups.admins.toggle-reset-permission');
         Route::patch('/groups/{group}/admins/{groupAdmin}/toggle-create-permission', [GroupController::class, 'toggleCreatePermission'])->name('groups.admins.toggle-create-permission');
+
+        // Audit Log viewer
+        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
         // Login-UID Backfill (Staff/Partner/Center/Library-Staff)
         Route::get('/uid-backfill',             [UidBackfillController::class, 'index'])->name('uid-backfill.index');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInstituteRequest;
+use App\Http\Requests\UpdateInstituteRequest;
 use App\Mail\InstituteCredentialMail;
 use App\Mail\LoginIdNotificationMail;
 use App\Models\Center;
@@ -39,6 +40,41 @@ class InstituteController extends Controller
         }, 'group']);
         $groups = Group::where('status', true)->orderBy('name')->get(['id', 'name']);
         return view('super_admin.institutes.show', compact('institute', 'groups'));
+    }
+
+    public function edit(Institute $institute)
+    {
+        return view('super_admin.institutes.edit', compact('institute'));
+    }
+
+    public function update(UpdateInstituteRequest $request, Institute $institute)
+    {
+        $data = $request->validated();
+        unset($data['image'], $data['owner_identity_proof']);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('institutes/images', 'public');
+        }
+        if ($request->hasFile('owner_identity_proof')) {
+            $data['owner_identity_proof'] = $request->file('owner_identity_proof')->store('institutes/identity_proofs', 'public');
+        }
+
+        $emailChanged = $institute->owner_email !== $data['owner_email'];
+
+        $institute->update($data);
+
+        if ($emailChanged) {
+            User::where('institute_id', $institute->id)
+                ->where('role', 'institute_admin')
+                ->update(['email' => $data['owner_email']]);
+        }
+
+        AuditLogService::log($institute->id, 'institute', 'details_updated', 'Institute details updated by Super Admin.', $institute, [
+            'changed_fields' => array_keys($data),
+        ]);
+
+        return redirect()->route('super_admin.institutes.show', $institute->id)
+            ->with('success', 'Institute updated successfully.');
     }
 
     public function consentPdf(Institute $institute)
