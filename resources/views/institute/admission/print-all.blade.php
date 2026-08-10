@@ -273,6 +273,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .tsign { display:flex; justify-content:space-between; margin-top:7mm; font-size:11px; font-weight:700; }
 
 @media print {
+    * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
     html, body { background:white; height:auto !important; overflow:visible !important; }
     body.thermal-print-active { width:80mm; margin:0 !important; padding:0 !important; }
     .top-bar, .sidebar { display:none !important; }
