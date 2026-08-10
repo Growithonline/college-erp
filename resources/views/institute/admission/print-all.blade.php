@@ -443,7 +443,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
         {{-- Row 1: Primary identifiers — always at top --}}
         <tr>
             <td class="lc">Form No.</td><td class="vc">{{ $student->institute_form_no ?? '' }}</td>
-            <td class="lc">Serial No.</td><td class="vc">{{ $student->currentAcademicIdentity?->form_no ?? $student->id }}</td>
+            <td class="lc">Serial No.</td><td class="vc">{{ $student->currentAcademicIdentity?->form_no ?? (str_contains((string) $student->student_uid, '/') ? last(explode('/', (string) $student->student_uid)) : $student->student_uid) }}</td>
             <td class="lc">SR No.</td><td class="vc">{{ $student->sr_no ?? '' }}</td>
         </tr>
         @php
