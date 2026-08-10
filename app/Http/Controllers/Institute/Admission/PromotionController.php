@@ -319,7 +319,9 @@ class PromotionController extends Controller
             'student_status_snapshot'      => $student->status,
             'admission_type'               => $student->admission_type ?? 'new',
             'gap_years'                    => $student->gap_year ? 1 : 0,
-            'form_no'                      => $student->sr_no,
+            // form_no is office-assigned per identity (Roll No / Form No Assignment page) —
+            // never seed it from an unrelated field; a new identity starts unassigned.
+            'form_no'                      => null,
             'roll_no'                      => $student->roll_no,
             'profile_snapshot'             => self::buildProfileSnapshot($student),
         ];
@@ -1889,7 +1891,7 @@ class PromotionController extends Controller
                 'course_part_id'      => $log->from_course_part_id,
                 'current_semester'    => $log->from_semester,
                 'status'              => $previousIdentity?->student_status_snapshot ?? 'active',
-                'sr_no'               => $previousIdentity?->form_no ?? $student->sr_no,
+                'sr_no'               => $previousIdentity?->sr_no_snapshot ?? $student->sr_no,
                 'enrollment_no'       => $previousIdentity?->enrollment_no_snapshot ?? $student->enrollment_no,
                 'roll_no'             => $previousIdentity?->roll_no ?? $student->roll_no,
                 'institute_form_no'   => $previousIdentity?->institute_form_no_snapshot ?? $student->institute_form_no,
@@ -1994,14 +1996,11 @@ class PromotionController extends Controller
         if ($request->current_semester) {
             $query->where('semester_at_time', $request->current_semester);
         }
+        if ($request->filled('source')) {
+            $query->where('source', $request->source);
+        }
         if ($request->pending === 'roll') {
             $query->whereNull('roll_no');
-        }
-        if ($request->pending === 'form') {
-            $query->whereNull('form_no');
-        }
-        if ($request->pending === 'both') {
-            $query->whereNull('roll_no')->whereNull('form_no');
         }
         if ($request->search) {
             $s = $this->escapeLike($request->search);
@@ -2018,13 +2017,15 @@ class PromotionController extends Controller
         $pendingCountQuery = StudentAcademicIdentity::where('institute_id', $instituteId)
             ->where('academic_session_id', $sessionId)
             ->realOnly()
-            ->where(fn($q) => $q->whereNull('roll_no')->orWhereNull('form_no'));
+            ->whereNull('roll_no');
         $this->applyIdentityAccessScope($pendingCountQuery);
         $pendingCount = $pendingCountQuery->count();
 
-        // Serial No. & Roll No. are always offered — they're this page's core purpose and
-        // stay available even if an institute hasn't explicitly enabled them in Form Builder.
-        $coreFieldOptions = ['form_no' => 'Serial No.', 'roll_no' => 'Roll No.'];
+        // Roll No. is always offered — it's this page's core purpose and stays available
+        // even if an institute hasn't explicitly enabled it in Form Builder. (form_no /
+        // "Serial No." used to live here too, but it was a mislabeled, unrelated identity
+        // field that was accidentally syncing into student.sr_no — removed.)
+        $coreFieldOptions = ['roll_no' => 'Roll No.'];
         $allFieldOptions  = $coreFieldOptions + $this->officeExtraFieldOptions($instituteId);
 
         $selectedFields = array_values(array_intersect(
@@ -2359,12 +2360,12 @@ class PromotionController extends Controller
         }
 
         if ($this->shouldSyncStudentIdentityFields($identity)) {
+            // Note: form_no (this page's own office-assigned identity field) never syncs
+            // to student.sr_no — they are unrelated fields; sr_no is edited via its own
+            // "Student Registration No." field below.
             $syncUpdate = [];
             if ($request->has('roll_no') && $request->roll_no) {
                 $syncUpdate['roll_no'] = $request->roll_no;
-            }
-            if ($request->has('form_no') && $request->form_no) {
-                $syncUpdate['sr_no'] = $request->form_no;
             }
             if ($syncUpdate) {
                 Student::where('id', $identity->student_id)->update($syncUpdate);
@@ -2461,12 +2462,10 @@ class PromotionController extends Controller
             }
 
             if ($this->shouldSyncStudentIdentityFields($identity)) {
+                // form_no never syncs to student.sr_no — unrelated fields (see identityUpdate()).
                 $syncUpdate = [];
                 if ($rollNo) {
                     $syncUpdate['roll_no'] = $rollNo;
-                }
-                if ($formNo) {
-                    $syncUpdate['sr_no'] = $formNo;
                 }
                 if ($syncUpdate) {
                     Student::where('id', $identity->student_id)->update($syncUpdate);

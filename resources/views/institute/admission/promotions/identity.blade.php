@@ -89,9 +89,16 @@
                 <label class="form-label small fw-semibold mb-1">Pending</label>
                 <select name="pending" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">All Records</option>
-                    <option value="both" {{ request('pending')=='both' ? 'selected':'' }}>Both Missing</option>
                     <option value="roll" {{ request('pending')=='roll' ? 'selected':'' }}>Roll No Missing</option>
-                    <option value="form" {{ request('pending')=='form' ? 'selected':'' }}>Serial No Missing</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Source</label>
+                <select name="source" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Sources</option>
+                    <option value="admission" {{ request('source')=='admission' ? 'selected':'' }}>Admission</option>
+                    <option value="promotion" {{ request('source')=='promotion' ? 'selected':'' }}>Promotion (Year)</option>
+                    <option value="session_promotion" {{ request('source')=='session_promotion' ? 'selected':'' }}>Session Promotion</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -164,7 +171,7 @@
                     @php
                         $rowValues = [];
                         foreach ($selectedFields as $key) {
-                            $rowValues[$key] = in_array($key, ['roll_no', 'form_no'], true)
+                            $rowValues[$key] = $key === 'roll_no'
                                 ? $ident->{$key}
                                 : ($ident->student->{$key} ?? null);
                         }
@@ -184,7 +191,7 @@
                         <td class="small text-muted">{{ $ident->session->name ?? '—' }}</td>
                         <td>
                             <span class="badge {{ $ident->source === 'admission' ? 'bg-info bg-opacity-15 text-info' : 'bg-warning bg-opacity-15 text-warning-emphasis' }} border" style="font-size:10px;">
-                                {{ ucfirst($ident->source) }}
+                                {{ ucwords(str_replace('_', ' ', $ident->source)) }}
                             </span>
                         </td>
                         @foreach($selectedFields as $key)
