@@ -74,6 +74,12 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .form-title { text-align:center; font-size:13px; font-weight:700; letter-spacing:2px;
               padding:5px; border:1px solid #000; margin:8px 0 10px; }
 
+.top-strip { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+             gap:4px 14px; background:#1e293b; color:white; padding:5px 10px;
+             margin-bottom:8px; border-radius:3px; }
+.top-strip .ts-item { font-size:10.5px; font-weight:700; white-space:nowrap; }
+.top-strip .ts-item .ts-lbl { font-weight:400; color:#94a3b8; margin-right:3px; }
+
 .basic-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;
               border:1px solid #ccc; padding:8px; margin-bottom:8px; }
 .bfield .lbl { font-size:9px; color:#666; font-weight:600; display:block; }
@@ -422,6 +428,17 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
         </div>
     </div>
 
+    @php
+        $semOrdinal  = match((int)($student->current_semester ?? 1)) { 1=>'1st', 2=>'2nd', default=>$student->current_semester };
+        $yearSemLabel = ($student->coursePart?->year_label ?? '') . '/' . $semOrdinal . ' Sem';
+    @endphp
+    <div class="top-strip">
+        <div class="ts-item"><span class="ts-lbl">Session:</span>{{ $student->session->name ?? '' }}</div>
+        <div class="ts-item"><span class="ts-lbl">Course:</span>{{ $student->stream->course->name ?? '' }}</div>
+        <div class="ts-item"><span class="ts-lbl">Stream:</span>{{ $student->stream->name ?? '' }}</div>
+        <div class="ts-item"><span class="ts-lbl">Year/Sem:</span>{{ $yearSemLabel }}</div>
+    </div>
+
     <div class="form-title">APPLICATION FORM</div>
 
     <div class="basic-grid">
@@ -432,11 +449,6 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
         @if($student->dob)<div class="bfield"><span class="lbl">Date Of Birth</span><span class="val">{{ $student->dob?->format('d M Y') }}</span></div>@endif
         <div class="bfield"><span class="lbl">Admission Date</span><span class="val">{{ $student->admission_date?->format('d/m/Y') }}</span></div>
     </div>
-
-    @php
-        $semOrdinal  = match((int)($student->current_semester ?? 1)) { 1=>'1st', 2=>'2nd', default=>$student->current_semester };
-        $yearSemLabel = ($student->coursePart?->year_label ?? '') . '/' . $semOrdinal . ' Sem';
-    @endphp
 
     <div class="sec-head">Office Details</div>
     <table class="ftbl">
