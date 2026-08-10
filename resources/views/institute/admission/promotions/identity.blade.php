@@ -190,7 +190,14 @@
                         </td>
                         <td class="small text-muted">{{ $ident->session->name ?? '—' }}</td>
                         <td>
-                            <span class="badge {{ $ident->source === 'admission' ? 'bg-info bg-opacity-15 text-info' : 'bg-warning bg-opacity-15 text-warning-emphasis' }} border" style="font-size:10px;">
+                            @php
+                                $sourceBadge = match($ident->source) {
+                                    'admission'         => 'bg-primary text-white',
+                                    'session_promotion' => 'bg-success text-white',
+                                    default              => 'bg-warning text-dark',
+                                };
+                            @endphp
+                            <span class="badge {{ $sourceBadge }}" style="font-size:10px;">
                                 {{ ucwords(str_replace('_', ' ', $ident->source)) }}
                             </span>
                         </td>
