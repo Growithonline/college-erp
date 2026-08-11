@@ -124,6 +124,22 @@
         }
         td { padding: {{ $isThermal ? '2px 1px' : '3px 2px' }}; white-space: nowrap; }
         .tr { text-align: right; }
+        @if($isThermal)
+        .fee-record-table { table-layout: fixed; font-size: 8.5px; }
+        .fee-record-table th,
+        .fee-record-table td {
+            padding: 2px 0.6mm;
+            overflow: hidden;
+            text-overflow: clip;
+            vertical-align: top;
+        }
+        .fee-record-table .c-date { width: 17mm; text-align: left; }
+        .fee-record-table .c-rcpt { width: 18mm; text-align: left; }
+        .fee-record-table .c-fine,
+        .fee-record-table .c-disc { width: 9mm; text-align: right; }
+        .fee-record-table .c-paid { width: 13mm; text-align: right; }
+        .fee-record-table .total-label { text-align: left; }
+        @endif
         .tfoot-row td { border-top: 2px solid #000; font-weight: 800; padding-top: 3px; }
         .overall {
             font-size: {{ $isThermal ? '13px' : '15px' }};
@@ -204,27 +220,36 @@
 {{-- Session wise history --}}
 @foreach($history as $h)
 <div class="sess-lbl">{{ $h['session']->name }} — Fee: {{ number_format($h['total_fee'], 0) }}</div>
-<table>
+<table class="fee-record-table">
+    @if($isThermal)
+    <colgroup>
+        <col class="c-date">
+        <col class="c-rcpt">
+        <col class="c-fine">
+        <col class="c-disc">
+        <col class="c-paid">
+    </colgroup>
+    @endif
     <thead>
         <tr>
-            <th>Date</th>
-            <th>Rcpt.No.</th>
+            <th class="c-date">Date</th>
+            <th class="c-rcpt">Rcpt.No.</th>
             @if(!$isThermal)<th class="tr">Book</th>@endif
-            <th class="tr">Fine</th>
-            <th class="tr">Disc</th>
-            <th class="tr">Paid</th>
+            <th class="tr c-fine">Fine</th>
+            <th class="tr c-disc">Disc</th>
+            <th class="tr c-paid">Paid</th>
         </tr>
     </thead>
     <tbody>
         @forelse($h['invoices'] as $inv)
         @php $fine = (float)($inv->total_fee ?? $inv->total_amount ?? 0) - (float)($inv->paid_amount ?? 0) - (float)($inv->discount ?? 0); $fine = max(0, $fine); @endphp
         <tr>
-            <td>{{ $inv->payment_date?->format('d/m/y') }}</td>
-            <td style="{{ $isThermal ? 'max-width:22mm;overflow:hidden;' : '' }}">{{ $isThermal ? substr($inv->invoice_no, -9) : $inv->invoice_no }}</td>
+            <td class="c-date">{{ $inv->payment_date?->format('d/m/y') }}</td>
+            <td class="c-rcpt">{{ $isThermal ? substr($inv->invoice_no, -9) : $inv->invoice_no }}</td>
             @if(!$isThermal)<td class="tr">—</td>@endif
-            <td class="tr">{{ $fine > 0 ? number_format($fine, 0) : '0' }}</td>
-            <td class="tr">{{ number_format($inv->discount ?? 0, 0) }}</td>
-            <td class="tr">{{ number_format($inv->paid_amount, 0) }}</td>
+            <td class="tr c-fine">{{ $fine > 0 ? number_format($fine, 0) : '0' }}</td>
+            <td class="tr c-disc">{{ number_format($inv->discount ?? 0, 0) }}</td>
+            <td class="tr c-paid">{{ number_format($inv->paid_amount, 0) }}</td>
         </tr>
         @empty
         <tr><td colspan="{{ $isThermal ? 5 : 6 }}" style="text-align:center;">No payments</td></tr>
@@ -232,10 +257,9 @@
     </tbody>
     <tfoot>
         <tr class="tfoot-row">
-            <td colspan="{{ $isThermal ? 3 : 4 }}" class="bold">TOTAL:</td>
-            <td class="tr bold"></td>
-            <td class="tr bold">{{ number_format($h['total_discount'], 0) }}</td>
-            <td class="tr bold">{{ number_format($h['total_paid'], 0) }}</td>
+            <td colspan="{{ $isThermal ? 3 : 4 }}" class="bold total-label">TOTAL:</td>
+            <td class="tr bold c-disc">{{ number_format($h['total_discount'], 0) }}</td>
+            <td class="tr bold c-paid">{{ number_format($h['total_paid'], 0) }}</td>
         </tr>
         <tr>
             <td colspan="{{ $isThermal ? 4 : 5 }}">{{ $h['session']->name }} Balance:</td>

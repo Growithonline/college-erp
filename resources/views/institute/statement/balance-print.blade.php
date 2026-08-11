@@ -121,6 +121,20 @@
             text-align: center;
             padding: 4px 0 2px;
         }
+        .qr-code {
+            display: block;
+            width: {{ $isThermal ? '28mm' : '32mm' }};
+            height: {{ $isThermal ? '28mm' : '32mm' }};
+            margin: {{ $isThermal ? '2mm auto 0' : '4mm auto 0' }};
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .qr-caption {
+            text-align: center;
+            font-size: {{ $isThermal ? '8px' : '9px' }};
+            color: #000;
+            margin-top: 1mm;
+        }
 
         @if(!$isThermal)
         .page { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; }
@@ -163,70 +177,33 @@
     <div class="divider-solid"></div>
 </div>
 
-<div class="kv"><span class="lbl">Student ID:</span><span class="val">{{ $student->student_uid }}</span></div>
-<div class="kv"><span class="lbl">Name:</span><span class="val">{{ $student->name }}</span></div>
-<div class="kv"><span class="lbl">Father:</span><span class="val">{{ $student->father_name ?? '—' }}</span></div>
-<div class="kv"><span class="lbl">Mother:</span><span class="val">{{ $student->mother_name ?? '—' }}</span></div>
-<div class="kv"><span class="lbl">Roll No:</span><span class="val">{{ $student->roll_no ?? '—' }}</span></div>
-<div class="kv"><span class="lbl">UIN No:</span><span class="val">{{ $student->enrollment_no ?? '—' }}</span></div>
-@if($student->mobile ?? null)
-<div class="kv"><span class="lbl">Mobile:</span><span class="val">{{ $student->mobile }}</span></div>
-@endif
-<div class="kv"><span class="lbl">Course:</span><span class="val">{{ $student->stream->course->name ?? '—' }}</span></div>
+@php
+    $identity = $student->currentAcademicIdentity ?? null;
+    $formNo = $identity?->institute_form_no_snapshot ?? $identity?->form_no ?? $student->institute_form_no ?? null;
+    $rollNo = $identity?->roll_no_snapshot ?? $identity?->roll_no ?? $student->roll_no ?? null;
+    $uinNo = $identity?->uin_no_snapshot ?? $student->uin_no ?? null;
+    $enrollNo = $identity?->enrollment_no_snapshot ?? $student->enrollment_no ?? null;
+@endphp
+
+@if($formNo)<div class="kv"><span class="lbl">Form No:</span><span class="val">{{ $formNo }}</span></div>@endif
+<div class="kv"><span class="lbl">Application No:</span><span class="val">{{ $student->student_uid }}</span></div>
+@if($rollNo)<div class="kv"><span class="lbl">Roll No:</span><span class="val">{{ $rollNo }}</span></div>@endif
+@if($uinNo)<div class="kv"><span class="lbl">UIN:</span><span class="val">{{ $uinNo }}</span></div>@endif
+@if($enrollNo)<div class="kv"><span class="lbl">Enroll No:</span><span class="val">{{ $enrollNo }}</span></div>@endif
+<div class="kv"><span class="lbl">Student Name:</span><span class="val">{{ $student->name }}</span></div>
+<div class="kv"><span class="lbl">Father Name:</span><span class="val">{{ $student->father_name ?? '�' }}</span></div>
+<div class="kv"><span class="lbl">Course:</span><span class="val">{{ $student->stream->course->name ?? '�' }}</span></div>
 <div class="kv"><span class="lbl">Year:</span><span class="val">{{ $currentYearLabel }}</span></div>
-<div class="kv"><span class="lbl">Session:</span><span class="val">{{ $student->session->name ?? '—' }}</span></div>
-
-<div class="divider-solid"></div>
-<div class="center bold" style="font-size:{{ $isThermal ? '12px' : '13px' }};">
-    {{ $currentYearLabel }} ({{ $student->session->name ?? '' }})
-</div>
-<div class="divider"></div>
-
-<table>
-    <thead>
-        <tr>
-            <th>Session</th>
-            <th class="tr">Paid</th>
-            <th class="tr">Fine</th>
-            <th class="tr">Disc</th>
-            <th class="tr">Due</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($balances as $b)
-        <tr>
-            <td>{{ $b['session']->name }}</td>
-            <td class="tr">{{ number_format($b['paid'], 0) }}</td>
-            <td class="tr">{{ ($b['fine'] ?? 0) > 0 ? number_format($b['fine'], 0) : '—' }}</td>
-            <td class="tr">{{ $b['discount'] > 0 ? number_format($b['discount'], 0) : '—' }}</td>
-            <td class="tr">{{ $b['due'] > 0 ? number_format($b['due'], 0) : '—' }}</td>
-        </tr>
-        @endforeach
-    </tbody>
-    <tfoot>
-        <tr class="tfoot-row">
-            <td colspan="2" class="bold">Total Balance:</td>
-            <td class="tr bold">{{ $overallFine > 0 ? number_format($overallFine, 0) : '—' }}</td>
-            <td></td>
-            <td class="tr bold">{{ number_format($overallDue, 0) }}</td>
-        </tr>
-    </tfoot>
-</table>
+<div class="kv"><span class="lbl">Session:</span><span class="val">{{ $student->session->name ?? '�' }}</span></div>
 
 <div class="divider-solid"></div>
 <div class="total-bal">Total Balance: {{ number_format($overallDue, 0) }}</div>
-<div class="divider-solid"></div>
-<div class="kv"><span class="lbl">Number of Books Issued:</span><span class="val">0</span></div>
-<div class="kv"><span class="lbl">Print Date:</span><span class="val">{{ now()->setTimezone('Asia/Kolkata')->format('d-M-Y h:i A') }}</span></div>
-@if(isset($printedBy) && $printedBy)
-<div class="kv"><span class="lbl">Printed By:</span><span class="val">{{ $printedBy }}</span></div>
-@endif
-
 @if(isset($receiptUrl))
 <div class="divider"></div>
-<img id="qr_bal_{{ $loop->index }}" style="display:block;margin:4px auto;width:{{ $isThermal ? '72px' : '96px' }};height:{{ $isThermal ? '72px' : '96px' }};" alt="QR">
-<div style="text-align:center;font-size:{{ $isThermal ? '8px' : '9px' }};color:#666;margin-bottom:2px;">Scan to verify receipt</div>
+<img id="qr_bal_{{ $loop->index }}" class="qr-code" alt="QR">
+<div class="qr-caption">Scan to verify receipt</div>
 @endif
+<div class="divider-solid"></div>
 
 @if(!$isThermal)</div>@endif
 @endforeach
@@ -244,7 +221,7 @@ function renderQR(callback) {
     var total = targets.length;
     if (total === 0) { if (callback) callback(); return; }
     var done = 0;
-    var qrSize = {{ $isThermal ? 72 : 96 }};
+    var qrSize = {{ $isThermal ? 220 : 180 }};
     targets.forEach(function(targetImg) {
         var tmp = document.createElement('div');
         tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
@@ -253,7 +230,7 @@ function renderQR(callback) {
             new QRCode(tmp, {
                 text: '{!! addslashes($receiptUrl) !!}',
                 width: qrSize, height: qrSize,
-                correctLevel: QRCode.CorrectLevel.M
+                correctLevel: QRCode.CorrectLevel.H
             });
             var canvas = tmp.querySelector('canvas');
             if (canvas) targetImg.src = canvas.toDataURL('image/png');
