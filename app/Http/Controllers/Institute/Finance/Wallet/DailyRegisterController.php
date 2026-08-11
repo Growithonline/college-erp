@@ -86,6 +86,7 @@ class DailyRegisterController extends Controller
         }
 
         $receiptModeSplit = $this->receiptModeSplit($instituteId, $sessionId, $date);
+        $receiptRange = $this->receiptNumberRange($instituteId, $sessionId, $date);
 
         $lastBalance = (float) (InstituteTransaction::where('institute_id', $instituteId)
             ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
@@ -103,6 +104,7 @@ class DailyRegisterController extends Controller
             'lastBalance'      => $lastBalance,
             'grandTotal'       => $grandTotal,
             'receiptModeSplit' => $receiptModeSplit,
+            'receiptRange'     => $receiptRange,
             'header'           => $header,
             'date'             => $date,
             'instituteName'    => Institute::find($instituteId)?->name ?? '',
@@ -127,15 +129,13 @@ class DailyRegisterController extends Controller
         $data = $request->validate([
             'report_date'       => 'required|date',
             'book_no'           => 'nullable|string|max:50',
-            'rec_range_from'    => 'nullable|string|max:50',
-            'rec_range_to'      => 'nullable|string|max:50',
             'online_range_from' => 'nullable|string|max:50',
             'online_range_to'   => 'nullable|string|max:50',
             'sr_no'             => 'nullable|string|max:50',
             'activities'        => 'nullable|string|max:2000',
         ]);
 
-        foreach (['book_no', 'rec_range_from', 'rec_range_to', 'online_range_from', 'online_range_to', 'sr_no', 'activities'] as $field) {
+        foreach (['book_no', 'online_range_from', 'online_range_to', 'sr_no', 'activities'] as $field) {
             if (!empty($data[$field])) {
                 $data[$field] = strtoupper($data[$field]);
             }
@@ -433,6 +433,24 @@ class DailyRegisterController extends Controller
             'count'      => $count,
             'amount'     => $amount,
             'year_data'  => null,
+        ];
+    }
+
+    /**
+     * First and last invoice_no generated that date — mirrors the paper register's
+     * "Rec. Range" (the span of receipt-book numbers used that day). Includes
+     * cancelled invoices too, since a cancelled entry still consumes a receipt
+     * number in sequence.
+     */
+    private function receiptNumberRange(int $instituteId, ?int $sessionId, string $date): array
+    {
+        $base = FeeInvoice::where('institute_id', $instituteId)
+            ->when($sessionId, fn ($q) => $q->where('academic_session_id', $sessionId))
+            ->whereDate('payment_date', $date);
+
+        return [
+            'from' => (clone $base)->orderBy('created_at')->orderBy('id')->value('invoice_no'),
+            'to'   => (clone $base)->orderByDesc('created_at')->orderByDesc('id')->value('invoice_no'),
         ];
     }
 

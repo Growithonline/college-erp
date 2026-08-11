@@ -36,7 +36,7 @@
 <table class="meta">
     <tr>
         <td class="label">Book No.</td><td>{{ $header->book_no ?? '—' }}</td>
-        <td class="label">Rec. Range</td><td>{{ $header->rec_range_from ?? '—' }} to {{ $header->rec_range_to ?? '—' }}</td>
+        <td class="label">Rec. Range</td><td>{{ $receiptRange['from'] ?? '—' }} to {{ $receiptRange['to'] ?? '—' }}</td>
         <td class="label">Online</td><td>{{ $header->online_range_from ?? '—' }} to {{ $header->online_range_to ?? '—' }}</td>
         <td class="label">S.R. No.</td><td>{{ $header->sr_no ?? '—' }}</td>
     </tr>
@@ -46,9 +46,9 @@
 </table>
 
 <div class="section">
-<h3>By Hand Receipt (Cash): ₹{{ number_format($receiptModeSplit['by_hand']['amount'], 2) }} ({{ $receiptModeSplit['by_hand']['count'] }})
+<h3>Cash: ₹{{ number_format($receiptModeSplit['by_hand']['amount'], 2) }} ({{ $receiptModeSplit['by_hand']['count'] }})
 &nbsp;&nbsp;|&nbsp;&nbsp;
-Computerized Receipt: ₹{{ number_format($receiptModeSplit['computerized']['amount'], 2) }} ({{ $receiptModeSplit['computerized']['count'] }})
+Online: ₹{{ number_format($receiptModeSplit['computerized']['amount'], 2) }} ({{ $receiptModeSplit['computerized']['count'] }})
 <span class="muted">(reference only, already included in Income below)</span></h3>
 @if($receiptModeSplit['bank_wise']->isNotEmpty())
 <table class="data">

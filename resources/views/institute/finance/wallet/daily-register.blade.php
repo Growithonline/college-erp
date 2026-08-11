@@ -67,11 +67,13 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Rec. Range From</label>
-                    <input type="text" name="rec_range_from" value="{{ old('rec_range_from', $header->rec_range_from) }}" class="form-control form-control-sm" style="text-transform:uppercase">
+                    <input type="text" value="{{ $receiptRange['from'] ?? '—' }}" class="form-control form-control-sm" readonly tabindex="-1">
+                    <small class="text-muted">Auto (first invoice)</small>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Rec. Range To</label>
-                    <input type="text" name="rec_range_to" value="{{ old('rec_range_to', $header->rec_range_to) }}" class="form-control form-control-sm" style="text-transform:uppercase">
+                    <input type="text" value="{{ $receiptRange['to'] ?? '—' }}" class="form-control form-control-sm" readonly tabindex="-1">
+                    <small class="text-muted">Auto (last invoice)</small>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Online From</label>
@@ -102,7 +104,7 @@
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex justify-content-between align-items-center">
-                <div><i class="bi bi-pencil-square text-secondary me-2"></i>By Hand Receipt (Cash) <small class="text-muted d-block">(reference only)</small></div>
+                <div><i class="bi bi-pencil-square text-secondary me-2"></i>Cash <small class="text-muted d-block">(reference only)</small></div>
                 <div class="text-end">
                     <div class="fw-bold">₹{{ number_format($receiptModeSplit['by_hand']['amount'], 2) }}</div>
                     <small class="text-muted">{{ $receiptModeSplit['by_hand']['count'] }} receipts</small>
@@ -114,7 +116,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center {{ $receiptModeSplit['bank_wise']->isNotEmpty() ? 'mb-2' : '' }}">
-                    <div><i class="bi bi-laptop text-secondary me-2"></i>Computerized Receipt <small class="text-muted">(reference only)</small></div>
+                    <div><i class="bi bi-laptop text-secondary me-2"></i>Online <small class="text-muted">(reference only)</small></div>
                     <div class="text-end">
                         <div class="fw-bold">₹{{ number_format($receiptModeSplit['computerized']['amount'], 2) }}</div>
                         <small class="text-muted">{{ $receiptModeSplit['computerized']['count'] }} receipts</small>
