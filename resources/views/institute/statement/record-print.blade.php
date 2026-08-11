@@ -34,7 +34,7 @@
             width: 80mm;
             max-width: 80mm;
             margin: 0;
-            padding: 5mm 2.6mm;
+            padding: 0 2.6mm;          /* vertical padding hataya — measurement exact rahe */
             font-family: Verdana, sans-serif;
             font-size: 10px;
             font-weight: 600;
@@ -42,12 +42,17 @@
             color: #000;
             line-height: 1.3;
         }
+        /* Vertical breathing space wrapper par — taaki body.height inflate na ho */
+        #thermal-receipt {
+            padding-top: 4mm;
+            padding-bottom: 4mm;
+        }
         @media print {
             @page { size: 80mm auto; margin: 0mm; }
             html, body {
                 width: 80mm;
                 max-width: 80mm;
-                padding: 5mm 2.6mm;
+                padding: 0 2.6mm;
                 font-size: 10px;
                 font-weight: 600;
             }
@@ -141,6 +146,8 @@
     </style>
 </head>
 <body>
+
+@if($isThermal)<div id="thermal-receipt">@endif
 
 @php $copies = $isThermal ? [''] : ['Student Copy', 'College Copy']; @endphp
 
@@ -255,6 +262,8 @@
 
 @if(!$isThermal)</div>@endif
 
+@if($isThermal)</div>@endif  {{-- #thermal-receipt close --}}
+
 @if(isset($receiptUrl))
 <script src="{{ asset('js/qrcode.min.js') }}"></script>
 @endif
@@ -311,10 +320,37 @@ window.onload = function() {
 @endif
 
 function applyThermalPage() {
-    var heightMm = Math.ceil(document.body.scrollHeight * 15 / 96) + 1;
+    // Idempotent — dobara call safe (purana style hata do)
+    var old = document.getElementById('thermal-page-style');
+    if (old) old.remove();
+
+    // Runtime pe px-per-mm nikaalo — 96 hardcode mat karo, browser/DPI vary karta hai
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;width:10mm;height:10mm;visibility:hidden;';
+    document.body.appendChild(probe);
+    var pxPerMm = probe.getBoundingClientRect().height / 10;  // ~3.78
+    probe.remove();
+
+    // body.scrollHeight NAHI — sirf receipt wrapper ki actual rendered height lo
+    var receipt = document.getElementById('thermal-receipt');
+    var contentPx = receipt ? receipt.getBoundingClientRect().height
+                            : document.body.scrollHeight;
+
+    var heightMm = Math.ceil(contentPx / pxPerMm) + 1;  // sirf 1mm rounding safety, koi buffer nahi
+
     var style = document.createElement('style');
-    style.innerHTML = '@page { size: 80mm ' + heightMm + 'mm !important; margin: 0.5mm 0mm !important; }'
-        + '@media print { html, body { width:80mm !important; height:' + heightMm + 'mm !important; margin:0 !important; overflow:hidden !important; } }';
+    style.id = 'thermal-page-style';
+    style.innerHTML =
+        '@page { size: 80mm ' + heightMm + 'mm !important; margin: 0 !important; }' +
+        '@media print {' +
+        '  html { height: auto !important; }' +
+        '  body {' +
+        '    width: 80mm !important;' +
+        '    height: auto !important;' +      // fixed height HATAYA — yahi blank space ka main culprit tha
+        '    min-height: 0 !important;' +      // koi 100vh/min-height kill
+        '    overflow: visible !important;' +  // overflow:hidden hataya
+        '  }' +
+        '}';
     document.head.appendChild(style);
 }
 
