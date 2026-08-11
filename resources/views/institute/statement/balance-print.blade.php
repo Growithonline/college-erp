@@ -28,7 +28,7 @@
 
         @if($isThermal)
         @page {
-            size: 72mm 78mm;
+            size: 72mm 73mm;
             margin: 0mm;
         }
         html, body {
@@ -44,14 +44,14 @@
             line-height: 1.18;
         }
         #thermal-receipt {
-            padding: 1mm 3mm 0.5mm;
+            padding: 0.2mm 3mm 0;
             
             break-inside: avoid;
             page-break-inside: avoid;
             page-break-after: avoid;
         }
         @media print {
-            @page { size: 72mm 78mm; margin: 0mm; }
+            @page { size: 72mm 73mm; margin: 0mm; }
             html, body {
                 width: 72mm;
                 max-width: 72mm;
@@ -237,7 +237,7 @@ function applyThermalPage() {
 
     var receipt = document.getElementById('thermal-receipt');
     var contentPx = receipt ? receipt.getBoundingClientRect().height : document.body.scrollHeight;
-    var heightMm = Math.max(78, Math.ceil(contentPx / pxPerMm) + 1);
+    var heightMm = Math.max(73, Math.ceil(contentPx / pxPerMm));
 
     var style = document.createElement('style');
     style.id = 'thermal-page-style';
