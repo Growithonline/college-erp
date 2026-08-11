@@ -28,14 +28,14 @@
 
         @if($isThermal)
         @page {
-            size: 80mm auto;
+            size: 72mm 78mm;
             margin: 0mm;
         }
         html, body {
-            width: 80mm;
-            max-width: 80mm;
+            width: 72mm;
+            max-width: 72mm;
             margin: 0;
-            padding: 0 3mm;
+            padding: 0;
             font-family: Verdana, sans-serif;
             font-size: 9px;
             font-weight: 600;
@@ -44,20 +44,20 @@
             line-height: 1.18;
         }
         #thermal-receipt {
-            padding-top: 1mm;
-            padding-bottom: 0.5mm;
+            padding: 1mm 3mm 0.5mm;
+            
             break-inside: avoid;
             page-break-inside: avoid;
             page-break-after: avoid;
         }
         @media print {
-            @page { size: 80mm auto; margin: 0mm; }
+            @page { size: 72mm 78mm; margin: 0mm; }
             html, body {
-                width: 80mm;
-                max-width: 80mm;
+                width: 72mm;
+                max-width: 72mm;
                 min-height: 0 !important;
                 height: auto !important;
-                padding: 0 3mm;
+                padding: 0;
                 overflow: visible !important;
                 font-size: 9px;
                 font-weight: 600;
@@ -239,15 +239,15 @@ function applyThermalPage() {
 
     var receipt = document.getElementById('thermal-receipt');
     var contentPx = receipt ? receipt.getBoundingClientRect().height : document.body.scrollHeight;
-    var heightMm = Math.max(40, Math.ceil(contentPx / pxPerMm) + 6);
+    var heightMm = Math.max(78, Math.ceil(contentPx / pxPerMm) + 1);
 
     var style = document.createElement('style');
     style.id = 'thermal-page-style';
     style.innerHTML =
-        '@page { size: 80mm ' + heightMm + 'mm !important; margin: 0 !important; }' +
+        '@page { size: 72mm ' + heightMm + 'mm !important; margin: 0 !important; }' +
         '@media print {' +
         '  html, body {' +
-        '    width: 80mm !important;' +
+        '    width: 72mm !important;' +
         '    height: auto !important;' +
         '    min-height: 0 !important;' +
         '    margin: 0 !important;' +
