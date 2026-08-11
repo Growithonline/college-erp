@@ -28,7 +28,24 @@ class DailyRegisterController extends Controller
 
     private function instituteId(): int
     {
+        // Group-Admin has no institute of their own — resolve from the {institute}
+        // route parameter instead, scoped to institutes owned by their group.
+        if (auth()->guard('group_admin')->check()) {
+            $routeInstitute = request()->route('institute');
+            $institute = $routeInstitute instanceof Institute ? $routeInstitute : Institute::find($routeInstitute);
+            abort_unless(
+                $institute && $institute->group_id === auth()->guard('group_admin')->user()->group_id,
+                403
+            );
+            return (int) $institute->id;
+        }
+
         return auth()->user()->institute_id;
+    }
+
+    private function isGroupAdminPanel(): bool
+    {
+        return auth()->guard('group_admin')->check();
     }
 
     public function index(Request $request)
@@ -117,7 +134,9 @@ class DailyRegisterController extends Controller
             return $this->export($request->input('export'), $exportData);
         }
 
-        return view('institute.finance.wallet.daily-register', $exportData + compact(
+        $dailyRegisterView = $this->isGroupAdminPanel() ? 'group_admin.reports.daily-report' : 'institute.finance.wallet.daily-register';
+
+        return view($dailyRegisterView, $exportData + compact(
             'sessions', 'sessionId'
         ));
     }

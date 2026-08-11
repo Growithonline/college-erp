@@ -158,6 +158,47 @@
     </div>
 </div>
 
+{{-- Reports --}}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pb-0 pt-3">
+        <h6 class="fw-bold mb-0"><i class="bi bi-bar-chart-line text-primary me-2"></i>Reports</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{{ route('group_admin.institutes.reports.students', $institute->id) }}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-people d-block fs-5 mb-1"></i> Students
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{{ route('group_admin.institutes.reports.fee-collection', $institute->id) }}" class="btn btn-outline-success btn-sm w-100">
+                    <i class="bi bi-cash-coin d-block fs-5 mb-1"></i> Fee Collection
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{{ route('group_admin.institutes.reports.fee-due-list', $institute->id) }}" class="btn btn-outline-danger btn-sm w-100">
+                    <i class="bi bi-exclamation-circle d-block fs-5 mb-1"></i> Fee Dues
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{{ route('group_admin.institutes.reports.wallet-ledger', $institute->id) }}" class="btn btn-outline-info btn-sm w-100">
+                    <i class="bi bi-journal-text d-block fs-5 mb-1"></i> Wallet Ledger
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{{ route('group_admin.institutes.reports.expenses', $institute->id) }}" class="btn btn-outline-warning btn-sm w-100">
+                    <i class="bi bi-pie-chart d-block fs-5 mb-1"></i> Expenses
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{{ route('group_admin.institutes.reports.daily', $institute->id) }}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-journal-richtext d-block fs-5 mb-1"></i> Daily Register
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-3">
     {{-- Institute Info --}}
     <div class="col-md-6">

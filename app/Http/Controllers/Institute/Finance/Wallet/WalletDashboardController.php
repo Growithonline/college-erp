@@ -36,7 +36,24 @@ class WalletDashboardController extends Controller
 {
     private function instituteId(): int
     {
+        // Group-Admin has no institute of their own — resolve from the {institute}
+        // route parameter instead, scoped to institutes owned by their group.
+        if (auth()->guard('group_admin')->check()) {
+            $routeInstitute = request()->route('institute');
+            $institute = $routeInstitute instanceof Institute ? $routeInstitute : Institute::find($routeInstitute);
+            abort_unless(
+                $institute && $institute->group_id === auth()->guard('group_admin')->user()->group_id,
+                403
+            );
+            return (int) $institute->id;
+        }
+
         return auth()->user()->institute_id;
+    }
+
+    private function isGroupAdminPanel(): bool
+    {
+        return auth()->guard('group_admin')->check();
     }
 
     private static array $sourceLabels = [
@@ -314,7 +331,9 @@ class WalletDashboardController extends Controller
 
         $sourceData = $this->enrichTransactions($transactions->items());
 
-        return view('institute.finance.wallet.ledger', compact(
+        $ledgerView = $this->isGroupAdminPanel() ? 'group_admin.reports.wallet-ledger' : 'institute.finance.wallet.ledger';
+
+        return view($ledgerView, compact(
             'sessions', 'sessionId', 'from', 'to', 'sourceType',
             'paymentType', 'bankAccountId', 'bankAccounts',
             'flow', 'amountMin', 'amountMax',
@@ -911,7 +930,9 @@ class WalletDashboardController extends Controller
             return $pdf->download('expense-report-' . now()->format('Y-m-d') . '.pdf');
         }
 
-        return view('institute.finance.wallet.reports.expense-report', compact(
+        $expenseView = $this->isGroupAdminPanel() ? 'group_admin.reports.expenses' : 'institute.finance.wallet.reports.expense-report';
+
+        return view($expenseView, compact(
             'sessions', 'sessionId', 'from', 'to',
             'byL1', 'byL2', 'grandTotal', 'monthWise',
             'l1Categories', 'selectedL1', 'l1Id'

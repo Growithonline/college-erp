@@ -1,0 +1,146 @@
+@extends('group_admin.layout')
+@section('title', 'Expense Report')
+@section('breadcrumb')
+    <li class="breadcrumb-item"><a href="{{ route('group_admin.institutes.index') }}" class="text-decoration-none">Institutes</a></li>
+    <li class="breadcrumb-item active">Expense Report</li>
+@endsection
+
+@section('content')
+<div class="mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-pie-chart me-2 text-danger"></i>Expense Report</h4>
+    <small class="text-muted">Category-wise drill-down: L1 → L2 → Vendor (read-only)</small>
+</div>
+
+{{-- Filters --}}
+<form method="GET" action="{{ url()->current() }}" class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">Session</label>
+                <select name="session_id" class="form-select form-select-sm">
+                    @foreach($sessions as $s)
+                        <option value="{{ $s->id }}" {{ $sessionId == $s->id ? 'selected' : '' }}>{{ $s->name }} {{ $s->is_active ? '(Active)' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small">From Date</label>
+                <input type="date" name="from" class="form-control form-control-sm" value="{{ $from }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small">To Date</label>
+                <input type="date" name="to" class="form-control form-control-sm" value="{{ $to }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">Drill-down Category</label>
+                <select name="l1_id" class="form-select form-select-sm">
+                    <option value="">-- All Categories --</option>
+                    @foreach($l1Categories as $l1)
+                        <option value="{{ $l1->id }}" {{ $l1Id == $l1->id ? 'selected' : '' }}>{{ $l1->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-danger btn-sm w-100"><i class="bi bi-search me-1"></i> Apply</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+{{-- Grand total --}}
+<div class="alert alert-danger border-0 shadow-sm mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="fw-bold fs-5"><i class="bi bi-receipt-cutoff me-2"></i>Total Expense (Approved)</div>
+        <div class="fw-bold fs-4 text-danger">₹{{ number_format($grandTotal, 2) }}</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-{{ $byL2->isEmpty() ? '8' : '6' }}">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold">By Category (L1)</h6></div>
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle small">
+                    <thead class="table-light"><tr><th>Category</th><th class="text-end">Count</th><th class="text-end text-danger">Amount</th><th class="text-end">%</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach($byL1 as $row)
+                        @php
+                            $pct = $grandTotal > 0 ? round((float)$row->total / $grandTotal * 100, 1) : 0;
+                            $catName = $row->categoryL1?->name ?? 'Uncategorized';
+                        @endphp
+                        <tr {{ $l1Id == $row->expense_category_l1_id ? 'class=table-warning' : '' }}>
+                            <td class="fw-semibold">{{ $catName }}</td>
+                            <td class="text-end text-muted">{{ $row->count }}</td>
+                            <td class="text-end text-danger">₹{{ number_format($row->total, 2) }}</td>
+                            <td class="text-end">
+                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <div class="progress flex-grow-1" style="height:6px;min-width:40px"><div class="progress-bar bg-danger" style="width:{{ $pct }}%"></div></div>
+                                    <span>{{ $pct }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                @if($row->expense_category_l1_id)
+                                <a href="{{ request()->fullUrlWithQuery(['l1_id' => $row->expense_category_l1_id]) }}" class="btn btn-outline-warning btn-sm py-0"><i class="bi bi-zoom-in"></i></a>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                        @if($byL1->isEmpty())
+                        <tr><td colspan="5" class="text-center text-muted py-4">No approved expenses found.</td></tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @if($selectedL1 && $byL2->isNotEmpty())
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100 border-warning border-2">
+            <div class="card-header bg-warning bg-opacity-10 border-bottom py-3">
+                <h6 class="mb-0 fw-semibold"><i class="bi bi-zoom-in me-1"></i>{{ $selectedL1->name }} — Sub-category & Vendor Breakdown</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle small">
+                    <thead class="table-light"><tr><th>Sub-Category</th><th>Vendor</th><th class="text-end">Count</th><th class="text-end text-danger">Amount</th></tr></thead>
+                    <tbody>
+                        @foreach($byL2 as $row)
+                        <tr>
+                            <td>{{ $row->categoryL2?->name ?? '—' }}</td>
+                            <td class="text-muted">{{ $row->vendor?->name ?? $row->vendor_name ?? '—' }}</td>
+                            <td class="text-end">{{ $row->count }}</td>
+                            <td class="text-end text-danger fw-semibold">₹{{ number_format($row->total, 2) }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot class="table-light fw-semibold">
+                        <tr><td colspan="3">Total</td><td class="text-end text-danger">₹{{ number_format($byL2->sum('total'), 2) }}</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    @if($monthWise->isNotEmpty())
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3"><h6 class="mb-0 fw-semibold">Month-wise Expense</h6></div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 small">
+                    <thead class="table-light"><tr><th>Month</th><th class="text-end text-danger">Expense</th></tr></thead>
+                    <tbody>
+                        @foreach($monthWise as $row)
+                        <tr>
+                            <td>{{ \Carbon\Carbon::parse($row->month . '-01')->format('F Y') }}</td>
+                            <td class="text-end text-danger">₹{{ number_format($row->total, 2) }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+@endsection

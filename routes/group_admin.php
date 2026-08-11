@@ -3,6 +3,10 @@
 use App\Http\Controllers\GroupAdmin\Auth\LoginController;
 use App\Http\Controllers\GroupAdmin\DashboardController;
 use App\Http\Controllers\GroupAdmin\InstituteController;
+use App\Http\Controllers\Institute\Finance\Wallet\DailyRegisterController;
+use App\Http\Controllers\Institute\Finance\Wallet\WalletDashboardController;
+use App\Http\Controllers\Institute\Reports\ReportController;
+use App\Http\Controllers\Institute\StudentDirectoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('group-admin')->name('group_admin.')->group(function () {
@@ -25,5 +29,15 @@ Route::prefix('group-admin')->name('group_admin.')->group(function () {
         Route::put('/institutes/{institute}', [InstituteController::class, 'update'])->name('institutes.update');
         Route::patch('/institutes/{institute}/toggle', [InstituteController::class, 'toggle'])->name('institutes.toggle');
         Route::post('/institutes/{institute}/reset-password', [InstituteController::class, 'resetPassword'])->name('institutes.reset-password');
+
+        // Institute-wise reports — all reuse the same controllers/queries the institute
+        // owner's own reports use, just with the institute resolved from the route and
+        // ownership-checked against the Group Admin's group instead of Auth::user().
+        Route::get('/institutes/{institute}/reports/fee-due-list', [ReportController::class, 'feeDueList'])->name('institutes.reports.fee-due-list');
+        Route::get('/institutes/{institute}/reports/fee-collection', [ReportController::class, 'feeCollectionReport'])->name('institutes.reports.fee-collection');
+        Route::get('/institutes/{institute}/reports/wallet-ledger', [WalletDashboardController::class, 'ledger'])->name('institutes.reports.wallet-ledger');
+        Route::get('/institutes/{institute}/reports/expenses', [WalletDashboardController::class, 'expenseReport'])->name('institutes.reports.expenses');
+        Route::get('/institutes/{institute}/reports/daily', [DailyRegisterController::class, 'index'])->name('institutes.reports.daily');
+        Route::get('/institutes/{institute}/reports/students', [StudentDirectoryController::class, 'groupAdminIndex'])->name('institutes.reports.students');
     });
 });

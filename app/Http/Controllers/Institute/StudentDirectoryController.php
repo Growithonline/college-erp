@@ -22,12 +22,29 @@ class StudentDirectoryController extends Controller
     use ExportsTabularData;
     private function instituteId(): int
     {
+        // Group-Admin has no institute of their own — resolve from the {institute}
+        // route parameter instead, scoped to institutes owned by their group.
+        if (Auth::guard('group_admin')->check()) {
+            $routeInstitute = request()->route('institute');
+            $institute = $routeInstitute instanceof Institute ? $routeInstitute : Institute::find($routeInstitute);
+            abort_unless(
+                $institute && $institute->group_id === Auth::guard('group_admin')->user()->group_id,
+                403
+            );
+            return (int) $institute->id;
+        }
+
         return (int) Auth::user()->institute_id;
     }
 
     public function index(Request $request)
     {
         return $this->listStudents($request, false);
+    }
+
+    public function groupAdminIndex(Request $request)
+    {
+        return $this->listStudents($request, false, 'group_admin.reports.students');
     }
 
     public function quickAdmissions(Request $request)

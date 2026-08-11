@@ -63,11 +63,30 @@ class ReportController extends Controller
             return 'partner';
         }
 
+        if (auth()->guard('group_admin')->check()) {
+            return 'group_admin';
+        }
+
         return 'institute';
     }
 
     private function instituteId(): int
     {
+        // Group-Admin has no institute of their own — one GroupAdmin oversees many
+        // institutes via a Group, so the institute comes from the route instead,
+        // scoped to institutes actually belonging to their group. Resolved manually
+        // (not via implicit binding) since these shared report methods don't declare
+        // an Institute $institute parameter — only group_admin's routes carry one.
+        if (auth()->guard('group_admin')->check()) {
+            $routeInstitute = request()->route('institute');
+            $institute = $routeInstitute instanceof Institute ? $routeInstitute : Institute::find($routeInstitute);
+            abort_unless(
+                $institute && $institute->group_id === auth()->guard('group_admin')->user()->group_id,
+                403
+            );
+            return (int) $institute->id;
+        }
+
         $user = $this->authenticatedUser();
 
         abort_if(!$user || !$user->institute_id, 403, 'Institute context missing.');
@@ -404,7 +423,9 @@ class ReportController extends Controller
                 ->where('status', true)->orderBy('name')->get()
             : collect();
 
-        return view('institute.reports.fee-due-list', compact(
+        $feeDueListView = $this->panelPrefix() === 'group_admin' ? 'group_admin.reports.fee-due-list' : 'institute.reports.fee-due-list';
+
+        return view($feeDueListView, compact(
             'students', 'dueData', 'sessions', 'courseTypes', 'courses', 'centers', 'channelPartners', 'streams',
             'activeSession', 'sessionId', 'sessionObj', 'filterSemester',
             'totalDue', 'totalPaid', 'totalCollection', 'totalDiscount', 'totalPayable', 'totalFine', 'totalLibraryFine',
@@ -875,7 +896,9 @@ class ReportController extends Controller
             ->get()
             ->groupBy('bank_label');
 
-        return view('institute.reports.fee-collection-report', compact(
+        $feeCollectionView = $this->panelPrefix() === 'group_admin' ? 'group_admin.reports.fee-collection' : 'institute.reports.fee-collection-report';
+
+        return view($feeCollectionView, compact(
             'invoices', 'sessions', 'courseTypes', 'courses', 'streams', 'centers', 'sessionObj', 'sessionId',
             'activeSession', 'totalCollected', 'totalDiscount', 'totalInvoices',
             'totalStudents', 'totalFine', 'modeWise', 'modeBankWise', 'feeTypeWise',
