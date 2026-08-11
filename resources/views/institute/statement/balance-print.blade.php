@@ -46,6 +46,9 @@
         #thermal-receipt {
             padding-top: 1.5mm;
             padding-bottom: 0.5mm;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            page-break-after: avoid;
         }
         @media print {
             @page { size: 80mm auto; margin: 0mm; }
@@ -198,7 +201,11 @@
 
 <div class="divider-solid"></div>
 <div class="total-bal">Total Balance: {{ number_format($overallDue, 0) }}</div>
-
+<div class="divider-solid"></div>
+<div class="kv"><span class="lbl">Print Date:</span><span class="val">{{ now()->setTimezone('Asia/Kolkata')->format('d-M-Y h:i A') }}</span></div>
+@if(isset($printedBy) && $printedBy)
+<div class="kv"><span class="lbl">Printed By:</span><span class="val">{{ $printedBy }}</span></div>
+@endif
 <div class="divider-solid"></div>
 
 @if(!$isThermal)</div>@endif
@@ -207,58 +214,16 @@
 @if(!$isThermal)</div>@endif
 @if($isThermal)</div>@endif
 
-@if(isset($receiptUrl))
-<script src="{{ asset('js/qrcode.min.js') }}"></script>
-@endif
 <script>
-@if(isset($receiptUrl))
-function renderQR(callback) {
-    var targets = document.querySelectorAll('[id^="qr_bal_"]');
-    var total = targets.length;
-    if (total === 0) { if (callback) callback(); return; }
-    var done = 0;
-    var qrSize = {{ $isThermal ? 220 : 180 }};
-    targets.forEach(function(targetImg) {
-        var tmp = document.createElement('div');
-        tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-        document.body.appendChild(tmp);
-        try {
-            new QRCode(tmp, {
-                text: '{!! addslashes($receiptUrl) !!}',
-                width: qrSize, height: qrSize,
-                correctLevel: QRCode.CorrectLevel.H
-            });
-            var canvas = tmp.querySelector('canvas');
-            if (canvas) targetImg.src = canvas.toDataURL('image/png');
-        } catch(e) {}
-        document.body.removeChild(tmp);
-        done++;
-        if (done === total && callback) callback();
-    });
-}
-@endif
 
 @if($isThermal)
 window.onload = function() {
-    @if(isset($receiptUrl))
-    renderQR(function() {
-        applyThermalPage();
-        @if($autoprint ?? true) setTimeout(printWithoutBrowserTitle, 100); @endif
-    });
-    @else
     applyThermalPage();
     @if($autoprint ?? true) setTimeout(printWithoutBrowserTitle, 300); @endif
-    @endif
 };
 @else
 window.onload = function() {
-    @if(isset($receiptUrl))
-    renderQR(function() {
-        @if($autoprint ?? true) setTimeout(function(){ window.print(); }, 100); @endif
-    });
-    @else
     @if($autoprint ?? true) setTimeout(function(){ window.print(); }, 400); @endif
-    @endif
 };
 @endif
 
@@ -274,7 +239,7 @@ function applyThermalPage() {
 
     var receipt = document.getElementById('thermal-receipt');
     var contentPx = receipt ? receipt.getBoundingClientRect().height : document.body.scrollHeight;
-    var heightMm = Math.max(70, Math.ceil(contentPx / pxPerMm) + 2);
+    var heightMm = Math.max(40, Math.ceil(contentPx / pxPerMm) + 6);
 
     var style = document.createElement('style');
     style.id = 'thermal-page-style';
@@ -287,12 +252,17 @@ function applyThermalPage() {
         '    min-height: 0 !important;' +
         '    margin: 0 !important;' +
         '    overflow: visible !important;' +
+        '    break-after: avoid !important;' +
+        '    page-break-after: avoid !important;' +
         '  }' +
         '  #thermal-receipt {' +
         '    height: auto !important;' +
         '    min-height: 0 !important;' +
         '    margin: 0 !important;' +
         '    overflow: visible !important;' +
+        '    break-inside: avoid !important;' +
+        '    page-break-inside: avoid !important;' +
+        '    page-break-after: avoid !important;' +
         '  }' +
         '}';
     document.head.appendChild(style);
