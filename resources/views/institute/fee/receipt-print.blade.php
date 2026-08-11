@@ -659,8 +659,8 @@ function syncPageStyle(mode) {
 
 function thermalPageCss() {
     const sheet = document.querySelector('#thermal-view .thermal-sheet');
-    const heightMm = sheet ? Math.max(70, Math.ceil(sheet.scrollHeight * 25.4 / 96) + 10) : 140;
-    return `@page { size: 80mm ${heightMm}mm; margin: 0mm; }
+    const heightMm = sheet ? Math.ceil(sheet.scrollHeight * 25.4 / 96) + 1 : 140;
+    return `@page { size: 80mm ${heightMm}mm; margin: 0.5mm 0mm; }
 @media print { html, body { width:80mm; height:${heightMm}mm; margin:0 !important; padding:0 !important; overflow:hidden !important; } }`;
 }
 
