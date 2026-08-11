@@ -54,19 +54,26 @@
                 ?? ($student->current_semester ?: null)
                 ?? '—';
 
-    // Office details: snapshot pehle; historical view mein null snapshot = us waqt blank tha — live data se fallback nahi
-    $live = fn($v) => $isCurrentSession ? ($v ?? '—') : '—';
-    $srNo         = $selectedIdentity?->sr_no_snapshot         ?? $live($student->sr_no);
-    $enrollmentNo = $selectedIdentity?->enrollment_no_snapshot ?? $live($student->enrollment_no);
-    $rollNo       = $selectedIdentity?->roll_no_snapshot       ?? $selectedIdentity?->roll_no ?? $live($student->roll_no);
-    $formNo       = $selectedIdentity?->institute_form_no_snapshot ?? $live($student->institute_form_no);
-    $examFormNo   = $selectedIdentity?->exam_form_no_snapshot ?? $live($student->exam_form_no);
-    $uinNo        = $selectedIdentity?->uin_no_snapshot ?? $live($student->uin_no);
-    $referenceNo  = $selectedIdentity?->reference_no_snapshot ?? $live($student->reference_no);
-    $submittedDate = $selectedIdentity?->submitted_date_snapshot?->format('d-m-Y')
-        ?? ($isCurrentSession ? ($student->submitted_date?->format('d-m-Y') ?? '—') : '—');
-    $admissionDate = $selectedIdentity?->admission_date_snapshot?->format('d-m-Y')
-        ?? ($isCurrentSession ? ($student->admission_date?->format('d-m-Y') ?? '—') : '—');
+    // Office details: current session → live data, so ongoing edits (e.g. via the
+    // Roll No / Form No Assignment page) show up here immediately; historical session
+    // → frozen snapshot only, never fall back to live data (null snapshot = it was
+    // blank at that time). Snapshot is virtually always non-null once captured, so
+    // checking $isCurrentSession FIRST (not snapshot-first) is what actually matters.
+    $srNo         = $isCurrentSession ? ($student->sr_no ?? '—') : ($selectedIdentity?->sr_no_snapshot ?? '—');
+    $enrollmentNo = $isCurrentSession ? ($student->enrollment_no ?? '—') : ($selectedIdentity?->enrollment_no_snapshot ?? '—');
+    $rollNo       = $isCurrentSession
+        ? ($selectedIdentity?->roll_no ?? $student->roll_no ?? '—')
+        : ($selectedIdentity?->roll_no_snapshot ?? $selectedIdentity?->roll_no ?? '—');
+    $formNo       = $isCurrentSession ? ($student->institute_form_no ?? '—') : ($selectedIdentity?->institute_form_no_snapshot ?? '—');
+    $examFormNo   = $isCurrentSession ? ($student->exam_form_no ?? '—') : ($selectedIdentity?->exam_form_no_snapshot ?? '—');
+    $uinNo        = $isCurrentSession ? ($student->uin_no ?? '—') : ($selectedIdentity?->uin_no_snapshot ?? '—');
+    $referenceNo  = $isCurrentSession ? ($student->reference_no ?? '—') : ($selectedIdentity?->reference_no_snapshot ?? '—');
+    $submittedDate = $isCurrentSession
+        ? ($student->submitted_date?->format('d-m-Y') ?? '—')
+        : ($selectedIdentity?->submitted_date_snapshot?->format('d-m-Y') ?? '—');
+    $admissionDate = $isCurrentSession
+        ? ($student->admission_date?->format('d-m-Y') ?? '—')
+        : ($selectedIdentity?->admission_date_snapshot?->format('d-m-Y') ?? '—');
     $studentUidParts = explode('/', (string) $student->student_uid);
     $serialNo = end($studentUidParts) ?: '—';
 

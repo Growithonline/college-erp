@@ -2393,7 +2393,7 @@ class PromotionController extends Controller
         if ($this->shouldSyncStudentIdentityFields($identity)) {
             // Note: form_no (this page's own office-assigned identity field) never syncs
             // to student.sr_no — they are unrelated fields; sr_no is edited via its own
-            // "Student Registration No." field below.
+            // "SR No." field below.
             $syncUpdate = [];
             if ($request->has('roll_no') && $request->roll_no) {
                 $syncUpdate['roll_no'] = $request->roll_no;

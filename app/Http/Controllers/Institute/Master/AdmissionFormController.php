@@ -45,7 +45,7 @@ class AdmissionFormController extends Controller
             'fields' => [
                 ['key' => 'form_no',            'label' => 'Serial No.',                'enabled' => true,  'required' => false, 'readonly' => true],
                 ['key' => 'institute_form_no',  'label' => 'Form No.',                  'enabled' => false, 'required' => false],
-                ['key' => 'sr_no',              'label' => 'Student Registration No.',  'enabled' => true,  'required' => false],
+                ['key' => 'sr_no',              'label' => 'SR No.',                    'enabled' => true,  'required' => false],
                 ['key' => 'enrollment_no',      'label' => 'Enrollment No.',            'enabled' => false, 'required' => false],
                 ['key' => 'roll_no',            'label' => 'Roll No.',                  'enabled' => false, 'required' => false],
                 ['key' => 'exam_form_no',       'label' => 'Exam Form No.',             'enabled' => false, 'required' => false],
@@ -122,7 +122,7 @@ class AdmissionFormController extends Controller
             'fields' => [
                 ['key' => 'form_no',            'label' => 'Serial No.',                'enabled' => true,  'required' => false, 'readonly' => true],
                 ['key' => 'institute_form_no',  'label' => 'Form No.',                  'enabled' => false, 'required' => false],
-                ['key' => 'sr_no',              'label' => 'Student Registration No.',  'enabled' => true,  'required' => false],
+                ['key' => 'sr_no',              'label' => 'SR No.',                    'enabled' => true,  'required' => false],
                 ['key' => 'enrollment_no',      'label' => 'Enrollment No.',            'enabled' => false, 'required' => false],
                 ['key' => 'roll_no',            'label' => 'Roll No.',                  'enabled' => false, 'required' => false],
                 ['key' => 'exam_form_no',       'label' => 'Exam Form No.',             'enabled' => false, 'required' => false],

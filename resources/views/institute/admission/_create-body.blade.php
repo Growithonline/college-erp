@@ -241,7 +241,7 @@
             </div>
             @endif
 
-            @foreach(['sr_no' => 'Student Registration No.', 'enrollment_no' => 'Enrollment No.', 'roll_no' => 'Roll No.', 'exam_form_no' => 'Exam Form No.', 'uin_no' => 'UIN No.', 'reference_no' => 'Reference No.'] as $key => $label)
+            @foreach(['sr_no' => 'SR No.', 'enrollment_no' => 'Enrollment No.', 'roll_no' => 'Roll No.', 'exam_form_no' => 'Exam Form No.', 'uin_no' => 'UIN No.', 'reference_no' => 'Reference No.'] as $key => $label)
                 @if($fieldEnabled($key))
                 <div class="col-md-2">
                     <label class="form-label small fw-semibold">{{ $label }} @if($fieldRequired($key))<span class="text-danger">*</span>@endif</label>
