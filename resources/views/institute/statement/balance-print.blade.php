@@ -198,11 +198,7 @@
 
 <div class="divider-solid"></div>
 <div class="total-bal">Total Balance: {{ number_format($overallDue, 0) }}</div>
-@if(isset($receiptUrl))
-<div class="divider"></div>
-<img id="qr_bal_{{ $loop->index }}" class="qr-code" alt="QR">
-<div class="qr-caption">Scan to verify receipt</div>
-@endif
+
 <div class="divider-solid"></div>
 
 @if(!$isThermal)</div>@endif
