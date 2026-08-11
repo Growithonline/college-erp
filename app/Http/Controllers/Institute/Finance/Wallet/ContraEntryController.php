@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\ContraEntry;
+use App\Models\Expense;
+use App\Models\FeeInvoice;
+use App\Models\FinanceSetting;
 use App\Models\InstituteBankAccount;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
@@ -12,9 +16,32 @@ use Illuminate\Validation\Rule;
 
 class ContraEntryController extends Controller
 {
-    private function instituteId(): int
+    use HasInstituteId;
+
+    /**
+     * Cash in hand = cash fee income - cash expenses - contra already deposited to bank,
+     * mirroring WalletDashboardController::index()'s calculation for the same session.
+     */
+    private function cashInHand(int $instituteId, ?int $sessionId): float
     {
-        return (int) auth()->user()->institute_id;
+        $cashIncome = (float) FeeInvoice::where('institute_id', $instituteId)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->whereRaw('LOWER(payment_mode) = ?', ['cash'])
+            ->where('is_cancelled', false)
+            ->sum('paid_amount');
+
+        $cashExpenses = (float) Expense::where('institute_id', $instituteId)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->whereRaw('LOWER(payment_mode) = ?', ['cash'])
+            ->whereNotIn('approval_status', [Expense::STATUS_PENDING, Expense::STATUS_REJECTED])
+            ->where('is_reversed', false)
+            ->sum('amount');
+
+        $contraTotal = (float) ContraEntry::where('institute_id', $instituteId)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->sum('amount');
+
+        return $cashIncome - $cashExpenses - $contraTotal;
     }
 
     public function index(Request $request)
@@ -61,6 +88,19 @@ class ContraEntryController extends Controller
             'description'       => 'nullable|string|max:500',
             'session_id'        => ['required', Rule::exists('academic_sessions', 'id')->where('institute_id', $instituteId)],
         ]);
+
+        if (FinanceSetting::isDateLocked($instituteId, $data['entry_date'])) {
+            return back()->withInput()->withErrors([
+                'entry_date' => 'This date falls in a locked accounting period and cannot accept new entries.',
+            ]);
+        }
+
+        $available = $this->cashInHand($instituteId, (int) $data['session_id']);
+        if ((float) $data['amount'] > $available) {
+            return back()->withInput()->withErrors([
+                'amount' => 'Amount exceeds available cash in hand (Rs ' . number_format($available, 2) . ').',
+            ]);
+        }
 
         ContraEntry::create([
             'institute_id'        => $instituteId,

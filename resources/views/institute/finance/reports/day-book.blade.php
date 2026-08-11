@@ -105,7 +105,7 @@
                 <tr>
                     <td colspan="6" class="text-center text-muted py-5">
                         <i class="bi bi-journal-richtext fs-2 d-block mb-2"></i>
-                        Is date range me koi journal entries nahi mili.
+                        No journal entries found in this date range.
                     </td>
                 </tr>
                 @endforelse

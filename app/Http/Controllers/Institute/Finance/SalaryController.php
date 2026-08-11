@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Institute\Finance;
 
 use App\Exceptions\InsufficientWalletBalanceException;
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Account;
@@ -22,10 +23,7 @@ use Illuminate\View\View;
 
 class SalaryController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     private function ensureFinanceTablesReady(): ?RedirectResponse
     {
@@ -33,7 +31,7 @@ class SalaryController extends Controller
             if (!Schema::hasTable($table)) {
                 return redirect()
                     ->route('institute.dashboard')
-                    ->with('error', 'Salary module abhi migrate nahi hua hai. Pehle finance migrations run karo.');
+                    ->with('error', 'Salary module has not been migrated yet. Please run the finance migrations first.');
             }
         }
 
@@ -217,7 +215,7 @@ class SalaryController extends Controller
 
         if ($existing) {
             return back()->withInput()->with('error',
-                "{$staffMember->name} ki {$validated['salary_year']} ke mahine {$validated['salary_month']} ki salary record pehle se exist karti hai (Status: {$existing->status}). Duplicate create nahi ki ja sakti."
+                "A salary record for {$staffMember->name} for month {$validated['salary_month']}/{$validated['salary_year']} already exists (Status: {$existing->status}). A duplicate cannot be created."
             );
         }
 
@@ -363,8 +361,8 @@ class SalaryController extends Controller
         return redirect()
             ->route('finance.salary.index')
             ->with('success', $fresh->journal_entry_id
-                ? 'Salary payment record ho gayi, wallet se debit ho gaya aur journal post ho gaya.'
-                : 'Salary paid mark ho gayi, lekin accounting posting pending hai.');
+                ? 'Salary payment recorded, wallet debited and journal posted.'
+                : 'Salary marked as paid, but accounting posting is pending.');
     }
 
     public function retryPosting(SalaryRecord $salaryRecord): RedirectResponse
@@ -431,7 +429,7 @@ class SalaryController extends Controller
         return redirect()
             ->route('finance.salary.index')
             ->with('success', $reversalEntry
-                ? 'Salary reversal complete ho gaya, wallet me credit wapas aa gaya aur journal reverse ho gaya.'
-                : 'Salary reversal mark ho gaya. Accounting reversal pending ya missing thi.');
+                ? 'Salary reversal complete, wallet credited back and journal reversed.'
+                : 'Salary marked as reversed. Accounting reversal was pending or missing.');
     }
 }

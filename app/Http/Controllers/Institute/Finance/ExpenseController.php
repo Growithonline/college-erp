@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Institute\Finance;
 
 use App\Exceptions\InsufficientWalletBalanceException;
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Account;
@@ -17,14 +18,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ExpenseController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     private function ensureFinanceTablesReady(): ?RedirectResponse
     {
@@ -32,7 +31,7 @@ class ExpenseController extends Controller
             if (!Schema::hasTable($table)) {
                 return redirect()
                     ->route('institute.dashboard')
-                    ->with('error', 'Finance module abhi migrate nahi hua hai. Pehle finance migrations run karo.');
+                    ->with('error', 'Finance module has not been migrated yet. Please run the finance migrations first.');
             }
         }
         return null;
@@ -166,9 +165,9 @@ class ExpenseController extends Controller
             'academic_session_id'   => 'nullable|integer',
             'expense_date'          => 'required|date',
             'expense_account_id'    => 'required|integer',
-            'expense_category_l1_id'=> 'nullable|integer|exists:expense_categories_l1,id',
-            'expense_category_l2_id'=> 'nullable|integer|exists:expense_categories_l2,id',
-            'expense_vendor_id'     => 'nullable|integer|exists:expense_vendors,id',
+            'expense_category_l1_id'=> ['nullable', 'integer', Rule::exists('expense_categories_l1', 'id')->where('institute_id', $instituteId)],
+            'expense_category_l2_id'=> ['nullable', 'integer', Rule::exists('expense_categories_l2', 'id')->where('institute_id', $instituteId)],
+            'expense_vendor_id'     => ['nullable', 'integer', Rule::exists('expense_vendors', 'id')->where('institute_id', $instituteId)],
             'amount'                => 'required|numeric|min:0.01',
             'payment_mode'          => 'required|in:cash,bank',
             'bank_account_id'       => 'nullable|integer|required_if:payment_mode,bank',
@@ -176,6 +175,12 @@ class ExpenseController extends Controller
             'bill_no'               => 'nullable|string|max:100',
             'description'           => 'required|string|max:2000',
         ]);
+
+        if (FinanceSetting::isDateLocked($instituteId, $validated['expense_date'])) {
+            return back()->withInput()->withErrors([
+                'expense_date' => 'This date falls in a locked accounting period and cannot accept new expenses.',
+            ]);
+        }
 
         $sessionId = null;
         if (!empty($validated['academic_session_id'])) {
@@ -340,7 +345,7 @@ class ExpenseController extends Controller
 
         return redirect()->route('finance.expenses.index')
             ->with('success', $reversalEntry
-                ? 'Expense reverse ho gaya, wallet me credit wapas aa gaya.'
-                : 'Expense reverse mark ho gaya. Accounting reversal pending ya missing thi.');
+                ? 'Expense reversed, wallet credited back.'
+                : 'Expense marked as reversed. Accounting reversal was pending or missing.');
     }
 }

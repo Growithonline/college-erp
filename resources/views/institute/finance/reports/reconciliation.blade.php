@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-check2-square me-2 text-primary"></i>Finance Reconciliation</h4>
-        <small class="text-muted">Operational records aur journal postings ke beech mismatch ko yahan track karo</small>
+        <small class="text-muted">Track mismatches between operational records and journal postings here</small>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ request()->fullUrlWithQuery(['export' => 'csv']) }}" class="btn btn-outline-success btn-sm">
@@ -115,7 +115,7 @@
                         <div class="small text-muted">{{ $invoice->payment_date?->format('d M Y') ?: '-' }}</div>
                     </div>
                 @empty
-                    <div class="text-muted small">Fee collection side par koi sample mismatch nahi mila.</div>
+                    <div class="text-muted small">No sample mismatch found on the fee collection side.</div>
                 @endforelse
             </div>
         </div>
@@ -133,7 +133,7 @@
                         <div class="small text-muted">{{ $expense->expense_date?->format('d M Y') ?: '-' }} / ₹{{ number_format($expense->amount, 2) }}</div>
                     </div>
                 @empty
-                    <div class="text-muted small">Expense side par koi sample mismatch nahi mila.</div>
+                    <div class="text-muted small">No sample mismatch found on the expense side.</div>
                 @endforelse
             </div>
         </div>
@@ -151,7 +151,7 @@
                         <div class="small text-muted">{{ $record->payment_date?->format('d M Y') ?: '-' }} / ₹{{ number_format($record->paid_amount, 2) }}</div>
                     </div>
                 @empty
-                    <div class="text-muted small">Salary side par koi sample mismatch nahi mila.</div>
+                    <div class="text-muted small">No sample mismatch found on the salary side.</div>
                 @endforelse
             </div>
         </div>

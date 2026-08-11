@@ -73,7 +73,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-5">Koi session data nahi hai.</td>
+                    <td colspan="7" class="text-center text-muted py-5">No session data available.</td>
                 </tr>
                 @endforelse
             </tbody>

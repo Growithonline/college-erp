@@ -2,17 +2,16 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
 use App\Models\ExpenseCategoryL1;
 use App\Models\ExpenseCategoryL2;
 use Illuminate\Http\Request;
 
 class ExpenseCategoryL2Controller extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index(ExpenseCategoryL1 $expenseCategory)
     {
@@ -52,7 +51,7 @@ class ExpenseCategoryL2Controller extends Controller
         ]);
 
         return redirect()->route('finance.wallet.expense-categories.sub.index', $expenseCategory)
-            ->with('success', 'Sub-category create ho gayi.');
+            ->with('success', 'Sub-category created.');
     }
 
     public function edit(ExpenseCategoryL1 $expenseCategory, ExpenseCategoryL2 $sub)
@@ -80,7 +79,7 @@ class ExpenseCategoryL2Controller extends Controller
         ]);
 
         return redirect()->route('finance.wallet.expense-categories.sub.index', $expenseCategory)
-            ->with('success', 'Sub-category update ho gayi.');
+            ->with('success', 'Sub-category updated.');
     }
 
     public function destroy(ExpenseCategoryL1 $expenseCategory, ExpenseCategoryL2 $sub)
@@ -89,12 +88,16 @@ class ExpenseCategoryL2Controller extends Controller
         abort_if($sub->l1_id !== $expenseCategory->id, 404);
 
         if ($sub->vendors()->exists()) {
-            return back()->with('error', 'Pehle is sub-category ke vendors delete karo.');
+            return back()->with('error', 'Please delete this sub-category\'s vendors first.');
+        }
+
+        if (Expense::where('expense_category_l2_id', $sub->id)->exists()) {
+            return back()->with('error', 'This sub-category is used on existing expenses and cannot be deleted.');
         }
 
         $sub->delete();
 
         return redirect()->route('finance.wallet.expense-categories.sub.index', $expenseCategory)
-            ->with('success', 'Sub-category delete ho gayi.');
+            ->with('success', 'Sub-category deleted.');
     }
 }

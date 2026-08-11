@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-arrow-counterclockwise me-2 text-danger"></i>Reverse Salary Payment</h4>
-        <small class="text-muted">Paid salary ko reverse mark karke accounting reversal journal create karo</small>
+        <small class="text-muted">Mark a paid salary as reversed and create the accounting reversal journal</small>
     </div>
     <a href="{{ route('finance.salary.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back
@@ -17,7 +17,7 @@
     <div class="col-lg-8">
         <div class="alert alert-danger border-0 shadow-sm">
             <div class="fw-semibold mb-1">Important</div>
-            <div class="small mb-0">Salary payment delete nahi hogi. Record reversed state me chali jayegi aur posted payment ka reversal journal banega agar original entry mili.</div>
+            <div class="small mb-0">The salary payment will not be deleted. The record will move to a reversed state, and a reversal journal will be created for the posted payment if the original entry is found.</div>
         </div>
 
         <div class="card border-0 shadow-sm mb-4">
@@ -60,7 +60,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Reversal Reason <span class="text-danger">*</span></label>
                         <textarea name="reversal_reason" rows="4" class="form-control" required
-                                  placeholder="Salary reverse kyun kar rahe ho, short reason likho">{{ old('reversal_reason') }}</textarea>
+                                  placeholder="Write a short reason for reversing this salary">{{ old('reversal_reason') }}</textarea>
                     </div>
 
                     <div class="d-flex gap-2">

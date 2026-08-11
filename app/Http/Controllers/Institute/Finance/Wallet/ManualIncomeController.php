@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\InstituteIncomeCategory;
@@ -12,10 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class ManualIncomeController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index(Request $request)
     {
@@ -98,6 +96,6 @@ class ManualIncomeController extends Controller
         });
 
         return redirect()->route('finance.wallet.manual-income.index')
-            ->with('success', 'Manual income add ho gayi aur wallet me credit ho gaya.');
+            ->with('success', 'Manual income added and wallet credited.');
     }
 }

@@ -72,7 +72,7 @@
                         </a>
                         <form method="POST"
                               action="{{ route('finance.wallet.expense-categories.sub.destroy', [$expenseCategory, $sub]) }}"
-                              class="d-inline" onsubmit="return confirm('Delete karo?')">
+                              class="d-inline" onsubmit="return confirm('Delete?')">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
@@ -81,8 +81,8 @@
                 @empty
                 <tr>
                     <td colspan="6" class="text-center text-muted py-4">
-                        Koi sub-category nahi hai.
-                        <a href="{{ route('finance.wallet.expense-categories.sub.create', $expenseCategory) }}">Pehli banao.</a>
+                        No sub-categories yet.
+                        <a href="{{ route('finance.wallet.expense-categories.sub.create', $expenseCategory) }}">Create the first one.</a>
                     </td>
                 </tr>
                 @endforelse

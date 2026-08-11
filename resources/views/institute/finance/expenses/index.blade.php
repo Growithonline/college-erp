@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-receipt-cutoff me-2 text-danger"></i>Expense Book</h4>
-        <small class="text-muted">College ke paid expenses aur accounting posting status yahan track karo</small>
+        <small class="text-muted">Track the college's paid expenses and accounting posting status here</small>
     </div>
     <div class="d-flex gap-2">
         @if(isset($pendingApprovalCount) && $pendingApprovalCount > 0)
@@ -148,7 +148,7 @@
                 <tr>
                     <td colspan="7" class="text-center py-5 text-muted">
                         <i class="bi bi-receipt-cutoff fs-2 d-block mb-2"></i>
-                        Abhi tak koi expense entry nahi bani hai.
+                        No expense entries yet.
                     </td>
                 </tr>
                 @endforelse

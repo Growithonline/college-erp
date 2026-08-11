@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
 use App\Models\ExpenseCategoryL1;
 use Illuminate\Http\Request;
 
 class ExpenseCategoryL1Controller extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index()
     {
@@ -43,7 +42,7 @@ class ExpenseCategoryL1Controller extends Controller
         ]);
 
         return redirect()->route('finance.wallet.expense-categories.index')
-            ->with('success', 'Category create ho gayi.');
+            ->with('success', 'Category created.');
     }
 
     public function edit(ExpenseCategoryL1 $expenseCategory)
@@ -69,7 +68,7 @@ class ExpenseCategoryL1Controller extends Controller
         ]);
 
         return redirect()->route('finance.wallet.expense-categories.index')
-            ->with('success', 'Category update ho gayi.');
+            ->with('success', 'Category updated.');
     }
 
     public function destroy(ExpenseCategoryL1 $expenseCategory)
@@ -77,12 +76,16 @@ class ExpenseCategoryL1Controller extends Controller
         abort_if($expenseCategory->institute_id !== $this->instituteId(), 403);
 
         if ($expenseCategory->subCategories()->exists()) {
-            return back()->with('error', 'Pehle is category ki sub-categories delete karo.');
+            return back()->with('error', 'Please delete this category\'s sub-categories first.');
+        }
+
+        if (Expense::where('expense_category_l1_id', $expenseCategory->id)->exists()) {
+            return back()->with('error', 'This category is used on existing expenses and cannot be deleted.');
         }
 
         $expenseCategory->delete();
 
         return redirect()->route('finance.wallet.expense-categories.index')
-            ->with('success', 'Category delete ho gayi.');
+            ->with('success', 'Category deleted.');
     }
 }

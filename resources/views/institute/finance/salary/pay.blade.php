@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-cash-coin me-2 text-primary"></i>Pay Salary</h4>
-        <small class="text-muted">Selected salary record ko paid mark karke accounting journal generate karo</small>
+        <small class="text-muted">Mark the selected salary record as paid and generate the accounting journal</small>
     </div>
     <a href="{{ route(($rp ?? 'finance') . '.salary.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back

@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\InstituteIncomeCategory;
 use Illuminate\Http\Request;
 
 class IncomeCategoryController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index()
     {
@@ -42,7 +40,7 @@ class IncomeCategoryController extends Controller
         ]);
 
         return redirect()->route('finance.wallet.income-categories.index')
-            ->with('success', 'Income category create ho gayi.');
+            ->with('success', 'Income category created.');
     }
 
     public function edit(InstituteIncomeCategory $incomeCategory)
@@ -69,7 +67,7 @@ class IncomeCategoryController extends Controller
         ]);
 
         return redirect()->route('finance.wallet.income-categories.index')
-            ->with('success', 'Income category update ho gayi.');
+            ->with('success', 'Income category updated.');
     }
 
     public function destroy(InstituteIncomeCategory $incomeCategory)
@@ -77,12 +75,12 @@ class IncomeCategoryController extends Controller
         abort_if($incomeCategory->institute_id !== $this->instituteId(), 403);
 
         if ($incomeCategory->manualIncomes()->exists()) {
-            return back()->with('error', 'Is category me incomes hain, delete nahi ho sakti.');
+            return back()->with('error', 'This category has incomes attached; it cannot be deleted.');
         }
 
         $incomeCategory->delete();
 
         return redirect()->route('finance.wallet.income-categories.index')
-            ->with('success', 'Income category delete ho gayi.');
+            ->with('success', 'Income category deleted.');
     }
 }

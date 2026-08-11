@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-card-checklist me-2 text-warning"></i>Cheque Tracking</h4>
-        <small class="text-muted">Cheque aur DD payments ka status manage karo</small>
+        <small class="text-muted">Manage the status of cheque and DD payments</small>
     </div>
     <a href="{{ route('finance.wallet.ledger') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Ledger
@@ -216,7 +216,7 @@
                 <tr>
                     <td colspan="10" class="text-center text-muted py-5">
                         <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                        Koi cheque nahi mila.
+                        No cheques found.
                     </td>
                 </tr>
                 @endforelse

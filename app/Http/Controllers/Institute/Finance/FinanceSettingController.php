@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Institute\Finance;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\FeeType;
@@ -15,10 +16,7 @@ use Illuminate\View\View;
 
 class FinanceSettingController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     private function ensureFinanceTablesReady(): ?RedirectResponse
     {
@@ -26,7 +24,7 @@ class FinanceSettingController extends Controller
             if (!Schema::hasTable($table)) {
                 return redirect()
                     ->route('institute.dashboard')
-                    ->with('error', 'Finance settings abhi ready nahi hain. Pehle finance migrations run karo.');
+                    ->with('error', 'Finance settings are not ready yet. Please run the finance migrations first.');
             }
         }
 
@@ -151,6 +149,6 @@ class FinanceSettingController extends Controller
 
         return redirect()
             ->route('finance.settings.index')
-            ->with('success', 'Finance mappings update ho gayi hain.');
+            ->with('success', 'Finance mappings updated.');
     }
 }

@@ -5,12 +5,12 @@
 @section('content')
 <div class="mb-4">
     <h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2 text-success"></i>Add Manual Income</h4>
-    <small class="text-muted">Ye income wallet me automatically credit ho jayegi</small>
+    <small class="text-muted">This income will be credited to the wallet automatically</small>
 </div>
 
 @if($categories->isEmpty())
 <div class="alert alert-warning">
-    Pehle <a href="{{ route('finance.wallet.income-categories.create') }}">income categories create karo</a>, phir income add karo.
+    First <a href="{{ route('finance.wallet.income-categories.create') }}">create an income category</a>, then add income.
 </div>
 @endif
 

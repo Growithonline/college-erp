@@ -54,7 +54,7 @@
                         </a>
                         <form method="POST" action="{{ route('finance.wallet.income-categories.destroy', $cat) }}"
                               class="d-inline"
-                              onsubmit="return confirm('Delete karo?')">
+                              onsubmit="return confirm('Delete?')">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
@@ -63,7 +63,7 @@
                 @empty
                 <tr>
                     <td colspan="5" class="text-center text-muted py-4">
-                        Koi category nahi hai. <a href="{{ route('finance.wallet.income-categories.create') }}">Pehli category banao.</a>
+                        No categories yet. <a href="{{ route('finance.wallet.income-categories.create') }}">Create the first category.</a>
                     </td>
                 </tr>
                 @endforelse

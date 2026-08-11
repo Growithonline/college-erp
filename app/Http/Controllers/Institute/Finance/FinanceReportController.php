@@ -48,7 +48,7 @@ class FinanceReportController extends Controller
             if (!Schema::hasTable($table)) {
                 $dashboard = auth()->guard('staff')->check() ? 'staff.dashboard' : 'institute.dashboard';
                 return redirect()->route($dashboard)
-                    ->with('error', 'Finance reports abhi ready nahi hain.');
+                    ->with('error', 'Finance reports are not ready yet.');
             }
         }
 

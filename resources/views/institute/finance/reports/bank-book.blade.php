@@ -69,8 +69,8 @@
 
 @if($selectedBankAccount && !$selectedGlAccount)
 <div class="alert alert-warning border-0 shadow-sm">
-    <div class="fw-semibold mb-1">Selected bank account ka GL mapping missing hai</div>
-    <div class="small mb-0">Finance Settings ya Bank Account mapping me is bank ko ek GL account assign karo.</div>
+    <div class="fw-semibold mb-1">GL mapping is missing for the selected bank account</div>
+    <div class="small mb-0">Assign a GL account to this bank in Finance Settings or the Bank Account mapping.</div>
 </div>
 @endif
 
@@ -139,7 +139,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-5">Selected bank account me is period ka koi movement nahi mila.</td>
+                    <td colspan="6" class="text-center text-muted py-5">No movement found for this period in the selected bank account.</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -150,7 +150,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-body text-center py-5 text-muted">
         <i class="bi bi-bank2 fs-1 d-block mb-2"></i>
-        Bank Book dekhne ke liye ek mapped bank account select karo.
+        Select a mapped bank account to view the Bank Book.
     </div>
 </div>
 @endif

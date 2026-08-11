@@ -170,7 +170,7 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom py-3">
         <h6 class="mb-0 fw-semibold"><i class="bi bi-bank me-2 text-primary"></i>Bank-wise Income</h6>
-        <small class="text-muted">Bank pe click karo — payment method breakdown dekhne ke liye</small>
+        <small class="text-muted">Click a bank to see the payment method breakdown</small>
     </div>
     <div class="table-responsive">
         <table class="table mb-0 align-middle small">

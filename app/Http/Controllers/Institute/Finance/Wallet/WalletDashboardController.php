@@ -126,49 +126,69 @@ class WalletDashboardController extends Controller
         $cashInHand = $cashIncome - $cashExpenses - $contraTotal;
 
         // Bank-wise balance (non-cash income + contra deposits - bank expenses/salary payouts)
-        $bankBalances = InstituteBankAccount::where('institute_id', $instituteId)
+        // Computed as one grouped query per source (instead of 5 queries per bank account) and
+        // looked up by bank_account_id inside the map.
+        $bankAccountsList = InstituteBankAccount::where('institute_id', $instituteId)
             ->where('is_active', true)
-            ->orderBy('sort_order')->get()
-            ->map(function ($bank) use ($instituteId, $sessionId) {
-                $nonCashIncome = (float) FeeInvoice::where('institute_id', $instituteId)
-                    ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
-                    ->where('bank_account_id', $bank->id)
-                    ->where('is_cancelled', false)
-                    ->sum('paid_amount');
+            ->orderBy('sort_order')->get();
+        $bankIds = $bankAccountsList->pluck('id');
 
-                $contraIn = (float) ContraEntry::where('institute_id', $instituteId)
-                    ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
-                    ->where('to_bank_account_id', $bank->id)
-                    ->sum('amount');
+        $nonCashIncomeByBank = FeeInvoice::where('institute_id', $instituteId)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->whereIn('bank_account_id', $bankIds)
+            ->where('is_cancelled', false)
+            ->groupBy('bank_account_id')
+            ->selectRaw('bank_account_id, SUM(paid_amount) as total')
+            ->pluck('total', 'bank_account_id');
 
-                $bankExpenses = (float) Expense::where('institute_id', $instituteId)
-                    ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
-                    ->where('bank_account_id', $bank->id)
-                    ->where('is_reversed', false)
-                    ->whereNotIn('approval_status', [Expense::STATUS_PENDING, Expense::STATUS_REJECTED])
-                    ->sum('amount');
+        $contraInByBank = ContraEntry::where('institute_id', $instituteId)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->whereIn('to_bank_account_id', $bankIds)
+            ->groupBy('to_bank_account_id')
+            ->selectRaw('to_bank_account_id, SUM(amount) as total')
+            ->pluck('total', 'to_bank_account_id');
 
-                $bankSalaryPaid = (float) SalaryRecord::where('institute_id', $instituteId)
-                    ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
-                    ->where('bank_account_id', $bank->id)
-                    ->where('status', SalaryRecord::STATUS_PAID)
-                    ->sum('paid_amount');
+        $bankExpensesByBank = Expense::where('institute_id', $instituteId)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->whereIn('bank_account_id', $bankIds)
+            ->where('is_reversed', false)
+            ->whereNotIn('approval_status', [Expense::STATUS_PENDING, Expense::STATUS_REJECTED])
+            ->groupBy('bank_account_id')
+            ->selectRaw('bank_account_id, SUM(amount) as total')
+            ->pluck('total', 'bank_account_id');
 
-                $bankDisbursementsPaid = (float) \App\Models\EmployeeSalaryDisbursement::where('institute_id', $instituteId)
-                    ->where('bank_account_id', $bank->id)
-                    ->where('status', 'paid')
-                    ->sum('net_salary');
+        $bankSalaryPaidByBank = SalaryRecord::where('institute_id', $instituteId)
+            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
+            ->whereIn('bank_account_id', $bankIds)
+            ->where('status', SalaryRecord::STATUS_PAID)
+            ->groupBy('bank_account_id')
+            ->selectRaw('bank_account_id, SUM(paid_amount) as total')
+            ->pluck('total', 'bank_account_id');
 
-                $bankOut = $bankExpenses + $bankSalaryPaid + $bankDisbursementsPaid;
+        $bankDisbursementsPaidByBank = \App\Models\EmployeeSalaryDisbursement::where('institute_id', $instituteId)
+            ->whereIn('bank_account_id', $bankIds)
+            ->where('status', 'paid')
+            ->groupBy('bank_account_id')
+            ->selectRaw('bank_account_id, SUM(net_salary) as total')
+            ->pluck('total', 'bank_account_id');
 
-                return [
-                    'bank'      => $bank,
-                    'income'    => $nonCashIncome,
-                    'contra_in' => $contraIn,
-                    'out'       => $bankOut,
-                    'balance'   => $nonCashIncome + $contraIn - $bankOut,
-                ];
-            });
+        $bankBalances = $bankAccountsList->map(function ($bank) use (
+            $nonCashIncomeByBank, $contraInByBank, $bankExpensesByBank, $bankSalaryPaidByBank, $bankDisbursementsPaidByBank
+        ) {
+            $nonCashIncome = (float) ($nonCashIncomeByBank[$bank->id] ?? 0);
+            $contraIn      = (float) ($contraInByBank[$bank->id] ?? 0);
+            $bankOut       = (float) ($bankExpensesByBank[$bank->id] ?? 0)
+                            + (float) ($bankSalaryPaidByBank[$bank->id] ?? 0)
+                            + (float) ($bankDisbursementsPaidByBank[$bank->id] ?? 0);
+
+            return [
+                'bank'      => $bank,
+                'income'    => $nonCashIncome,
+                'contra_in' => $contraIn,
+                'out'       => $bankOut,
+                'balance'   => $nonCashIncome + $contraIn - $bankOut,
+            ];
+        });
 
         // Cheque alerts
         $chequePending = ChequePayment::where('institute_id', $instituteId)
@@ -281,12 +301,43 @@ class WalletDashboardController extends Controller
 
         if ($paymentType === 'cash') {
             $query->where(function ($q) {
-                $q->where('source_type', '!=', 'fee_invoice')
-                  ->orWhereHas('invoice', fn($q) => $q->where('payment_mode', 'CASH'));
+                $q->where(function ($q2) {
+                    $q2->where('source_type', 'fee_invoice')
+                       ->whereHas('invoice', fn($q3) => $q3->where('payment_mode', 'CASH'));
+                })
+                ->orWhere(function ($q2) {
+                    $q2->whereIn('source_type', ['expense', 'expense_reversal'])
+                       ->whereIn('source_id', Expense::whereRaw('LOWER(payment_mode) = ?', ['cash'])->select('id'));
+                })
+                ->orWhere(function ($q2) {
+                    $q2->whereIn('source_type', ['salary', 'salary_reversal'])
+                       ->whereIn('source_id', SalaryRecord::whereRaw('LOWER(payment_mode) = ?', ['cash'])->select('id'));
+                })
+                ->orWhere(function ($q2) {
+                    $q2->whereIn('source_type', ['employee_salary', 'employee_salary_reversal'])
+                       ->whereIn('source_id', \App\Models\EmployeeSalaryDisbursement::whereRaw('LOWER(payment_mode) = ?', ['cash'])->select('id'));
+                })
+                ->orWhereIn('source_type', ['manual_income', 'library_fine']);
             });
         } elseif ($paymentType === 'non_cash') {
-            $query->where('source_type', 'fee_invoice')
-                  ->whereHas('invoice', fn($q) => $q->where('payment_mode', '!=', 'CASH'));
+            $query->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->where('source_type', 'fee_invoice')
+                       ->whereHas('invoice', fn($q3) => $q3->where('payment_mode', '!=', 'CASH'));
+                })
+                ->orWhere(function ($q2) {
+                    $q2->whereIn('source_type', ['expense', 'expense_reversal'])
+                       ->whereIn('source_id', Expense::whereRaw('LOWER(payment_mode) != ?', ['cash'])->select('id'));
+                })
+                ->orWhere(function ($q2) {
+                    $q2->whereIn('source_type', ['salary', 'salary_reversal'])
+                       ->whereIn('source_id', SalaryRecord::whereRaw('LOWER(payment_mode) != ?', ['cash'])->select('id'));
+                })
+                ->orWhere(function ($q2) {
+                    $q2->whereIn('source_type', ['employee_salary', 'employee_salary_reversal'])
+                       ->whereIn('source_id', \App\Models\EmployeeSalaryDisbursement::whereRaw('LOWER(payment_mode) != ?', ['cash'])->select('id'));
+                });
+            });
         }
 
         if ($bankAccountId) {

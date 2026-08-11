@@ -120,7 +120,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-5">Cash account me is period ka koi movement nahi mila.</td>
+                    <td colspan="6" class="text-center text-muted py-5">No movement found for this period in the cash account.</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -129,8 +129,8 @@
 </div>
 @else
 <div class="alert alert-warning border-0 shadow-sm">
-    <div class="fw-semibold mb-1">Cash account mapping missing hai</div>
-    <div class="small mb-0">Finance Settings me jaake `Cash Account` map kar do, tab Cash Book data dikhne lagega.</div>
+    <div class="fw-semibold mb-1">Cash account mapping is missing</div>
+    <div class="small mb-0">Map a `Cash Account` in Finance Settings to see Cash Book data.</div>
 </div>
 @endif
 @endsection

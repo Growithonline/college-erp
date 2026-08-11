@@ -148,8 +148,8 @@
                 <tr>
                     <td colspan="11" class="text-center text-muted py-5">
                         <i class="bi bi-person-workspace fs-2 d-block mb-2 opacity-25"></i>
-                        Koi salary record nahi mila. <a href="{{ route('finance.salary.create') }}">Staff salary add karo</a>
-                        ya <a href="{{ route('employees.index') }}">Employees</a> se transport/support staff ki salary disburse karo.
+                        No salary records found. <a href="{{ route('finance.salary.create') }}">Add a staff salary</a>
+                        or disburse transport/support staff salary from <a href="{{ route('employees.index') }}">Employees</a>.
                     </td>
                 </tr>
                 @endforelse

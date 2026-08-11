@@ -40,7 +40,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Rejection Reason <span class="text-danger">*</span></label>
                         <textarea name="rejection_reason" class="form-control" rows="3" required
-                                  placeholder="Kyu reject kar rahe ho..."></textarea>
+                                  placeholder="Reason for rejecting..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -110,7 +110,7 @@
                 <tr>
                     <td colspan="7" class="text-center text-muted py-5">
                         <i class="bi bi-check-circle text-success fs-2 d-block mb-2"></i>
-                        Koi pending expense nahi hai.
+                        No pending expenses.
                     </td>
                 </tr>
                 @endforelse

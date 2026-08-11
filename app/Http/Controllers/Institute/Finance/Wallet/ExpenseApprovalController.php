@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
 use App\Exceptions\InsufficientWalletBalanceException;
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Expense;
+use App\Models\FinanceSetting;
 use App\Services\InstituteWalletService;
 use App\Services\JournalService;
 use Illuminate\Http\Request;
@@ -13,10 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class ExpenseApprovalController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index(Request $request)
     {
@@ -41,8 +40,13 @@ class ExpenseApprovalController extends Controller
     public function approve(Request $request, Expense $expense)
     {
         abort_if($expense->institute_id !== $this->instituteId(), 403);
-        abort_if($expense->approval_status !== Expense::STATUS_PENDING, 422, 'Expense pending nahi hai.');
-        abort_if($expense->is_reversed, 422, 'Reversed expense ko approve nahi kar sakte.');
+        abort_if($expense->approval_status !== Expense::STATUS_PENDING, 422, 'Expense is not pending.');
+        abort_if($expense->is_reversed, 422, 'A reversed expense cannot be approved.');
+        abort_if(
+            FinanceSetting::isDateLocked($this->instituteId(), $expense->expense_date),
+            422,
+            'This expense falls in a locked accounting period (' . $expense->expense_date?->format('d M Y') . ') and cannot be approved.'
+        );
 
         $instituteId     = $this->instituteId();
         $walletSessionId = $expense->academic_session_id
@@ -100,25 +104,36 @@ class ExpenseApprovalController extends Controller
             }
         }
 
-        return back()->with('success', 'Expense approved, wallet se debit ho gaya aur GL entry post ho gayi.');
+        return back()->with('success', 'Expense approved, wallet debited and GL entry posted.');
     }
 
     public function reject(Request $request, Expense $expense)
     {
         abort_if($expense->institute_id !== $this->instituteId(), 403);
-        abort_if($expense->approval_status !== Expense::STATUS_PENDING, 422, 'Expense pending nahi hai.');
+        abort_if($expense->approval_status !== Expense::STATUS_PENDING, 422, 'Expense is not pending.');
 
         $data = $request->validate([
             'rejection_reason' => 'required|string|max:500',
         ]);
 
-        $expense->update([
-            'approval_status'           => Expense::STATUS_REJECTED,
-            'approval_rejection_reason' => $data['rejection_reason'],
-            'approved_by_staff_id'      => auth()->guard('staff')->id() ?? auth()->id(),
-            'approved_at'               => now(),
-        ]);
+        $rejectorId = auth()->guard('staff')->id() ?? auth()->id();
 
-        return back()->with('success', 'Expense reject kar diya gaya.');
+        DB::transaction(function () use ($expense, $data, $rejectorId) {
+            // Re-check status under lock — prevents a race with a concurrent approve()
+            $fresh = Expense::where('id', $expense->id)->lockForUpdate()->first();
+
+            if (!$fresh || $fresh->approval_status !== Expense::STATUS_PENDING) {
+                return; // Already processed by a concurrent request
+            }
+
+            $fresh->update([
+                'approval_status'           => Expense::STATUS_REJECTED,
+                'approval_rejection_reason' => $data['rejection_reason'],
+                'approved_by_staff_id'      => $rejectorId,
+                'approved_at'               => now(),
+            ]);
+        });
+
+        return back()->with('success', 'Expense rejected.');
     }
 }

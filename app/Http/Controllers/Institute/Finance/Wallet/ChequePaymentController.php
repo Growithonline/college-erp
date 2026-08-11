@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\ChequePayment;
@@ -14,10 +15,7 @@ use Illuminate\Validation\Rule;
 
 class ChequePaymentController extends Controller
 {
-    private function instituteId(): int
-    {
-        return (int) auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index(Request $request)
     {

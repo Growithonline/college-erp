@@ -71,7 +71,7 @@ class StaffFinanceController extends Controller
 
         if (!$this->financeTablesReady()) {
             return redirect()->route('staff.dashboard')
-                ->with('error', 'Finance module abhi migrate nahi hua hai.');
+                ->with('error', 'Finance module has not been migrated yet.');
         }
 
         $instituteId = $this->instituteId();
@@ -109,7 +109,7 @@ class StaffFinanceController extends Controller
 
         if (!$this->financeTablesReady()) {
             return redirect()->route('staff.dashboard')
-                ->with('error', 'Finance module abhi migrate nahi hua hai.');
+                ->with('error', 'Finance module has not been migrated yet.');
         }
 
         $instituteId = $this->instituteId();
@@ -173,6 +173,12 @@ class StaffFinanceController extends Controller
             'bill_no'                => 'nullable|string|max:100',
             'description'            => 'required|string|max:2000',
         ]);
+
+        if (FinanceSetting::isDateLocked($instituteId, $validated['expense_date'])) {
+            return back()->withInput()->withErrors([
+                'expense_date' => 'This date falls in a locked accounting period and cannot accept new expenses.',
+            ]);
+        }
 
         $sessionId = null;
         if (!empty($validated['academic_session_id'])) {
@@ -321,7 +327,7 @@ class StaffFinanceController extends Controller
 
         if (!Schema::hasTable('salary_records')) {
             return redirect()->route('staff.dashboard')
-                ->with('error', 'Salary module abhi migrate nahi hua hai.');
+                ->with('error', 'Salary module has not been migrated yet.');
         }
 
         $instituteId = $this->instituteId();
@@ -427,6 +433,6 @@ class StaffFinanceController extends Controller
         ]);
 
         return redirect()->route('staff.finance.salary.index')
-            ->with('success', $salaryRecord->staffMember?->name . ' ki salary mark paid ho gayi.');
+            ->with('success', $salaryRecord->staffMember?->name . '\'s salary marked as paid.');
     }
 }

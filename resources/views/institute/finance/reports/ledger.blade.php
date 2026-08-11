@@ -134,7 +134,7 @@
                 <tr>
                     <td colspan="6" class="text-center text-muted py-5">
                         <i class="bi bi-journal-x fs-2 d-block mb-2"></i>
-                        Is period me koi journal movement nahi mila.
+                        No journal movement found for this period.
                     </td>
                 </tr>
                 @endforelse
@@ -146,7 +146,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-body text-center py-5 text-muted">
         <i class="bi bi-journal-text fs-1 d-block mb-2"></i>
-        Ledger dekhne ke liye ek account select karo.
+        Select an account to view the Ledger.
     </div>
 </div>
 @endif

@@ -92,7 +92,7 @@
                 <tr>
                     <td colspan="5" class="text-center text-muted py-5">
                         <i class="bi bi-table fs-2 d-block mb-2"></i>
-                        Is date tak koi trial balance data nahi mila.
+                        No trial balance data found up to this date.
                     </td>
                 </tr>
                 @endforelse

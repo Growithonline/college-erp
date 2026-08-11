@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2 text-primary"></i>Add Staff Salary</h4>
-        <small class="text-muted">Pending salary create karo ya chahe to same screen se paid salary bhi save kar do</small>
+        <small class="text-muted">Create a pending salary, or save it as already paid from the same screen</small>
     </div>
     <a href="{{ route('finance.salary.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back
@@ -18,9 +18,9 @@
         <div class="alert alert-info border-0 shadow-sm">
             <div class="fw-semibold mb-1">Note</div>
             <div class="small mb-0">
-                Yeh form sirf teaching/office staff (StaffMember) ke liye hai. Transport/support staff (drivers, helpers) ki salary
-                <a href="{{ route('employees.index') }}">Employees section</a> se manage hoti hai.
-                Agar payment details blank chhodoge to record <code>Pending</code> rahega, bharoge to salary directly paid mark ho jayegi.
+                This form is only for teaching/office staff (StaffMember). Transport/support staff (drivers, helpers) salary
+                is managed from the <a href="{{ route('employees.index') }}">Employees section</a>.
+                If you leave the payment details blank, the record will stay <code>Pending</code>; fill them in and the salary will be marked paid directly.
             </div>
         </div>
 

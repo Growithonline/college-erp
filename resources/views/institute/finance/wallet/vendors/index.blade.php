@@ -62,7 +62,7 @@
                         </a>
                         <form method="POST"
                               action="{{ route('finance.wallet.expense-categories.sub.vendors.destroy', [$expenseCategory, $sub, $vendor]) }}"
-                              class="d-inline" onsubmit="return confirm('Delete karo?')">
+                              class="d-inline" onsubmit="return confirm('Delete?')">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
@@ -71,8 +71,8 @@
                 @empty
                 <tr>
                     <td colspan="7" class="text-center text-muted py-4">
-                        Koi vendor nahi hai.
-                        <a href="{{ route('finance.wallet.expense-categories.sub.vendors.create', [$expenseCategory, $sub]) }}">Pehla vendor add karo.</a>
+                        No vendors yet.
+                        <a href="{{ route('finance.wallet.expense-categories.sub.vendors.create', [$expenseCategory, $sub]) }}">Add the first vendor.</a>
                     </td>
                 </tr>
                 @endforelse

@@ -10,7 +10,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-sliders me-2 text-primary"></i>Finance Settings</h4>
-        <small class="text-muted">Core accounting mappings, fee income heads aur bank GL accounts yahin se control karo</small>
+        <small class="text-muted">Control core accounting mappings, fee income heads, and bank GL accounts from here</small>
     </div>
     <a href="{{ route('finance.expenses.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-right-circle me-1"></i> Expense Book

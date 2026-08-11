@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
 use App\Models\ExpenseCategoryL1;
 use App\Models\ExpenseCategoryL2;
 use App\Models\ExpenseVendor;
@@ -10,10 +12,7 @@ use Illuminate\Http\Request;
 
 class ExpenseVendorController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index(ExpenseCategoryL1 $expenseCategory, ExpenseCategoryL2 $sub)
     {
@@ -59,7 +58,7 @@ class ExpenseVendorController extends Controller
         ]));
 
         return redirect()->route('finance.wallet.expense-categories.sub.vendors.index', [$expenseCategory, $sub])
-            ->with('success', 'Vendor add ho gaya.');
+            ->with('success', 'Vendor added.');
     }
 
     public function edit(ExpenseCategoryL1 $expenseCategory, ExpenseCategoryL2 $sub, ExpenseVendor $vendor)
@@ -93,7 +92,7 @@ class ExpenseVendorController extends Controller
         ]));
 
         return redirect()->route('finance.wallet.expense-categories.sub.vendors.index', [$expenseCategory, $sub])
-            ->with('success', 'Vendor update ho gaya.');
+            ->with('success', 'Vendor updated.');
     }
 
     public function destroy(ExpenseCategoryL1 $expenseCategory, ExpenseCategoryL2 $sub, ExpenseVendor $vendor)
@@ -102,9 +101,14 @@ class ExpenseVendorController extends Controller
         abort_if($sub->l1_id !== $expenseCategory->id, 404);
         abort_if($vendor->l2_id !== $sub->id, 404);
 
+        if (Expense::where('expense_vendor_id', $vendor->id)->exists()) {
+            return redirect()->route('finance.wallet.expense-categories.sub.vendors.index', [$expenseCategory, $sub])
+                ->with('error', 'This vendor is used on existing expenses and cannot be deleted.');
+        }
+
         $vendor->delete();
 
         return redirect()->route('finance.wallet.expense-categories.sub.vendors.index', [$expenseCategory, $sub])
-            ->with('success', 'Vendor delete ho gaya.');
+            ->with('success', 'Vendor deleted.');
     }
 }

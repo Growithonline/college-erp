@@ -57,7 +57,7 @@
                 @empty
                 <tr>
                     <td colspan="5" class="text-center text-muted py-4">
-                        Koi manual income nahi hai. <a href="{{ route('finance.wallet.manual-income.create') }}">Abhi add karo.</a>
+                        No manual income yet. <a href="{{ route('finance.wallet.manual-income.create') }}">Add one now.</a>
                     </td>
                 </tr>
                 @endforelse

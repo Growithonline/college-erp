@@ -190,7 +190,7 @@
         @if($entries->isEmpty())
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                Is period mein koi income record nahi mila.
+                No income records found for this period.
             </div>
         @else
         <div class="table-responsive">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Institute\Finance\Wallet;
 
+use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\ExpenseApprovalLimit;
 use App\Models\StaffRole;
@@ -9,10 +10,7 @@ use Illuminate\Http\Request;
 
 class ExpenseApprovalLimitController extends Controller
 {
-    private function instituteId(): int
-    {
-        return auth()->user()->institute_id;
-    }
+    use HasInstituteId;
 
     public function index()
     {

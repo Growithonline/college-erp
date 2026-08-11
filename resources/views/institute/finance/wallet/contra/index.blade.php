@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-arrow-left-right me-2 text-info"></i>Contra Entries</h4>
-        <small class="text-muted">Cash se bank mein deposit ka record — wallet balance affect nahi hota</small>
+        <small class="text-muted">Record of cash deposited to bank — does not affect wallet balance</small>
     </div>
     <a href="{{ route('finance.wallet.ledger') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Ledger
@@ -69,7 +69,7 @@
 
                     <div class="alert alert-info py-2 small border-0">
                         <i class="bi bi-info-circle me-1"></i>
-                        Ye entry sirf <strong>record</strong> ke liye hai. Institute wallet ka balance change nahi hoga.
+                        This entry is only for <strong>record</strong>-keeping. The institute wallet balance will not change.
                     </div>
 
                     <button type="submit" class="btn btn-info btn-sm w-100 text-white">
@@ -153,7 +153,7 @@
                             <td>
                                 <form method="POST"
                                       action="{{ route('finance.wallet.contra.destroy', $e) }}"
-                                      onsubmit="return confirm('Is entry ko delete karo?')">
+                                      onsubmit="return confirm('Delete this entry?')">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-outline-danger btn-sm py-0 px-2">
                                         <i class="bi bi-trash"></i>
@@ -165,7 +165,7 @@
                         <tr>
                             <td colspan="7" class="text-center text-muted py-5">
                                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                                Koi contra entry nahi mili.
+                                No contra entries found.
                             </td>
                         </tr>
                         @endforelse
