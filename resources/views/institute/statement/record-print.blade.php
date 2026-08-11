@@ -311,7 +311,7 @@ window.onload = function() {
 @endif
 
 function applyThermalPage() {
-    var heightMm = Math.ceil(document.body.scrollHeight * 25.4 / 96) + 1;
+    var heightMm = Math.ceil(document.body.scrollHeight * 15 / 96) + 1;
     var style = document.createElement('style');
     style.innerHTML = '@page { size: 80mm ' + heightMm + 'mm !important; margin: 0.5mm 0mm !important; }'
         + '@media print { html, body { width:80mm !important; height:' + heightMm + 'mm !important; margin:0 !important; overflow:hidden !important; } }';
