@@ -195,9 +195,7 @@
 @if($enrollNo)<div class="kv"><span class="lbl">Enroll No:</span><span class="val">{{ $enrollNo }}</span></div>@endif
 <div class="kv"><span class="lbl">Student Name:</span><span class="val">{{ $student->name }}</span></div>
 <div class="kv"><span class="lbl">Father Name:</span><span class="val">{{ $student->father_name ?? '—' }}</span></div>
-<div class="kv"><span class="lbl">Course:</span><span class="val">{{ $student->stream->course->name ?? '—' }}</span></div>
-<div class="kv"><span class="lbl">Year:</span><span class="val">{{ $currentYearLabel }}</span></div>
-<div class="kv"><span class="lbl">Session:</span><span class="val">{{ $student->session->name ?? '—' }}</span></div>
+<div class="course-line">{{ $student->stream->course->name ?? '—' }} {{ $currentYearLabel }}</div>
 
 <div class="divider-solid"></div>
 <div class="total-bal">Total Balance: {{ number_format($overallDue, 0) }}</div>
