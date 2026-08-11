@@ -35,7 +35,7 @@
             width: 80mm;
             max-width: 80mm;
             margin: 0;
-            padding: 5mm 2.6mm;
+            padding: 0 2.6mm;
             font-family: Verdana, sans-serif;
             font-size: 10px;
             font-weight: 600;
@@ -43,12 +43,19 @@
             color: #000;
             line-height: 1.3;
         }
+        #thermal-receipt {
+            padding-top: 1.5mm;
+            padding-bottom: 0.5mm;
+        }
         @media print {
             @page { size: 80mm auto; margin: 0mm; }
             html, body {
                 width: 80mm;
                 max-width: 80mm;
-                padding: 5mm 2.6mm;
+                min-height: 0 !important;
+                height: auto !important;
+                padding: 0 2.6mm;
+                overflow: visible !important;
                 font-size: 10px;
                 font-weight: 600;
             }
@@ -132,6 +139,8 @@
     </style>
 </head>
 <body>
+
+@if($isThermal)<div id="thermal-receipt">@endif
 
 @php $copies = $isThermal ? [''] : ['Student Copy', 'Office Copy']; @endphp
 
@@ -223,6 +232,7 @@
 @endforeach
 
 @if(!$isThermal)</div>@endif
+@if($isThermal)</div>@endif
 
 @if(isset($receiptUrl))
 <script src="{{ asset('js/qrcode.min.js') }}"></script>
@@ -280,10 +290,38 @@ window.onload = function() {
 @endif
 
 function applyThermalPage() {
-    var heightMm = Math.ceil(document.body.scrollHeight * 25.4 / 96) + 1;
+    var old = document.getElementById('thermal-page-style');
+    if (old) old.remove();
+
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;width:10mm;height:10mm;visibility:hidden;';
+    document.body.appendChild(probe);
+    var pxPerMm = probe.getBoundingClientRect().height / 10;
+    probe.remove();
+
+    var receipt = document.getElementById('thermal-receipt');
+    var contentPx = receipt ? receipt.getBoundingClientRect().height : document.body.scrollHeight;
+    var heightMm = Math.max(70, Math.ceil(contentPx / pxPerMm) + 2);
+
     var style = document.createElement('style');
-    style.innerHTML = '@page { size: 80mm ' + heightMm + 'mm !important; margin: 0.5mm 0mm !important; }'
-        + '@media print { html, body { width:80mm !important; height:' + heightMm + 'mm !important; margin:0 !important; overflow:hidden !important; } }';
+    style.id = 'thermal-page-style';
+    style.innerHTML =
+        '@page { size: 80mm ' + heightMm + 'mm !important; margin: 0 !important; }' +
+        '@media print {' +
+        '  html, body {' +
+        '    width: 80mm !important;' +
+        '    height: auto !important;' +
+        '    min-height: 0 !important;' +
+        '    margin: 0 !important;' +
+        '    overflow: visible !important;' +
+        '  }' +
+        '  #thermal-receipt {' +
+        '    height: auto !important;' +
+        '    min-height: 0 !important;' +
+        '    margin: 0 !important;' +
+        '    overflow: visible !important;' +
+        '  }' +
+        '}';
     document.head.appendChild(style);
 }
 

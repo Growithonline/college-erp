@@ -82,8 +82,8 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 
 .basic-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;
               border:1px solid #ccc; padding:8px; margin-bottom:8px; }
-.bfield .lbl { font-size:9px; color:#666; font-weight:600; display:block; }
-.bfield .val { font-size:11px; font-weight:700; border-bottom:1px solid #555;
+.bfield .lbl { font-size:9px; color:#666; font-weight:700; display:block; }
+.bfield .val { font-size:11px; font-weight:400; border-bottom:1px solid #555;
                padding-bottom:1px; min-height:16px; display:block; }
 
 .sec-head { font-size:10px; font-weight:700; background:#1e293b; color:white;
@@ -92,7 +92,18 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .ftbl { width:100%; border-collapse:collapse; margin-bottom:6px; }
 .ftbl td { border:1px solid #ccc; padding:4px 6px; font-size:10px; vertical-align:top; }
 .ftbl .lc { font-weight:700; background:#f8fafc; width:20%; white-space:nowrap; }
-.ftbl .vc { font-weight:600; }
+.ftbl .vc { font-weight:400; }
+
+/* Dark-background headers (top-strip, sec-head, edu-tbl th) rely on the browser
+   printing background colors — many printers/print dialogs strip these regardless
+   of print-color-adjust, leaving white text invisible on white paper. Force a
+   guaranteed-visible black-on-white style for print specifically. */
+@media print {
+    .top-strip, .sec-head, .edu-tbl th {
+        background:white !important; color:#000 !important; border:1px solid #000 !important;
+    }
+    .top-strip .ts-lbl { color:#000 !important; }
+}
 
 .edu-tbl { width:100%; border-collapse:collapse; font-size:9.5px; }
 .edu-tbl th { background:#1e293b; color:white; padding:3px 5px; border:1px solid #000; }
@@ -483,16 +494,11 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
             @endfor
         </tr>
         @endforeach
-        {{-- Course & session info --}}
+        {{-- Course, Stream, Year/Sem & Session already shown in the top strip --}}
         <tr>
-            <td class="lc">Course</td><td class="vc">{{ $student->stream->course->name ?? '' }}</td>
-            <td class="lc">Stream</td><td class="vc">{{ $student->stream->name ?? '' }}</td>
-            <td class="lc">Year/Sem</td><td class="vc">{{ $yearSemLabel }}</td>
-        </tr>
-        <tr>
-            <td class="lc">Session</td><td class="vc">{{ $student->session->name ?? '' }}</td>
             <td class="lc">Admission Date</td><td class="vc">{{ $student->admission_date?->format('d/m/Y') }}</td>
             <td class="lc">Submitted Date</td><td class="vc">{{ optional($student->submitted_date ?? $student->created_at)->format('d/m/Y') }}</td>
+            <td class="lc"></td><td class="vc"></td>
         </tr>
         {{-- Admission classification --}}
         <tr>

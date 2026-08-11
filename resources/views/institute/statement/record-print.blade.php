@@ -42,17 +42,20 @@
             color: #000;
             line-height: 1.3;
         }
-        /* Vertical breathing space wrapper par — taaki body.height inflate na ho */
+        /* Vertical breathing space wrapper par - taaki body.height inflate na ho */
         #thermal-receipt {
-            padding-top: 4mm;
-            padding-bottom: 4mm;
+            padding-top: 1.5mm;
+            padding-bottom: 0.5mm;
         }
         @media print {
             @page { size: 80mm auto; margin: 0mm; }
             html, body {
                 width: 80mm;
                 max-width: 80mm;
+                min-height: 0 !important;
+                height: auto !important;
                 padding: 0 2.6mm;
+                overflow: visible !important;
                 font-size: 10px;
                 font-weight: 600;
             }
