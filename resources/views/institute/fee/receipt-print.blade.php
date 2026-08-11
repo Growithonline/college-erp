@@ -194,20 +194,21 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
    Print Media
 ══════════════════════════════════════ */
 @media print {
+    html, body { min-height:0 !important; }
     body { background:white; }
     .page-shell  { height:auto; display:block; }
-    .workspace   { display:block; }
+    .workspace   { display:block; min-height:0; overflow:visible; }
     .sidebar, .top-bar { display:none !important; }
-    .preview-pane { padding:0; overflow:visible; }
+    .preview-pane { padding:0; overflow:visible; min-height:0; }
 
     body.print-a4 #a4-view      { display:block !important; }
     body.print-a4 #thermal-view { display:none  !important; }
     body.print-a4 .a4-sheet     { width:200mm; height:148.5mm; border:none; margin:0 auto; }
 
-    body.print-thermal #thermal-view { display:block !important; }
+    body.print-thermal #thermal-view { display:block !important; width:80mm; margin:0 !important; padding:0 !important; }
     body.print-thermal #a4-view      { display:none  !important; }
-    body.print-thermal .thermal-sheet { border:none; width:76mm; max-width:76mm; margin:0; padding:2mm 2.6mm; }
-    body.print-thermal { width:80mm; margin:0 !important; padding:0 !important; }
+    body.print-thermal .thermal-sheet { border:none; width:76mm; max-width:76mm; margin:0 !important; padding:1.5mm 2mm 0.5mm; }
+    body.print-thermal { width:80mm; min-height:0 !important; margin:0 !important; padding:0 !important; }
 
     body.print-pdf #a4-view      { display:block !important; }
     body.print-pdf #thermal-view { display:none  !important; }
@@ -659,9 +660,29 @@ function syncPageStyle(mode) {
 
 function thermalPageCss() {
     const sheet = document.querySelector('#thermal-view .thermal-sheet');
-    const heightMm = sheet ? Math.ceil(sheet.scrollHeight * 25.4 / 96) + 1 : 140;
-    return `@page { size: 80mm ${heightMm}mm; margin: 0.5mm 0mm; }
-@media print { html, body { width:80mm; height:${heightMm}mm; margin:0 !important; padding:0 !important; overflow:hidden !important; } }`;
+    const heightMm = sheet ? Math.max(70, Math.ceil(sheet.scrollHeight * 25.4 / 96) + 4) : 110;
+    return `@page { size: 80mm ${heightMm}mm; margin: 0mm; }
+@media print {
+    html, body {
+        width:80mm !important;
+        min-height:0 !important;
+        height:auto !important;
+        margin:0 !important;
+        padding:0 !important;
+        overflow:visible !important;
+    }
+    body.print-thermal .page-shell,
+    body.print-thermal .workspace,
+    body.print-thermal .preview-pane,
+    body.print-thermal #thermal-view {
+        width:80mm !important;
+        height:auto !important;
+        min-height:0 !important;
+        margin:0 !important;
+        padding:0 !important;
+        overflow:visible !important;
+    }
+}`;
 }
 
 function a4PageCss() {
