@@ -35,16 +35,16 @@
             width: 80mm;
             max-width: 80mm;
             margin: 0;
-            padding: 0 2.6mm;
+            padding: 0 3mm;
             font-family: Verdana, sans-serif;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 600;
             background: #fff;
             color: #000;
-            line-height: 1.3;
+            line-height: 1.18;
         }
         #thermal-receipt {
-            padding-top: 1.5mm;
+            padding-top: 1mm;
             padding-bottom: 0.5mm;
             break-inside: avoid;
             page-break-inside: avoid;
@@ -57,9 +57,9 @@
                 max-width: 80mm;
                 min-height: 0 !important;
                 height: auto !important;
-                padding: 0 2.6mm;
+                padding: 0 3mm;
                 overflow: visible !important;
-                font-size: 10px;
+                font-size: 9px;
                 font-weight: 600;
             }
         }
@@ -85,22 +85,22 @@
         .center { text-align: center; }
         .right   { text-align: right; }
         .bold    { font-weight: bold; }
-        .divider { border-top: 1px dashed #000; margin: 4px 0; }
-        .divider-solid { border-top: 2px solid #000; margin: 4px 0; }
-        .inst-name  { font-size: {{ $isThermal ? '13px' : '18px' }}; font-weight: {{ $isThermal ? '700' : '900' }}; }
-        .inst-addr  { font-size: {{ $isThermal ? '9px' : '11px' }}; font-weight: {{ $isThermal ? '600' : '500' }}; margin-top: 1px; }
-        .rec-title  { font-size: {{ $isThermal ? '11px' : '14px' }}; font-weight: 800; margin: 3px 0; {{ $isThermal ? 'border:1px solid #000;padding:2px;text-align:center;' : 'letter-spacing:0.4px;' }} }
+        .divider { border-top: 1px dashed #000; margin: 2px 0; }
+        .divider-solid { border-top: 1.5px solid #000; margin: 2px 0; }
+        .inst-name  { font-size: {{ $isThermal ? '11.5px' : '18px' }}; font-weight: {{ $isThermal ? '700' : '900' }}; }
+        .inst-addr  { font-size: {{ $isThermal ? '7.5px' : '11px' }}; font-weight: {{ $isThermal ? '600' : '500' }}; margin-top: 0; }
+        .rec-title  { font-size: {{ $isThermal ? '9.5px' : '14px' }}; font-weight: 800; margin: {{ $isThermal ? '2px 0' : '3px 0' }}; {{ $isThermal ? 'border:1px solid #000;padding:1px 2px;text-align:center;' : 'letter-spacing:0.4px;' }} }
         .kv {
             display: flex;
             justify-content: space-between;
-            padding: {{ $isThermal ? '1px 0' : '3px 0' }};
-            font-size: {{ $isThermal ? '10px' : '11px' }};
-            font-weight: {{ $isThermal ? '600' : 'normal' }};
-            line-height: {{ $isThermal ? '1.3' : '1.45' }};
-            margin-bottom: {{ $isThermal ? '2px' : '0' }};
+            padding: {{ $isThermal ? '0.5px 0' : '3px 0' }};
+            font-size: {{ $isThermal ? '8.8px' : '11px' }};
+            font-weight: {{ $isThermal ? '700' : 'normal' }};
+            line-height: {{ $isThermal ? '1.18' : '1.45' }};
+            margin-bottom: {{ $isThermal ? '1px' : '0' }};
         }
-        .kv .lbl { {{ $isThermal ? 'white-space:nowrap;' : 'flex:1;' }} }
-        .kv .val { text-align: right; max-width: {{ $isThermal ? '44mm' : '58%' }}; font-weight: {{ $isThermal ? '600' : '800' }}; word-break: break-word; }
+        .kv .lbl { {{ $isThermal ? 'white-space:nowrap;min-width:24mm;flex:0 0 24mm;' : 'flex:1;' }} }
+        .kv .val { text-align: right; max-width: {{ $isThermal ? '43mm' : '58%' }}; font-weight: {{ $isThermal ? '700' : '800' }}; word-break: normal; overflow-wrap: anywhere; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -119,10 +119,10 @@
         .tr { text-align: right; }
         .tfoot-row td { border-top: 2px solid #000; font-weight: 800; padding-top: 3px; }
         .total-bal {
-            font-size: {{ $isThermal ? '13px' : '18px' }};
+            font-size: {{ $isThermal ? '11.5px' : '18px' }};
             font-weight: 900;
             text-align: center;
-            padding: 4px 0 2px;
+            padding: {{ $isThermal ? '2px 0 1px' : '4px 0 2px' }};
         }
         .qr-code {
             display: block;
