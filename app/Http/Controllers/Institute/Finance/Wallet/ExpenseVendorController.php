@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\ExpenseCategoryL1;
 use App\Models\ExpenseCategoryL2;
 use App\Models\ExpenseVendor;
+use App\Models\ExpenseVendorWorkOrder;
 use Illuminate\Http\Request;
 
 class ExpenseVendorController extends Controller
@@ -104,6 +105,11 @@ class ExpenseVendorController extends Controller
         if (Expense::where('expense_vendor_id', $vendor->id)->exists()) {
             return redirect()->route('finance.wallet.expense-categories.sub.vendors.index', [$expenseCategory, $sub])
                 ->with('error', 'This vendor is used on existing expenses and cannot be deleted.');
+        }
+
+        if (ExpenseVendorWorkOrder::where('expense_vendor_id', $vendor->id)->exists()) {
+            return redirect()->route('finance.wallet.expense-categories.sub.vendors.index', [$expenseCategory, $sub])
+                ->with('error', 'This vendor has work orders and cannot be deleted.');
         }
 
         $vendor->delete();

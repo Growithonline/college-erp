@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\HasInstituteId;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicSession;
 use App\Models\Expense;
+use App\Models\ExpenseVendorWorkOrder;
 use App\Models\FinanceSetting;
 use App\Services\InstituteWalletService;
 use App\Services\JournalService;
@@ -87,6 +88,11 @@ class ExpenseApprovalController extends Controller
                 // Debit wallet (inside this transaction — wallet service uses its own nested tx)
                 if ($walletSessionId) {
                     InstituteWalletService::debitExpense($fresh->fresh(['categoryL2', 'vendor']));
+
+                    if ($fresh->expense_vendor_work_order_id) {
+                        ExpenseVendorWorkOrder::find($fresh->expense_vendor_work_order_id)
+                            ?->debit((float) $fresh->amount, $fresh->id, 'Expense approved: ' . $fresh->description, $approverId);
+                    }
                 }
             });
         } catch (InsufficientWalletBalanceException $e) {

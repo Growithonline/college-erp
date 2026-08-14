@@ -55,6 +55,7 @@ use App\Http\Controllers\Institute\Finance\Wallet\ManualIncomeController;
 use App\Http\Controllers\Institute\Finance\Wallet\ExpenseCategoryL1Controller;
 use App\Http\Controllers\Institute\Finance\Wallet\ExpenseCategoryL2Controller;
 use App\Http\Controllers\Institute\Finance\Wallet\ExpenseVendorController;
+use App\Http\Controllers\Institute\Finance\Wallet\ExpenseVendorWorkOrderController;
 use App\Http\Controllers\Institute\Finance\Wallet\ExpenseApprovalController;
 use App\Http\Controllers\Institute\Finance\Wallet\ExpenseApprovalLimitController;
 use App\Http\Controllers\Institute\Finance\Wallet\ChequePaymentController;
@@ -546,6 +547,18 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
                     Route::get('/{vendor}/edit', [ExpenseVendorController::class, 'edit'])->name('edit');
                     Route::put('/{vendor}', [ExpenseVendorController::class, 'update'])->name('update');
                     Route::delete('/{vendor}', [ExpenseVendorController::class, 'destroy'])->name('destroy');
+
+                    // Work Orders (nested under Vendor)
+                    Route::prefix('/{vendor}/work-orders')->name('work-orders.')->group(function () {
+                        Route::get('/', [ExpenseVendorWorkOrderController::class, 'index'])->name('index');
+                        Route::get('/create', [ExpenseVendorWorkOrderController::class, 'create'])->name('create');
+                        Route::post('/', [ExpenseVendorWorkOrderController::class, 'store'])->name('store');
+                        Route::get('/{workOrder}/edit', [ExpenseVendorWorkOrderController::class, 'edit'])->name('edit');
+                        Route::put('/{workOrder}', [ExpenseVendorWorkOrderController::class, 'update'])->name('update');
+                        Route::post('/{workOrder}/topup', [ExpenseVendorWorkOrderController::class, 'topup'])->name('topup');
+                        Route::get('/{workOrder}/ledger', [ExpenseVendorWorkOrderController::class, 'ledger'])->name('ledger');
+                        Route::post('/{workOrder}/close', [ExpenseVendorWorkOrderController::class, 'close'])->name('close');
+                    });
                 });
             });
 
@@ -561,6 +574,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
             // AJAX: cascade dropdowns
             Route::get('ajax/sub-categories', [ExpenseCategoryAjaxController::class, 'subCategories'])->name('ajax.sub-categories');
             Route::get('ajax/vendors', [ExpenseCategoryAjaxController::class, 'vendors'])->name('ajax.vendors');
+            Route::get('ajax/work-orders', [ExpenseCategoryAjaxController::class, 'workOrders'])->name('ajax.work-orders');
 
             // Phase 7: Reports
             Route::get('reports/income', [WalletDashboardController::class, 'incomeReport'])->name('reports.income');
@@ -1336,6 +1350,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::post('/expenses/{expense}/retry-posting', [StaffFinanceController::class, 'retryExpensePosting'])->name('expenses.retry-posting');
             Route::get('ajax/sub-categories', [ExpenseCategoryAjaxController::class, 'subCategories'])->name('ajax.sub-categories');
             Route::get('ajax/vendors',        [ExpenseCategoryAjaxController::class, 'vendors'])->name('ajax.vendors');
+            Route::get('ajax/work-orders',     [ExpenseCategoryAjaxController::class, 'workOrders'])->name('ajax.work-orders');
             Route::get('/salary',                              [StaffFinanceController::class, 'salary'])->name('salary.index');
             Route::get('/salary/{salaryRecord}/pay',          [StaffFinanceController::class, 'paySalary'])->name('salary.pay');
             Route::post('/salary/{salaryRecord}/mark-paid',   [StaffFinanceController::class, 'markSalaryPaid'])->name('salary.mark-paid');

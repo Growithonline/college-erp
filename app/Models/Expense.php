@@ -41,6 +41,7 @@ class Expense extends Model
         'expense_category_l1_id',
         'expense_category_l2_id',
         'expense_vendor_id',
+        'expense_vendor_work_order_id',
         'approval_status',
         'approved_by_staff_id',
         'approved_at',
@@ -105,6 +106,11 @@ class Expense extends Model
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(ExpenseVendor::class, 'expense_vendor_id');
+    }
+
+    public function workOrder(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseVendorWorkOrder::class, 'expense_vendor_work_order_id');
     }
 
     public function approverStaff(): BelongsTo

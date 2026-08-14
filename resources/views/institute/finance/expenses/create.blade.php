@@ -91,6 +91,17 @@
                                         </select>
                                     </div>
                                 </div>
+                                <div class="row g-2 mt-1">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Work Order <span class="text-muted">(optional)</span></label>
+                                        <select name="expense_vendor_work_order_id" id="work_order_select" class="form-select form-select-sm">
+                                            <option value="">-- No Work Order --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <div id="wo_budget_hint" class="small"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -190,9 +201,11 @@
 <script>
 const paymentModeEl = document.getElementById('payment_mode');
 const bankWrapEl    = document.getElementById('bank_account_wrap');
-const l1Select      = document.getElementById('l1_select');
-const l2Select      = document.getElementById('l2_select');
-const vendorSelect  = document.getElementById('vendor_select');
+const l1Select        = document.getElementById('l1_select');
+const l2Select        = document.getElementById('l2_select');
+const vendorSelect    = document.getElementById('vendor_select');
+const workOrderSelect = document.getElementById('work_order_select');
+const woBudgetHint    = document.getElementById('wo_budget_hint');
 const amountField   = document.getElementById('amount_field');
 const approvalWarn  = document.getElementById('approval_warning');
 const autoLimit     = {{ isset($autoApproveLimit) && $autoApproveLimit < PHP_INT_MAX ? $autoApproveLimit : 'null' }};
@@ -213,6 +226,8 @@ if (amountField && approvalWarn && autoLimit !== null) {
 l1Select.addEventListener('change', async () => {
     l2Select.innerHTML = '<option value="">Loading...</option>';
     vendorSelect.innerHTML = '<option value="">-- Select Vendor --</option>';
+    workOrderSelect.innerHTML = '<option value="">-- No Work Order --</option>';
+    woBudgetHint.innerHTML = '';
 
     const l1Id = l1Select.value;
     if (!l1Id) {
@@ -231,6 +246,8 @@ l1Select.addEventListener('change', async () => {
 
 l2Select.addEventListener('change', async () => {
     vendorSelect.innerHTML = '<option value="">Loading...</option>';
+    workOrderSelect.innerHTML = '<option value="">-- No Work Order --</option>';
+    woBudgetHint.innerHTML = '';
 
     const l2Id = l2Select.value;
     if (!l2Id) {
@@ -246,6 +263,41 @@ l2Select.addEventListener('change', async () => {
         const phone = v.contact_phone ? ` (${v.contact_phone})` : '';
         vendorSelect.innerHTML += `<option value="${v.id}">${v.name}${phone}</option>`;
     });
+});
+
+vendorSelect.addEventListener('change', async () => {
+    workOrderSelect.innerHTML = '<option value="">Loading...</option>';
+    woBudgetHint.innerHTML = '';
+
+    const vendorId = vendorSelect.value;
+    if (!vendorId) {
+        workOrderSelect.innerHTML = '<option value="">-- No Work Order --</option>';
+        return;
+    }
+
+    const res = await fetch(`{{ $workOrderAjaxUrl }}?vendor_id=${vendorId}`);
+    const data = await res.json();
+
+    workOrderSelect.innerHTML = '<option value="">-- No Work Order --</option>';
+    data.forEach(w => {
+        workOrderSelect.innerHTML += `<option value="${w.id}" data-remaining="${w.remaining_amount}">${w.title}</option>`;
+    });
+});
+
+workOrderSelect.addEventListener('change', () => {
+    const selected = workOrderSelect.options[workOrderSelect.selectedIndex];
+    const remaining = selected ? parseFloat(selected.dataset.remaining) : NaN;
+
+    if (!workOrderSelect.value || isNaN(remaining)) {
+        woBudgetHint.innerHTML = '';
+        return;
+    }
+
+    if (remaining < 0) {
+        woBudgetHint.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>Already over budget by ₹${Math.abs(remaining).toFixed(2)}</span>`;
+    } else {
+        woBudgetHint.innerHTML = `<span class="text-success">Remaining budget: ₹${remaining.toFixed(2)}</span>`;
+    }
 });
 </script>
 @endpush

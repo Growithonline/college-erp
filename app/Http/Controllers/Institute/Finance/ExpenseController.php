@@ -10,6 +10,7 @@ use App\Models\Account;
 use App\Models\Expense;
 use App\Models\ExpenseApprovalLimit;
 use App\Models\ExpenseCategoryL1;
+use App\Models\ExpenseVendorWorkOrder;
 use App\Models\FinanceSetting;
 use App\Models\InstituteBankAccount;
 use App\Services\InstituteWalletService;
@@ -145,11 +146,12 @@ class ExpenseController extends Controller
 
         $subCategoryAjaxUrl = route('finance.wallet.ajax.sub-categories');
         $vendorAjaxUrl      = route('finance.wallet.ajax.vendors');
+        $workOrderAjaxUrl   = route('finance.wallet.ajax.work-orders');
 
         return view('institute.finance.expenses.create', compact(
             'expenseAccounts', 'bankAccounts', 'sessions', 'settings',
             'l1Categories', 'autoApproveLimit', 'walletBalance', 'activeSessionId',
-            'subCategoryAjaxUrl', 'vendorAjaxUrl'
+            'subCategoryAjaxUrl', 'vendorAjaxUrl', 'workOrderAjaxUrl'
         ));
     }
 
@@ -168,6 +170,7 @@ class ExpenseController extends Controller
             'expense_category_l1_id'=> ['nullable', 'integer', Rule::exists('expense_categories_l1', 'id')->where('institute_id', $instituteId)],
             'expense_category_l2_id'=> ['nullable', 'integer', Rule::exists('expense_categories_l2', 'id')->where('institute_id', $instituteId)],
             'expense_vendor_id'     => ['nullable', 'integer', Rule::exists('expense_vendors', 'id')->where('institute_id', $instituteId)],
+            'expense_vendor_work_order_id' => ['nullable', 'integer', Rule::exists('expense_vendor_work_orders', 'id')->where('institute_id', $instituteId)],
             'amount'                => 'required|numeric|min:0.01',
             'payment_mode'          => 'required|in:cash,bank',
             'bank_account_id'       => 'nullable|integer|required_if:payment_mode,bank',
@@ -241,6 +244,7 @@ class ExpenseController extends Controller
             'expense_category_l1_id' => $validated['expense_category_l1_id'] ?? null,
             'expense_category_l2_id' => $validated['expense_category_l2_id'] ?? null,
             'expense_vendor_id'      => $validated['expense_vendor_id'] ?? null,
+            'expense_vendor_work_order_id' => $validated['expense_vendor_work_order_id'] ?? null,
             'created_by'             => auth()->id(),
         ];
 
@@ -264,6 +268,11 @@ class ExpenseController extends Controller
 
                 if ($walletSessionId) {
                     InstituteWalletService::debitExpense($expense->fresh(['categoryL2', 'vendor']));
+
+                    if ($expense->expense_vendor_work_order_id) {
+                        ExpenseVendorWorkOrder::find($expense->expense_vendor_work_order_id)
+                            ?->debit((float) $expense->amount, $expense->id, 'Expense: ' . $expense->description, auth()->id());
+                    }
                 }
 
                 return $expense;
@@ -332,8 +341,19 @@ class ExpenseController extends Controller
 
         $reversalEntry = JournalService::safeReverseExpense($expense, $validated['reversal_reason']);
 
+        // Capture BEFORE creditExpenseReversal() flips wallet_debited — this is the only
+        // reliable signal that the expense actually debited the wallet (a still-PENDING,
+        // never-debited expense can also reach this method, since reverse() doesn't gate
+        // on approval_status).
+        $hadDebitedWallet = (bool) $expense->wallet_debited;
+
         // Credit wallet back if this expense had debited the wallet
         InstituteWalletService::creditExpenseReversal($expense->fresh());
+
+        if ($hadDebitedWallet && $expense->expense_vendor_work_order_id) {
+            ExpenseVendorWorkOrder::find($expense->expense_vendor_work_order_id)
+                ?->creditBack((float) $expense->amount, $expense->id, 'Expense reversed: ' . $validated['reversal_reason'], auth()->id());
+        }
 
         $expense->update([
             'is_reversed'               => true,

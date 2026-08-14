@@ -29,6 +29,11 @@ class ExpenseVendor extends Model
         return $this->belongsTo(ExpenseCategoryL2::class, 'l2_id');
     }
 
+    public function workOrders()
+    {
+        return $this->hasMany(ExpenseVendorWorkOrder::class, 'expense_vendor_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

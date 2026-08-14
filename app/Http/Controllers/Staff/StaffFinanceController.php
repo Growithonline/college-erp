@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\Expense;
 use App\Models\ExpenseApprovalLimit;
 use App\Models\ExpenseCategoryL1;
+use App\Models\ExpenseVendorWorkOrder;
 use App\Models\FinanceSetting;
 use App\Models\InstituteBankAccount;
 use App\Models\SalaryRecord;
@@ -144,11 +145,12 @@ class StaffFinanceController extends Controller
 
         $subCategoryAjaxUrl = route('staff.finance.ajax.sub-categories');
         $vendorAjaxUrl      = route('staff.finance.ajax.vendors');
+        $workOrderAjaxUrl   = route('staff.finance.ajax.work-orders');
 
         return view('institute.finance.expenses.create', compact(
             'expenseAccounts', 'bankAccounts', 'sessions', 'settings',
             'l1Categories', 'autoApproveLimit', 'walletBalance', 'activeSessionId',
-            'subCategoryAjaxUrl', 'vendorAjaxUrl'
+            'subCategoryAjaxUrl', 'vendorAjaxUrl', 'workOrderAjaxUrl'
         ))->with('layout', 'staff.layout')->with('rp', 'staff.finance');
     }
 
@@ -166,6 +168,7 @@ class StaffFinanceController extends Controller
             'expense_category_l1_id' => ['nullable', 'integer', Rule::exists('expense_categories_l1', 'id')->where('institute_id', $instituteId)],
             'expense_category_l2_id' => ['nullable', 'integer', Rule::exists('expense_categories_l2', 'id')->where('institute_id', $instituteId)],
             'expense_vendor_id'      => ['nullable', 'integer', Rule::exists('expense_vendors', 'id')->where('institute_id', $instituteId)],
+            'expense_vendor_work_order_id' => ['nullable', 'integer', Rule::exists('expense_vendor_work_orders', 'id')->where('institute_id', $instituteId)],
             'amount'                 => 'required|numeric|min:0.01',
             'payment_mode'           => 'required|in:cash,bank',
             'bank_account_id'        => 'nullable|integer|required_if:payment_mode,bank',
@@ -242,6 +245,7 @@ class StaffFinanceController extends Controller
             'expense_category_l1_id'  => $validated['expense_category_l1_id'] ?? null,
             'expense_category_l2_id'  => $validated['expense_category_l2_id'] ?? null,
             'expense_vendor_id'       => $validated['expense_vendor_id'] ?? null,
+            'expense_vendor_work_order_id' => $validated['expense_vendor_work_order_id'] ?? null,
             'created_by'              => $staff->id,
         ];
 
@@ -271,6 +275,11 @@ class StaffFinanceController extends Controller
 
                 if ($walletSessionId) {
                     InstituteWalletService::debitExpense($expense->fresh(['categoryL2', 'vendor']));
+
+                    if ($expense->expense_vendor_work_order_id) {
+                        ExpenseVendorWorkOrder::find($expense->expense_vendor_work_order_id)
+                            ?->debit((float) $expense->amount, $expense->id, 'Expense: ' . $expense->description, $staff->id);
+                    }
                 }
 
                 return $expense;

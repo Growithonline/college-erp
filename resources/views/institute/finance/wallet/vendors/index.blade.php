@@ -56,6 +56,10 @@
                         </span>
                     </td>
                     <td class="text-end">
+                        <a href="{{ route('finance.wallet.expense-categories.sub.vendors.work-orders.index', [$expenseCategory, $sub, $vendor]) }}"
+                           class="btn btn-sm btn-outline-secondary" title="Work Orders">
+                            <i class="bi bi-clipboard-data"></i>
+                        </a>
                         <a href="{{ route('finance.wallet.expense-categories.sub.vendors.edit', [$expenseCategory, $sub, $vendor]) }}"
                            class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-pencil"></i>
