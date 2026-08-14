@@ -526,6 +526,10 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
             Route::get('manual-income/create', [ManualIncomeController::class, 'create'])->name('manual-income.create');
             Route::post('manual-income', [ManualIncomeController::class, 'store'])->name('manual-income.store');
 
+            // All Vendors — flat list across every category, with a direct link into each
+            // vendor's work-order wallet (shortcut around the Category -> Sub-Category -> Vendors drill-down)
+            Route::get('vendors', [ExpenseVendorController::class, 'all'])->name('vendors.index');
+
             // Expense categories L1
             Route::resource('expense-categories', ExpenseCategoryL1Controller::class)->except(['show'])
                 ->parameter('expense-categories', 'expenseCategory');

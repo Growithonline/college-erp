@@ -1054,6 +1054,10 @@
                            href="{{ route('finance.wallet.expense-categories.index') }}">
                         <i class="bi bi-diagram-3"></i> Expense Categories
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('finance.wallet.vendors.index') ? 'active' : '' }}"
+                           href="{{ route('finance.wallet.vendors.index') }}">
+                        <i class="bi bi-person-workspace"></i> Vendors
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('finance.wallet.approval-limits.*') ? 'active' : '' }}"
                            href="{{ route('finance.wallet.approval-limits.index') }}">
                         <i class="bi bi-shield-check"></i> Approval Limits

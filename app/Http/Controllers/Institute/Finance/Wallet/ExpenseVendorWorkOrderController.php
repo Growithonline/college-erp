@@ -118,11 +118,14 @@ class ExpenseVendorWorkOrderController extends Controller
         $this->authorizeVendor($expenseCategory, $sub, $vendor);
         abort_if($workOrder->expense_vendor_id !== $vendor->id, 404);
 
-        $transactions = $workOrder->transactions()->orderBy('id')->paginate(30)->withQueryString();
+        // Not paginated — mirrors the other ledger views in this module (student wallet,
+        // expense-category ledger), since the running Op. Bal/Cl. Bal shown per row is
+        // computed live in the view and needs the full ordered set to stay correct.
+        $transactions = $workOrder->transactions()->orderBy('id')->get();
 
-        $totalCredit = (float) $workOrder->transactions()->where('type', 'credit')->sum('amount');
-        $totalDebit  = (float) $workOrder->transactions()->where('type', 'debit')->sum('amount');
-        $totalEntries = $workOrder->transactions()->count();
+        $totalCredit  = (float) $transactions->where('type', 'credit')->sum('amount');
+        $totalDebit   = (float) $transactions->where('type', 'debit')->sum('amount');
+        $totalEntries = $transactions->count();
 
         return view('institute.finance.wallet.work-orders.ledger', compact(
             'expenseCategory', 'sub', 'vendor', 'workOrder',

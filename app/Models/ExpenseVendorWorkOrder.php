@@ -69,10 +69,13 @@ class ExpenseVendorWorkOrder extends Model
             $locked = static::query()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
 
             $newRemaining = (float) $locked->remaining_amount + $amount;
-            $locked->update([
+            // total_budget/remaining_amount are deliberately excluded from $fillable
+            // (never mass-assignable from a controller/form) — forceFill() is required
+            // here since this is the one trusted internal write path allowed to touch them.
+            $locked->forceFill([
                 'total_budget'     => (float) $locked->total_budget + $amount,
                 'remaining_amount' => $newRemaining,
-            ]);
+            ])->save();
             $locked->transactions()->create([
                 'type'          => 'credit',
                 'amount'        => $amount,
@@ -97,10 +100,10 @@ class ExpenseVendorWorkOrder extends Model
             // No floor here — remaining_amount is allowed to go negative (over-budget),
             // it's a soft warning signal, not a hard block.
             $newRemaining = (float) $locked->remaining_amount - $amount;
-            $locked->update([
+            $locked->forceFill([
                 'total_spent'      => (float) $locked->total_spent + $amount,
                 'remaining_amount' => $newRemaining,
-            ]);
+            ])->save();
             $locked->transactions()->create([
                 'type'          => 'debit',
                 'amount'        => $amount,
@@ -124,10 +127,10 @@ class ExpenseVendorWorkOrder extends Model
             $locked = static::query()->whereKey($this->getKey())->lockForUpdate()->firstOrFail();
 
             $newRemaining = (float) $locked->remaining_amount + $amount;
-            $locked->update([
+            $locked->forceFill([
                 'total_spent'      => max(0, (float) $locked->total_spent - $amount),
                 'remaining_amount' => $newRemaining,
-            ]);
+            ])->save();
             $locked->transactions()->create([
                 'type'          => 'credit',
                 'amount'        => $amount,

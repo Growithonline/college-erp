@@ -53,9 +53,9 @@
     </div>
     <div class="col-md-3">
         <div class="card border-0 shadow-sm text-center py-3">
-            <div class="text-muted small mb-1">Remaining</div>
+            <div class="text-muted small mb-1">Closing Balance</div>
             <div class="fw-bold fs-5 {{ $workOrder->isOverBudget() ? 'text-danger' : 'text-success' }}">
-                ₹{{ number_format($workOrder->remaining_amount, 2) }}
+                ₹{{ number_format($totalCredit - $totalDebit, 2) }}
             </div>
         </div>
     </div>
@@ -66,59 +66,65 @@
         <span class="fw-bold"><i class="bi bi-tag me-1 text-primary"></i>{{ $vendor->name }} — {{ $workOrder->title }}</span>
         <small class="text-muted">{{ $totalEntries }} records</small>
     </div>
+
+    @if($transactions->isEmpty())
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+        No transactions yet.
+    </div>
+    @else
     <div class="table-responsive">
         <table class="table table-hover mb-0 align-middle small">
             <thead class="table-light">
                 <tr>
                     <th>#</th>
                     <th>Date</th>
-                    <th>Type</th>
-                    <th class="text-end">Amount</th>
-                    <th class="text-end">Op. Bal</th>
-                    <th class="text-end">Balance</th>
                     <th>Note</th>
                     <th>Linked Expense</th>
+                    <th class="text-end text-danger">Debit</th>
+                    <th class="text-end text-success">Credit</th>
+                    <th class="text-end">Op. Bal</th>
+                    <th class="text-end">Cl. Bal</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($transactions as $i => $tx)
+                @php $runningBal = 0.0; @endphp
+                @foreach($transactions as $i => $tx)
                 @php
-                    $opBal = $tx->type === 'credit'
-                        ? (float) $tx->balance_after - (float) $tx->amount
-                        : (float) $tx->balance_after + (float) $tx->amount;
+                    $opBal = $runningBal;
+                    $runningBal += $tx->type === 'credit' ? (float) $tx->amount : -(float) $tx->amount;
+                    $clBal = $runningBal;
                 @endphp
                 <tr>
-                    <td class="text-muted">{{ $transactions->firstItem() + $i }}</td>
+                    <td class="text-muted">{{ $i + 1 }}</td>
                     <td class="text-nowrap">{{ $tx->created_at->format('d-m-Y H:i') }}</td>
-                    <td>
-                        <span class="badge {{ $tx->type === 'credit' ? 'bg-success' : 'bg-danger' }} bg-opacity-75">
-                            {{ ucfirst($tx->type) }}
-                        </span>
-                    </td>
-                    <td class="text-end fw-semibold {{ $tx->type === 'credit' ? 'text-success' : 'text-danger' }}">
-                        {{ $tx->type === 'credit' ? '+' : '-' }}₹{{ number_format($tx->amount, 2) }}
-                    </td>
-                    <td class="text-end text-muted">₹{{ number_format($opBal, 2) }}</td>
-                    <td class="text-end fw-bold {{ (float) $tx->balance_after < 0 ? 'text-danger' : 'text-dark' }}">
-                        ₹{{ number_format($tx->balance_after, 2) }}
-                    </td>
                     <td class="text-muted">{{ $tx->note ?? '-' }}</td>
                     <td class="text-muted">{{ $tx->expense_id ? 'Expense #' . $tx->expense_id : '-' }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="8" class="text-center text-muted py-5">
-                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                        No transactions yet.
+                    <td class="text-end text-danger fw-semibold">
+                        {{ $tx->type === 'debit' ? '₹' . number_format($tx->amount, 2) : '-' }}
+                    </td>
+                    <td class="text-end text-success fw-semibold">
+                        {{ $tx->type === 'credit' ? '₹' . number_format($tx->amount, 2) : '-' }}
+                    </td>
+                    <td class="text-end text-muted">₹{{ number_format($opBal, 2) }}</td>
+                    <td class="text-end fw-bold {{ $clBal < 0 ? 'text-danger' : 'text-dark' }}">
+                        ₹{{ number_format($clBal, 2) }}
                     </td>
                 </tr>
-                @endforelse
+                @endforeach
             </tbody>
+            <tfoot class="table-light fw-semibold">
+                <tr>
+                    <td colspan="4">Total</td>
+                    <td class="text-end text-danger">₹{{ number_format($totalDebit, 2) }}</td>
+                    <td class="text-end text-success">₹{{ number_format($totalCredit, 2) }}</td>
+                    <td></td>
+                    <td class="text-end {{ $clBal < 0 ? 'text-danger' : 'text-dark' }}">
+                        Closing: ₹{{ number_format($clBal, 2) }}
+                    </td>
+                </tr>
+            </tfoot>
         </table>
-    </div>
-    @if($transactions->hasPages())
-    <div class="card-footer bg-white">
-        {{ $transactions->links() }}
     </div>
     @endif
 </div>

@@ -15,6 +15,16 @@ class ExpenseVendorController extends Controller
 {
     use HasInstituteId;
 
+    public function all()
+    {
+        $vendors = ExpenseVendor::where('institute_id', $this->instituteId())
+            ->with('subCategory.category')
+            ->orderBy('name')
+            ->get();
+
+        return view('institute.finance.wallet.vendors.all', compact('vendors'));
+    }
+
     public function index(ExpenseCategoryL1 $expenseCategory, ExpenseCategoryL2 $sub)
     {
         abort_if($expenseCategory->institute_id !== $this->instituteId(), 403);
