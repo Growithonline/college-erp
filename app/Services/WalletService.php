@@ -356,6 +356,52 @@ class WalletService
         JournalService::safePostAdmissionFeeAssigned($student, $feeData);
     }
 
+    /**
+     * Records a pre-existing due for a semester the student had already completed
+     * before entering this system — used by bulk import when migrating previous-year
+     * or passed-out students who still owe money from before. Debits the wallet
+     * directly and labels the transaction "Previous Due (Semester N)" so it is picked
+     * up by the same 'Previous Due (%' lookup buildPromotionAwareFeeState() already
+     * uses for promotion-carried dues (see WalletService::buildPromotionAwareFeeState()) —
+     * no separate display logic needed on the Fee Collection page.
+     */
+    public static function chargeBulkImportPreviousDue(Student $student, int $semesterNumber, float $amount): void
+    {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $sessionId = (int) $student->academic_session_id;
+
+        DB::transaction(function () use ($student, $sessionId, $semesterNumber, $amount) {
+            $wallet = StudentWallet::firstOrCreate(
+                ['student_id' => $student->id, 'academic_session_id' => $sessionId],
+                ['institute_id' => $student->institute_id, 'main_b' => 0.00]
+            );
+            $wallet = StudentWallet::where('id', $wallet->id)->lockForUpdate()->first();
+
+            $opBal = (float) $wallet->main_b;
+            $clBal = round($opBal - $amount, 2);
+
+            self::createStudentTransaction([
+                'student_id'          => $student->id,
+                'institute_id'        => $student->institute_id,
+                'academic_session_id' => $sessionId,
+                'des'                 => 'Previous Due (Semester ' . $semesterNumber . ')',
+                'credit'              => 0.00,
+                'debit'               => $amount,
+                'type'                => StudentTransaction::DEBIT,
+                'date'                => now()->toDateString(),
+                'op_bal'              => $opBal,
+                'cl_bal'              => $clBal,
+                'by_user_id'          => self::resolveActorId(),
+            ]);
+
+            $wallet->main_b = $clBal;
+            $wallet->save();
+        });
+    }
+
     public static function onFeeCollection(FeeInvoice $invoice): void
     {
         $sessionId = $invoice->academic_session_id;

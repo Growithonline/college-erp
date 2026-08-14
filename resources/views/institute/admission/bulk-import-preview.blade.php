@@ -144,6 +144,7 @@
                         <th>Course</th>
                         <th>Stream</th>
                         <th class="text-center">Sem</th>
+                        <th>Status</th>
                         <th>UID</th>
                         <th>Roll No</th>
                         <th>Enrollment</th>
@@ -152,6 +153,7 @@
                         <th>Gender</th>
                         <th>Category</th>
                         <th>Source</th>
+                        <th>Prev. Due</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -166,6 +168,15 @@
                             <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">
                                 S{{ $row['current_semester'] }}
                             </span>
+                        </td>
+                        <td>
+                            @if(($row['student_status'] ?? 'active') === 'active')
+                                <span class="badge bg-success bg-opacity-10 text-success fw-normal" style="font-size:10px;">Active</span>
+                            @else
+                                <span class="badge bg-warning bg-opacity-25 text-warning-emphasis fw-normal" style="font-size:10px;">
+                                    {{ ucfirst(str_replace('_', ' ', $row['student_status'])) }}
+                                </span>
+                            @endif
                         </td>
                         <td class="text-muted" style="font-size:11px;">
                             {!! $row['student_uid'] ? e($row['student_uid']) : '<em class="text-success">Auto</em>' !!}
@@ -193,6 +204,17 @@
                             @endif
                         </td>
                         <td class="text-muted small">{{ ucfirst($row['admission_source']) }}</td>
+                        <td class="text-muted small">
+                            @if(!empty($row['semester_dues']))
+                                @php $totalDue = array_sum($row['semester_dues']); @endphp
+                                <span class="text-danger fw-semibold">₹{{ number_format($totalDue, 0) }}</span>
+                                <span class="text-muted" style="font-size:10px;">
+                                    (Sem {{ implode(', ', array_keys($row['semester_dues'])) }})
+                                </span>
+                            @else
+                                —
+                            @endif
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>

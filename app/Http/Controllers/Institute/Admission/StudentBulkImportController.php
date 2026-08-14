@@ -133,6 +133,9 @@ class StudentBulkImportController extends Controller
             'BF' => 'Scholarship Amount',
             'BG' => 'Scholarship Ref No',
             'BH' => 'Scholarship Applied Date',
+            'BI' => 'Student Status',
+            'BJ' => 'Due Semesters (comma-separated)',
+            'BK' => 'Due Amounts (comma-separated)',
         ];
 
         foreach ($headers as $col => $label) {
@@ -219,6 +222,9 @@ class StudentBulkImportController extends Controller
             'BF' => '',
             'BG' => '',
             'BH' => '',
+            'BI' => 'Active',
+            'BJ' => '',
+            'BK' => '',
         ];
 
         foreach ($example as $col => $val) {
@@ -297,7 +303,7 @@ class StudentBulkImportController extends Controller
             ['Mobile *',                    'Required. 10-digit mobile number. Must be unique.'],
             ['Course Name *',               'Required. Must match EXACTLY from "Courses_Streams" sheet (case-insensitive).'],
             ['Stream Name *',               'Required. Must match EXACTLY from "Courses_Streams" sheet for that course.'],
-            ['Semester *',                  'Required. Number from 1 to 8.'],
+            ['Semester *',                  'Required. Absolute semester/term number for that course (e.g. a 3-year, 2-semester/year course allows 1-6; a 4-year trimester course allows 1-12) — NOT a fixed 1-8 range.'],
             ['Admission Type',              'New / Lateral / Transfer / Readmission  (default: New)'],
             ['Admission Source',            'Direct / Center / Channel  (default: Direct)'],
             ['Source Name',                 'If source is Center or Channel, enter name from "Sources" sheet.'],
@@ -311,6 +317,10 @@ class StudentBulkImportController extends Controller
             ['Has Scholarship',             'Yes / No'],
             ['Scholarship Amount',          'Numeric value only. Example: 5000'],
             ['Scholarship Applied Date',    'Format: DD/MM/YYYY'],
+            ['Student Status',              'Active / Passed Out / Detained / Transferred / Cancelled (default: Active). Passed Out/Detained/Transferred/Cancelled students do NOT get a fresh current-semester fee charge — use this for migrating existing/previous-year or already-graduated students.'],
+            ['Semester * (for non-Active)', 'For Passed Out/Detained/Transferred/Cancelled students, enter their LAST/final semester here — not a currently-ongoing one.'],
+            ['Due Semesters',               'Optional. Comma-separated list of semester numbers that still have a pending balance from before joining this system. Example: 2,3'],
+            ['Due Amounts',                 'Optional. Comma-separated amounts matching Due Semesters 1-to-1, same order. Example: 4000,2500 means Semester 2 owes 4000 and Semester 3 owes 2500. For Active students, only semesters BEFORE the Semester * value can carry a due (the current semester\'s fee is auto-calculated by the system). For Passed Out/Detained/etc., dues up to and including the Semester * value are allowed. Shows up as "Previous Due (Semester N)" on the student\'s fee ledger.'],
             ['',                            ''],
             ['IMPORTANT RULES',             ''],
             ['',                            '1. Columns marked with * are REQUIRED.'],
@@ -431,10 +441,10 @@ class StudentBulkImportController extends Controller
         foreach ($dataRows as $rowIdx => $rawCols) {
             $rowNum = $rowIdx + 2; // Excel row number (header=1, data starts at 2)
 
-            // Pad to 60 columns, convert all to trimmed strings
+            // Pad to 63 columns, convert all to trimmed strings
             $c = array_map(
                 fn($v) => trim(strip_tags((string)($v ?? ''))),
-                array_pad(array_values($rawCols), 60, '')
+                array_pad(array_values($rawCols), 63, '')
             );
 
             // Map columns by index (matches template header order)
@@ -449,7 +459,9 @@ class StudentBulkImportController extends Controller
              $permAddr, $permVillage, $permPost, $permThana, $permDist, $permState, $permPin,
              $commSame, $commAddr, $commCity, $commPost, $commThana, $commDist, $commState, $commPin,
              $hasScholar, $scholarName, $scholarType, $scholarAuth,
-             $scholarAmt, $scholarRef, $scholarDate] = array_pad($c, 60, '');
+             $scholarAmt, $scholarRef, $scholarDate,
+             $studentStatusRaw, $dueSemestersRaw, $dueAmountsRaw]
+                = array_pad($c, 63, '');
 
             $errors = [];
 
@@ -492,9 +504,82 @@ class StudentBulkImportController extends Controller
                 }
             }
 
-            // Semester
+            // Semester — max valid value depends on the course's own length
+            // (duration in years × its semesters/trimesters per year), not a fixed
+            // number: a 3-year semester course tops out at 6, a 5-year course at 10,
+            // a 4-year trimester course at 12, etc.
             $sem = (int) $semester;
-            if ($sem < 1 || $sem > 8) $errors[] = 'Semester must be a number from 1 to 8';
+            $courseMaxPart = $courseObj
+                ? max(1, (int) ($courseObj->duration ?? 1)) * $courseObj->effectiveSemestersPerYear()
+                : 8;
+            if ($sem < 1 || $sem > $courseMaxPart) {
+                $errors[] = $courseObj
+                    ? "Semester must be a number from 1 to {$courseMaxPart} for course \"{$courseName}\""
+                    : 'Semester must be a positive number';
+            }
+
+            // ── Student Status ────────────────────────────────────────
+            $statusNorm = match(strtolower(trim($studentStatusRaw))) {
+                '', 'active'                           => 'active',
+                'passed out', 'passed_out', 'passout'  => 'passed_out',
+                'detained'                              => 'detained',
+                'transferred'                           => 'transferred',
+                'cancelled', 'canceled'                 => 'cancelled',
+                default                                 => null,
+            };
+            if ($statusNorm === null) {
+                $errors[] = "Student Status \"{$studentStatusRaw}\" invalid — use Active / Passed Out / Detained / Transferred / Cancelled";
+                $statusNorm = 'active';
+            }
+            $isTerminalStatus = $statusNorm !== 'active';
+
+            // ── Semester-wise Previous Due ────────────────────────────
+            // Two comma-separated columns instead of one fixed column per semester —
+            // works the same for a 2-semester course or a 15-term one, without the
+            // template needing to guess the longest course up front.
+            // Active students get their current semester auto-charged fresh by
+            // WalletService::onAdmission(), so a due here can only be for a semester
+            // strictly BEFORE that one. Terminal-status students (passed out/detained/
+            // transferred/cancelled) never get that auto-charge, so their own last
+            // semester's due is also collectible — up to and including Semester *.
+            $maxDueSemester = $isTerminalStatus ? $sem : $sem - 1;
+            $semesterDues = [];
+            $dueSemList = array_values(array_filter(array_map('trim', explode(',', $dueSemestersRaw)), fn($v) => $v !== ''));
+            $dueAmtList = array_values(array_filter(array_map('trim', explode(',', $dueAmountsRaw)), fn($v) => $v !== ''));
+
+            if (count($dueSemList) !== count($dueAmtList)) {
+                $errors[] = 'Due Semesters and Due Amounts have a different number of values — they must be a matching, comma-separated pair';
+            } else {
+                foreach ($dueSemList as $i => $rawSemNum) {
+                    $rawAmt = $dueAmtList[$i];
+                    if (!ctype_digit($rawSemNum)) {
+                        $errors[] = "Due Semesters value \"{$rawSemNum}\" is not a valid semester number";
+                        continue;
+                    }
+                    if (!is_numeric($rawAmt)) {
+                        $errors[] = "Due Amounts value \"{$rawAmt}\" is not a valid number";
+                        continue;
+                    }
+                    $semNum = (int) $rawSemNum;
+                    $dueAmount = (float) $rawAmt;
+                    if ($dueAmount < 0) {
+                        $errors[] = "Due amount for Semester {$semNum} cannot be negative";
+                        continue;
+                    }
+                    if ($semNum < 1 || $semNum > $maxDueSemester) {
+                        $errors[] = "Due for Semester {$semNum} not allowed — current Semester is {$sem}"
+                            . ($isTerminalStatus ? '' : ' (only semesters before it can carry a due)');
+                        continue;
+                    }
+                    if (isset($semesterDues[$semNum])) {
+                        $errors[] = "Semester {$semNum} appears more than once in Due Semesters";
+                        continue;
+                    }
+                    if ($dueAmount > 0) {
+                        $semesterDues[$semNum] = $dueAmount;
+                    }
+                }
+            }
 
             // ── Duplicate checks (only truly unique fields) ───────────
             $cleanUid = $uid ?: null;
@@ -657,6 +742,8 @@ class StudentBulkImportController extends Controller
                 'scholarship_amount'       => is_numeric($scholarAmt) ? (float) $scholarAmt : null,
                 'scholarship_ref_no'       => $scholarRef ?: null,
                 'scholarship_applied_date' => $parsedScholarDate,
+                'student_status'           => $statusNorm,
+                'semester_dues'            => $semesterDues,
                 'errors'                   => $errors,
             ];
 
@@ -810,11 +897,20 @@ class StudentBulkImportController extends Controller
                         'scholarship_amount'       => $rowData['scholarship_amount'],
                         'scholarship_ref_no'       => $rowData['scholarship_ref_no'],
                         'scholarship_applied_date' => $rowData['scholarship_applied_date'],
-                        'status'                   => 'active',
+                        'status'                   => $rowData['student_status'] ?? 'active',
                         'is_quick_admission'       => false,
                     ]);
 
-                    WalletService::onAdmission($student);
+                    // Only auto-charge the current-semester fee for students who are
+                    // actually still studying — a Passed Out/Detained/Transferred/
+                    // Cancelled row is a historical record, not a fresh enrollment.
+                    if (($rowData['student_status'] ?? 'active') === 'active') {
+                        WalletService::onAdmission($student);
+                    }
+
+                    foreach ($rowData['semester_dues'] ?? [] as $semNum => $dueAmount) {
+                        WalletService::chargeBulkImportPreviousDue($student, $semNum, $dueAmount);
+                    }
 
                     StudentAcademicIdentity::firstOrCreate(
                         [
