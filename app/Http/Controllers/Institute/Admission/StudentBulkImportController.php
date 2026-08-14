@@ -311,8 +311,9 @@ class StudentBulkImportController extends Controller
             ['Gap Year',                    'Yes / No  (default: No)'],
             ['DOB',                         'Format: DD/MM/YYYY'],
             ['Gender',                      'Male / Female / Other'],
-            ['Category',                    'General / OBC / SC / ST'],
-            ['Marital Status',              'Single / Married'],
+            ['Category',                    'General / OBC / SC / ST / EWS / Others'],
+            ['Special Category',            'Scholarship Quota / Sports Quota / Others / None (default: None)'],
+            ['Marital Status',              'Single / Married / Divorced / Widowed (default: Single)'],
             ['Comm Same as Perm',           'Yes / No — If Yes, communication address auto-copied from permanent.'],
             ['Has Scholarship',             'Yes / No'],
             ['Scholarship Amount',          'Numeric value only. Example: 5000'],
@@ -664,11 +665,46 @@ class StudentBulkImportController extends Controller
             if ($admDate !== '' && !$this->parseDate($admDate)) $errors[] = "Admission Date \"{$admDate}\" invalid — use DD/MM/YYYY";
 
             // ── Enum normalisation ────────────────────────────────────
-            $genderNorm     = match(strtolower($gender))        { 'male' => 'male', 'female' => 'female', 'other' => 'other', default => null };
-            $categoryNorm   = match(strtolower($category))      { 'general' => 'general', 'obc' => 'obc', 'sc' => 'sc', 'st' => 'st', default => null };
-            $maritalNorm    = match(strtolower($maritalStatus)) { 'single' => 'single', 'married' => 'married', default => 'single' };
-            $admTypeNorm    = in_array(strtolower($admType), ['new','lateral','transfer','readmission'])
-                                ? strtolower($admType) : 'new';
+            // Mapped to the exact enum values the `students` table accepts (see
+            // create_students_table migration) — a value that merely LOOKS right
+            // (e.g. 'general' instead of 'gen', 'readmission' instead of
+            // 're_admission') fails at insert time with a MySQL "Data truncated"
+            // error instead of a friendly validation message, since these are
+            // native ENUM columns, not free-text.
+            $genderNorm     = match(strtolower(trim($gender))) { 'male' => 'male', 'female' => 'female', 'other' => 'other', default => null };
+            $categoryNorm   = match(strtolower(trim($category))) {
+                'general', 'gen' => 'gen',
+                'obc'            => 'obc',
+                'sc'             => 'sc',
+                'st'             => 'st',
+                'ews'            => 'ews',
+                'others', 'other'=> 'others',
+                default          => null,
+            };
+            $maritalNorm    = match(strtolower(trim($maritalStatus))) {
+                'single'            => 'single',
+                'married'           => 'married',
+                'divorced'          => 'divorced',
+                'widowed'           => 'widowed',
+                default             => 'single',
+            };
+            $admTypeNorm    = match(strtolower(trim($admType))) {
+                'new'                            => 'new',
+                'lateral'                        => 'lateral',
+                'transfer'                       => 'transfer',
+                'readmission', 're_admission', 're-admission' => 're_admission',
+                default                          => 'new',
+            };
+            $specialCatNorm = match(strtolower(trim($specialCat))) {
+                '', 'none'                        => 'none',
+                'scholarship quota', 'scholarship_quota' => 'scholarship_quota',
+                'sports quota', 'sports_quota'    => 'sports_quota',
+                'others', 'other'                 => 'others',
+                default                            => null,
+            };
+            if ($specialCat !== '' && $specialCatNorm === null) {
+                $errors[] = "Special Category \"{$specialCat}\" invalid — use Scholarship Quota / Sports Quota / Others / None";
+            }
 
             $rowData = [
                 'row_num'                  => $rowNum,
@@ -706,7 +742,7 @@ class StudentBulkImportController extends Controller
                 'dob'                      => $parsedDob,
                 'gender'                   => $genderNorm,
                 'category'                 => $categoryNorm,
-                'special_category'         => $specialCat ?: 'none',
+                'special_category'         => $specialCatNorm ?? 'none',
                 'religion'                 => $religion ?: null,
                 'nationality'              => match(strtolower(trim($nationality))) {
                     'indian'      => 'indian',
