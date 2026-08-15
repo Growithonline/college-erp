@@ -10,7 +10,10 @@
     $walletRoute     = $isStaff ? 'staff.fee.wallet.student'   : ($isCenter  ? 'center.fee.wallet.student'   : ($isPartner ? 'partner.fee.wallet.student'   : 'fee.wallet.student'));
     $walletPrintRoute = $isStaff ? 'staff.fee.wallet.student-print' : ($isCenter ? 'center.fee.wallet.student-print' : ($isPartner ? 'partner.fee.wallet.student-print' : 'fee.wallet.student-print'));
     $receiptRoute    = $isStaff ? 'staff.fee.receipt'          : ($isCenter  ? 'center.fee.receipt'          : ($isPartner ? 'partner.fee.receipt'          : 'fee.receipt'));
-    $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee() : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true));
+    // Generic user permission AND the student must actually be active — matches
+    // FeeCollectionController::store()'s server-side enforcement.
+    $canCollectFee   = $student->status === 'active'
+        && ($isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee() : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee() : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true)));
 
     $identity = $student->currentAcademicIdentity;
     $rollNo   = $identity?->roll_no ?? $student->roll_no ?? null;

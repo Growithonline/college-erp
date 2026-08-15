@@ -915,16 +915,22 @@ class FeeCollectionController extends Controller
         $student = Student::with('session')->where('institute_id', $instituteId)->findOrFail($request->student_id);
         $this->ensureAccessibleStudent($student);
 
+        $allowedPendingPayment = $student->status === 'pending' && session('from_admission_fee_payment') == $student->id;
+
         abort_if(
-            $student->status === 'pending' && session('from_admission_fee_payment') != $student->id,
+            $student->status === 'pending' && !$allowedPendingPayment,
             422,
             "This student's admission is pending approval. Fee collection is not allowed until the admission is approved."
         );
 
+        // Only active students can have new fee collected — every other status
+        // (dropped, detained, transferred, inactive, cancelled, passed_out, etc.)
+        // is blocked. Outstanding dues on those students can still be cleared
+        // through the wallet, just not new fee collection.
         abort_if(
-            in_array($student->status, ['passed_out', 'backlog', 'failed', 'dropped']),
+            $student->status !== 'active' && !$allowedPendingPayment,
             422,
-            "Student status is '" . ucwords(str_replace('_', ' ', $student->status)) . "' — new fee collection is not allowed. Outstanding dues can only be cleared through the wallet."
+            "Student status is '" . ucwords(str_replace('_', ' ', $student->status)) . "' — fee collection is only allowed for active students. Outstanding dues can only be cleared through the wallet."
         );
 
         $activeSession = AcademicSession::where('institute_id', $instituteId)

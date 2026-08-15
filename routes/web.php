@@ -772,6 +772,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
     Route::get('admissions/{student}', [AdmissionController::class, 'show'])->name('admissions.show');
     Route::post('admissions/{student}/resend-credentials', [AdmissionController::class, 'resendCredentials'])->name('admissions.resend-credentials');
     Route::post('admissions/{student}/login-access', [AdmissionController::class, 'updateLoginAccess'])->name('admissions.login-access');
+    Route::post('admissions/{student}/status', [AdmissionController::class, 'updateStudentStatus'])->name('admissions.status.update');
 
     // Admission Documents (shared across all guards)
     Route::prefix('admission-documents')->name('admission.documents.')->group(function () {
@@ -1211,6 +1212,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::delete('admissions/{student}', [StaffAdmissionController::class, 'destroy'])->name('admissions.destroy');
         Route::get('admissions/{student}', [StaffAdmissionController::class, 'show'])->name('admissions.show');
         Route::post('admissions/{student}/resend-credentials', [AdmissionController::class, 'resendCredentials'])->name('admissions.resend-credentials');
+        Route::post('admissions/{student}/status', [StaffAdmissionController::class, 'updateStudentStatus'])->name('admissions.status.update');
 
         // Admission Documents (permission checked inside controller)
         Route::prefix('admission-documents')->name('admission.documents.')->group(function () {

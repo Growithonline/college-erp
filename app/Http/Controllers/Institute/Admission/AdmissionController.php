@@ -447,6 +447,37 @@ class AdmissionController extends Controller
         return back()->with('success', 'Login access updated!');
     }
 
+    public function updateStudentStatus(Request $request, Student $student)
+    {
+        if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);
+
+        $validated = $request->validate([
+            'status' => ['required', \Illuminate\Validation\Rule::in(['active', 'dropped', 'detained', 'transferred', 'inactive'])],
+            'reason' => ['nullable', 'string', 'max:1000',
+                \Illuminate\Validation\Rule::requiredIf(fn() => $request->status !== 'active'),
+            ],
+        ]);
+
+        $actor = $this->authenticatedUser();
+
+        $student->update([
+            'status'        => $validated['status'],
+            'status_reason' => $validated['reason'] ?? null,
+        ]);
+
+        AuditLogService::log($this->instituteId(), 'admission', 'student_status_changed',
+            'Student status changed to ' . $validated['status'] . '.', $student, [
+                'student_id'  => $student->id,
+                'student_uid' => $student->student_uid,
+                'new_status'  => $validated['status'],
+                'reason'      => $validated['reason'] ?? null,
+                'changed_by'  => $actor?->name ?? $actor?->email ?? 'Institute Admin',
+            ]
+        );
+
+        return back()->with('success', 'Student status updated to ' . ucwords(str_replace('_', ' ', $validated['status'])) . '.');
+    }
+
     public function bulkSendCredentials(Request $request)
     {
         $request->validate([

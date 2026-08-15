@@ -14,7 +14,10 @@
     $isTerminalStudent = in_array($student->status, ['passed_out', 'backlog', 'failed', 'dropped']);
     $isPending = $student->status === 'pending';
     $approvalRoute = $isStaff ? 'staff.admissions.approvals.show' : 'admissions.approvals.show';
-    $canCollectFee = !$isTerminalStudent && !$isPending && (!$isStaff || auth()->guard('staff')->user()?->canCollectFee());
+    // Only active students can have new fee collected — matches the server-side
+    // enforcement in FeeCollectionController::store(). Every other status is
+    // blocked; outstanding dues can still be cleared via the wallet.
+    $canCollectFee = $student->status === 'active' && (!$isStaff || auth()->guard('staff')->user()?->canCollectFee());
 
     // Document upload button
     $canViewDocuments = !$isStaff || auth()->guard('staff')->user()?->hasPermission('document_upload')
@@ -188,6 +191,9 @@
         <a href="{{ route($admissionEditRoute, $student ) }}" class="btn btn-warning btn-sm">
             <i class="bi bi-pencil me-1"></i> Edit
         </a>
+        <button type="button" class="btn btn-outline-dark btn-sm" onclick="document.getElementById('statusChangeModal').style.display='flex'">
+            <i class="bi bi-person-gear me-1"></i> Change Status
+        </button>
         @endif
         @if(!$isStaff)
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('resendCredsModal').style.display='flex'">
@@ -281,6 +287,38 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
     });
 });
 </script>
+@endif
+
+{{-- Change Status Modal --}}
+@if($canEditStudent)
+@php $statusChangeRoute = $isStaff ? 'staff.admissions.status.update' : 'admissions.status.update'; @endphp
+<div id="statusChangeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+        <h6 class="fw-bold mb-1"><i class="bi bi-person-gear text-primary me-2"></i>Change Student Status</h6>
+        <p class="text-muted mb-3" style="font-size:13px;">
+            Current status: <strong>{{ ucwords(str_replace('_', ' ', $student->status ?? 'active')) }}</strong>.
+            Dropped/Transferred students are treated as terminal — fee collection and other modules get restricted for them.
+        </p>
+        <form method="POST" action="{{ route($statusChangeRoute, $student) }}">
+            @csrf
+            <label class="form-label small fw-semibold">New Status</label>
+            <select name="status" id="statusSelect" class="form-select form-select-sm mb-2"
+                    onchange="document.getElementById('statusReasonBox').style.display = this.value === 'active' ? 'none' : 'block';">
+                @foreach(['active' => 'Active', 'dropped' => 'Dropped', 'detained' => 'Detained', 'transferred' => 'Transferred', 'inactive' => 'Inactive'] as $val => $label)
+                <option value="{{ $val }}" {{ ($student->status ?? 'active') === $val ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+            <div id="statusReasonBox" style="display:{{ ($student->status ?? 'active') === 'active' ? 'none' : 'block' }};">
+                <label class="form-label small fw-semibold">Reason <span class="text-danger">*</span></label>
+                <textarea name="reason" class="form-control form-control-sm" rows="2" placeholder="Why is the status changing?">{{ $student->status_reason }}</textarea>
+            </div>
+            <div class="d-flex gap-2 justify-content-end mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('statusChangeModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>Save</button>
+            </div>
+        </form>
+    </div>
+</div>
 @endif
 
 {{-- Header Card --}}

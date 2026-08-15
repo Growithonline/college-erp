@@ -384,7 +384,10 @@
     $displayContext = $feeBreakup['context'] ?? [];
     $displayCoursePart = $displayContext['course_part'] ?? $student->coursePart ?? null;
     $displaySemester = $displayContext['semester'] ?? $student->current_semester ?? null;
-    $isTerminalStudent = in_array($student->status ?? '', ['passed_out', 'backlog', 'failed', 'dropped']);
+    // Only active students can have new fee collected — every other non-pending
+    // status (dropped, detained, transferred, inactive, cancelled, passed_out,
+    // etc.) is blocked here, matching FeeCollectionController::store().
+    $isTerminalStudent = ($student->status ?? '') !== 'active' && ($student->status ?? '') !== 'pending';
     $isPendingStudent  = ($student->status ?? '') === 'pending' && !($isAdmissionFeeFlow ?? false);
     $canApproveAdmission = $canApproveAdmission ?? false;
     $approvalRoute     = auth()->guard('staff')->check() ? 'staff.admissions.approvals.show' : 'admissions.approvals.show';
@@ -421,42 +424,42 @@
     </div>
 </div>
 @elseif($isTerminalStudent)
-<div class=”card border-danger border-2 shadow-sm mb-4” style=”border-left: 5px solid #dc3545 !important;”>
-    <div class=”card-body py-3 px-4”>
-        <div class=”d-flex align-items-center justify-content-between flex-wrap gap-3”>
-            <div class=”d-flex align-items-center gap-3”>
-                <div class=”rounded-circle bg-danger d-flex align-items-center justify-content-center flex-shrink-0”
-                     style=”width:48px;height:48px;”>
-                    <i class=”bi bi-slash-circle-fill text-white fs-4”></i>
+<div class="card border-danger border-2 shadow-sm mb-4" style="border-left: 5px solid #dc3545 !important;">
+    <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-danger d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:48px;height:48px;">
+                    <i class="bi bi-slash-circle-fill text-white fs-4"></i>
                 </div>
                 <div>
-                    <div class=”d-flex align-items-center gap-2 mb-1”>
-                        <span class=”fw-bold fs-6 text-danger”>Fee Collection Blocked</span>
-                        <span class=”badge bg-danger”>{{ ucwords(str_replace('_', ' ', $student->status)) }}</span>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="fw-bold fs-6 text-danger">Fee Collection Blocked</span>
+                        <span class="badge bg-danger">{{ ucwords(str_replace('_', ' ', $student->status)) }}</span>
                     </div>
-                    <div class=”text-muted small”>
-                        This student's academic status is terminal. New fee collection is not allowed.
+                    <div class="text-muted small">
+                        Fee collection is only allowed for active students. New fee collection is not allowed for this student.
                     </div>
                 </div>
             </div>
             @if(isset($walletSummary) && ($walletSummary['balance'] ?? 0) < 0)
-            <div class=”text-end flex-shrink-0”>
-                <div class=”small text-muted mb-1”>Outstanding Due</div>
-                <div class=”fw-bold text-danger fs-5”>₹ {{ number_format(abs($walletSummary['balance']), 2) }}</div>
+            <div class="text-end flex-shrink-0">
+                <div class="small text-muted mb-1">Outstanding Due</div>
+                <div class="fw-bold text-danger fs-5">₹ {{ number_format(abs($walletSummary['balance']), 2) }}</div>
                 @if(isset($student))
                 @php
                     $walletLinkRoute = auth()->guard('staff')->check() ? 'staff.fee.wallet.student' : (auth()->guard('center')->check() ? 'center.fee.wallet.student' : (auth()->guard('partner')->check() ? 'partner.fee.wallet.student' : 'fee.wallet.student'));
                 @endphp
-                <a href=”{{ route($walletLinkRoute, $student->id) }}”
-                   class=”btn btn-outline-danger btn-sm mt-1”>
-                    <i class=”bi bi-wallet me-1”></i> View Wallet
+                <a href="{{ route($walletLinkRoute, $student->id) }}"
+                   class="btn btn-outline-danger btn-sm mt-1">
+                    <i class="bi bi-wallet me-1"></i> View Wallet
                 </a>
                 @endif
             </div>
             @else
-            <div class=”text-end flex-shrink-0”>
-                <span class=”badge bg-success px-3 py-2”>
-                    <i class=”bi bi-check-circle me-1”></i> No Dues
+            <div class="text-end flex-shrink-0">
+                <span class="badge bg-success px-3 py-2">
+                    <i class="bi bi-check-circle me-1"></i> No Dues
                 </span>
             </div>
             @endif

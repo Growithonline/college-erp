@@ -10,7 +10,10 @@
     $historyPrintRoute = $isStaff ? 'staff.fee.history-print'  : ($isCenter  ? 'center.fee.history-print'    : ($isPartner ? 'partner.fee.history-print'    : 'fee.history-print'));
     $cancelRoute     = $isStaff ? 'staff.fee.cancel'           : (($isCenter || $isPartner) ? null           : 'fee.cancel');
     $walletRoute     = $isStaff ? 'staff.fee.wallet.student'   : ($isCenter  ? 'center.fee.wallet.student'   : ($isPartner ? 'partner.fee.wallet.student'   : 'fee.wallet.student'));
-    $canCollectFee   = $isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee()    : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee()  : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true));
+    // Generic user permission AND the student must actually be active — matches
+    // FeeCollectionController::store()'s server-side enforcement.
+    $canCollectFee   = $student->status === 'active'
+        && ($isStaff ? (bool) auth()->guard('staff')->user()?->canCollectFee()    : ($isCenter ? (bool) auth()->guard('center')->user()?->canCollectFee()  : ($isPartner ? (bool) auth()->guard('partner')->user()?->canCollectFee() : true)));
     $canCancelFee    = $isStaff ? (bool) auth()->guard('staff')->user()?->canCancelFee()     : (!$isCenter && !$isPartner);
     $canViewFeeWallet = $isStaff ? (bool) auth()->guard('staff')->user()?->canViewFeeWallet() : true;
 

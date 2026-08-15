@@ -421,7 +421,7 @@
 
                             <td class="text-center pe-3">
                                 <div class="d-flex gap-1 justify-content-center">
-                                    @if($due > 0 && $canCollectFee)
+                                    @if($due > 0 && $canCollectFee && $student->status === 'active')
                                         <a href="{{ route($feeCreateRoute, ['student_id' => $student->id]) }}"
                                            class="btn btn-danger btn-sm py-0 px-2" title="Collect Fee">
                                             <i class="bi bi-cash-coin"></i>

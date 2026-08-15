@@ -136,6 +136,12 @@ class StaffAdmissionController extends Controller
         return app(InstituteAdmissionController::class)->updateApprovalStatus($request, $student);
     }
 
+    public function updateStudentStatus(Request $request, Student $student)
+    {
+        $this->ensureStudentEditPermission();
+        return app(InstituteAdmissionController::class)->updateStudentStatus($request, $student);
+    }
+
     public function promoteFromWaitlist(Student $student)
     {
         $this->ensureApprovalPermission();
