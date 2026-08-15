@@ -917,21 +917,24 @@ class FeeCollectionController extends Controller
 
         $allowedPendingPayment = $student->status === 'pending' && session('from_admission_fee_payment') == $student->id;
 
-        abort_if(
-            $student->status === 'pending' && !$allowedPendingPayment,
-            422,
-            "This student's admission is pending approval. Fee collection is not allowed until the admission is approved."
-        );
+        // return back()->withErrors() instead of abort() — the create form already
+        // renders $errors->all() in a styled banner; aborting here would otherwise
+        // surface Laravel's raw debug/exception page instead of a friendly message.
+        if ($student->status === 'pending' && !$allowedPendingPayment) {
+            return back()->withErrors([
+                'status' => "This student's admission is pending approval. Fee collection is not allowed until the admission is approved.",
+            ])->withInput();
+        }
 
         // Only active students can have new fee collected — every other status
         // (dropped, detained, transferred, inactive, cancelled, passed_out, etc.)
         // is blocked. Outstanding dues on those students can still be cleared
         // through the wallet, just not new fee collection.
-        abort_if(
-            $student->status !== 'active' && !$allowedPendingPayment,
-            422,
-            "Student status is '" . ucwords(str_replace('_', ' ', $student->status)) . "' — fee collection is only allowed for active students. Outstanding dues can only be cleared through the wallet."
-        );
+        if ($student->status !== 'active' && !$allowedPendingPayment) {
+            return back()->withErrors([
+                'status' => "Student status is '" . ucwords(str_replace('_', ' ', $student->status)) . "' — fee collection is only allowed for active students. Outstanding dues can only be cleared through the wallet.",
+            ])->withInput();
+        }
 
         $activeSession = AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)
