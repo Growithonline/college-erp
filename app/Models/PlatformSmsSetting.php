@@ -23,6 +23,7 @@ class PlatformSmsSetting extends Model
         'custom_success_value',
         'custom_credentials_json',
         'otp_message_template',
+        'otp_id',
     ];
 
     protected $casts = [

@@ -154,6 +154,7 @@ class SmsSettingController extends Controller
             'custom_success_value'        => 'nullable|string|max:100',
             'custom_credentials_json'     => 'nullable|string|max:2000',
             'otp_message_template'        => 'nullable|string|max:500',
+            'otp_id'                      => 'nullable|string|max:100',
         ]);
 
         $settings                              = PlatformSmsSetting::firstOrNew([]);
@@ -170,6 +171,8 @@ class SmsSettingController extends Controller
         if ($request->filled('otp_message_template')) {
             $settings->otp_message_template = $request->otp_message_template;
         }
+
+        $settings->otp_id = $request->otp_id;
 
         if ($request->provider === 'custom') {
             $settings->custom_endpoint      = $request->custom_endpoint;

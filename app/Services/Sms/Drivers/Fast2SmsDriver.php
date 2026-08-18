@@ -39,6 +39,38 @@ class Fast2SmsDriver implements SmsDriverInterface
         }
     }
 
+    // Dedicated DLT OTP route — required by Fast2SMS for OTP delivery instead of the
+    // generic bulkV2/route=q endpoint. Fast2SMS fills in its own DLT-approved template
+    // server-side based on otp_id; the message text is not sent by us.
+    public function sendOtp(string $mobile, string $otp, string $otpId): array
+    {
+        $mobile = preg_replace('/\D/', '', $mobile);
+        if (strlen($mobile) > 10) {
+            $mobile = substr($mobile, -10);
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders(['authorization' => $this->apiKey])
+                ->post('https://www.fast2sms.com/dev/otp/send', [
+                    'mobile' => $mobile,
+                    'otp_id' => $otpId,
+                    'otp'    => $otp,
+                ]);
+
+            $body = $response->json();
+
+            if ($response->successful() && isset($body['return']) && $body['return'] === true) {
+                return ['success' => true, 'response' => $body];
+            }
+
+            $message = $body['message'] ?? 'Failed';
+            return ['success' => false, 'response' => $body, 'error' => is_array($message) ? implode(', ', $message) : (string) $message];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
     public function checkBalance(): array
     {
         try {

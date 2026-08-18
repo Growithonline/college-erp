@@ -210,6 +210,18 @@
                         <div class="form-text text-muted">
                             Use <code>{otp}</code> as OTP placeholder. Must match your DLT registered template exactly.
                             Leave blank to use default message.
+                            <strong>Ignored for Fast2SMS if OTP ID below is set</strong> — Fast2SMS uses its own DLT-linked template server-side in that case.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">OTP ID <span class="text-muted fw-normal">(Fast2SMS only)</span></label>
+                        <input type="text" name="otp_id" class="form-control form-control-sm"
+                               value="{{ $settings?->otp_id ?? '' }}" placeholder="e.g. 83b3d4c1b8">
+                        <div class="form-text text-muted">
+                            Required for Fast2SMS OTP delivery — copy the "OTP ID" shown against your approved OTP template
+                            on the Fast2SMS DLT template dashboard. When set, OTP sends use Fast2SMS's dedicated
+                            <code>/dev/otp/send</code> route instead of the generic SMS route.
                         </div>
                     </div>
 

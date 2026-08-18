@@ -27,7 +27,12 @@ class SmsService
             : "Your login OTP is {$otp}. Valid for {$settings->otp_expiry_minutes} minutes. Do not share with anyone.";
 
         $driver = self::makePlatformDriver($settings);
-        $result = $driver->send($mobile, $message, $settings->sender_id);
+
+        if ($settings->provider === 'fast2sms' && $driver instanceof Fast2SmsDriver && $settings->otp_id) {
+            $result = $driver->sendOtp($mobile, $otp, $settings->otp_id);
+        } else {
+            $result = $driver->send($mobile, $message, $settings->sender_id);
+        }
 
         SmsLog::create([
             'institute_id'      => null,
