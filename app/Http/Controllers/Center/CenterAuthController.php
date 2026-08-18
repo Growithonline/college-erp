@@ -53,7 +53,7 @@ class CenterAuthController extends Controller
         InstituteMailer::send($center->institute_id, $center->email, new CenterOtpMail($center, $otp));
 
         if ($center->mobile) {
-            SmsService::sendOtp($center->mobile, $otp);
+            SmsService::sendInstituteOtp($center->institute_id, $center->mobile, $otp);
         }
 
         Cache::put($this->otpCacheKey($center->id), [

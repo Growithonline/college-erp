@@ -44,6 +44,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use App\Mail\StudentCredentialsMail;
 use App\Services\InstituteMailer;
+use App\Models\SmsTemplate;
 use App\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -405,10 +406,23 @@ class AdmissionController extends Controller
 
         $mobile = $student->mobile ?? $student->father_mobile;
         if ($mobile) {
-            $msg = "Dear {$student->name}, your student portal credentials: ID: {$student->student_uid}, Password: {$plainPassword}. Login: " . route('student.login');
+            $hasTemplate = SmsTemplate::where('institute_id', $student->institute_id)
+                ->where('type', SmsTemplate::TYPE_ADMISSION_ALERT)
+                ->where('is_active', true)
+                ->exists();
+
             try {
-                SmsService::sendForInstitute($student->institute_id, $mobile, $msg, 'admission');
-                $smsSent = true;
+                if ($hasTemplate) {
+                    $smsSent = SmsService::sendTemplated($student->institute_id, $mobile, SmsTemplate::TYPE_ADMISSION_ALERT, [
+                        'name'        => $student->name,
+                        'student_uid' => $student->student_uid,
+                        'password'    => $plainPassword,
+                        'login_url'   => route('student.login'),
+                    ]);
+                } else {
+                    $msg = "Dear {$student->name}, your student portal credentials: ID: {$student->student_uid}, Password: {$plainPassword}. Login: " . route('student.login');
+                    $smsSent = SmsService::sendForInstitute($student->institute_id, $mobile, $msg, 'admission');
+                }
             } catch (\Throwable) {}
         }
 
@@ -542,12 +556,27 @@ class AdmissionController extends Controller
 
         $mobile = $student->mobile ?? $student->father_mobile;
         if ($mobile) {
-            $msg = "Dear {$student->name}, your admission is confirmed at "
-                . ($student->institute?->name ?? config('app.name'))
-                . ". Student ID: {$student->student_uid}, Password: {$plainPassword}. Login: "
-                . route('student.login');
+            $hasTemplate = SmsTemplate::where('institute_id', $student->institute_id)
+                ->where('type', SmsTemplate::TYPE_ADMISSION_ALERT)
+                ->where('is_active', true)
+                ->exists();
+
             try {
-                SmsService::sendForInstitute($student->institute_id, $mobile, $msg, 'admission');
+                if ($hasTemplate) {
+                    SmsService::sendTemplated($student->institute_id, $mobile, SmsTemplate::TYPE_ADMISSION_ALERT, [
+                        'name'           => $student->name,
+                        'student_uid'    => $student->student_uid,
+                        'password'       => $plainPassword,
+                        'login_url'      => route('student.login'),
+                        'institute_name' => $student->institute?->name ?? config('app.name'),
+                    ]);
+                } else {
+                    $msg = "Dear {$student->name}, your admission is confirmed at "
+                        . ($student->institute?->name ?? config('app.name'))
+                        . ". Student ID: {$student->student_uid}, Password: {$plainPassword}. Login: "
+                        . route('student.login');
+                    SmsService::sendForInstitute($student->institute_id, $mobile, $msg, 'admission');
+                }
             } catch (\Throwable) {}
         }
     }

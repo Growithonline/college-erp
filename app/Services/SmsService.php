@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PlatformSmsSetting;
 use App\Models\SmsLog;
 use App\Models\SmsProviderSetting;
+use App\Models\SmsTemplate;
 use App\Services\Sms\Contracts\SmsDriverInterface;
 use App\Services\Sms\Drivers\CustomHttpDriver;
 use App\Services\Sms\Drivers\Fast2SmsDriver;
@@ -67,6 +68,96 @@ class SmsService
             'message'           => $message,
             'provider'          => $settings->provider,
             'sender_id'         => $settings->sender_id,
+            'status'            => $result['success'] ? SmsLog::STATUS_SENT : SmsLog::STATUS_FAILED,
+            'provider_response' => json_encode($result['response'] ?? $result['error'] ?? null),
+        ]);
+
+        return $result['success'];
+    }
+
+    // Send login OTP using institute's own provider (staff/center/partner logins)
+    public static function sendInstituteOtp(int $instituteId, string $mobile, string $otp): bool
+    {
+        $settings = SmsProviderSetting::where('institute_id', $instituteId)->first();
+
+        if (! $settings || ! $settings->isUsable()) {
+            return false;
+        }
+
+        $template = $settings->otp_message_template;
+        $message  = $template
+            ? str_replace('{otp}', $otp, $template)
+            : "Your login OTP is {$otp}. Do not share with anyone.";
+
+        $driver = self::makeInstituteDriver($settings);
+
+        if ($settings->provider === 'fast2sms' && $driver instanceof Fast2SmsDriver && $settings->otp_id) {
+            $result = $driver->sendOtp($mobile, $otp, $settings->otp_id);
+        } else {
+            $result = $driver->send($mobile, $message, $settings->sender_id);
+        }
+
+        SmsLog::create([
+            'institute_id'      => $instituteId,
+            'type'              => SmsLog::TYPE_OTP,
+            'mobile'            => $mobile,
+            'message'           => $message,
+            'provider'          => $settings->provider,
+            'sender_id'         => $settings->sender_id,
+            'status'            => $result['success'] ? SmsLog::STATUS_SENT : SmsLog::STATUS_FAILED,
+            'provider_response' => json_encode($result['response'] ?? $result['error'] ?? null),
+        ]);
+
+        return $result['success'];
+    }
+
+    // Send a type-based templated message using the institute's own provider (notices, fee
+    // alerts, admission, exam info, admit card, promotion, due reminders). $vars is an
+    // associative array of named placeholder values, e.g. ['name' => 'Rahul', 'amount' => '5000'].
+    // Returns false (no-op) if the institute hasn't configured a template for this $type yet —
+    // callers should treat that as "feature not set up", not an error.
+    public static function sendTemplated(int $instituteId, string $mobile, string $type, array $vars): bool
+    {
+        $settings = SmsProviderSetting::where('institute_id', $instituteId)->first();
+        if (! $settings || ! $settings->isUsable()) {
+            return false;
+        }
+
+        $template = SmsTemplate::where('institute_id', $instituteId)
+            ->where('type', $type)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $template) {
+            return false;
+        }
+
+        $message = $template->content;
+        foreach ($vars as $key => $value) {
+            $message = str_replace('{' . $key . '}', (string) $value, $message);
+        }
+
+        $senderId = ($template->category === SmsTemplate::CATEGORY_PROMOTIONAL && $settings->promo_sender_id)
+            ? $settings->promo_sender_id
+            : $settings->sender_id;
+
+        $driver = self::makeInstituteDriver($settings);
+
+        if ($settings->provider === 'fast2sms' && $driver instanceof Fast2SmsDriver && $template->dlt_template_id) {
+            $orderedNames = $template->variable_names_array;
+            $values       = array_map(fn ($name) => (string) ($vars[$name] ?? ''), $orderedNames);
+            $result       = $driver->sendDlt($mobile, $template->dlt_template_id, implode('|', $values), $senderId);
+        } else {
+            $result = $driver->send($mobile, $message, $senderId);
+        }
+
+        SmsLog::create([
+            'institute_id'      => $instituteId,
+            'type'              => $type,
+            'mobile'            => $mobile,
+            'message'           => $message,
+            'provider'          => $settings->provider,
+            'sender_id'         => $senderId,
             'status'            => $result['success'] ? SmsLog::STATUS_SENT : SmsLog::STATUS_FAILED,
             'provider_response' => json_encode($result['response'] ?? $result['error'] ?? null),
         ]);

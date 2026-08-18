@@ -57,12 +57,7 @@ class StudentAuthController extends Controller
         $mobile = $student->mobile ?? $student->father_mobile;
         if ($mobile) {
             try {
-                SmsService::sendForInstitute(
-                    $student->institute_id,
-                    $mobile,
-                    "Your student portal OTP is {$otp}. Valid for {$expiryMinutes} minutes.",
-                    'otp'
-                );
+                SmsService::sendInstituteOtp($student->institute_id, $mobile, $otp);
             } catch (Throwable) {}
         }
 

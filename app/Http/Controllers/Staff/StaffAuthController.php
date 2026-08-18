@@ -71,7 +71,7 @@ class StaffAuthController extends Controller
         InstituteMailer::send($staff->institute_id, $staff->email, new StaffOtpMail($staff, $otp));
 
         if ($staff->mobile) {
-            SmsService::sendOtp($staff->mobile, $otp);
+            SmsService::sendInstituteOtp($staff->institute_id, $staff->mobile, $otp);
         }
 
         Cache::put($this->otpCacheKey($staff->id), [

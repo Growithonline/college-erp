@@ -13,6 +13,7 @@ class SmsProviderSetting extends Model
         'provider',
         'api_key',
         'sender_id',
+        'promo_sender_id',
         'is_active',
         'is_sms_disabled',
         'custom_endpoint',
@@ -22,6 +23,8 @@ class SmsProviderSetting extends Model
         'custom_success_key',
         'custom_success_value',
         'custom_credentials_json',
+        'otp_message_template',
+        'otp_id',
     ];
 
     protected $casts = [

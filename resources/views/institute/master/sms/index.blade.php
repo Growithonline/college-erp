@@ -198,7 +198,45 @@
                                maxlength="20"
                                style="text-transform:uppercase;">
                         <div class="form-text">
-                            DLT registered Sender ID — registered under your institute name.
+                            DLT registered Sender ID — registered under your institute name. Used for
+                            transactional messages (OTP, fee alerts, admission, notices, exam/admit card info).
+                        </div>
+                    </div>
+
+                    {{-- Promotional header (separate from transactional) --}}
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Promotional Sender ID <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" name="promo_sender_id"
+                               class="form-control form-control-sm"
+                               value="{{ $setting?->promo_sender_id ?? '' }}"
+                               placeholder="e.g. 398648"
+                               maxlength="20"
+                               style="text-transform:uppercase;">
+                        <div class="form-text">
+                            Separate DLT registered header for promotional/marketing messages (e.g. admission
+                            campaigns). Leave blank to use the same Sender ID above for everything.
+                        </div>
+                    </div>
+
+                    {{-- OTP settings for staff/student/center/partner logins --}}
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">OTP Message Template <span class="text-muted fw-normal">(optional)</span></label>
+                        <textarea name="otp_message_template" class="form-control form-control-sm" rows="3"
+                                  placeholder="Dear User, Your OTP for login is {otp}. Please do not share this OTP.">{{ $setting?->otp_message_template ?? '' }}</textarea>
+                        <div class="form-text text-muted">
+                            Use <code>{otp}</code> as OTP placeholder. Must match your DLT registered template exactly.
+                            Used for staff/student/center/partner login OTPs sent via this institute's own SMS provider.
+                            <strong>Ignored for Fast2SMS if OTP ID below is set.</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">OTP ID <span class="text-muted fw-normal">(Fast2SMS only)</span></label>
+                        <input type="text" name="otp_id" class="form-control form-control-sm"
+                               value="{{ $setting?->otp_id ?? '' }}" placeholder="e.g. 83b3d4c1b8">
+                        <div class="form-text text-muted">
+                            Required for Fast2SMS OTP delivery — copy the "OTP ID" shown against your approved OTP
+                            template on the Fast2SMS DLT template dashboard.
                         </div>
                     </div>
 

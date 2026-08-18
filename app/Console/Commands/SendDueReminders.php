@@ -6,6 +6,7 @@ use App\Models\FeeInvoice;
 use App\Models\Institute;
 use App\Models\SmsDueReminderSetting;
 use App\Models\SmsProviderSetting;
+use App\Models\SmsTemplate;
 use App\Services\SmsService;
 use Illuminate\Console\Command;
 
@@ -63,6 +64,14 @@ class SendDueReminders extends Command
         $triggerDays = $setting->trigger_days_array;
         $sent = $failed = 0;
 
+        // Prefer the new generic sms_templates row (DLT-compliant on Fast2SMS) when the
+        // institute has configured one; otherwise fall back to the legacy free-text template
+        // on SmsDueReminderSetting so existing setups keep working until they migrate.
+        $useNewTemplate = SmsTemplate::where('institute_id', $setting->institute_id)
+            ->where('type', SmsTemplate::TYPE_FEE_DUE_REMINDER)
+            ->where('is_active', true)
+            ->exists();
+
         // Bug fix #3: group by student so each student gets ONE SMS with total pending amount
         $allInvoices = FeeInvoice::with('student.course')
             ->where('institute_id', $setting->institute_id)
@@ -97,14 +106,18 @@ class SendDueReminders extends Command
             $totalPending  = round($invoices->sum(fn ($i) => $i->total_amount - $i->paid_amount), 2);
             $earliestDue   = $invoices->sortBy('payment_date')->first()->payment_date;
 
-            $message = $this->buildMessage($setting, $student, $totalPending, $earliestDue);
-
-            $result = SmsService::sendForInstitute(
-                $setting->institute_id,
-                $student->mobile,
-                $message,
-                'due_reminder'
-            );
+            if ($useNewTemplate) {
+                $result = SmsService::sendTemplated($setting->institute_id, $student->mobile, SmsTemplate::TYPE_FEE_DUE_REMINDER, [
+                    'name'           => $student->name,
+                    'amount'         => number_format($totalPending, 0),
+                    'due_date'       => $earliestDue->format('d M Y'),
+                    'institute_name' => $setting->institute?->name ?? '',
+                    'course'         => $student->course?->name ?? '',
+                ]);
+            } else {
+                $message = $this->buildMessage($setting, $student, $totalPending, $earliestDue);
+                $result  = SmsService::sendForInstitute($setting->institute_id, $student->mobile, $message, 'due_reminder');
+            }
 
             $result ? $sent++ : $failed++;
         }

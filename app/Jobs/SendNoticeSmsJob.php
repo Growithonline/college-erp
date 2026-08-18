@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Notice;
+use App\Models\SmsTemplate;
 use App\Models\StaffMember;
 use App\Models\Student;
 use App\Services\SmsService;
@@ -34,28 +35,39 @@ class SendNoticeSmsJob implements ShouldQueue
         }
 
         $roles = array_map('trim', explode(',', $notice->sms_to));
-        $message = $this->buildMessage($notice);
+
+        $hasTemplate = SmsTemplate::where('institute_id', $notice->institute_id)
+            ->where('type', SmsTemplate::TYPE_NOTICE)
+            ->where('is_active', true)
+            ->exists();
 
         if (in_array('staff', $roles)) {
             StaffMember::where('institute_id', $notice->institute_id)
                 ->where('status', true)
                 ->whereNotNull('mobile')
                 ->pluck('mobile')
-                ->each(fn($mobile) => $this->safeSend($notice->institute_id, $mobile, $message));
+                ->each(fn($mobile) => $this->safeSend($notice, $mobile, $hasTemplate));
         }
 
         if (in_array('students', $roles)) {
             Student::where('institute_id', $notice->institute_id)
                 ->whereNotNull('mobile')
                 ->pluck('mobile')
-                ->each(fn($mobile) => $this->safeSend($notice->institute_id, $mobile, $message));
+                ->each(fn($mobile) => $this->safeSend($notice, $mobile, $hasTemplate));
         }
     }
 
-    private function safeSend(int $instituteId, string $mobile, string $message): void
+    private function safeSend(Notice $notice, string $mobile, bool $hasTemplate): void
     {
         try {
-            SmsService::sendForInstitute($instituteId, $mobile, $message, 'notice');
+            if ($hasTemplate) {
+                SmsService::sendTemplated($notice->institute_id, $mobile, SmsTemplate::TYPE_NOTICE, [
+                    'type'  => $notice->notice_type_label,
+                    'title' => $notice->title,
+                ]);
+            } else {
+                SmsService::sendForInstitute($notice->institute_id, $mobile, $this->buildMessage($notice), 'notice');
+            }
         } catch (\Throwable) {
             // fail gracefully — SMS failure shouldn't break other deliveries
         }

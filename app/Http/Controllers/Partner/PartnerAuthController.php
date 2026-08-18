@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use App\Services\InstituteMailer;
+use App\Services\SmsService;
 use Throwable;
 
 class PartnerAuthController extends Controller
@@ -50,6 +51,12 @@ class PartnerAuthController extends Controller
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
         InstituteMailer::send($partner->institute_id, $partner->email, new PartnerOtpMail($partner, $otp));
+
+        if ($partner->mobile) {
+            try {
+                SmsService::sendInstituteOtp($partner->institute_id, $partner->mobile, $otp);
+            } catch (Throwable) {}
+        }
 
         Cache::put($this->otpCacheKey($partner->id), [
             'hash'     => Hash::make($otp),

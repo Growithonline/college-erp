@@ -41,8 +41,9 @@ class SmsSettingController extends Controller
         $isCustom = $request->provider === 'custom';
 
         $request->validate([
-            'provider'  => 'required|in:msg91,fast2sms,custom',
-            'sender_id' => 'required|string|max:20',
+            'provider'        => 'required|in:msg91,fast2sms,custom',
+            'sender_id'       => 'required|string|max:20',
+            'promo_sender_id' => 'nullable|string|max:20',
             'api_key'   => $isCustom ? 'nullable|string|max:500' : 'nullable|string|max:500',
             // custom-specific
             'custom_endpoint'         => $isCustom ? 'required|url|max:500' : 'nullable',
@@ -52,15 +53,20 @@ class SmsSettingController extends Controller
             'custom_success_key'      => 'nullable|string|max:100',
             'custom_success_value'    => 'nullable|string|max:100',
             'custom_credentials_json' => 'nullable|string',
+            'otp_message_template'    => 'nullable|string|max:500',
+            'otp_id'                  => 'nullable|string|max:100',
         ]);
 
         $instituteId = $this->instituteId();
         $existing    = SmsProviderSetting::where('institute_id', $instituteId)->first();
 
         $data = [
-            'provider'  => $request->provider,
-            'sender_id' => strtoupper($request->sender_id),
-            'is_active' => true,
+            'provider'        => $request->provider,
+            'sender_id'       => strtoupper($request->sender_id),
+            'promo_sender_id' => $request->filled('promo_sender_id') ? strtoupper($request->promo_sender_id) : null,
+            'is_active'       => true,
+            'otp_message_template' => $request->otp_message_template,
+            'otp_id'               => $request->otp_id,
         ];
 
         // API key: update only if provided; required for new non-custom records

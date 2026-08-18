@@ -13,8 +13,10 @@ use App\Models\InstituteBankAccount;
 use App\Models\Library\LibraryFinePayment;
 use App\Models\Library\LibraryMember;
 use App\Models\PaymentModePermission;
+use App\Models\SmsTemplate;
 use App\Models\Student;
 use App\Models\TransportAllocation;
+use App\Services\SmsService;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
 use App\Services\AuditLogService;
@@ -1385,6 +1387,27 @@ class FeeCollectionController extends Controller
             }
         } catch (\Throwable $e) {
             // Non-critical — invoice is already saved, just snapshot failed
+        }
+
+        // Fee transaction alert — opt-in, only fires if the institute has configured
+        // a fee_transaction_alert template (no legacy behavior to preserve, feature is new).
+        $mobile = $student->mobile ?? $student->father_mobile;
+        if ($mobile && $paidAmount > 0) {
+            $hasTemplate = SmsTemplate::where('institute_id', $instituteId)
+                ->where('type', SmsTemplate::TYPE_FEE_TXN_ALERT)
+                ->where('is_active', true)
+                ->exists();
+
+            if ($hasTemplate) {
+                try {
+                    SmsService::sendTemplated($instituteId, $mobile, SmsTemplate::TYPE_FEE_TXN_ALERT, [
+                        'name'         => $student->name,
+                        'amount'       => number_format($paidAmount, 0),
+                        'invoice_no'   => $invoiceNo,
+                        'payment_date' => \Carbon\Carbon::parse($paymentDate)->format('d M Y'),
+                    ]);
+                } catch (\Throwable) {}
+            }
         }
 
         if (session('from_admission_fee_payment') == $student->id) {

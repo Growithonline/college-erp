@@ -1187,6 +1187,10 @@
                            href="{{ route('master.sms.reminders.index') }}">
                         <i class="bi bi-alarm"></i> Due Reminders
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('master.sms.templates.*') ? 'active' : '' }}"
+                           href="{{ route('master.sms.templates.index') }}">
+                        <i class="bi bi-file-earmark-text"></i> Message Templates
+                    </a></li>
                 </ul>
             </div>
         </li>

@@ -89,6 +89,7 @@ use App\Http\Controllers\Institute\Master\DocumentTypeController;
 use App\Http\Controllers\Institute\Master\DocumentRuleController;
 use App\Http\Controllers\Institute\Master\SmsSettingController as InstituteSmsSettingController;
 use App\Http\Controllers\Institute\Master\SmsDueReminderController;
+use App\Http\Controllers\Institute\Master\SmsTemplateController;
 use App\Http\Controllers\Institute\Admission\AdmissionDocumentController;
 use App\Http\Controllers\Institute\Admission\PaymentClaimController;
 use App\Http\Controllers\Institute\Transport\TransportAllocationController;
@@ -364,6 +365,11 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('sms/reminders',         [SmsDueReminderController::class, 'index'])->name('sms.reminders.index');
         Route::post('sms/reminders/save',   [SmsDueReminderController::class, 'save'])->name('sms.reminders.save');
         Route::post('sms/reminders/toggle', [SmsDueReminderController::class, 'toggle'])->name('sms.reminders.toggle');
+
+        // SMS Message Templates
+        Route::get('sms/templates',         [SmsTemplateController::class, 'index'])->name('sms.templates.index');
+        Route::post('sms/templates/save',   [SmsTemplateController::class, 'save'])->name('sms.templates.save');
+        Route::post('sms/templates/toggle', [SmsTemplateController::class, 'toggle'])->name('sms.templates.toggle');
 
         // Email (SMTP) Settings
         Route::get('settings/email',             [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'index'])->name('settings.email');
