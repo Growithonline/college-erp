@@ -16,12 +16,14 @@ use App\Models\FeeInvoiceItem;
 use App\Models\Institute;
 use App\Models\PaymentClaim;
 use App\Models\PracticalFeeTokenBatch;
+use App\Models\SmsDueReminderSetting;
 use App\Models\StaffMember;
 use App\Models\StreamSessionLimit;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
 use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
+use App\Services\SmsService;
 use App\Services\WalletService;
 use App\Support\AcademicState;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -431,6 +433,68 @@ class ReportController extends Controller
             'totalDue', 'totalPaid', 'totalCollection', 'totalDiscount', 'totalPayable', 'totalFine', 'totalLibraryFine',
             'perPage', 'showAll', 'summary'
         ));
+    }
+
+    // Manual "send reminder now" trigger from the Fee Due List page — one or many students.
+    // Due amount is always recomputed server-side (never trusted from the request) using the
+    // same WalletService summary the report itself displays.
+    public function sendDueReminderSms(Request $request)
+    {
+        $this->authorizeReportAccess('fee');
+
+        $request->validate([
+            'student_ids'   => 'required|array|min:1',
+            'student_ids.*' => 'integer',
+            'session_id'    => 'nullable|integer',
+        ]);
+
+        $instituteId = $this->instituteId();
+
+        if (! SmsService::isInstituteConfigured($instituteId)) {
+            return response()->json(['success' => false, 'error' => 'SMS provider is not configured for this institute.'], 422);
+        }
+
+        $sessionId = (int) $request->session_id;
+
+        $query = Student::where('institute_id', $instituteId)->whereIn('id', $request->student_ids);
+        $this->applyStaffOperationalStudentScope($query);
+        $students = $query->get();
+
+        $sent = $failed = $skipped = 0;
+
+        foreach ($students as $student) {
+            if (! $student->mobile) {
+                $skipped++;
+                continue;
+            }
+
+            $summary = WalletService::getStudentSummary($student, $sessionId);
+            $due     = (float) ($summary['total_due'] ?? 0);
+
+            if ($due <= 0) {
+                $skipped++;
+                continue;
+            }
+
+            $earliestDue = FeeInvoice::where('student_id', $student->id)
+                ->where('is_cancelled', false)
+                ->whereRaw('paid_amount < total_amount')
+                ->whereNotNull('payment_date')
+                ->orderBy('payment_date')
+                ->value('payment_date');
+
+            $dueDate = $earliestDue ? \Carbon\Carbon::parse($earliestDue) : now();
+
+            $result = SmsDueReminderSetting::sendReminder($student, $due, $dueDate);
+            $result ? $sent++ : $failed++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'sent'    => $sent,
+            'failed'  => $failed,
+            'skipped' => $skipped,
+        ]);
     }
 
     public function subjectWiseStudentReport(Request $request)

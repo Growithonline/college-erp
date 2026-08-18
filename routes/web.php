@@ -643,6 +643,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
 
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/fee-due-list',        [ReportController::class, 'feeDueList'])->name('fee-due-list');
+        Route::post('/fee-due-list/send-reminder', [ReportController::class, 'sendDueReminderSms'])->name('fee-due-list.send-reminder');
         Route::get('/fee-collection',      [ReportController::class, 'feeCollectionReport'])->name('fee-collection');
         Route::get('/cancelled-fee',       [ReportController::class, 'cancelledFeeReport'])->name('cancelled-fee');
         Route::get('/admission',           [ReportController::class, 'admissionReport'])->name('admission');
@@ -1394,6 +1395,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         // Reports
         Route::prefix('reports')->name('reports.')->group(function () {
             Route::get('/fee-due-list',        [ReportController::class, 'feeDueList'])->name('fee-due-list');
+            Route::post('/fee-due-list/send-reminder', [ReportController::class, 'sendDueReminderSms'])->name('fee-due-list.send-reminder');
             Route::get('/fee-collection',      [ReportController::class, 'feeCollectionReport'])->name('fee-collection');
             Route::get('/cancelled-fee',       [ReportController::class, 'cancelledFeeReport'])->name('cancelled-fee');
             Route::get('/admission',           [ReportController::class, 'admissionReport'])->name('admission');

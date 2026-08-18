@@ -96,13 +96,23 @@ class SmsTemplateController extends Controller
             'content'         => 'required|string|max:1000',
         ]);
 
+        // Only the variables actually typed into the content, in the order they appear,
+        // WITH repeats preserved if the same variable is used more than once — NOT the full
+        // type-level list, and not deduplicated. Fast2SMS's DLT route sends variables_values
+        // positionally, one value per {#var#} occurrence in the registered template (repeating
+        // a value if it appears in multiple positions); a count mismatch gets the send rejected
+        // (same class of bug as the earlier OTP delivery issue).
+        $allowedVars = self::TYPES[$type]['vars'];
+        preg_match_all('/\{([a-z_]+)\}/', $request->content, $matches);
+        $usedVars = array_values(array_intersect($matches[1], $allowedVars));
+
         SmsTemplate::updateOrCreate(
             ['institute_id' => $this->instituteId(), 'type' => $type],
             [
                 'category'        => $request->category,
                 'dlt_template_id' => $request->dlt_template_id,
                 'content'         => $request->content,
-                'variable_names'  => json_encode(self::TYPES[$type]['vars']),
+                'variable_names'  => json_encode($usedVars),
             ]
         );
 

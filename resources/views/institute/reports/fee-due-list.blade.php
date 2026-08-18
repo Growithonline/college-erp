@@ -2,6 +2,7 @@
     $isStaff = auth()->guard('staff')->check();
     $layout = $isStaff ? 'staff.layout' : 'institute.layout';
     $feeDueRoute = $isStaff ? 'staff.reports.fee-due-list' : 'reports.fee-due-list';
+    $sendReminderRoute = $isStaff ? 'staff.reports.fee-due-list.send-reminder' : 'reports.fee-due-list.send-reminder';
     $streamsRoute = $isStaff ? 'staff.reports.streams' : 'reports.streams';
     $feeCreateRoute = $isStaff ? 'staff.fee.create' : 'fee.create';
     $studentHistoryRoute = $isStaff ? 'staff.fee.student-history' : 'fee.student-history';
@@ -296,6 +297,17 @@
     </div>
 </div>
 
+{{-- Bulk SMS Reminder Bar --}}
+<div class="d-flex align-items-center justify-content-between mb-2" id="bulkReminderBar" style="display:none !important;">
+    <div class="small text-muted"><span id="selectedCount">0</span> student(s) selected</div>
+    <div class="d-flex align-items-center gap-2">
+        <span id="reminderResult" class="small"></span>
+        <button type="button" class="btn btn-warning btn-sm" onclick="sendReminders()" id="bulkSendBtn">
+            <i class="bi bi-bell me-1"></i>Send Reminder to Selected
+        </button>
+    </div>
+</div>
+
 {{-- Table --}}
 <div class="card border-0 shadow-sm" id="reportTable">
     <div class="card-body p-0">
@@ -309,7 +321,10 @@
             <table class="table table-hover align-middle mb-0 small">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">#</th>
+                        <th class="ps-3">
+                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                        </th>
+                        <th>#</th>
                         <th>Student</th>
                         <th>Roll No</th>
                         <th>Father Name</th>
@@ -340,7 +355,12 @@
                             if (!$showAll && $due <= 0) continue;
                         @endphp
                         <tr>
-                            <td class="ps-3 text-muted">{{ $students->firstItem() + $i }}</td>
+                            <td class="ps-3">
+                                @if($due > 0 && $student->mobile)
+                                    <input type="checkbox" class="form-check-input student-checkbox" value="{{ $student->id }}" onchange="updateBulkBar()">
+                                @endif
+                            </td>
+                            <td class="text-muted">{{ $students->firstItem() + $i }}</td>
 
                             <td>
                                 <div class="fw-semibold">{{ $student->name }}</div>
@@ -427,6 +447,12 @@
                                             <i class="bi bi-cash-coin"></i>
                                         </a>
                                     @endif
+                                    @if($due > 0 && $student->mobile)
+                                        <button type="button" class="btn btn-outline-warning btn-sm py-0 px-2" title="Send SMS Reminder Now"
+                                                onclick="sendReminders([{{ $student->id }}], this)">
+                                            <i class="bi bi-bell"></i>
+                                        </button>
+                                    @endif
                                     <a href="{{ route($studentHistoryRoute, $student->id) }}"
                                        class="btn btn-outline-secondary btn-sm py-0 px-2" title="Payment History">
                                         <i class="bi bi-clock-history"></i>
@@ -442,7 +468,7 @@
                 </tbody>
                 <tfoot class="table-light fw-semibold">
                     <tr>
-                        <td colspan="7" class="ps-3 text-muted small">
+                        <td colspan="8" class="ps-3 text-muted small">
                             Page total ({{ $students->count() }} students)
                         </td>
                         <td class="text-end fw-semibold">₹ {{ number_format($totalPayable) }}</td>
@@ -524,6 +550,69 @@ function toggleSourceId(source) {
         const opt = document.createElement('option');
         opt.value = item.id; opt.textContent = item.name;
         sel.appendChild(opt);
+    });
+}
+
+// ── SMS Reminder (single + bulk) ────────────────────────────────────
+function getSelectedStudentIds() {
+    return Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+}
+
+function toggleSelectAll(checkbox) {
+    document.querySelectorAll('.student-checkbox').forEach(cb => cb.checked = checkbox.checked);
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    const ids = getSelectedStudentIds();
+    document.getElementById('selectedCount').textContent = ids.length;
+    document.getElementById('bulkReminderBar').style.setProperty('display', ids.length ? 'flex' : 'none', 'important');
+}
+
+function sendReminders(ids, triggerEl) {
+    const isSingle = !!triggerEl;
+    ids = ids || getSelectedStudentIds();
+    if (!ids.length) return;
+
+    const btn = triggerEl || document.getElementById('bulkSendBtn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
+    const showResult = (success, msg) => {
+        if (isSingle) {
+            alert(msg);
+            return;
+        }
+        const resultEl = document.getElementById('reminderResult');
+        resultEl.className = success ? 'small text-success' : 'small text-danger';
+        resultEl.textContent = msg;
+    };
+
+    fetch('{{ route($sendReminderRoute) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({
+            student_ids: ids,
+            session_id: {{ (int) $sessionId }},
+        }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        const msg = data.success
+            ? `Sent: ${data.sent}` + (data.failed ? `, Failed: ${data.failed}` : '') + (data.skipped ? `, Skipped: ${data.skipped}` : '')
+            : (data.error || 'Failed to send.');
+        showResult(data.success, msg);
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        showResult(false, 'Request failed. Check network.');
     });
 }
 </script>
