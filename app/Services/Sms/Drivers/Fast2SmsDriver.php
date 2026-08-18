@@ -32,7 +32,8 @@ class Fast2SmsDriver implements SmsDriverInterface
                 return ['success' => true, 'response' => $body];
             }
 
-            return ['success' => false, 'response' => $body, 'error' => implode(', ', $body['message'] ?? ['Failed'])];
+            $message = $body['message'] ?? 'Failed';
+            return ['success' => false, 'response' => $body, 'error' => is_array($message) ? implode(', ', $message) : (string) $message];
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -74,7 +75,8 @@ class Fast2SmsDriver implements SmsDriverInterface
                 ];
             }
 
-            return ['success' => false, 'error' => $body['message'][0] ?? 'Invalid API key'];
+            $message = $body['message'] ?? 'Invalid API key';
+            return ['success' => false, 'error' => is_array($message) ? ($message[0] ?? 'Invalid API key') : (string) $message];
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
