@@ -8,24 +8,54 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('sms_templates', function (Blueprint $table) {
-            // Only meaningful for multi-template types (notice, promotion) — single-template
-            // types (otp, fee_due_reminder, fee_transaction_alert, admission_alert) leave this
-            // null and keep exactly one row per (institute_id, type), enforced by application
-            // logic (updateOrCreate keyed on institute_id+type only, name never passed for those).
-            $table->string('name')->nullable()->after('type');
+        // Idempotent — MySQL DDL auto-commits per statement, so a prior failed run of this
+        // same migration can leave partial changes in place even though it isn't recorded as
+        // run. Guard every step so re-running after a failure is safe.
+        if (! Schema::hasColumn('sms_templates', 'name')) {
+            Schema::table('sms_templates', function (Blueprint $table) {
+                $table->string('name')->nullable()->after('type');
+            });
+        }
 
-            $table->dropUnique(['institute_id', 'type']);
-            $table->unique(['institute_id', 'type', 'name']);
-        });
+        $indexNames = collect(Schema::getIndexes('sms_templates'))->pluck('name');
+
+        // The new composite index MUST be added before the old one is dropped: institute_id
+        // is the leftmost column of both, and the old (institute_id, type) unique index is
+        // also serving as the required supporting index for the institute_id foreign key —
+        // MySQL refuses ("error 1553") to drop it while no replacement index covers that FK.
+        if (! $indexNames->contains('sms_templates_institute_id_type_name_unique')) {
+            Schema::table('sms_templates', function (Blueprint $table) {
+                $table->unique(['institute_id', 'type', 'name'], 'sms_templates_institute_id_type_name_unique');
+            });
+        }
+
+        if ($indexNames->contains('sms_templates_institute_id_type_unique')) {
+            Schema::table('sms_templates', function (Blueprint $table) {
+                $table->dropUnique('sms_templates_institute_id_type_unique');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('sms_templates', function (Blueprint $table) {
-            $table->dropUnique(['institute_id', 'type', 'name']);
-            $table->unique(['institute_id', 'type']);
-            $table->dropColumn('name');
-        });
+        $indexNames = collect(Schema::getIndexes('sms_templates'))->pluck('name');
+
+        if (! $indexNames->contains('sms_templates_institute_id_type_unique')) {
+            Schema::table('sms_templates', function (Blueprint $table) {
+                $table->unique(['institute_id', 'type'], 'sms_templates_institute_id_type_unique');
+            });
+        }
+
+        if ($indexNames->contains('sms_templates_institute_id_type_name_unique')) {
+            Schema::table('sms_templates', function (Blueprint $table) {
+                $table->dropUnique('sms_templates_institute_id_type_name_unique');
+            });
+        }
+
+        if (Schema::hasColumn('sms_templates', 'name')) {
+            Schema::table('sms_templates', function (Blueprint $table) {
+                $table->dropColumn('name');
+            });
+        }
     }
 };
