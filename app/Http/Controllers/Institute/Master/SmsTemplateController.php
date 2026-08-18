@@ -22,7 +22,7 @@ class SmsTemplateController extends Controller
         SmsTemplate::TYPE_FEE_TXN_ALERT => [
             'label'    => 'Fee Transaction Alert',
             'category' => SmsTemplate::CATEGORY_TRANSACTIONAL,
-            'vars'     => ['name', 'amount', 'invoice_no', 'payment_date'],
+            'vars'     => ['name', 'course', 'amount', 'payment_date', 'invoice_no'],
             'wired'    => true,
         ],
         SmsTemplate::TYPE_ADMISSION_ALERT => [

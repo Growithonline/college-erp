@@ -1402,6 +1402,7 @@ class FeeCollectionController extends Controller
                 try {
                     SmsService::sendTemplated($instituteId, $mobile, SmsTemplate::TYPE_FEE_TXN_ALERT, [
                         'name'         => $student->name,
+                        'course'       => $student->stream?->course?->name ?? '',
                         'amount'       => number_format($paidAmount, 0),
                         'invoice_no'   => $invoiceNo,
                         'payment_date' => \Carbon\Carbon::parse($paymentDate)->format('d M Y'),
