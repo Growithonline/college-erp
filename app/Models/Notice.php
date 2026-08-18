@@ -28,6 +28,8 @@ class Notice extends Model
         'body',
         'notice_type',
         'visible_to',
+        'target_course_ids',
+        'target_semesters',
         'notice_date',
         'expires_at',
         'is_active',
@@ -36,18 +38,28 @@ class Notice extends Model
         'scheduled_at',
         'email_to',
         'sms_to',
+        'sms_template_id',
+        'sms_template_values',
         'posted_by_staff_id',
         'posted_by_user_id',
     ];
 
     protected $casts = [
-        'notice_date'  => 'date',
-        'expires_at'   => 'date',
-        'scheduled_at' => 'datetime',
-        'is_active'    => 'boolean',
-        'is_pinned'    => 'boolean',
-        'visible_to'   => 'array',
+        'notice_date'          => 'date',
+        'expires_at'           => 'date',
+        'scheduled_at'         => 'datetime',
+        'is_active'            => 'boolean',
+        'is_pinned'            => 'boolean',
+        'visible_to'           => 'array',
+        'target_course_ids'    => 'array',
+        'target_semesters'     => 'array',
+        'sms_template_values'  => 'array',
     ];
+
+    public function smsTemplate()
+    {
+        return $this->belongsTo(SmsTemplate::class);
+    }
 
     public function postedByStaff()
     {
@@ -71,15 +83,43 @@ class Notice extends Model
         return $query->where('is_pinned', true);
     }
 
-    // Fetch active notices visible to a given role for an institute
-    public static function forRole(int $instituteId, string $role)
+    // Fetch active notices visible to a given role for an institute. Pass $student to also
+    // apply course/semester targeting (only meaningful for role='students') — notices with no
+    // targeting set (null) still reach everyone, matching the pre-targeting default behavior.
+    public static function forRole(int $instituteId, string $role, ?Student $student = null)
     {
-        return static::active()
+        $query = static::active()
             ->where('institute_id', $instituteId)
-            ->whereJsonContains('visible_to', $role)
+            ->whereJsonContains('visible_to', $role);
+
+        if ($student) {
+            $query->where(function ($q) use ($student) {
+                $q->whereNull('target_course_ids')
+                  ->orWhereJsonContains('target_course_ids', (int) $student->stream?->course_id);
+            })->where(function ($q) use ($student) {
+                $q->whereNull('target_semesters')
+                  ->orWhereJsonContains('target_semesters', (int) $student->current_semester);
+            });
+        }
+
+        return $query
             ->orderByDesc('is_pinned')
             ->orderByDesc('notice_date')
             ->orderByDesc('id');
+    }
+
+    // Narrows a Student query to only those matching this notice's course/semester targeting.
+    // No-op (all students) when a constraint isn't set — used wherever notice recipients are
+    // resolved (SMS job, email dispatch) so targeting stays consistent everywhere.
+    public function applyTargetingToStudentQuery($query)
+    {
+        if (!empty($this->target_course_ids)) {
+            $query->whereHas('stream', fn($q) => $q->whereIn('course_id', $this->target_course_ids));
+        }
+        if (!empty($this->target_semesters)) {
+            $query->whereIn('current_semester', $this->target_semesters);
+        }
+        return $query;
     }
 
     public function getNoticeTypeLabelAttribute(): string

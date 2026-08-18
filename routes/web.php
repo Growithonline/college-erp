@@ -367,9 +367,10 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('sms/reminders/toggle', [SmsDueReminderController::class, 'toggle'])->name('sms.reminders.toggle');
 
         // SMS Message Templates
-        Route::get('sms/templates',         [SmsTemplateController::class, 'index'])->name('sms.templates.index');
-        Route::post('sms/templates/save',   [SmsTemplateController::class, 'save'])->name('sms.templates.save');
-        Route::post('sms/templates/toggle', [SmsTemplateController::class, 'toggle'])->name('sms.templates.toggle');
+        Route::get('sms/templates',          [SmsTemplateController::class, 'index'])->name('sms.templates.index');
+        Route::post('sms/templates/save',    [SmsTemplateController::class, 'save'])->name('sms.templates.save');
+        Route::post('sms/templates/toggle',  [SmsTemplateController::class, 'toggle'])->name('sms.templates.toggle');
+        Route::post('sms/templates/destroy', [SmsTemplateController::class, 'destroy'])->name('sms.templates.destroy');
 
         // Email (SMTP) Settings
         Route::get('settings/email',             [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'index'])->name('settings.email');

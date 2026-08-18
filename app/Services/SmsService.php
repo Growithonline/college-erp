@@ -115,7 +115,10 @@ class SmsService
     // alerts, admission, exam info, admit card, promotion, due reminders). $vars is an
     // associative array of named placeholder values, e.g. ['name' => 'Rahul', 'amount' => '5000'].
     // Returns false (no-op) if the institute hasn't configured a template for this $type yet —
-    // callers should treat that as "feature not set up", not an error.
+    // callers should treat that as "feature not set up", not an error. Only correct for types
+    // with exactly one template per institute — for types that can have multiple named
+    // templates (e.g. notice), use sendTemplatedById() with a specific template the caller
+    // already bound to.
     public static function sendTemplated(int $instituteId, string $mobile, string $type, array $vars): bool
     {
         $settings = SmsProviderSetting::where('institute_id', $instituteId)->first();
@@ -132,6 +135,33 @@ class SmsService
             return false;
         }
 
+        return self::sendUsingTemplate($instituteId, $settings, $template, $mobile, $vars);
+    }
+
+    // Send using one specific, already-selected template row — for types that can have
+    // multiple named templates per institute (e.g. notice), where the caller (a Notice record)
+    // has already bound to exactly one via sms_template_id, so lookup-by-type doesn't apply.
+    public static function sendTemplatedById(int $instituteId, string $mobile, int $templateId, array $vars): bool
+    {
+        $settings = SmsProviderSetting::where('institute_id', $instituteId)->first();
+        if (! $settings || ! $settings->isUsable()) {
+            return false;
+        }
+
+        $template = SmsTemplate::where('id', $templateId)
+            ->where('institute_id', $instituteId)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $template) {
+            return false;
+        }
+
+        return self::sendUsingTemplate($instituteId, $settings, $template, $mobile, $vars);
+    }
+
+    private static function sendUsingTemplate(int $instituteId, SmsProviderSetting $settings, SmsTemplate $template, string $mobile, array $vars): bool
+    {
         $message = $template->content;
         foreach ($vars as $key => $value) {
             $message = str_replace('{' . $key . '}', (string) $value, $message);
@@ -153,7 +183,7 @@ class SmsService
 
         SmsLog::create([
             'institute_id'      => $instituteId,
-            'type'              => $type,
+            'type'              => $template->type,
             'mobile'            => $mobile,
             'message'           => $message,
             'provider'          => $settings->provider,

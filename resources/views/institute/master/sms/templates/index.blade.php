@@ -22,7 +22,8 @@
 </div>
 @endif
 
-<div class="card border-0 shadow-sm">
+{{-- Single-template types --}}
+<div class="card border-0 shadow-sm mb-4">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
@@ -36,6 +37,7 @@
             </thead>
             <tbody>
                 @foreach($rows as $type => $row)
+                    @continue($row['meta']['is_multi'])
                     @php($t = $row['template'])
                     <tr>
                         <td>
@@ -137,6 +139,190 @@
         </table>
     </div>
 </div>
+
+{{-- Multi-template types (Notice) — an institute can have many named DLT templates --}}
+@foreach($rows as $type => $row)
+    @continue(! $row['meta']['is_multi'])
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-2 d-flex align-items-center justify-content-between">
+            <span class="fw-semibold small">
+                <i class="bi bi-megaphone me-2 text-primary"></i>{{ $row['meta']['label'] }} Templates
+                @if(! $row['meta']['wired'])
+                    <span class="badge bg-secondary-subtle text-secondary border small ms-1">Feature not built yet</span>
+                @endif
+            </span>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal_{{ $type }}">
+                <i class="bi bi-plus-lg me-1"></i>Add New Template
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>DLT Template ID</th>
+                        <th>Status</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($row['templates'] as $t)
+                        <tr>
+                            <td class="fw-semibold small">{{ $t->name }}</td>
+                            <td>
+                                <span class="badge {{ $t->category === 'promotional' ? 'bg-warning-subtle text-warning border border-warning-subtle' : 'bg-info-subtle text-info border border-info-subtle' }}">
+                                    {{ ucfirst($t->category) }}
+                                </span>
+                            </td>
+                            <td>
+                                @if($t->dlt_template_id)
+                                    <code class="small">{{ $t->dlt_template_id }}</code>
+                                @else
+                                    <span class="text-muted small">Not set</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($t->is_active)
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                @else
+                                    <span class="badge bg-secondary-subtle text-secondary border">Disabled</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editModal_{{ $type }}_{{ $t->id }}">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <form method="POST" action="{{ route('master.sms.templates.toggle') }}" class="d-inline">
+                                    @csrf
+                                    <input type="hidden" name="type" value="{{ $type }}">
+                                    <input type="hidden" name="template_id" value="{{ $t->id }}">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi {{ $t->is_active ? 'bi-pause-circle' : 'bi-play-circle' }}"></i>
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('master.sms.templates.destroy') }}" class="d-inline"
+                                      onsubmit="return confirm('Delete this template?');">
+                                    @csrf
+                                    <input type="hidden" name="template_id" value="{{ $t->id }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+
+                        {{-- Edit modal for this specific template --}}
+                        <div class="modal fade" id="editModal_{{ $type }}_{{ $t->id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ route('master.sms.templates.save') }}">
+                                        @csrf
+                                        <input type="hidden" name="type" value="{{ $type }}">
+                                        <input type="hidden" name="template_id" value="{{ $t->id }}">
+                                        <div class="modal-header">
+                                            <h6 class="modal-title fw-bold">Edit Template — {{ $t->name }}</h6>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Name <span class="text-danger">*</span></label>
+                                                <input type="text" name="name" class="form-control form-control-sm" value="{{ $t->name }}" maxlength="100" required>
+                                                <div class="form-text">Internal label to identify this template — not sent in the SMS.</div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">Category</label>
+                                                <select name="category" class="form-select form-select-sm">
+                                                    <option value="transactional" {{ $t->category === 'transactional' ? 'selected' : '' }}>Transactional</option>
+                                                    <option value="promotional" {{ $t->category === 'promotional' ? 'selected' : '' }}>Promotional</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold">DLT Template ID <span class="text-muted fw-normal">(Fast2SMS "Message ID")</span></label>
+                                                <input type="text" name="dlt_template_id" class="form-control form-control-sm" value="{{ $t->dlt_template_id }}" placeholder="e.g. 223154">
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small fw-semibold">Content <span class="text-danger">*</span></label>
+                                                <textarea name="content" class="form-control form-control-sm" rows="5" maxlength="1000">{{ $t->content }}</textarea>
+                                                <div class="form-text">
+                                                    Must match your DLT registered template exactly, word for word. Use your own
+                                                    <code>{variable_name}</code> placeholders — whatever you type here is what gets filled
+                                                    in when creating a notice with this template selected.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                <i class="bi bi-save me-1"></i>Save Template
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted small py-4">
+                                No {{ strtolower($row['meta']['label']) }} templates yet — click "Add New Template" to register one.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Add new template modal --}}
+    <div class="modal fade" id="addModal_{{ $type }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST" action="{{ route('master.sms.templates.save') }}">
+                    @csrf
+                    <input type="hidden" name="type" value="{{ $type }}">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-bold">Add {{ $row['meta']['label'] }} Template</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control form-control-sm" maxlength="100" required
+                                   placeholder="e.g. Registration Notice, Exam Schedule, Admit Card Distribution">
+                            <div class="form-text">Internal label to identify this template — not sent in the SMS.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Category</label>
+                            <select name="category" class="form-select form-select-sm">
+                                <option value="transactional" selected>Transactional</option>
+                                <option value="promotional">Promotional</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">DLT Template ID <span class="text-muted fw-normal">(Fast2SMS "Message ID")</span></label>
+                            <input type="text" name="dlt_template_id" class="form-control form-control-sm" placeholder="e.g. 223154">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Content <span class="text-danger">*</span></label>
+                            <textarea name="content" class="form-control form-control-sm" rows="5" maxlength="1000"></textarea>
+                            <div class="form-text">
+                                Must match your DLT registered template exactly, word for word. Use your own
+                                <code>{variable_name}</code> placeholders — whatever you type here is what gets filled
+                                in when creating a notice with this template selected.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-save me-1"></i>Save Template
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endforeach
 
 <script>
 document.querySelectorAll('.insert-var').forEach(badge => {

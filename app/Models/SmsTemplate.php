@@ -22,6 +22,7 @@ class SmsTemplate extends Model
     protected $fillable = [
         'institute_id',
         'type',
+        'name',
         'category',
         'dlt_template_id',
         'content',

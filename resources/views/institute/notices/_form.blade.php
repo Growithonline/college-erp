@@ -56,6 +56,44 @@
         @error('visible_to')<div class="text-danger mt-1" style="font-size:12px;">{{ $message }}</div>@enderror
     </div>
 
+    {{-- Student Targeting (course + semester) — only matters when students are in Visible To / SMS/Email roles --}}
+    <div class="col-12">
+        <div class="card border-0 rounded-3 p-3" style="background:#f8fafc;border:1.5px dashed #e2e8f0 !important;">
+            <div class="mb-2" style="font-size:12px;font-weight:600;color:#475569;">
+                <i class="bi bi-funnel me-1 text-secondary"></i> Restrict to specific students <span class="text-muted fw-normal">(optional)</span>
+            </div>
+            <div class="form-text mb-2" style="font-size:11px;color:#94a3b8;">
+                Leave both blank to send/show this notice to all students (existing behavior). Set either to limit
+                who sees it and who gets SMS/email — e.g. an admit-card notice only for BA semesters 1–4.
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Course(s)</label>
+                    @php $selectedCourses = old('target_course_ids', isset($notice) ? ($notice->target_course_ids ?? []) : []); @endphp
+                    <select name="target_course_ids[]" class="form-select form-select-sm" multiple size="4">
+                        @foreach($courses as $course)
+                            <option value="{{ $course->id }}" {{ in_array($course->id, $selectedCourses) ? 'selected' : '' }}>{{ $course->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">Ctrl/Cmd+click to select multiple.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Semester(s)</label>
+                    @php $selectedSemesters = old('target_semesters', isset($notice) ? ($notice->target_semesters ?? []) : []); @endphp
+                    <div class="d-flex flex-wrap gap-2">
+                        @for($sem = 1; $sem <= 8; $sem++)
+                        <div class="form-check form-check-inline border rounded px-2 py-1 {{ in_array($sem, $selectedSemesters) ? 'bg-warning-subtle border-warning' : 'bg-white' }}">
+                            <input class="form-check-input" type="checkbox" name="target_semesters[]" id="sem_{{ $sem }}" value="{{ $sem }}"
+                                   {{ in_array($sem, $selectedSemesters) ? 'checked' : '' }}>
+                            <label class="form-check-label small" for="sem_{{ $sem }}">Sem {{ $sem }}</label>
+                        </div>
+                        @endfor
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Notice Date --}}
     <div class="col-md-4">
         <label class="form-label fw-semibold">Notice Date <span class="text-danger">*</span></label>
@@ -252,6 +290,21 @@
                     Students with mobile: <strong>{{ $studentCount }}</strong>
                 </div>
                 @endif
+
+                <div class="mt-3">
+                    <label class="form-label small fw-semibold">Match a registered DLT template? <span class="text-muted fw-normal">(optional, recommended)</span></label>
+                    <select name="sms_template_id" id="smsTemplateSelect" class="form-select form-select-sm" onchange="onSmsTemplateChange()">
+                        <option value="">— None (best-effort free text, not DLT-guaranteed) —</option>
+                        @foreach($smsTemplates as $tpl)
+                            <option value="{{ $tpl->id }}">{{ $tpl->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">
+                        If this notice matches one of your registered notice templates, select it here for guaranteed
+                        DLT delivery. Manage templates on the <a href="{{ route('master.sms.templates.index') }}" target="_blank">Message Templates</a> page.
+                    </div>
+                    <div id="smsTemplateVarsSection" class="mt-2" style="display:none;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -265,6 +318,29 @@ function toggleEmailRoles(checkbox) {
 }
 function toggleSmsRoles(checkbox) {
     document.getElementById('smsRolesSection').style.display = checkbox.checked ? 'block' : 'none';
+}
+
+const SMS_TEMPLATES = @if(isset($smsTemplates)) @json($smsTemplates->map(fn($t) => ['id' => $t->id, 'vars' => array_values(array_unique($t->variable_names_array))])) @else [] @endif;
+
+function onSmsTemplateChange() {
+    const select  = document.getElementById('smsTemplateSelect');
+    const section = document.getElementById('smsTemplateVarsSection');
+    const tplId   = select.value;
+    section.innerHTML = '';
+
+    if (!tplId) { section.style.display = 'none'; return; }
+
+    const tpl = SMS_TEMPLATES.find(t => String(t.id) === tplId);
+    if (!tpl || !tpl.vars.length) { section.style.display = 'none'; return; }
+
+    section.style.display = 'block';
+    let html = '<div class="p-2 rounded" style="background:#f8fafc;font-size:11px;"><div class="fw-semibold mb-2">Fill in this template\'s values:</div>';
+    tpl.vars.forEach(v => {
+        html += `<div class="mb-2"><label class="form-label small">${v}</label>` +
+                `<input type="text" name="template_values[${v}]" class="form-control form-control-sm" required></div>`;
+    });
+    html += '</div>';
+    section.innerHTML = html;
 }
 </script>
 @endpush

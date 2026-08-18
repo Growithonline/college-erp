@@ -58,10 +58,16 @@ class NoticeController extends Controller
 
     public function create()
     {
-        $types     = Notice::TYPES;
-        $visibleTo = Notice::VISIBLE_TO;
+        $instituteId = $this->instituteId();
+        $types       = Notice::TYPES;
+        $visibleTo   = Notice::VISIBLE_TO;
+        $courses     = \App\Models\Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $smsTemplates = \App\Models\SmsTemplate::where('institute_id', $instituteId)
+            ->where('type', \App\Models\SmsTemplate::TYPE_NOTICE)
+            ->where('is_active', true)
+            ->get();
 
-        return view('institute.notices.create', compact('types', 'visibleTo'))
+        return view('institute.notices.create', compact('types', 'visibleTo', 'courses', 'smsTemplates'))
             ->with($this->staffLayout());
     }
 
@@ -75,6 +81,10 @@ class NoticeController extends Controller
             'notice_type'   => 'required|in:' . implode(',', array_keys(Notice::TYPES)),
             'visible_to'    => 'required|array|min:1',
             'visible_to.*'  => 'in:' . implode(',', array_keys(Notice::VISIBLE_TO)),
+            'target_course_ids'   => 'nullable|array',
+            'target_course_ids.*' => 'integer',
+            'target_semesters'    => 'nullable|array',
+            'target_semesters.*'  => 'integer|min:1|max:12',
             'notice_date'   => 'required|date',
             'expires_at'    => 'nullable|date|after_or_equal:notice_date',
             'scheduled_at'  => 'nullable|date',
@@ -100,6 +110,20 @@ class NoticeController extends Controller
             $smsTo = implode(',', array_filter((array) $request->sms_roles));
         }
 
+        // Course IDs actually belong to this institute — never trust the posted list directly
+        $targetCourseIds = null;
+        if (!empty($validated['target_course_ids'])) {
+            $targetCourseIds = \App\Models\Course::where('institute_id', $instituteId)
+                ->whereIn('id', $validated['target_course_ids'])
+                ->pluck('id')->all();
+            if (empty($targetCourseIds)) $targetCourseIds = null;
+        }
+        $targetSemesters = !empty($validated['target_semesters']) ? array_values(array_unique($validated['target_semesters'])) : null;
+
+        // SMS template binding — only one of this institute's own active notice templates,
+        // with values captured only for the variables that specific template declares.
+        [$smsTemplateId, $smsTemplateValues] = $this->resolveSmsTemplateSelection($request, $instituteId);
+
         $staffId = auth()->guard('staff')->id();
         $userId  = auth()->guard('web')->id();
 
@@ -109,6 +133,8 @@ class NoticeController extends Controller
             'body'               => $validated['body'],
             'notice_type'        => $validated['notice_type'],
             'visible_to'         => $validated['visible_to'],
+            'target_course_ids'  => $targetCourseIds,
+            'target_semesters'   => $targetSemesters,
             'notice_date'        => $validated['notice_date'],
             'expires_at'         => $validated['expires_at'] ?? null,
             'scheduled_at'       => $validated['scheduled_at'] ?? null,
@@ -117,6 +143,8 @@ class NoticeController extends Controller
             'attachment'         => $attachmentPath,
             'email_to'           => $emailTo,
             'sms_to'             => $smsTo,
+            'sms_template_id'      => $smsTemplateId,
+            'sms_template_values'  => $smsTemplateValues,
             'posted_by_staff_id' => $staffId,
             'posted_by_user_id'  => $userId,
         ]);
@@ -135,14 +163,40 @@ class NoticeController extends Controller
         return redirect()->route("{$rp}.index")->with('success', 'Notice post ho gaya!');
     }
 
+    // Binds a Notice to one of the institute's own active "notice" type SMS templates, capturing
+    // only the values for the variables that specific template declares (never arbitrary keys).
+    private function resolveSmsTemplateSelection(Request $request, int $instituteId): array
+    {
+        if (!$request->boolean('send_sms') || !$request->filled('sms_template_id')) {
+            return [null, null];
+        }
+
+        $template = \App\Models\SmsTemplate::where('institute_id', $instituteId)
+            ->where('id', $request->sms_template_id)
+            ->where('type', \App\Models\SmsTemplate::TYPE_NOTICE)
+            ->first();
+
+        if (!$template) {
+            return [null, null];
+        }
+
+        $values = [];
+        foreach ($template->variable_names_array as $varName) {
+            $values[$varName] = (string) $request->input("template_values.{$varName}", '');
+        }
+
+        return [$template->id, $values];
+    }
+
     public function edit(Notice $notice)
     {
         abort_if($notice->institute_id !== $this->instituteId(), 403);
 
         $types     = Notice::TYPES;
         $visibleTo = Notice::VISIBLE_TO;
+        $courses   = \App\Models\Course::where('institute_id', $this->instituteId())->where('status', true)->orderBy('name')->get();
 
-        return view('institute.notices.edit', compact('notice', 'types', 'visibleTo'))
+        return view('institute.notices.edit', compact('notice', 'types', 'visibleTo', 'courses'))
             ->with($this->staffLayout());
     }
 
@@ -156,6 +210,10 @@ class NoticeController extends Controller
             'notice_type'   => 'required|in:' . implode(',', array_keys(Notice::TYPES)),
             'visible_to'    => 'required|array|min:1',
             'visible_to.*'  => 'in:' . implode(',', array_keys(Notice::VISIBLE_TO)),
+            'target_course_ids'   => 'nullable|array',
+            'target_course_ids.*' => 'integer',
+            'target_semesters'    => 'nullable|array',
+            'target_semesters.*'  => 'integer|min:1|max:12',
             'notice_date'   => 'required|date',
             'expires_at'    => 'nullable|date|after_or_equal:notice_date',
             'scheduled_at'  => 'nullable|date',
@@ -183,11 +241,22 @@ class NoticeController extends Controller
             $smsTo = implode(',', array_filter((array) $request->sms_roles));
         }
 
+        $targetCourseIds = null;
+        if (!empty($validated['target_course_ids'])) {
+            $targetCourseIds = \App\Models\Course::where('institute_id', $notice->institute_id)
+                ->whereIn('id', $validated['target_course_ids'])
+                ->pluck('id')->all();
+            if (empty($targetCourseIds)) $targetCourseIds = null;
+        }
+        $targetSemesters = !empty($validated['target_semesters']) ? array_values(array_unique($validated['target_semesters'])) : null;
+
         $notice->update([
             'title'        => $validated['title'],
             'body'         => $validated['body'],
             'notice_type'  => $validated['notice_type'],
             'visible_to'   => $validated['visible_to'],
+            'target_course_ids' => $targetCourseIds,
+            'target_semesters'  => $targetSemesters,
             'notice_date'  => $validated['notice_date'],
             'expires_at'   => $validated['expires_at'] ?? null,
             'scheduled_at' => $validated['scheduled_at'] ?? null,
@@ -317,10 +386,11 @@ class NoticeController extends Controller
         }
 
         if (in_array('student', $roles)) {
-            Student::where('institute_id', $instituteId)
+            $studentQuery = Student::where('institute_id', $instituteId)
                 ->where('status', 'active')
-                ->whereNotNull('email')
-                ->pluck('email')
+                ->whereNotNull('email');
+            $notice->applyTargetingToStudentQuery($studentQuery);
+            $studentQuery->pluck('email')
                 ->each(fn($e) => $recipients->push($e));
         }
 

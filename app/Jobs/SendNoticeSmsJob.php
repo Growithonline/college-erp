@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Notice;
-use App\Models\SmsTemplate;
 use App\Models\StaffMember;
 use App\Models\Student;
 use App\Services\SmsService;
@@ -36,36 +35,31 @@ class SendNoticeSmsJob implements ShouldQueue
 
         $roles = array_map('trim', explode(',', $notice->sms_to));
 
-        $hasTemplate = SmsTemplate::where('institute_id', $notice->institute_id)
-            ->where('type', SmsTemplate::TYPE_NOTICE)
-            ->where('is_active', true)
-            ->exists();
-
         if (in_array('staff', $roles)) {
             StaffMember::where('institute_id', $notice->institute_id)
                 ->where('status', true)
                 ->whereNotNull('mobile')
                 ->pluck('mobile')
-                ->each(fn($mobile) => $this->safeSend($notice, $mobile, $hasTemplate));
+                ->each(fn($mobile) => $this->safeSend($notice, $mobile));
         }
 
         if (in_array('students', $roles)) {
-            Student::where('institute_id', $notice->institute_id)
-                ->whereNotNull('mobile')
-                ->pluck('mobile')
-                ->each(fn($mobile) => $this->safeSend($notice, $mobile, $hasTemplate));
+            $studentQuery = Student::where('institute_id', $notice->institute_id)->whereNotNull('mobile');
+            $notice->applyTargetingToStudentQuery($studentQuery);
+            $studentQuery->pluck('mobile')
+                ->each(fn($mobile) => $this->safeSend($notice, $mobile));
         }
     }
 
-    private function safeSend(Notice $notice, string $mobile, bool $hasTemplate): void
+    private function safeSend(Notice $notice, string $mobile): void
     {
         try {
-            if ($hasTemplate) {
-                SmsService::sendTemplated($notice->institute_id, $mobile, SmsTemplate::TYPE_NOTICE, [
-                    'type'  => $notice->notice_type_label,
-                    'title' => $notice->title,
-                ]);
+            if ($notice->sms_template_id) {
+                // Admin picked one of their registered DLT notice templates and filled its
+                // variable values when creating this notice — use exactly that.
+                SmsService::sendTemplatedById($notice->institute_id, $mobile, $notice->sms_template_id, $notice->sms_template_values ?? []);
             } else {
+                // Ad-hoc notice with no matching registered template — best-effort free-text.
                 SmsService::sendForInstitute($notice->institute_id, $mobile, $this->buildMessage($notice), 'notice');
             }
         } catch (\Throwable) {

@@ -426,7 +426,7 @@ class StudentAuthController extends Controller
         $totalDue  = $totalFee - $totalPaid;
 
         // Notices for students
-        $notices = Notice::forRole($student->institute_id, 'students')
+        $notices = Notice::forRole($student->institute_id, 'students', $student)
             ->limit(20)
             ->get();
 
