@@ -581,7 +581,11 @@ function sendReminders(ids, triggerEl) {
 
     const showResult = (success, msg) => {
         if (isSingle) {
-            alert(msg);
+            if (window.showToast) {
+                showToast(msg, success ? 'success' : 'danger');
+            } else {
+                alert(msg);
+            }
             return;
         }
         const resultEl = document.getElementById('reminderResult');
