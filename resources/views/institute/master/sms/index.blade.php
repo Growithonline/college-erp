@@ -394,12 +394,19 @@ const providerSelect = document.getElementById('providerSelect');
 function onProviderChange() {
     const v = providerSelect.value;
     const isCustom = v === 'custom';
+    const apiKeySection = document.getElementById('apiKeySection');
+    const customSection = document.getElementById('customSection');
 
-    document.getElementById('apiKeySection').style.display  = isCustom ? 'none' : '';
-    document.getElementById('customSection').style.display  = isCustom ? '' : 'none';
+    apiKeySection.style.display = isCustom ? 'none' : '';
+    customSection.style.display = isCustom ? '' : 'none';
     document.getElementById('msg91Help').style.display      = v === 'msg91'     ? '' : 'none';
     document.getElementById('fast2smsHelp').style.display   = v === 'fast2sms'  ? '' : 'none';
     document.getElementById('customHelp').style.display     = isCustom          ? '' : 'none';
+
+    // Both sections contain a field named "api_key" — disable whichever is hidden so the
+    // browser doesn't submit its (possibly empty) value and silently clobber the visible one.
+    apiKeySection.querySelectorAll('input,select,textarea').forEach(el => el.disabled = isCustom);
+    customSection.querySelectorAll('input,select,textarea').forEach(el => el.disabled = !isCustom);
 }
 
 providerSelect.addEventListener('change', onProviderChange);
