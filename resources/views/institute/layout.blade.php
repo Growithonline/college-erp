@@ -181,7 +181,12 @@
 
         {{-- ═══════ MASTER (Collapsible Group) ═══════ --}}
         @php
-            $masterActive = request()->routeIs('master.*') || request()->routeIs('library.categories.*') || request()->routeIs('library.authors.*') || request()->routeIs('library.publishers.*') || request()->routeIs('library.subjects.*') || request()->routeIs('library.vendors.*') || request()->routeIs('library.racks.*') || request()->routeIs('library.rules.*');
+            // SMS and Settings (Email/Branding/Backup) are their own separate top-level sidebar
+            // groups below, even though their route names still start with "master." — without
+            // these exclusions, opening one of those also force-expands this unrelated Master
+            // group (Academic Session, Course Types, Course, Subject, ...).
+            $masterActive = (request()->routeIs('master.*') && !request()->routeIs('master.sms.*') && !request()->routeIs('master.settings.*'))
+                || request()->routeIs('library.categories.*') || request()->routeIs('library.authors.*') || request()->routeIs('library.publishers.*') || request()->routeIs('library.subjects.*') || request()->routeIs('library.vendors.*') || request()->routeIs('library.racks.*') || request()->routeIs('library.rules.*');
         @endphp
         <li class="nav-item mt-1">
             <a class="group-header {{ $masterActive ? 'active-group' : '' }} d-flex"
