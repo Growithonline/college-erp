@@ -415,13 +415,15 @@ function initTemplateVarHelper(textarea) {
                 if (!renames.length) return;
 
                 // Two-pass via temporary tokens — so renaming A->B and B->A at the same time
-                // (or any other overlapping rename) can't collide mid-way.
+                // (or any other overlapping rename) can't collide mid-way. Marker deliberately
+                // avoids double curly braces and @ signs — Blade compiles those as its own
+                // syntax even inside a script block, since it scans the whole file's raw text.
                 let newText = textarea.value;
                 renames.forEach(([oldName], i) => {
-                    newText = newText.split('{' + oldName + '}').join('{{__tmp' + i + '__}}');
+                    newText = newText.split('{' + oldName + '}').join('__TMPRENAME' + i + '__');
                 });
                 renames.forEach(([, safeNew], i) => {
-                    newText = newText.split('{{__tmp' + i + '__}}').join('{' + safeNew + '}');
+                    newText = newText.split('__TMPRENAME' + i + '__').join('{' + safeNew + '}');
                 });
                 textarea.value = newText;
                 render();
