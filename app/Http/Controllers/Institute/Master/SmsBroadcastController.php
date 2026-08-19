@@ -65,8 +65,9 @@ class SmsBroadcastController extends Controller
             'content' => $t->content,
             'vars'    => array_values(array_unique($t->variable_names_array)),
         ])->values();
-        $autoVarsStudent = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STUDENT);
-        $autoVarsStaff   = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STAFF);
+        $autoVarsStudent  = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STUDENT);
+        $autoVarsStaff    = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STAFF);
+        $overridableVars  = SmsBroadcastTargeting::overridableAutoVarNames();
 
         // Total semester count per course (years × semesters-per-year) — drives the compose
         // page's Sem checkboxes so a trimester 4-year course (12 sems) isn't capped at 8 the
@@ -78,7 +79,7 @@ class SmsBroadcastController extends Controller
 
         return view('institute.master.sms.broadcasts.create', compact(
             'templates', 'courses', 'streams', 'staffRoles', 'typeLabels', 'courseTypes',
-            'templatesForJs', 'autoVarsStudent', 'autoVarsStaff', 'courseSemesterCounts'
+            'templatesForJs', 'autoVarsStudent', 'autoVarsStaff', 'courseSemesterCounts', 'overridableVars'
         ));
     }
 
@@ -119,13 +120,23 @@ class SmsBroadcastController extends Controller
             return back()->withInput()->with('error', 'Specific mode me kam se kam ek recipient select karo.');
         }
 
-        // Only capture values for variables this template declares that AREN'T auto-filled
-        // per recipient (name/course/etc. come from each student's own record at send time).
-        $autoVars = SmsBroadcastTargeting::recipientAutoVarNames($validated['audience_type']);
-        $values   = [];
+        // Only capture values for variables this template declares that AREN'T auto-filled per
+        // recipient (name/course/etc. come from each student's own record at send time) — except
+        // a var like {mobile} that's overridable: admin can still type one fixed value (e.g. the
+        // college office number) for the whole broadcast instead of each recipient's own; leaving
+        // it blank keeps the normal per-recipient auto-fill.
+        $autoVars        = SmsBroadcastTargeting::recipientAutoVarNames($validated['audience_type']);
+        $overridableVars = SmsBroadcastTargeting::overridableAutoVarNames();
+        $values          = [];
         foreach ($template->variable_names_array as $varName) {
-            if (in_array($varName, $autoVars, true)) continue;
-            $values[$varName] = (string) $request->input("template_values.{$varName}", '');
+            $isAuto        = in_array($varName, $autoVars, true);
+            $isOverridable = in_array($varName, $overridableVars, true);
+            if ($isAuto && !$isOverridable) continue;
+
+            $typed = (string) $request->input("template_values.{$varName}", '');
+            if ($isAuto && $isOverridable && $typed === '') continue;
+
+            $values[$varName] = $typed;
         }
 
         $sanitized = SmsBroadcastTargeting::sanitizeFilters($instituteId, $validated['audience_type'], $validated);
@@ -193,13 +204,17 @@ class SmsBroadcastController extends Controller
         }
 
         // Sample message preview — shared values are already known; per-recipient values
-        // (name/course/etc.) can't be shown for one generic sample, so they stay bracketed.
+        // (name/course/etc.) can't be shown for one generic sample, so they stay bracketed —
+        // unless an overridable one (e.g. {mobile}) was given a fixed override value, in which
+        // case that's exactly what every recipient will actually get.
         $autoVars     = SmsBroadcastTargeting::recipientAutoVarNames($broadcast->audience_type);
         $sampleText   = $broadcast->smsTemplate->content ?? '';
         foreach ($broadcast->smsTemplate->variable_names_array ?? [] as $varName) {
+            $isAuto       = in_array($varName, $autoVars, true);
+            $hasOverride  = array_key_exists($varName, $broadcast->template_values ?? []);
             $sampleText = str_replace(
                 '{' . $varName . '}',
-                in_array($varName, $autoVars, true) ? '[' . $varName . ']' : ($broadcast->template_values[$varName] ?? ''),
+                ($isAuto && !$hasOverride) ? '[' . $varName . ']' : ($broadcast->template_values[$varName] ?? ''),
                 $sampleText
             );
         }

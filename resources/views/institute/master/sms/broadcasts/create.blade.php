@@ -226,6 +226,7 @@ const AUTO_VARS = {
     student: @json($autoVarsStudent),
     staff:   @json($autoVarsStaff),
 };
+const OVERRIDABLE_AUTO_VARS = @json($overridableVars);
 const OLD_TEMPLATE_VALUES = @json($oldTemplateValues);
 const OLD_SPECIFIC_IDS    = @json($oldSpecificIds);
 const COURSE_SEMESTERS    = @json($courseSemesterCounts);
@@ -269,17 +270,40 @@ function renderVarsAndPreview() {
     varsSection.style.display = 'block';
     const auto = AUTO_VARS[currentAudience()] || [];
     const autoUsed = tpl.vars.filter(v => auto.includes(v));
+    const autoFixed = autoUsed.filter(v => !OVERRIDABLE_AUTO_VARS.includes(v));
+    const autoOverridable = autoUsed.filter(v => OVERRIDABLE_AUTO_VARS.includes(v));
     const sharedVars = tpl.vars.filter(v => !auto.includes(v));
 
-    if (autoUsed.length) {
+    if (autoFixed.length) {
         autoVarsNote.style.display = 'block';
         autoVarsNote.innerHTML = '<i class="bi bi-info-circle me-1"></i>Auto-fill honge (har recipient ka apna): ' +
-            autoUsed.map(v => `<code>{${v}}</code>`).join(', ');
+            autoFixed.map(v => `<code>{${v}}</code>`).join(', ');
     } else {
         autoVarsNote.style.display = 'none';
     }
 
     varsInputs.innerHTML = '';
+
+    // Overridable auto vars (e.g. {mobile}) — blank = recipient's own (default), typed = one
+    // fixed value for everyone (e.g. the college office number instead of each student's own).
+    autoOverridable.forEach(v => {
+        const oldVal = OLD_TEMPLATE_VALUES && OLD_TEMPLATE_VALUES[v] ? OLD_TEMPLATE_VALUES[v] : '';
+        const wrap  = document.createElement('div');
+        wrap.className = 'mb-2';
+        const label = document.createElement('label');
+        label.className = 'form-label small';
+        label.innerHTML = `${v} <span class="text-muted fw-normal">(blank = har recipient ka apna ${v}; bharo to sabko yahi fixed jaega — jaise college office number)</span>`;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.name = `template_values[${v}]`;
+        input.className = 'form-control form-control-sm var-input';
+        input.placeholder = 'Blank chhodo = auto';
+        input.value = oldVal;
+        wrap.appendChild(label);
+        wrap.appendChild(input);
+        varsInputs.appendChild(wrap);
+    });
+
     sharedVars.forEach(v => {
         const oldVal = OLD_TEMPLATE_VALUES && OLD_TEMPLATE_VALUES[v] ? OLD_TEMPLATE_VALUES[v] : '';
         const wrap  = document.createElement('div');
@@ -308,11 +332,13 @@ function renderPreviewOnly() {
     const auto = AUTO_VARS[currentAudience()] || [];
     let text = tpl.content;
     tpl.vars.forEach(v => {
+        const input = document.querySelector(`[name="template_values[${v}]"]`);
+        const val = input ? input.value : '';
+
         if (auto.includes(v)) {
-            text = text.split('{' + v + '}').join('[' + v + ']');
+            const overridden = OVERRIDABLE_AUTO_VARS.includes(v) && val;
+            text = text.split('{' + v + '}').join(overridden ? val : '[' + v + ']');
         } else {
-            const input = document.querySelector(`[name="template_values[${v}]"]`);
-            const val = input ? input.value : '';
             text = text.split('{' + v + '}').join(val || ('{' + v + '}'));
         }
     });

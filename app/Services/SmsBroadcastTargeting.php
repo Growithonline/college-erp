@@ -107,6 +107,14 @@ class SmsBroadcastTargeting
             : ['name', 'mobile', 'course', 'roll_no', 'student_uid', 'institute_name'];
     }
 
+    // Auto-fill vars an admin can still override with one fixed value for the whole broadcast —
+    // most messages "from the college" want the college's own office number in {mobile}, not
+    // each recipient's own number. Blank on the compose page = fall back to the recipient's own.
+    public static function overridableAutoVarNames(): array
+    {
+        return ['mobile'];
+    }
+
     // The actual per-recipient values for the reserved names above — used by the send job to
     // merge over the admin's shared template_values just before sending each message.
     public static function buildRecipientVars($recipient, string $audienceType): array

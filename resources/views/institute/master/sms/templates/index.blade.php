@@ -350,7 +350,7 @@ function initTemplateVarHelper(textarea) {
 
     function render() {
         const text = textarea.value;
-        const namedMatches = text.match(/\{[a-z_]+\}/g) || [];
+        const namedMatches = text.match(/\{[a-z_][a-z0-9_]*\}/g) || [];
         const named = [...new Set(namedMatches)];
         const generic = text.match(/\{#\s*var\s*#\}/gi) || [];
 
@@ -409,7 +409,7 @@ function initTemplateVarHelper(textarea) {
                 const renames = [];
                 slot.querySelectorAll('.rename-named-input').forEach(inp => {
                     const oldName = inp.dataset.old;
-                    const safeNew = inp.value.trim().toLowerCase().replace(/[^a-z_]+/g, '_').replace(/^_+|_+$/g, '');
+                    const safeNew = inp.value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').replace(/^[0-9]+/, '');
                     if (safeNew && safeNew !== oldName) renames.push([oldName, safeNew]);
                 });
                 if (!renames.length) return;
@@ -465,7 +465,7 @@ function initTemplateVarHelper(textarea) {
                 slot.querySelectorAll('.rename-input').forEach(inp => {
                     const raw = inp.value.trim();
                     if (!raw) return;
-                    let safe = raw.toLowerCase().replace(/[^a-z_]+/g, '_').replace(/^_+|_+$/g, '');
+                    let safe = raw.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').replace(/^[0-9]+/, '');
                     if (!safe) return;
                     seenCounts[safe] = (seenCounts[safe] || 0) + 1;
                     if (seenCounts[safe] > 1) safe = safe + '_' + seenCounts[safe];

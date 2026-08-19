@@ -39,9 +39,13 @@ class SendSmsBroadcastJob implements ShouldQueue
         foreach ($recipients as $recipient) {
             // {name}/{course}/etc. come from this recipient's own record — never the same
             // literal value broadcast to everyone (see SmsBroadcastTargeting::recipientAutoVarNames).
+            // template_values is layered ON TOP so an explicit override (e.g. {mobile} set to
+            // the college office number instead of the recipient's own) wins — store() only
+            // ever puts a key here for a genuinely shared var or a deliberate override, never
+            // for a non-overridable auto var, so this can't accidentally clobber {name}/{course}.
             $vars = array_merge(
-                $broadcast->template_values ?? [],
-                SmsBroadcastTargeting::buildRecipientVars($recipient, $broadcast->audience_type)
+                SmsBroadcastTargeting::buildRecipientVars($recipient, $broadcast->audience_type),
+                $broadcast->template_values ?? []
             );
 
             $ok = false;
