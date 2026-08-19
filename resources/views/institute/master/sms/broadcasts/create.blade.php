@@ -83,17 +83,28 @@
                     <i class="bi bi-funnel me-1"></i>Target Students <span class="text-muted fw-normal">(sab blank chhodo = sab active students)</span>
                 </div>
                 <div class="row g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Course Type</label>
+                        <select id="courseTypeSelect" class="form-select form-select-sm">
+                            <option value="">— Sab —</option>
+                            @foreach($courseTypes as $ct)
+                                <option value="{{ $ct->id }}">{{ $ct->name }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">Course list ko narrow karne ke liye (optional).</div>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label small fw-semibold">Course(s)</label>
                         @php($selectedCourses = old('target_course_ids', []))
                         <select name="target_course_ids[]" id="courseSelect" class="form-select form-select-sm" multiple size="5">
                             @foreach($courses as $course)
-                                <option value="{{ $course->id }}" {{ in_array($course->id, $selectedCourses) ? 'selected' : '' }}>{{ $course->name }}</option>
+                                <option value="{{ $course->id }}" data-course-type-id="{{ $course->course_type_id }}"
+                                        {{ in_array($course->id, $selectedCourses) ? 'selected' : '' }}>{{ $course->name }}</option>
                             @endforeach
                         </select>
                         <div class="form-text">Ctrl/Cmd+click se multiple select karo.</div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label small fw-semibold">Stream(s)</label>
                         @php($selectedStreams = old('target_stream_ids', []))
                         <select name="target_stream_ids[]" id="streamSelect" class="form-select form-select-sm" multiple size="5">
@@ -106,18 +117,19 @@
                         </select>
                         <div class="form-text">Course select karne pe list filter ho jaegi.</div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="form-label small fw-semibold">Semester(s)</label>
                         @php($selectedSemesters = old('target_semesters', []))
-                        <div class="d-flex flex-wrap gap-2">
-                            @for($sem = 1; $sem <= 8; $sem++)
-                            <div class="form-check form-check-inline border rounded px-2 py-1 {{ in_array($sem, $selectedSemesters) ? 'bg-warning-subtle border-warning' : 'bg-white' }}">
+                        <div class="d-flex flex-wrap gap-2" id="semesterCheckboxes">
+                            @for($sem = 1; $sem <= 12; $sem++)
+                            <div class="form-check form-check-inline border rounded px-2 py-1 sem-wrap {{ in_array($sem, $selectedSemesters) ? 'bg-warning-subtle border-warning' : 'bg-white' }}" data-sem="{{ $sem }}">
                                 <input class="form-check-input" type="checkbox" name="target_semesters[]" id="sem_{{ $sem }}" value="{{ $sem }}"
                                        {{ in_array($sem, $selectedSemesters) ? 'checked' : '' }}>
                                 <label class="form-check-label small" for="sem_{{ $sem }}">Sem {{ $sem }}</label>
                             </div>
                             @endfor
                         </div>
+                        <div class="form-text">Course select karne pe uske actual semesters tak simit ho jaega.</div>
                     </div>
                 </div>
             </div>
@@ -160,11 +172,13 @@
                     </div>
                 </div>
 
-                <div id="specificPicker" style="display:none;" class="mt-3">
-                    <input type="text" id="recipientSearch" class="form-control form-control-sm" placeholder="Naam se search karo...">
-                    <div id="searchResults" class="border rounded mt-1 bg-white" style="max-height:160px;overflow-y:auto;display:none;"></div>
-                    <div id="selectedChips" class="d-flex flex-wrap gap-1 mt-2"></div>
-                    <div id="selectedContainer"></div>
+                <div id="selectedChips" class="d-flex flex-wrap gap-1 mt-2"></div>
+                <div id="selectedContainer"></div>
+
+                <div class="mt-3">
+                    <input type="text" id="recipientSearch" class="form-control form-control-sm" placeholder="List me naam se search karo...">
+                    <div id="recipientList" class="border rounded mt-2 bg-white" style="max-height:240px;overflow-y:auto;"></div>
+                    <div id="recipientListNote" class="form-text mt-1"></div>
                 </div>
             </div>
         </div>
@@ -214,6 +228,7 @@ const AUTO_VARS = {
 };
 const OLD_TEMPLATE_VALUES = @json($oldTemplateValues);
 const OLD_SPECIFIC_IDS    = @json($oldSpecificIds);
+const COURSE_SEMESTERS    = @json($courseSemesterCounts);
 const PREVIEW_COUNT_URL   = "{{ route('master.sms.broadcasts.preview-count') }}";
 const SEARCH_URL          = "{{ route('master.sms.broadcasts.search-recipients') }}";
 const CSRF_TOKEN          = "{{ csrf_token() }}";
@@ -227,11 +242,11 @@ const charCount       = document.getElementById('charCount');
 const studentTargeting = document.getElementById('studentTargeting');
 const staffTargeting   = document.getElementById('staffTargeting');
 const recipientCountEl = document.getElementById('recipientCount');
-const specificPicker   = document.getElementById('specificPicker');
 const selectedChips    = document.getElementById('selectedChips');
 const selectedContainer = document.getElementById('selectedContainer');
 const searchInput      = document.getElementById('recipientSearch');
-const searchResults    = document.getElementById('searchResults');
+const recipientList    = document.getElementById('recipientList');
+const recipientListNote = document.getElementById('recipientListNote');
 const noticeFields     = document.getElementById('noticeFields');
 const noticeBody       = document.getElementById('noticeBody');
 
@@ -326,6 +341,8 @@ function collectTargetingFilters() {
 }
 
 function refreshRecipientCount() {
+    refreshRecipientList();
+
     const mode = document.querySelector('input[name="recipient_mode"]:checked')?.value || 'all';
     if (mode === 'specific') {
         recipientCountEl.textContent = selectedRecipients.size;
@@ -361,6 +378,41 @@ function filterStreamsByCourse() {
     });
 }
 
+function filterCoursesByType() {
+    const courseTypeSelect = document.getElementById('courseTypeSelect');
+    const courseSelect = document.getElementById('courseSelect');
+    if (!courseTypeSelect || !courseSelect) return;
+    const typeId = courseTypeSelect.value;
+
+    Array.from(courseSelect.options).forEach(opt => {
+        const belongs = !typeId || opt.dataset.courseTypeId === typeId;
+        opt.hidden = !belongs;
+        if (!belongs) opt.selected = false;
+    });
+    filterStreamsByCourse();
+}
+
+// A trimester 4-year course has 12 semesters, a plain semester 3-year course has 6 — cap the
+// visible Sem checkboxes to the max across selected courses so admins can't target a semester
+// that course doesn't have. No course selected = show the full range (can't know a max yet).
+function updateSemesterRange() {
+    const courseSelect = document.getElementById('courseSelect');
+    if (!courseSelect) return;
+    const selectedCourseIds = Array.from(courseSelect.selectedOptions).map(o => o.value);
+
+    let maxSem = 12;
+    if (selectedCourseIds.length) {
+        maxSem = Math.max(...selectedCourseIds.map(id => COURSE_SEMESTERS[id] || 12));
+    }
+
+    document.querySelectorAll('.sem-wrap').forEach(wrap => {
+        const sem = parseInt(wrap.dataset.sem, 10);
+        const visible = sem <= maxSem;
+        wrap.style.display = visible ? '' : 'none';
+        if (!visible) wrap.querySelector('input').checked = false;
+    });
+}
+
 function renderSelectedChips() {
     selectedChips.innerHTML = '';
     selectedContainer.innerHTML = '';
@@ -390,10 +442,13 @@ function renderSelectedChips() {
     });
 }
 
-let searchTimer = null;
-function doSearch() {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
+// Shows who the current targeting actually resolves to — not just a count — so an admin can
+// visually confirm the right people before sending. Same endpoint powers the specific-recipient
+// picker: in "all" mode rows are read-only, in "specific" mode each row gets a checkbox.
+let listFetchTimer = null;
+function refreshRecipientList() {
+    clearTimeout(listFetchTimer);
+    listFetchTimer = setTimeout(() => {
         const filters = collectTargetingFilters();
         const body = new URLSearchParams();
         body.append('_token', CSRF_TOKEN);
@@ -406,26 +461,47 @@ function doSearch() {
 
         fetch(SEARCH_URL, { method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
-            .then(rows => {
-                searchResults.innerHTML = '';
-                if (!rows.length) { searchResults.style.display = 'none'; return; }
-                searchResults.style.display = 'block';
-                rows.forEach(row => {
-                    const item = document.createElement('div');
-                    item.className = 'p-2 small border-bottom';
-                    item.style.cursor = 'pointer';
-                    item.textContent = `${row.name} — ${row.mobile}`;
-                    item.addEventListener('click', () => {
-                        selectedRecipients.set(String(row.id), row.name);
-                        renderSelectedChips();
-                        refreshRecipientCount();
-                        searchResults.style.display = 'none';
-                        searchInput.value = '';
-                    });
-                    searchResults.appendChild(item);
-                });
-            });
+            .then(rows => renderRecipientList(rows));
     }, 300);
+}
+
+function renderRecipientList(rows) {
+    const mode = document.querySelector('input[name="recipient_mode"]:checked')?.value || 'all';
+    recipientList.innerHTML = '';
+
+    if (!rows.length) {
+        recipientList.innerHTML = '<div class="p-2 small text-muted">Koi match nahi mila.</div>';
+        recipientListNote.textContent = '';
+        return;
+    }
+
+    rows.forEach(row => {
+        const item = document.createElement('div');
+        item.className = 'p-2 small border-bottom d-flex align-items-center gap-2';
+
+        if (mode === 'specific') {
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'form-check-input flex-shrink-0 mt-0';
+            cb.checked = selectedRecipients.has(String(row.id));
+            cb.addEventListener('change', () => {
+                if (cb.checked) selectedRecipients.set(String(row.id), row.name);
+                else selectedRecipients.delete(String(row.id));
+                renderSelectedChips();
+                refreshRecipientCount();
+            });
+            item.appendChild(cb);
+        }
+
+        const label = document.createElement('span');
+        label.textContent = row.details ? `${row.name} — ${row.mobile} · ${row.details}` : `${row.name} — ${row.mobile}`;
+        item.appendChild(label);
+        recipientList.appendChild(item);
+    });
+
+    recipientListNote.textContent = rows.length >= 50
+        ? 'Top 50 dikha rahe hain — search karke aur specific banda dhundo.'
+        : '';
 }
 
 templateSelect.addEventListener('change', renderVarsAndPreview);
@@ -434,16 +510,13 @@ document.querySelectorAll('input[name="audience_type"]').forEach(r => r.addEvent
     renderVarsAndPreview();
     refreshRecipientCount();
 }));
-document.getElementById('courseSelect')?.addEventListener('change', () => { filterStreamsByCourse(); refreshRecipientCount(); });
+document.getElementById('courseTypeSelect')?.addEventListener('change', () => { filterCoursesByType(); updateSemesterRange(); refreshRecipientCount(); });
+document.getElementById('courseSelect')?.addEventListener('change', () => { filterStreamsByCourse(); updateSemesterRange(); refreshRecipientCount(); });
 document.getElementById('streamSelect')?.addEventListener('change', refreshRecipientCount);
 document.getElementById('roleSelect')?.addEventListener('change', refreshRecipientCount);
 document.querySelectorAll('input[name="target_semesters[]"]').forEach(i => i.addEventListener('change', refreshRecipientCount));
-document.querySelectorAll('input[name="recipient_mode"]').forEach(r => r.addEventListener('change', () => {
-    const mode = document.querySelector('input[name="recipient_mode"]:checked').value;
-    specificPicker.style.display = mode === 'specific' ? 'block' : 'none';
-    refreshRecipientCount();
-}));
-searchInput?.addEventListener('input', doSearch);
+document.querySelectorAll('input[name="recipient_mode"]').forEach(r => r.addEventListener('change', refreshRecipientCount));
+searchInput?.addEventListener('input', refreshRecipientList);
 document.getElementById('link_notice').addEventListener('change', function () {
     noticeFields.style.display = this.checked ? 'block' : 'none';
     if (this.checked) renderPreviewOnly();
@@ -454,10 +527,8 @@ noticeBody.addEventListener('input', () => { noticeBody.dataset.userEdited = '1'
 // repopulated the form fields; this just makes the JS-driven sections match them).
 toggleAudienceSections();
 filterStreamsByCourse();
+updateSemesterRange();
 if (templateSelect.value) renderVarsAndPreview();
-if (document.querySelector('input[name="recipient_mode"]:checked').value === 'specific') {
-    specificPicker.style.display = 'block';
-}
 if (Array.isArray(OLD_SPECIFIC_IDS) && OLD_SPECIFIC_IDS.length) {
     // Ids only survive validation-error redisplay — names aren't known client-side, so show the id.
     OLD_SPECIFIC_IDS.forEach(id => selectedRecipients.set(String(id), '#' + id));

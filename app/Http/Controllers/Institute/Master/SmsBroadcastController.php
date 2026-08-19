@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendSmsBroadcastJob;
 use App\Models\Course;
 use App\Models\CourseStream;
+use App\Models\CourseType;
 use App\Models\Notice;
 use App\Models\SmsBroadcast;
 use App\Models\SmsTemplate;
@@ -55,6 +56,7 @@ class SmsBroadcastController extends Controller
         $courses    = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $streams    = CourseStream::with('course')->whereIn('course_id', $courses->pluck('id'))->where('status', true)->orderBy('name')->get();
         $staffRoles = StaffRole::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $courseTypes = CourseType::where('institute_id', $instituteId)->where('is_active', true)->orderBy('sort_order')->get();
         $typeLabels = self::BROADCASTABLE_TYPES;
 
         // Shaped here (not inline in the blade's @json calls) — keeps the view a plain template.
@@ -66,9 +68,17 @@ class SmsBroadcastController extends Controller
         $autoVarsStudent = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STUDENT);
         $autoVarsStaff   = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STAFF);
 
+        // Total semester count per course (years × semesters-per-year) — drives the compose
+        // page's Sem checkboxes so a trimester 4-year course (12 sems) isn't capped at 8 the
+        // way a plain 4-year semester course would be.
+        $courseSemesterCounts = $courses->mapWithKeys(function (Course $c) {
+            $years = $c->duration_type === 'year' ? (int) $c->duration : max(1, (int) ceil($c->duration / 12));
+            return [$c->id => $years * $c->effectiveSemestersPerYear()];
+        });
+
         return view('institute.master.sms.broadcasts.create', compact(
-            'templates', 'courses', 'streams', 'staffRoles', 'typeLabels',
-            'templatesForJs', 'autoVarsStudent', 'autoVarsStaff'
+            'templates', 'courses', 'streams', 'staffRoles', 'typeLabels', 'courseTypes',
+            'templatesForJs', 'autoVarsStudent', 'autoVarsStaff', 'courseSemesterCounts'
         ));
     }
 
@@ -303,8 +313,33 @@ class SmsBroadcastController extends Controller
             $query->where('name', 'like', '%' . $validated['q'] . '%');
         }
 
-        $rows = $query->orderBy('name')->limit(50)->get(['id', 'name', 'mobile']);
+        // A bare name+mobile list is hard to pick from when several students share a name —
+        // show course/stream/semester (or role, for staff) so a single click is unambiguous.
+        if ($validated['audience_type'] === SmsBroadcast::AUDIENCE_STUDENT) {
+            $rows = $query->with('stream.course')->orderBy('name')->limit(50)
+                ->get(['id', 'name', 'mobile', 'roll_no', 'current_semester', 'course_stream_id'])
+                ->map(fn ($s) => [
+                    'id'      => $s->id,
+                    'name'    => $s->name,
+                    'mobile'  => $s->mobile,
+                    'details' => collect([
+                        $s->stream?->course?->name,
+                        $s->stream?->name,
+                        $s->current_semester ? "Sem {$s->current_semester}" : null,
+                        $s->roll_no ? "Roll {$s->roll_no}" : null,
+                    ])->filter()->implode(' · '),
+                ]);
+        } else {
+            $rows = $query->with('role')->orderBy('name')->limit(50)
+                ->get(['id', 'name', 'mobile', 'staff_role_id', 'staff_uid'])
+                ->map(fn ($s) => [
+                    'id'      => $s->id,
+                    'name'    => $s->name,
+                    'mobile'  => $s->mobile,
+                    'details' => collect([$s->role?->name, $s->staff_uid])->filter()->implode(' · '),
+                ]);
+        }
 
-        return response()->json($rows);
+        return response()->json($rows->values());
     }
 }

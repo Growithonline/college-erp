@@ -383,11 +383,17 @@ function initTemplateVarHelper(textarea) {
             });
             slot.querySelector('.apply-rename-btn').addEventListener('click', () => {
                 let newText = textarea.value;
+                // Two slots given the same name (e.g. admin types "date" twice) would collapse
+                // into ONE variable that sends the same value to both DLT positions — auto-suffix
+                // repeats (date, date_2, date_3...) so every slot stays independently fillable.
+                const seenCounts = {};
                 slot.querySelectorAll('.rename-input').forEach(inp => {
                     const raw = inp.value.trim();
                     if (!raw) return;
-                    const safe = raw.toLowerCase().replace(/[^a-z_]+/g, '_').replace(/^_+|_+$/g, '');
+                    let safe = raw.toLowerCase().replace(/[^a-z_]+/g, '_').replace(/^_+|_+$/g, '');
                     if (!safe) return;
+                    seenCounts[safe] = (seenCounts[safe] || 0) + 1;
+                    if (seenCounts[safe] > 1) safe = safe + '_' + seenCounts[safe];
                     newText = newText.replace(/\{#\s*var\s*#\}/i, '{' + safe + '}');
                 });
                 textarea.value = newText;
