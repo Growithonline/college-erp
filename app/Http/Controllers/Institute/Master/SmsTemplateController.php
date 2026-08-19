@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Institute\Master;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
-use App\Models\Notice;
+use App\Models\SmsBroadcast;
 use App\Models\SmsTemplate;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
@@ -207,8 +207,8 @@ class SmsTemplateController extends Controller
             return back()->with('error', 'Template not found.');
         }
 
-        if (Notice::where('sms_template_id', $template->id)->exists()) {
-            return back()->with('error', 'Cannot delete — this template is used by existing notices.');
+        if (SmsBroadcast::where('sms_template_id', $template->id)->exists()) {
+            return back()->with('error', 'Cannot delete — this template is used by existing SMS broadcasts.');
         }
 
         $template->delete();

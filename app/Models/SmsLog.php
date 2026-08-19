@@ -19,6 +19,7 @@ class SmsLog extends Model
 
     protected $fillable = [
         'institute_id',
+        'sms_broadcast_id',
         'type',
         'mobile',
         'message',
@@ -31,5 +32,10 @@ class SmsLog extends Model
     public function institute(): BelongsTo
     {
         return $this->belongsTo(Institute::class);
+    }
+
+    public function broadcast(): BelongsTo
+    {
+        return $this->belongsTo(SmsBroadcast::class, 'sms_broadcast_id');
     }
 }

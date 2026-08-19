@@ -1191,6 +1191,10 @@
                            href="{{ route('master.sms.templates.index') }}">
                         <i class="bi bi-file-earmark-text"></i> Message Templates
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('master.sms.broadcasts.*') ? 'active' : '' }}"
+                           href="{{ route('master.sms.broadcasts.index') }}">
+                        <i class="bi bi-send"></i> Send SMS
+                    </a></li>
                 </ul>
             </div>
         </li>

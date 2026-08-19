@@ -129,14 +129,19 @@ class SmsSettingController extends Controller
     {
         $instituteId = $this->instituteId();
 
-        $query = SmsLog::where('institute_id', $instituteId)->latest();
+        $query = SmsLog::with('broadcast')->where('institute_id', $instituteId)->latest();
 
-        if ($request->filled('type') && in_array($request->type, ['otp', 'notice', 'due_reminder'])) {
+        $validTypes = ['otp', 'notice', 'due_reminder', 'admit_card', 'exam_info', 'promotion', 'admission_alert'];
+        if ($request->filled('type') && in_array($request->type, $validTypes)) {
             $query->where('type', $request->type);
         }
 
         if ($request->filled('status') && in_array($request->status, ['pending', 'sent', 'failed'])) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->filled('broadcast')) {
+            $query->where('sms_broadcast_id', (int) $request->broadcast);
         }
 
         $logs    = $query->paginate(30)->withQueryString();

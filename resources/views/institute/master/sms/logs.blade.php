@@ -16,14 +16,27 @@
     </div>
 </div>
 
+@if(request('broadcast'))
+<div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+    <span class="small">Sirf <a href="{{ route('master.sms.broadcasts.show', request('broadcast')) }}">Broadcast #{{ request('broadcast') }}</a> ke logs dikha rahe hain.</span>
+    <a href="{{ route('master.sms.logs', request()->except('broadcast')) }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+</div>
+@endif
+
 {{-- Filters --}}
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2 px-3">
         <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+            @if(request('broadcast'))<input type="hidden" name="broadcast" value="{{ request('broadcast') }}">@endif
             <select name="type" class="form-select form-select-sm" style="width:auto;">
                 <option value="">All Types</option>
                 <option value="notice" {{ request('type') === 'notice' ? 'selected' : '' }}>Notice</option>
                 <option value="due_reminder" {{ request('type') === 'due_reminder' ? 'selected' : '' }}>Due Reminder</option>
+                <option value="admit_card" {{ request('type') === 'admit_card' ? 'selected' : '' }}>Admit Card</option>
+                <option value="exam_info" {{ request('type') === 'exam_info' ? 'selected' : '' }}>Exam Info</option>
+                <option value="promotion" {{ request('type') === 'promotion' ? 'selected' : '' }}>Promotion</option>
+                <option value="admission_alert" {{ request('type') === 'admission_alert' ? 'selected' : '' }}>Admission / Credentials</option>
+                <option value="otp" {{ request('type') === 'otp' ? 'selected' : '' }}>OTP</option>
             </select>
             <select name="status" class="form-select form-select-sm" style="width:auto;">
                 <option value="">All Status</option>
@@ -51,6 +64,7 @@
                         <th>Type</th>
                         <th>Mobile</th>
                         <th>Message</th>
+                        <th>Broadcast</th>
                         <th class="text-center">Status</th>
                     </tr>
                 </thead>
@@ -60,7 +74,15 @@
                         <td class="text-muted text-nowrap">{{ $log->created_at->format('d M Y H:i') }}</td>
                         <td>
                             @php
-                                $typeMap = ['notice' => ['Notice','info'], 'due_reminder' => ['Due Reminder','warning']];
+                                $typeMap = [
+                                    'notice'          => ['Notice', 'info'],
+                                    'due_reminder'    => ['Due Reminder', 'warning'],
+                                    'admit_card'      => ['Admit Card', 'primary'],
+                                    'exam_info'       => ['Exam Info', 'primary'],
+                                    'promotion'       => ['Promotion', 'warning'],
+                                    'admission_alert' => ['Admission', 'success'],
+                                    'otp'             => ['OTP', 'secondary'],
+                                ];
                                 [$label, $color] = $typeMap[$log->type] ?? [$log->type, 'secondary'];
                             @endphp
                             <span class="badge bg-{{ $color }}-subtle text-{{ $color }} border border-{{ $color }}-subtle">{{ $label }}</span>
@@ -68,6 +90,13 @@
                         <td>{{ $log->mobile }}</td>
                         <td class="text-truncate" style="max-width:350px;" title="{{ $log->message }}">
                             {{ $log->message }}
+                        </td>
+                        <td>
+                            @if($log->broadcast)
+                                <a href="{{ route('master.sms.broadcasts.show', $log->broadcast) }}" class="small">#{{ $log->broadcast->id }}</a>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
                         </td>
                         <td class="text-center">
                             @if($log->status === 'sent')

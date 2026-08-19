@@ -90,6 +90,7 @@ use App\Http\Controllers\Institute\Master\DocumentRuleController;
 use App\Http\Controllers\Institute\Master\SmsSettingController as InstituteSmsSettingController;
 use App\Http\Controllers\Institute\Master\SmsDueReminderController;
 use App\Http\Controllers\Institute\Master\SmsTemplateController;
+use App\Http\Controllers\Institute\Master\SmsBroadcastController;
 use App\Http\Controllers\Institute\Admission\AdmissionDocumentController;
 use App\Http\Controllers\Institute\Admission\PaymentClaimController;
 use App\Http\Controllers\Institute\Transport\TransportAllocationController;
@@ -371,6 +372,16 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('sms/templates/save',    [SmsTemplateController::class, 'save'])->name('sms.templates.save');
         Route::post('sms/templates/toggle',  [SmsTemplateController::class, 'toggle'])->name('sms.templates.toggle');
         Route::post('sms/templates/destroy', [SmsTemplateController::class, 'destroy'])->name('sms.templates.destroy');
+
+        // SMS Broadcasts (bulk SMS via registered DLT templates)
+        Route::get('sms/broadcasts',                    [SmsBroadcastController::class, 'index'])->name('sms.broadcasts.index');
+        Route::get('sms/broadcasts/create',              [SmsBroadcastController::class, 'create'])->name('sms.broadcasts.create');
+        Route::post('sms/broadcasts',                    [SmsBroadcastController::class, 'store'])->name('sms.broadcasts.store');
+        Route::post('sms/broadcasts/preview-count',      [SmsBroadcastController::class, 'previewCount'])->name('sms.broadcasts.preview-count');
+        Route::post('sms/broadcasts/search-recipients',  [SmsBroadcastController::class, 'searchRecipients'])->name('sms.broadcasts.search-recipients');
+        Route::get('sms/broadcasts/{broadcast}',         [SmsBroadcastController::class, 'show'])->name('sms.broadcasts.show');
+        Route::post('sms/broadcasts/{broadcast}/send',   [SmsBroadcastController::class, 'send'])->name('sms.broadcasts.send');
+        Route::delete('sms/broadcasts/{broadcast}',      [SmsBroadcastController::class, 'destroy'])->name('sms.broadcasts.destroy');
 
         // Email (SMTP) Settings
         Route::get('settings/email',             [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'index'])->name('settings.email');

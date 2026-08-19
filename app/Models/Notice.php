@@ -37,9 +37,6 @@ class Notice extends Model
         'attachment',
         'scheduled_at',
         'email_to',
-        'sms_to',
-        'sms_template_id',
-        'sms_template_values',
         'posted_by_staff_id',
         'posted_by_user_id',
     ];
@@ -53,13 +50,7 @@ class Notice extends Model
         'visible_to'           => 'array',
         'target_course_ids'    => 'array',
         'target_semesters'     => 'array',
-        'sms_template_values'  => 'array',
     ];
-
-    public function smsTemplate()
-    {
-        return $this->belongsTo(SmsTemplate::class);
-    }
 
     public function postedByStaff()
     {

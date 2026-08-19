@@ -141,7 +141,7 @@ class SmsService
     // Send using one specific, already-selected template row — for types that can have
     // multiple named templates per institute (e.g. notice), where the caller (a Notice record)
     // has already bound to exactly one via sms_template_id, so lookup-by-type doesn't apply.
-    public static function sendTemplatedById(int $instituteId, string $mobile, int $templateId, array $vars): bool
+    public static function sendTemplatedById(int $instituteId, string $mobile, int $templateId, array $vars, ?int $smsBroadcastId = null): bool
     {
         $settings = SmsProviderSetting::where('institute_id', $instituteId)->first();
         if (! $settings || ! $settings->isUsable()) {
@@ -157,10 +157,10 @@ class SmsService
             return false;
         }
 
-        return self::sendUsingTemplate($instituteId, $settings, $template, $mobile, $vars);
+        return self::sendUsingTemplate($instituteId, $settings, $template, $mobile, $vars, $smsBroadcastId);
     }
 
-    private static function sendUsingTemplate(int $instituteId, SmsProviderSetting $settings, SmsTemplate $template, string $mobile, array $vars): bool
+    private static function sendUsingTemplate(int $instituteId, SmsProviderSetting $settings, SmsTemplate $template, string $mobile, array $vars, ?int $smsBroadcastId = null): bool
     {
         $message = $template->content;
         foreach ($vars as $key => $value) {
@@ -183,6 +183,7 @@ class SmsService
 
         SmsLog::create([
             'institute_id'      => $instituteId,
+            'sms_broadcast_id'  => $smsBroadcastId,
             'type'              => $template->type,
             'mobile'            => $mobile,
             'message'           => $message,

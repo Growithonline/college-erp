@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Institute;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\SendNoticeSmsJob;
 use App\Mail\NoticePublishedMail;
 use App\Models\Center;
 use App\Models\ChannelPartner;
@@ -62,12 +61,8 @@ class NoticeController extends Controller
         $types       = Notice::TYPES;
         $visibleTo   = Notice::VISIBLE_TO;
         $courses     = \App\Models\Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
-        $smsTemplates = \App\Models\SmsTemplate::where('institute_id', $instituteId)
-            ->where('type', \App\Models\SmsTemplate::TYPE_NOTICE)
-            ->where('is_active', true)
-            ->get();
 
-        return view('institute.notices.create', compact('types', 'visibleTo', 'courses', 'smsTemplates'))
+        return view('institute.notices.create', compact('types', 'visibleTo', 'courses'))
             ->with($this->staffLayout());
     }
 
@@ -105,11 +100,6 @@ class NoticeController extends Controller
             $emailTo = implode(',', $validated['email_roles']);
         }
 
-        $smsTo = null;
-        if ($request->boolean('send_sms') && $request->filled('sms_roles')) {
-            $smsTo = implode(',', array_filter((array) $request->sms_roles));
-        }
-
         // Course IDs actually belong to this institute — never trust the posted list directly
         $targetCourseIds = null;
         if (!empty($validated['target_course_ids'])) {
@@ -119,10 +109,6 @@ class NoticeController extends Controller
             if (empty($targetCourseIds)) $targetCourseIds = null;
         }
         $targetSemesters = !empty($validated['target_semesters']) ? array_values(array_unique($validated['target_semesters'])) : null;
-
-        // SMS template binding — only one of this institute's own active notice templates,
-        // with values captured only for the variables that specific template declares.
-        [$smsTemplateId, $smsTemplateValues] = $this->resolveSmsTemplateSelection($request, $instituteId);
 
         $staffId = auth()->guard('staff')->id();
         $userId  = auth()->guard('web')->id();
@@ -142,9 +128,6 @@ class NoticeController extends Controller
             'is_pinned'          => $request->boolean('is_pinned'),
             'attachment'         => $attachmentPath,
             'email_to'           => $emailTo,
-            'sms_to'             => $smsTo,
-            'sms_template_id'      => $smsTemplateId,
-            'sms_template_values'  => $smsTemplateValues,
             'posted_by_staff_id' => $staffId,
             'posted_by_user_id'  => $userId,
         ]);
@@ -154,38 +137,8 @@ class NoticeController extends Controller
             $this->dispatchEmails($notice);
         }
 
-        // SMS broadcast queue mein daalo
-        if ($smsTo && (!$notice->scheduled_at || $notice->scheduled_at->lte(now()))) {
-            SendNoticeSmsJob::dispatch($notice->id);
-        }
-
         $rp = auth()->guard('staff')->check() ? 'staff.notices' : 'notices';
         return redirect()->route("{$rp}.index")->with('success', 'Notice post ho gaya!');
-    }
-
-    // Binds a Notice to one of the institute's own active "notice" type SMS templates, capturing
-    // only the values for the variables that specific template declares (never arbitrary keys).
-    private function resolveSmsTemplateSelection(Request $request, int $instituteId): array
-    {
-        if (!$request->boolean('send_sms') || !$request->filled('sms_template_id')) {
-            return [null, null];
-        }
-
-        $template = \App\Models\SmsTemplate::where('institute_id', $instituteId)
-            ->where('id', $request->sms_template_id)
-            ->where('type', \App\Models\SmsTemplate::TYPE_NOTICE)
-            ->first();
-
-        if (!$template) {
-            return [null, null];
-        }
-
-        $values = [];
-        foreach ($template->variable_names_array as $varName) {
-            $values[$varName] = (string) $request->input("template_values.{$varName}", '');
-        }
-
-        return [$template->id, $values];
     }
 
     public function edit(Notice $notice)
@@ -236,11 +189,6 @@ class NoticeController extends Controller
             $emailTo = implode(',', $validated['email_roles']);
         }
 
-        $smsTo = null;
-        if ($request->boolean('send_sms') && $request->filled('sms_roles')) {
-            $smsTo = implode(',', array_filter((array) $request->sms_roles));
-        }
-
         $targetCourseIds = null;
         if (!empty($validated['target_course_ids'])) {
             $targetCourseIds = \App\Models\Course::where('institute_id', $notice->institute_id)
@@ -264,7 +212,6 @@ class NoticeController extends Controller
             'is_pinned'    => $request->boolean('is_pinned'),
             'attachment'   => $validated['attachment'] ?? $notice->attachment,
             'email_to'     => $emailTo,
-            'sms_to'       => $smsTo,
         ]);
 
         $rp = auth()->guard('staff')->check() ? 'staff.notices' : 'notices';
