@@ -111,8 +111,9 @@
                                         </div>
                                         <div class="mb-2">
                                             <label class="form-label small fw-semibold">Content <span class="text-danger">*</span></label>
-                                            <textarea name="content" class="form-control form-control-sm template-content" rows="4" maxlength="1000">{{ $t->content ?? '' }}</textarea>
+                                            <textarea name="content" class="form-control form-control-sm template-content template-content-input" rows="4" maxlength="1000">{{ $t->content ?? '' }}</textarea>
                                             <div class="form-text">Must match your DLT registered template exactly, word for word.</div>
+                                            <div class="template-var-helper-slot"></div>
                                         </div>
                                         <div class="card border-0 bg-info-subtle p-3 rounded-3">
                                             <p class="small fw-semibold mb-1">Available Variables:</p>
@@ -243,12 +244,13 @@
                                             </div>
                                             <div class="mb-2">
                                                 <label class="form-label small fw-semibold">Content <span class="text-danger">*</span></label>
-                                                <textarea name="content" class="form-control form-control-sm" rows="5" maxlength="1000">{{ $t->content }}</textarea>
+                                                <textarea name="content" class="form-control form-control-sm template-content-input" rows="5" maxlength="1000">{{ $t->content }}</textarea>
                                                 <div class="form-text">
                                                     Must match your DLT registered template exactly, word for word. Use your own
                                                     <code>{variable_name}</code> placeholders — whatever you type here is what gets filled
                                                     in when creating a notice with this template selected.
                                                 </div>
+                                                <div class="template-var-helper-slot"></div>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -304,12 +306,13 @@
                         </div>
                         <div class="mb-2">
                             <label class="form-label small fw-semibold">Content <span class="text-danger">*</span></label>
-                            <textarea name="content" class="form-control form-control-sm" rows="5" maxlength="1000"></textarea>
+                            <textarea name="content" class="form-control form-control-sm template-content-input" rows="5" maxlength="1000"></textarea>
                             <div class="form-text">
                                 Must match your DLT registered template exactly, word for word. Use your own
                                 <code>{variable_name}</code> placeholders — whatever you type here is what gets filled
                                 in when creating a notice with this template selected.
                             </div>
+                            <div class="template-var-helper-slot"></div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -333,8 +336,71 @@ document.querySelectorAll('.insert-var').forEach(badge => {
         textarea.value = textarea.value.substring(0, pos) + v + textarea.value.substring(pos);
         textarea.focus();
         textarea.setSelectionRange(pos + v.length, pos + v.length);
+        textarea.dispatchEvent(new Event('input'));
     });
 });
+
+// Non-technical admins often paste their Fast2SMS/DLT-approved text as-is, which uses the
+// carrier's generic "{#VAR#}" placeholder — the app can only fill named placeholders like
+// {course}, so this live-detects both kinds and, for generic ones, walks the admin through
+// naming each one instead of expecting them to hand-edit curly braces correctly themselves.
+function initTemplateVarHelper(textarea) {
+    const slot = textarea.closest('.mb-2, .mb-3')?.querySelector('.template-var-helper-slot');
+    if (!slot) return;
+
+    function render() {
+        const text = textarea.value;
+        const named = [...new Set(text.match(/\{[a-z_]+\}/g) || [])];
+        const generic = text.match(/\{#\s*var\s*#\}/gi) || [];
+
+        let html = '';
+        if (named.length) {
+            html += '<div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>Variables mile: ' +
+                named.map(v => `<code>${v}</code>`).join(' ') + '</div>';
+        }
+        if (generic.length) {
+            html += '<div class="small p-2 rounded mt-1" style="background:#fff8e1;border:1px solid #ffe082;">' +
+                '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>' +
+                `<strong>${generic.length} generic <code>{#VAR#}</code> placeholder(s) mile</strong> — ye DLT portal se copy-paste kiya hua lagta hai. ` +
+                'Ye is form me kaam nahi karega jab tak har ek ko ek naam na do (jaise: course, date, venue).' +
+                '<div class="rename-rows mt-2"></div>' +
+                '<button type="button" class="btn btn-sm btn-outline-primary mt-1 apply-rename-btn"><i class="bi bi-magic me-1"></i>Naam Apply Karo</button>' +
+                '</div>';
+        }
+        if (!named.length && !generic.length && text.trim()) {
+            html += '<div class="small text-muted mt-1"><i class="bi bi-info-circle me-1"></i>Koi variable nahi mila — poora message fixed text jaega, kisi ke liye alag nahi hoga.</div>';
+        }
+        slot.innerHTML = html;
+
+        if (generic.length) {
+            const rows = slot.querySelector('.rename-rows');
+            generic.forEach((_, i) => {
+                const row = document.createElement('div');
+                row.className = 'd-flex align-items-center gap-2 mb-1';
+                row.innerHTML = `<span style="min-width:95px;">Placeholder #${i + 1}:</span>` +
+                    '<input type="text" class="form-control form-control-sm rename-input" placeholder="jaise: mobile, exam_date" style="max-width:220px;">';
+                rows.appendChild(row);
+            });
+            slot.querySelector('.apply-rename-btn').addEventListener('click', () => {
+                let newText = textarea.value;
+                slot.querySelectorAll('.rename-input').forEach(inp => {
+                    const raw = inp.value.trim();
+                    if (!raw) return;
+                    const safe = raw.toLowerCase().replace(/[^a-z_]+/g, '_').replace(/^_+|_+$/g, '');
+                    if (!safe) return;
+                    newText = newText.replace(/\{#\s*var\s*#\}/i, '{' + safe + '}');
+                });
+                textarea.value = newText;
+                render();
+            });
+        }
+    }
+
+    textarea.addEventListener('input', render);
+    render();
+}
+
+document.querySelectorAll('.template-content-input').forEach(initTemplateVarHelper);
 </script>
 
 @endsection
