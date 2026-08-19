@@ -350,13 +350,31 @@ function initTemplateVarHelper(textarea) {
 
     function render() {
         const text = textarea.value;
-        const named = [...new Set(text.match(/\{[a-z_]+\}/g) || [])];
+        const namedMatches = text.match(/\{[a-z_]+\}/g) || [];
+        const named = [...new Set(namedMatches)];
         const generic = text.match(/\{#\s*var\s*#\}/gi) || [];
+
+        // Same named placeholder appearing 2+ times (e.g. an already-saved template that had
+        // {#VAR#} renamed to {text} four times before this occurrence-count check existed) —
+        // it's still only ONE fillable variable, so every one of those slots gets the same
+        // value. Offer the same split-into-distinct-slots fix as the generic {#VAR#} case.
+        const counts = {};
+        namedMatches.forEach(m => { counts[m] = (counts[m] || 0) + 1; });
+        const repeated = Object.keys(counts).filter(k => counts[k] > 1);
 
         let html = '';
         if (named.length) {
-            html += '<div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>Variables mile: ' +
-                named.map(v => `<code>${v}</code>`).join(' ') + '</div>';
+            html += '<div class="small text-success mt-1 mb-1"><i class="bi bi-check-circle me-1"></i>Variables mile — naam badalna ho to yahin edit karke "Naam Update Karo" dabao:</div>' +
+                '<div class="rename-named-rows"></div>' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary mt-1 rename-named-btn"><i class="bi bi-pencil me-1"></i>Naam Update Karo</button>';
+        }
+        if (repeated.length) {
+            html += '<div class="small p-2 rounded mt-1" style="background:#fff8e1;border:1px solid #ffe082;">' +
+                '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>' +
+                `<strong>${repeated.map(r => `${r} (${counts[r]}x)`).join(', ')}</strong> multiple jagah use ho raha hai — abhi sabko EK hi value milegi jab bhejoge. ` +
+                'Agar har jagah alag value honi chahiye:' +
+                ' <button type="button" class="btn btn-sm btn-outline-warning mt-1 split-duplicates-btn"><i class="bi bi-magic me-1"></i>Alag-Alag Banao</button>' +
+                '</div>';
         }
         if (generic.length) {
             html += '<div class="small p-2 rounded mt-1" style="background:#fff8e1;border:1px solid #ffe082;">' +
@@ -371,6 +389,61 @@ function initTemplateVarHelper(textarea) {
             html += '<div class="small text-muted mt-1"><i class="bi bi-info-circle me-1"></i>Koi variable nahi mila — poora message fixed text jaega, kisi ke liye alag nahi hoga.</div>';
         }
         slot.innerHTML = html;
+
+        if (named.length) {
+            const namedRows = slot.querySelector('.rename-named-rows');
+            named.forEach(token => {
+                const bare = token.slice(1, -1); // "{course}" -> "course"
+                const row = document.createElement('div');
+                row.className = 'd-flex align-items-center gap-2 mb-1';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control form-control-sm rename-named-input';
+                input.dataset.old = bare;
+                input.value = bare;
+                input.style.maxWidth = '220px';
+                row.appendChild(input);
+                namedRows.appendChild(row);
+            });
+            slot.querySelector('.rename-named-btn').addEventListener('click', () => {
+                const renames = [];
+                slot.querySelectorAll('.rename-named-input').forEach(inp => {
+                    const oldName = inp.dataset.old;
+                    const safeNew = inp.value.trim().toLowerCase().replace(/[^a-z_]+/g, '_').replace(/^_+|_+$/g, '');
+                    if (safeNew && safeNew !== oldName) renames.push([oldName, safeNew]);
+                });
+                if (!renames.length) return;
+
+                // Two-pass via temporary tokens — so renaming A->B and B->A at the same time
+                // (or any other overlapping rename) can't collide mid-way.
+                let newText = textarea.value;
+                renames.forEach(([oldName], i) => {
+                    newText = newText.split('{' + oldName + '}').join('{{__tmp' + i + '__}}');
+                });
+                renames.forEach(([, safeNew], i) => {
+                    newText = newText.split('{{__tmp' + i + '__}}').join('{' + safeNew + '}');
+                });
+                textarea.value = newText;
+                render();
+            });
+        }
+
+        if (repeated.length) {
+            slot.querySelector('.split-duplicates-btn').addEventListener('click', () => {
+                let newText = textarea.value;
+                repeated.forEach(token => {
+                    const name = token.slice(1, -1); // "{text}" -> "text"
+                    const escaped = token.replace(/[{}]/g, '\\$&');
+                    let occurrence = 0;
+                    newText = newText.replace(new RegExp(escaped, 'g'), () => {
+                        occurrence++;
+                        return occurrence === 1 ? token : '{' + name + '_' + occurrence + '}';
+                    });
+                });
+                textarea.value = newText;
+                render();
+            });
+        }
 
         if (generic.length) {
             const rows = slot.querySelector('.rename-rows');
