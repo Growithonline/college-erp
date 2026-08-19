@@ -104,7 +104,7 @@ class SmsBroadcastTargeting
     {
         return $audienceType === SmsBroadcast::AUDIENCE_STAFF
             ? ['name', 'mobile', 'role', 'institute_name']
-            : ['name', 'mobile', 'course', 'roll_no', 'student_uid', 'institute_name'];
+            : ['name', 'mobile', 'course', 'stream', 'roll_no', 'student_uid', 'institute_name'];
     }
 
     // Auto-fill vars an admin can still override with one fixed value for the whole broadcast —
@@ -134,6 +134,7 @@ class SmsBroadcastTargeting
             'name'           => $recipient->name,
             'mobile'         => $recipient->mobile,
             'course'         => $recipient->stream?->course?->name ?? '',
+            'stream'         => $recipient->stream?->name ?? '',
             'roll_no'        => $recipient->roll_no ?? '',
             'student_uid'    => $recipient->student_uid ?? '',
             'institute_name' => $instituteName,
