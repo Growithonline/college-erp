@@ -96,7 +96,13 @@ class SmsTemplateController extends Controller
             }
         }
 
-        return view('institute.master.sms.templates.index', compact('rows', 'smsConfigured'));
+        // Shown next to the Content field so an admin knows which exact names auto-fill from
+        // the recipient's own record when this template is later used on a Send SMS page —
+        // anything else has to be typed in manually each time.
+        $autoVarsStudent = \App\Services\SmsBroadcastTargeting::recipientAutoVarNames(\App\Models\SmsBroadcast::AUDIENCE_STUDENT);
+        $autoVarsStaff   = \App\Services\SmsBroadcastTargeting::recipientAutoVarNames(\App\Models\SmsBroadcast::AUDIENCE_STAFF);
+
+        return view('institute.master.sms.templates.index', compact('rows', 'smsConfigured', 'autoVarsStudent', 'autoVarsStaff'));
     }
 
     public function save(Request $request)

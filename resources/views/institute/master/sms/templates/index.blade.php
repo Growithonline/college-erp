@@ -347,6 +347,16 @@ document.querySelectorAll('.insert-var').forEach(badge => {
 // carrier's generic "{#VAR#}" placeholder — the app can only fill named placeholders like
 // {course}, so this live-detects both kinds and, for generic ones, walks the admin through
 // naming each one instead of expecting them to hand-edit curly braces correctly themselves.
+const AUTO_VARS_STUDENT = @json($autoVarsStudent);
+const AUTO_VARS_STAFF   = @json($autoVarsStaff);
+const AUTO_VARS_HINT =
+    '<div class="small text-muted mb-2">' +
+    '<i class="bi bi-lightning-charge me-1"></i>These exact names auto-fill from each recipient when sent — no typing needed: ' +
+    '<span class="d-block mt-1">Students: ' + AUTO_VARS_STUDENT.map(v => `<code>{${v}}</code>`).join(' ') + '</span>' +
+    '<span class="d-block">Staff: ' + AUTO_VARS_STAFF.map(v => `<code>{${v}}</code>`).join(' ') + '</span>' +
+    'Any other name is typed in once by whoever sends it.' +
+    '</div>';
+
 function initTemplateVarHelper(textarea) {
     const slot = textarea.closest('.mb-2, .mb-3')?.querySelector('.template-var-helper-slot');
     if (!slot) return;
@@ -365,7 +375,7 @@ function initTemplateVarHelper(textarea) {
         namedMatches.forEach(m => { counts[m] = (counts[m] || 0) + 1; });
         const repeated = Object.keys(counts).filter(k => counts[k] > 1);
 
-        let html = '';
+        let html = AUTO_VARS_HINT;
         if (named.length) {
             html += '<div class="small text-success mt-1 mb-1"><i class="bi bi-check-circle me-1"></i>Variables found — to rename one, edit it here and click "Update Names":</div>' +
                 '<div class="rename-named-rows"></div>' +

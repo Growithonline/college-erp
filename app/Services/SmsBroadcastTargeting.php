@@ -104,7 +104,13 @@ class SmsBroadcastTargeting
     {
         return $audienceType === SmsBroadcast::AUDIENCE_STAFF
             ? ['name', 'mobile', 'role', 'institute_name']
-            : ['name', 'mobile', 'course', 'stream', 'roll_no', 'student_uid', 'institute_name'];
+            : [
+                'name', 'mobile', 'course', 'stream', 'semester', 'roll_no', 'student_uid', 'institute_name',
+                // Combined convenience variables — an admin typing {course_stream} instead of
+                // {course} {stream} shouldn't lose per-recipient auto-fill just for writing it
+                // as one placeholder.
+                'course_stream', 'course_stream_sem',
+            ];
     }
 
     // Auto-fill vars an admin can still override with one fixed value for the whole broadcast —
@@ -130,14 +136,21 @@ class SmsBroadcastTargeting
             ];
         }
 
+        $courseName = $recipient->stream?->course?->name ?? '';
+        $streamName = $recipient->stream?->name ?? '';
+        $semLabel   = $recipient->current_semester ? 'Sem ' . $recipient->current_semester : '';
+
         return [
-            'name'           => $recipient->name,
-            'mobile'         => $recipient->mobile,
-            'course'         => $recipient->stream?->course?->name ?? '',
-            'stream'         => $recipient->stream?->name ?? '',
-            'roll_no'        => $recipient->roll_no ?? '',
-            'student_uid'    => $recipient->student_uid ?? '',
-            'institute_name' => $instituteName,
+            'name'               => $recipient->name,
+            'mobile'             => $recipient->mobile,
+            'course'             => $courseName,
+            'stream'             => $streamName,
+            'semester'           => $semLabel,
+            'roll_no'            => $recipient->roll_no ?? '',
+            'student_uid'        => $recipient->student_uid ?? '',
+            'institute_name'     => $instituteName,
+            'course_stream'      => collect([$courseName, $streamName])->filter()->implode(' - '),
+            'course_stream_sem'  => collect([$courseName, $streamName, $semLabel])->filter()->implode(' - '),
         ];
     }
 }

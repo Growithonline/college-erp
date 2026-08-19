@@ -80,7 +80,7 @@
         <div class="row g-3">
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Course Type</label>
-                <select name="course_type_id" id="courseTypeFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                <select name="course_type_id" id="courseTypeFilter" class="form-select form-select-sm">
                     <option value="">— All —</option>
                     @foreach($courseTypes as $ct)
                         <option value="{{ $ct->id }}" {{ (string) request('course_type_id') === (string) $ct->id ? 'selected' : '' }}>{{ $ct->name }}</option>
@@ -89,7 +89,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Course</label>
-                <select name="course_id" id="courseFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                <select name="course_id" id="courseFilter" class="form-select form-select-sm">
                     <option value="">— All —</option>
                     @foreach($courses as $c)
                         <option value="{{ $c->id }}" data-course-type-id="{{ $c->course_type_id }}" {{ (string) request('course_id') === (string) $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
@@ -98,7 +98,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Stream</label>
-                <select name="stream_id" id="streamFilter" class="form-select form-select-sm" onchange="this.form.submit()">
+                <select name="stream_id" id="streamFilter" class="form-select form-select-sm">
                     <option value="">— All —</option>
                     @foreach($streams as $st)
                         <option value="{{ $st->id }}" data-course-id="{{ $st->course_id }}" {{ (string) request('stream_id') === (string) $st->id ? 'selected' : '' }}>{{ $st->course->name ?? '' }} — {{ $st->name }}</option>
@@ -107,7 +107,7 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Semester</label>
-                <select name="semester" class="form-select form-select-sm" onchange="this.form.submit()">
+                <select name="semester" class="form-select form-select-sm">
                     <option value="0" {{ (int) request('semester', 0) === 0 ? 'selected' : '' }}>All</option>
                     @for($s = 1; $s <= $maxSem; $s++)
                         <option value="{{ $s }}" {{ (int) request('semester', 0) === $s ? 'selected' : '' }}>Sem {{ $s }}</option>
@@ -222,12 +222,51 @@ function renderPreview() {
 document.querySelectorAll('.var-input').forEach(inp => inp.addEventListener('input', renderPreview));
 renderPreview();
 
-document.getElementById('courseTypeFilter')?.addEventListener('change', function () {
-    const typeId = this.value;
-    document.querySelectorAll('#courseFilter option[data-course-type-id]').forEach(opt => {
-        opt.hidden = !!typeId && opt.dataset.courseTypeId !== typeId;
+// Course Type -> Course -> Stream cascade entirely client-side (the page only actually
+// reloads when "Filter" is clicked) — an onchange-submit here would reload before the
+// dependent dropdown ever got a chance to narrow, which is exactly why this was broken.
+const courseTypeFilter = document.getElementById('courseTypeFilter');
+const courseFilter     = document.getElementById('courseFilter');
+const streamFilter     = document.getElementById('streamFilter');
+
+const ALL_COURSE_OPTIONS = Array.from(courseFilter.options).slice(1).map(opt => ({
+    value: opt.value, label: opt.textContent, typeId: opt.dataset.courseTypeId,
+}));
+const ALL_STREAM_OPTIONS = Array.from(streamFilter.options).slice(1).map(opt => ({
+    value: opt.value, label: opt.textContent, courseId: opt.dataset.courseId,
+}));
+
+function rebuildCourseOptions(keepSelected) {
+    const typeId = courseTypeFilter.value;
+    const keep = keepSelected !== undefined ? keepSelected : courseFilter.value;
+    courseFilter.innerHTML = '<option value="">— All —</option>';
+    ALL_COURSE_OPTIONS.filter(c => !typeId || c.typeId === typeId).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.value; opt.textContent = c.label; opt.dataset.courseTypeId = c.typeId;
+        if (c.value === keep) opt.selected = true;
+        courseFilter.appendChild(opt);
     });
-});
+}
+
+function rebuildStreamOptions(keepSelected) {
+    const courseId = courseFilter.value;
+    const keep = keepSelected !== undefined ? keepSelected : streamFilter.value;
+    streamFilter.innerHTML = '<option value="">— All —</option>';
+    ALL_STREAM_OPTIONS.filter(s => !courseId || s.courseId === courseId).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.value; opt.textContent = s.label; opt.dataset.courseId = s.courseId;
+        if (s.value === keep) opt.selected = true;
+        streamFilter.appendChild(opt);
+    });
+}
+
+courseTypeFilter.addEventListener('change', () => { rebuildCourseOptions(''); rebuildStreamOptions(''); });
+courseFilter.addEventListener('change', () => rebuildStreamOptions(''));
+
+// On load, the server already rendered the right selections from the URL's query string —
+// just re-narrow the dependent dropdowns to match so they aren't showing everyone's options.
+rebuildCourseOptions();
+rebuildStreamOptions();
 
 function getSelectedStudentIds() {
     return Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
