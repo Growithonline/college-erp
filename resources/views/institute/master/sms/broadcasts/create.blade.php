@@ -203,19 +203,30 @@
 
 </form>
 
+@php
+    // Precomputed here (not inline inside @json(...)) — a multi-line closure expression as a
+    // directive argument trips up Blade's directive-argument parser and corrupts compilation.
+    $templatesForJs = $templates->map(function ($t) {
+        return [
+            'id'      => $t->id,
+            'content' => $t->content,
+            'vars'    => array_values(array_unique($t->variable_names_array)),
+        ];
+    });
+    $autoVarsStudent = \App\Services\SmsBroadcastTargeting::recipientAutoVarNames('student');
+    $autoVarsStaff   = \App\Services\SmsBroadcastTargeting::recipientAutoVarNames('staff');
+    $oldTemplateValues = old('template_values', new stdClass());
+    $oldSpecificIds    = old('specific_recipient_ids', []);
+@endphp
 @push('scripts')
 <script>
-const TEMPLATES = @json($templates->map(fn($t) => [
-    'id'      => $t->id,
-    'content' => $t->content,
-    'vars'    => array_values(array_unique($t->variable_names_array)),
-]));
+const TEMPLATES = @json($templatesForJs);
 const AUTO_VARS = {
-    student: @json(\App\Services\SmsBroadcastTargeting::recipientAutoVarNames('student')),
-    staff:   @json(\App\Services\SmsBroadcastTargeting::recipientAutoVarNames('staff')),
+    student: @json($autoVarsStudent),
+    staff:   @json($autoVarsStaff),
 };
-const OLD_TEMPLATE_VALUES = @json(old('template_values', new stdClass()));
-const OLD_SPECIFIC_IDS    = @json(old('specific_recipient_ids', []));
+const OLD_TEMPLATE_VALUES = @json($oldTemplateValues);
+const OLD_SPECIFIC_IDS    = @json($oldSpecificIds);
 const PREVIEW_COUNT_URL   = "{{ route('master.sms.broadcasts.preview-count') }}";
 const SEARCH_URL          = "{{ route('master.sms.broadcasts.search-recipients') }}";
 const CSRF_TOKEN          = "{{ csrf_token() }}";
