@@ -68,9 +68,12 @@ class StaffAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
-        InstituteMailer::send($staff->institute_id, $staff->email, new StaffOtpMail($staff, $otp));
+        if (!$staff->email_otp_bypass && $staff->email) {
+            InstituteMailer::send($staff->institute_id, $staff->email, new StaffOtpMail($staff, $otp));
+        }
 
-        if ($staff->mobile) {
+        $smsSent = !$staff->sms_otp_bypass && $staff->mobile;
+        if ($smsSent) {
             SmsService::sendInstituteOtp($staff->institute_id, $staff->mobile, $otp);
         }
 
@@ -79,7 +82,7 @@ class StaffAuthController extends Controller
             'otp'      => $otp,
             'sent_at'  => now()->toIso8601String(),
             'remember' => $remember,
-            'sms_sent' => (bool) $staff->mobile,
+            'sms_sent' => $smsSent,
         ], now()->addMinutes($expiryMinutes));
 
         Cache::put($this->otpThrottleKey($staff->id), true, now()->addSeconds($cooldownSeconds));
@@ -128,7 +131,10 @@ class StaffAuthController extends Controller
 
         RateLimiter::clear($throttleKey);
 
-        if ($staff->otp_bypass) {
+        $emailChannel = !$staff->email_otp_bypass && $staff->email;
+        $smsChannel   = !$staff->sms_otp_bypass && $staff->mobile;
+
+        if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($staff, $request->boolean('remember'));
             return redirect()->intended(route('staff.dashboard'));

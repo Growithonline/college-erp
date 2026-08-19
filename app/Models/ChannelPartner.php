@@ -18,7 +18,8 @@ class ChannelPartner extends Authenticatable
 
     protected $fillable = [
         'institute_id', 'partner_uid', 'name', 'mobile', 'email', 'password',
-        'address', 'city', 'state', 'commission_percent', 'status', 'otp_bypass', 'login_blocked',
+        'address', 'city', 'state', 'commission_percent', 'status',
+        'email_otp_bypass', 'sms_otp_bypass', 'login_blocked',
         // Feature flags
         'can_add_admission', 'can_view_students', 'can_collect_fee',
         // Admission controls
@@ -41,7 +42,8 @@ class ChannelPartner extends Authenticatable
         'can_view_students'    => 'boolean',
         'can_collect_fee'      => 'boolean',
         'status'               => 'boolean',
-        'otp_bypass'           => 'boolean',
+        'email_otp_bypass'     => 'boolean',
+        'sms_otp_bypass'       => 'boolean',
         'login_blocked'        => 'boolean',
         'commission_percent'   => 'decimal:2',
         'allowed_courses'      => 'array',

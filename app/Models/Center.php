@@ -20,7 +20,8 @@ class Center extends Authenticatable
 
     protected $fillable = [
         'institute_id', 'center_uid', 'name', 'code', 'mobile', 'email',
-        'password', 'address', 'city', 'state', 'status', 'otp_bypass', 'login_blocked',
+        'password', 'address', 'city', 'state', 'status',
+        'email_otp_bypass', 'sms_otp_bypass', 'login_blocked',
         // Feature flags
         'can_add_admission', 'can_view_students', 'can_collect_fee',
         // Admission controls
@@ -43,7 +44,8 @@ class Center extends Authenticatable
         'can_view_students'    => 'boolean',
         'can_collect_fee'      => 'boolean',
         'status'               => 'boolean',
-        'otp_bypass'           => 'boolean',
+        'email_otp_bypass'     => 'boolean',
+        'sms_otp_bypass'       => 'boolean',
         'login_blocked'        => 'boolean',
         'allowed_courses'      => 'array',
         'allowed_sessions'     => 'array',

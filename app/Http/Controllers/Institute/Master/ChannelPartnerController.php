@@ -294,15 +294,26 @@ class ChannelPartnerController extends Controller
         return back()->with('success', 'Status updated!');
     }
 
-    public function toggleOtpBypass(ChannelPartner $channelPartner)
+    public function toggleEmailOtpBypass(ChannelPartner $channelPartner)
     {
         abort_if($channelPartner->institute_id !== $this->instituteId(), 403);
-        $channelPartner->update(['otp_bypass' => !$channelPartner->otp_bypass]);
+        $channelPartner->update(['email_otp_bypass' => !$channelPartner->email_otp_bypass]);
 
-        AuditLogService::log($this->instituteId(), 'channel_partner', 'partner_otp_bypass_toggled',
-            'Channel partner OTP bypass ' . ($channelPartner->otp_bypass ? 'enabled' : 'disabled') . '.', $channelPartner);
+        AuditLogService::log($this->instituteId(), 'channel_partner', 'partner_email_otp_bypass_toggled',
+            'Channel partner email OTP bypass ' . ($channelPartner->email_otp_bypass ? 'enabled' : 'disabled') . '.', $channelPartner);
 
-        return back()->with('success', 'OTP bypass ' . ($channelPartner->otp_bypass ? 'enabled' : 'disabled') . '!');
+        return back()->with('success', 'Email OTP bypass ' . ($channelPartner->email_otp_bypass ? 'enabled' : 'disabled') . '!');
+    }
+
+    public function toggleSmsOtpBypass(ChannelPartner $channelPartner)
+    {
+        abort_if($channelPartner->institute_id !== $this->instituteId(), 403);
+        $channelPartner->update(['sms_otp_bypass' => !$channelPartner->sms_otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'channel_partner', 'partner_sms_otp_bypass_toggled',
+            'Channel partner SMS OTP bypass ' . ($channelPartner->sms_otp_bypass ? 'enabled' : 'disabled') . '.', $channelPartner);
+
+        return back()->with('success', 'SMS OTP bypass ' . ($channelPartner->sms_otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
     public function toggleLoginBlock(ChannelPartner $channelPartner)

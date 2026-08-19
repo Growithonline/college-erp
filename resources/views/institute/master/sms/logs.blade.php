@@ -18,7 +18,7 @@
 
 @if(request('broadcast'))
 <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
-    <span class="small">Sirf <a href="{{ route('master.sms.broadcasts.show', request('broadcast')) }}">Broadcast #{{ request('broadcast') }}</a> ke logs dikha rahe hain.</span>
+    <span class="small">Showing logs for <a href="{{ route('master.sms.broadcasts.show', request('broadcast')) }}">Broadcast #{{ request('broadcast') }}</a> only.</span>
     <a href="{{ route('master.sms.logs', request()->except('broadcast')) }}" class="btn btn-sm btn-outline-secondary">Clear</a>
 </div>
 @endif
@@ -53,7 +53,7 @@
     <div class="card-body p-0">
         @if($logs->isEmpty())
             <div class="text-center py-5 text-muted">
-                <i class="bi bi-chat-square fs-3 d-block mb-2"></i>Koi SMS nahi mila.
+                <i class="bi bi-chat-square fs-3 d-block mb-2"></i>No SMS found.
             </div>
         @else
         <div class="table-responsive">

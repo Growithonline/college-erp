@@ -28,6 +28,7 @@ class Student extends Authenticatable
         'photo', 'status',
         'password', 'portal_enabled', 'first_login',
         'login_blocked', 'suspended_until',
+        'email_otp_bypass', 'sms_otp_bypass',
         'has_scholarship', 'scholarship_name', 'scholarship_type',
         'scholarship_authority', 'scholarship_applied_date',
         'scholarship_amount', 'scholarship_ref_no',
@@ -53,6 +54,8 @@ class Student extends Authenticatable
         'portal_enabled'    => 'boolean',
         'login_blocked'     => 'boolean',
         'suspended_until'   => 'date',
+        'email_otp_bypass'  => 'boolean',
+        'sms_otp_bypass'    => 'boolean',
     ];
 
     public function isLoginBlocked(): bool

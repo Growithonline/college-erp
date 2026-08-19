@@ -314,15 +314,26 @@ class CenterController extends Controller
         return back()->with('success', 'Status updated!');
     }
 
-    public function toggleOtpBypass(Center $center)
+    public function toggleEmailOtpBypass(Center $center)
     {
         abort_if($center->institute_id !== $this->instituteId(), 403);
-        $center->update(['otp_bypass' => !$center->otp_bypass]);
+        $center->update(['email_otp_bypass' => !$center->email_otp_bypass]);
 
-        AuditLogService::log($this->instituteId(), 'center', 'center_otp_bypass_toggled',
-            'Center OTP bypass ' . ($center->otp_bypass ? 'enabled' : 'disabled') . '.', $center);
+        AuditLogService::log($this->instituteId(), 'center', 'center_email_otp_bypass_toggled',
+            'Center email OTP bypass ' . ($center->email_otp_bypass ? 'enabled' : 'disabled') . '.', $center);
 
-        return back()->with('success', 'OTP bypass ' . ($center->otp_bypass ? 'enabled' : 'disabled') . '!');
+        return back()->with('success', 'Email OTP bypass ' . ($center->email_otp_bypass ? 'enabled' : 'disabled') . '!');
+    }
+
+    public function toggleSmsOtpBypass(Center $center)
+    {
+        abort_if($center->institute_id !== $this->instituteId(), 403);
+        $center->update(['sms_otp_bypass' => !$center->sms_otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'center', 'center_sms_otp_bypass_toggled',
+            'Center SMS OTP bypass ' . ($center->sms_otp_bypass ? 'enabled' : 'disabled') . '.', $center);
+
+        return back()->with('success', 'SMS OTP bypass ' . ($center->sms_otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
     public function toggleLoginBlock(Center $center)

@@ -461,6 +461,30 @@ class AdmissionController extends Controller
         return back()->with('success', 'Login access updated!');
     }
 
+    public function toggleEmailOtpBypass(Student $student)
+    {
+        if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);
+
+        $student->update(['email_otp_bypass' => !$student->email_otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'admission', 'student_email_otp_bypass_toggled',
+            'Student email OTP bypass ' . ($student->email_otp_bypass ? 'enabled' : 'disabled') . '.', $student);
+
+        return back()->with('success', 'Email OTP bypass ' . ($student->email_otp_bypass ? 'enabled' : 'disabled') . '!');
+    }
+
+    public function toggleSmsOtpBypass(Student $student)
+    {
+        if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);
+
+        $student->update(['sms_otp_bypass' => !$student->sms_otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'admission', 'student_sms_otp_bypass_toggled',
+            'Student SMS OTP bypass ' . ($student->sms_otp_bypass ? 'enabled' : 'disabled') . '.', $student);
+
+        return back()->with('success', 'SMS OTP bypass ' . ($student->sms_otp_bypass ? 'enabled' : 'disabled') . '!');
+    }
+
     public function updateStudentStatus(Request $request, Student $student)
     {
         if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);

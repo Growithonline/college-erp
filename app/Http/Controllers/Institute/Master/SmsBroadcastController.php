@@ -28,6 +28,13 @@ class SmsBroadcastController extends Controller
         SmsTemplate::TYPE_ADMISSION_ALERT => 'Admission / Credentials',
     ];
 
+    // Its own focused page (filter → student table → select → send), mirroring the Fee Due
+    // List pattern — these two fire far more often than a one-off Notice/Promotion broadcast.
+    private const ADMIT_EXAM_TYPES = [
+        SmsTemplate::TYPE_ADMIT_CARD => 'Admit Card',
+        SmsTemplate::TYPE_EXAM_INFO  => 'Exam Info',
+    ];
+
     private function instituteId(): int
     {
         return Auth::user()->institute_id;
@@ -113,11 +120,11 @@ class SmsBroadcastController extends Controller
             ->first();
 
         if (!$template) {
-            return back()->withInput()->with('error', 'Template nahi mila ya inactive hai.');
+            return back()->withInput()->with('error', 'Template not found or inactive.');
         }
 
         if ($validated['recipient_mode'] === SmsBroadcast::RECIPIENT_MODE_SPECIFIC && empty($validated['specific_recipient_ids'])) {
-            return back()->withInput()->with('error', 'Specific mode me kam se kam ek recipient select karo.');
+            return back()->withInput()->with('error', 'Select at least one recipient in specific mode.');
         }
 
         // Only capture values for variables this template declares that AREN'T auto-filled per
@@ -177,7 +184,7 @@ class SmsBroadcastController extends Controller
         ]);
 
         return redirect()->route('master.sms.broadcasts.show', $broadcast)
-            ->with('success', "Draft ban gaya ({$totalRecipients} recipients). Review karke send karo.");
+            ->with('success', "Draft saved ({$totalRecipients} recipients). Review it and send.");
     }
 
     public function show(SmsBroadcast $broadcast)
@@ -234,12 +241,12 @@ class SmsBroadcastController extends Controller
         abort_if($broadcast->institute_id !== $this->instituteId(), 403);
 
         if ($broadcast->status !== SmsBroadcast::STATUS_DRAFT) {
-            return back()->with('error', 'Ye broadcast pehle hii send/queue ho chuka hai.');
+            return back()->with('error', 'This broadcast has already been sent or queued.');
         }
 
         $recipientCount = $broadcast->resolveRecipientQuery()->count();
         if ($recipientCount === 0) {
-            return back()->with('error', 'Is targeting se koi recipient nahi mila — filters check karo.');
+            return back()->with('error', 'No recipients match this targeting — check your filters.');
         }
 
         if ($broadcast->notice_title) {
@@ -265,7 +272,7 @@ class SmsBroadcastController extends Controller
         SendSmsBroadcastJob::dispatch($broadcast->id);
 
         return redirect()->route('master.sms.broadcasts.index')
-            ->with('success', 'SMS bhejna shuru ho gaya — status "Send SMS" list me dikhega.');
+            ->with('success', 'Sending started — check status on the Send SMS list.');
     }
 
     public function destroy(SmsBroadcast $broadcast)
@@ -273,12 +280,12 @@ class SmsBroadcastController extends Controller
         abort_if($broadcast->institute_id !== $this->instituteId(), 403);
 
         if ($broadcast->status !== SmsBroadcast::STATUS_DRAFT) {
-            return back()->with('error', 'Sirf draft broadcasts delete kiye ja sakte hain.');
+            return back()->with('error', 'Only draft broadcasts can be deleted.');
         }
 
         $broadcast->delete();
 
-        return redirect()->route('master.sms.broadcasts.index')->with('success', 'Draft delete ho gaya.');
+        return redirect()->route('master.sms.broadcasts.index')->with('success', 'Draft deleted.');
     }
 
     // Live recipient-count preview while composing — same resolver the send job uses later,
@@ -356,5 +363,146 @@ class SmsBroadcastController extends Controller
         }
 
         return response()->json($rows->values());
+    }
+
+    // Dedicated Admit Card / Exam Info page — filter form + student table, all state round-trips
+    // via GET query string (like the Fee Due List report), so the filtered table paginates
+    // properly and there's no client-side recipient cap to work around.
+    public function admitExam(Request $request)
+    {
+        $instituteId = $this->instituteId();
+
+        $templates = SmsTemplate::where('institute_id', $instituteId)
+            ->whereIn('type', array_keys(self::ADMIT_EXAM_TYPES))
+            ->where('is_active', true)
+            ->orderBy('type')->orderBy('name')
+            ->get();
+
+        $template = $templates->firstWhere('id', (int) $request->input('template_id')) ?? $templates->first();
+
+        $courseTypes = CourseType::where('institute_id', $instituteId)->where('is_active', true)->orderBy('sort_order')->get();
+        $courses     = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $streams     = CourseStream::with('course')->whereIn('course_id', $courses->pluck('id'))->where('status', true)->orderBy('name')->get();
+
+        $courseId = $request->input('course_id');
+        $streamId = $request->input('stream_id');
+        $semester = (int) $request->input('semester', 0);
+        $search   = trim((string) $request->input('search', ''));
+
+        $filters   = [
+            'target_course_ids' => $courseId ? [(int) $courseId] : null,
+            'target_stream_ids' => $streamId ? [(int) $streamId] : null,
+            'target_semesters'  => $semester ? [$semester] : null,
+        ];
+        $sanitized = SmsBroadcastTargeting::sanitizeFilters($instituteId, SmsBroadcast::AUDIENCE_STUDENT, $filters);
+
+        $query = SmsBroadcastTargeting::baseQuery($instituteId, SmsBroadcast::AUDIENCE_STUDENT);
+        SmsBroadcastTargeting::applyFilters($query, SmsBroadcast::AUDIENCE_STUDENT, $sanitized);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%")
+                    ->orWhere('roll_no', 'like', "%{$search}%")
+                    ->orWhere('student_uid', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $query->with('stream.course')->orderBy('name')->paginate(30)->withQueryString();
+
+        // Split this template's variables the same way the general compose page does — server
+        // side here, since this whole page round-trips via GET instead of live JS rendering.
+        $autoVars        = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STUDENT);
+        $overridableVars = SmsBroadcastTargeting::overridableAutoVarNames();
+        $autoFixedVars   = [];
+        $overridableUsed = [];
+        $sharedVars      = [];
+        foreach ($template?->variable_names_array ?? [] as $varName) {
+            $isAuto        = in_array($varName, $autoVars, true);
+            $isOverridable = in_array($varName, $overridableVars, true);
+            if ($isAuto && $isOverridable) $overridableUsed[] = $varName;
+            elseif ($isAuto) $autoFixedVars[] = $varName;
+            else $sharedVars[] = $varName;
+        }
+
+        $courseSemesterCounts = $courses->mapWithKeys(function (Course $c) {
+            $years = $c->duration_type === 'year' ? (int) $c->duration : max(1, (int) ceil($c->duration / 12));
+            return [$c->id => $years * $c->effectiveSemestersPerYear()];
+        });
+        $maxSem = ($courseId && $courseSemesterCounts->has((int) $courseId)) ? $courseSemesterCounts[(int) $courseId] : 12;
+
+        return view('institute.master.sms.broadcasts.admit-exam', compact(
+            'templates', 'template', 'courseTypes', 'courses', 'streams', 'students',
+            'autoFixedVars', 'overridableUsed', 'sharedVars', 'maxSem'
+        ));
+    }
+
+    // Sends immediately to the selected students (no separate draft/confirm page) — mirrors the
+    // Fee Due List "select and send" pattern this page is modeled on. Still goes through the
+    // same SmsBroadcast + queued job as the general compose page, so it shows up identically in
+    // the broadcast list and SMS History.
+    public function admitExamSend(Request $request)
+    {
+        $instituteId = $this->instituteId();
+
+        $validated = $request->validate([
+            'sms_template_id' => 'required|integer',
+            'student_ids'     => 'required|array|min:1',
+            'student_ids.*'   => 'integer',
+        ]);
+
+        $template = SmsTemplate::where('institute_id', $instituteId)
+            ->where('id', $validated['sms_template_id'])
+            ->whereIn('type', array_keys(self::ADMIT_EXAM_TYPES))
+            ->where('is_active', true)
+            ->first();
+
+        if (!$template) {
+            return response()->json(['success' => false, 'error' => 'Template not found or inactive.'], 422);
+        }
+
+        // Re-validate posted ids against the institute's actual student pool — never trust
+        // posted ids directly, even from this institute's own compose page.
+        $studentIds = SmsBroadcastTargeting::baseQuery($instituteId, SmsBroadcast::AUDIENCE_STUDENT)
+            ->whereIn('id', $validated['student_ids'])
+            ->pluck('id')->all();
+
+        if (empty($studentIds)) {
+            return response()->json(['success' => false, 'error' => 'No valid students were selected.'], 422);
+        }
+
+        $autoVars        = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STUDENT);
+        $overridableVars = SmsBroadcastTargeting::overridableAutoVarNames();
+        $values          = [];
+        foreach ($template->variable_names_array as $varName) {
+            $isAuto        = in_array($varName, $autoVars, true);
+            $isOverridable = in_array($varName, $overridableVars, true);
+            if ($isAuto && !$isOverridable) continue;
+
+            $typed = (string) $request->input("template_values.{$varName}", '');
+            if ($isAuto && $isOverridable && $typed === '') continue;
+
+            $values[$varName] = $typed;
+        }
+
+        $broadcast = SmsBroadcast::create([
+            'institute_id'           => $instituteId,
+            'sms_template_id'        => $template->id,
+            'template_values'        => $values,
+            'audience_type'          => SmsBroadcast::AUDIENCE_STUDENT,
+            'recipient_mode'         => SmsBroadcast::RECIPIENT_MODE_SPECIFIC,
+            'specific_recipient_ids' => $studentIds,
+            'status'                 => SmsBroadcast::STATUS_QUEUED,
+            'total_recipients'       => count($studentIds),
+            'created_by_user_id'     => Auth::id(),
+        ]);
+
+        SendSmsBroadcastJob::dispatch($broadcast->id);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Sending started for ' . count($studentIds) . ' student(s).',
+            'broadcast_id' => $broadcast->id,
+        ]);
     }
 }

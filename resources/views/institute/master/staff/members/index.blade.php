@@ -157,13 +157,20 @@
                             </form>
                         </td>
                         <td>
-                            <form method="POST" action="{{ route('master.staff-members.toggle-otp-bypass', $member) }}" title="When ON, this staff member logs in without OTP">
-                                @csrf
-                                <button class="btn btn-sm {{ $member->otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}">
-                                    <i class="bi bi-{{ $member->otp_bypass ? 'shield-slash' : 'shield-check' }}"></i>
-                                    {{ $member->otp_bypass ? 'Bypass' : 'Required' }}
-                                </button>
-                            </form>
+                            <div class="d-flex gap-1">
+                                <form method="POST" action="{{ route('master.staff-members.toggle-email-otp-bypass', $member) }}" title="When ON, this staff member logs in without Email OTP">
+                                    @csrf
+                                    <button class="btn btn-sm {{ $member->email_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                        <i class="bi bi-envelope{{ $member->email_otp_bypass ? '-slash' : '-check' }}"></i>
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('master.staff-members.toggle-sms-otp-bypass', $member) }}" title="When ON, this staff member logs in without SMS OTP">
+                                    @csrf
+                                    <button class="btn btn-sm {{ $member->sms_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                        <i class="bi bi-chat-dots{{ $member->sms_otp_bypass ? '-fill' : '' }}"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                         <td>
                             @php

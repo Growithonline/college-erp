@@ -50,9 +50,11 @@ class PartnerAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
-        InstituteMailer::send($partner->institute_id, $partner->email, new PartnerOtpMail($partner, $otp));
+        if (!$partner->email_otp_bypass && $partner->email) {
+            InstituteMailer::send($partner->institute_id, $partner->email, new PartnerOtpMail($partner, $otp));
+        }
 
-        if ($partner->mobile) {
+        if (!$partner->sms_otp_bypass && $partner->mobile) {
             try {
                 SmsService::sendInstituteOtp($partner->institute_id, $partner->mobile, $otp);
             } catch (Throwable) {}
@@ -101,7 +103,10 @@ class PartnerAuthController extends Controller
             return back()->withErrors(['partner_uid' => 'Your ID is blocked. Contact admin.']);
         }
 
-        if ($partner->otp_bypass) {
+        $emailChannel = !$partner->email_otp_bypass && $partner->email;
+        $smsChannel   = !$partner->sms_otp_bypass && $partner->mobile;
+
+        if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($partner, $request->boolean('remember'));
             return redirect()->intended(route('partner.dashboard'));

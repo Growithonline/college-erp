@@ -50,9 +50,12 @@ class CenterAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
-        InstituteMailer::send($center->institute_id, $center->email, new CenterOtpMail($center, $otp));
+        if (!$center->email_otp_bypass && $center->email) {
+            InstituteMailer::send($center->institute_id, $center->email, new CenterOtpMail($center, $otp));
+        }
 
-        if ($center->mobile) {
+        $smsSent = !$center->sms_otp_bypass && $center->mobile;
+        if ($smsSent) {
             SmsService::sendInstituteOtp($center->institute_id, $center->mobile, $otp);
         }
 
@@ -61,7 +64,7 @@ class CenterAuthController extends Controller
             'otp'      => $otp,
             'sent_at'  => now()->toIso8601String(),
             'remember' => $remember,
-            'sms_sent' => (bool) $center->mobile,
+            'sms_sent' => $smsSent,
         ], now()->addMinutes($expiryMinutes));
 
         Cache::put($this->otpThrottleKey($center->id), true, now()->addSeconds($cooldownSeconds));
@@ -100,7 +103,10 @@ class CenterAuthController extends Controller
             return back()->withErrors(['center_uid' => 'Your ID is blocked. Contact admin.']);
         }
 
-        if ($center->otp_bypass) {
+        $emailChannel = !$center->email_otp_bypass && $center->email;
+        $smsChannel   = !$center->sms_otp_bypass && $center->mobile;
+
+        if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($center, $request->boolean('remember'));
             return redirect()->intended(route('center.dashboard'));

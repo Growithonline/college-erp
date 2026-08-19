@@ -262,7 +262,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::resource('centers', CenterController::class);
         Route::post('centers/notify-login-id',          [CenterController::class, 'notifyLoginIds'])->name('centers.notify-login-id');
         Route::post('centers/{center}/toggle',          [CenterController::class, 'toggle'])->name('centers.toggle');
-        Route::post('centers/{center}/toggle-otp-bypass', [CenterController::class, 'toggleOtpBypass'])->name('centers.toggle-otp-bypass');
+        Route::post('centers/{center}/toggle-email-otp-bypass', [CenterController::class, 'toggleEmailOtpBypass'])->name('centers.toggle-email-otp-bypass');
+        Route::post('centers/{center}/toggle-sms-otp-bypass', [CenterController::class, 'toggleSmsOtpBypass'])->name('centers.toggle-sms-otp-bypass');
         Route::post('centers/{center}/toggle-login-block', [CenterController::class, 'toggleLoginBlock'])->name('centers.toggle-login-block');
         Route::get('centers/archived/list',             [CenterController::class, 'trashed'])->name('centers.trashed');
         Route::post('centers/{id}/restore',             [CenterController::class, 'restore'])->name('centers.restore');
@@ -271,7 +272,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::resource('channel-partners', ChannelPartnerController::class);
         Route::post('channel-partners/notify-login-id',               [ChannelPartnerController::class, 'notifyLoginIds'])->name('channel-partners.notify-login-id');
         Route::post('channel-partners/{channelPartner}/toggle',      [ChannelPartnerController::class, 'toggle'])->name('channel-partners.toggle');
-        Route::post('channel-partners/{channelPartner}/toggle-otp-bypass', [ChannelPartnerController::class, 'toggleOtpBypass'])->name('channel-partners.toggle-otp-bypass');
+        Route::post('channel-partners/{channelPartner}/toggle-email-otp-bypass', [ChannelPartnerController::class, 'toggleEmailOtpBypass'])->name('channel-partners.toggle-email-otp-bypass');
+        Route::post('channel-partners/{channelPartner}/toggle-sms-otp-bypass', [ChannelPartnerController::class, 'toggleSmsOtpBypass'])->name('channel-partners.toggle-sms-otp-bypass');
         Route::post('channel-partners/{channelPartner}/toggle-login-block', [ChannelPartnerController::class, 'toggleLoginBlock'])->name('channel-partners.toggle-login-block');
         Route::get('channel-partners/archived/list',                 [ChannelPartnerController::class, 'trashed'])->name('channel-partners.trashed');
         Route::post('channel-partners/{id}/restore',                 [ChannelPartnerController::class, 'restore'])->name('channel-partners.restore');
@@ -281,7 +283,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::resource('staff-members', StaffMemberController::class);
         Route::post('staff-members/notify-login-id',                 [StaffMemberController::class, 'notifyLoginIds'])->name('staff-members.notify-login-id');
         Route::post('staff-members/{staffMember}/toggle',            [StaffMemberController::class, 'toggle'])->name('staff-members.toggle');
-        Route::post('staff-members/{staffMember}/toggle-otp-bypass', [StaffMemberController::class, 'toggleOtpBypass'])->name('staff-members.toggle-otp-bypass');
+        Route::post('staff-members/{staffMember}/toggle-email-otp-bypass', [StaffMemberController::class, 'toggleEmailOtpBypass'])->name('staff-members.toggle-email-otp-bypass');
+        Route::post('staff-members/{staffMember}/toggle-sms-otp-bypass', [StaffMemberController::class, 'toggleSmsOtpBypass'])->name('staff-members.toggle-sms-otp-bypass');
         Route::post('staff-members/{staffMember}/login-access', [StaffMemberController::class, 'updateLoginAccess'])->name('staff-members.login-access');
         Route::get('staff-members/archived/list',                    [StaffMemberController::class, 'trashed'])->name('staff-members.trashed');
         Route::post('staff-members/{id}/restore',                    [StaffMemberController::class, 'restore'])->name('staff-members.restore');
@@ -379,6 +382,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('sms/broadcasts',                    [SmsBroadcastController::class, 'store'])->name('sms.broadcasts.store');
         Route::post('sms/broadcasts/preview-count',      [SmsBroadcastController::class, 'previewCount'])->name('sms.broadcasts.preview-count');
         Route::post('sms/broadcasts/search-recipients',  [SmsBroadcastController::class, 'searchRecipients'])->name('sms.broadcasts.search-recipients');
+        Route::get('sms/broadcasts/admit-exam',          [SmsBroadcastController::class, 'admitExam'])->name('sms.broadcasts.admit-exam');
+        Route::post('sms/broadcasts/admit-exam/send',    [SmsBroadcastController::class, 'admitExamSend'])->name('sms.broadcasts.admit-exam.send');
         Route::get('sms/broadcasts/{broadcast}',         [SmsBroadcastController::class, 'show'])->name('sms.broadcasts.show');
         Route::post('sms/broadcasts/{broadcast}/send',   [SmsBroadcastController::class, 'send'])->name('sms.broadcasts.send');
         Route::delete('sms/broadcasts/{broadcast}',      [SmsBroadcastController::class, 'destroy'])->name('sms.broadcasts.destroy');
@@ -791,6 +796,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
     Route::get('admissions/{student}', [AdmissionController::class, 'show'])->name('admissions.show');
     Route::post('admissions/{student}/resend-credentials', [AdmissionController::class, 'resendCredentials'])->name('admissions.resend-credentials');
     Route::post('admissions/{student}/login-access', [AdmissionController::class, 'updateLoginAccess'])->name('admissions.login-access');
+    Route::post('admissions/{student}/toggle-email-otp-bypass', [AdmissionController::class, 'toggleEmailOtpBypass'])->name('admissions.toggle-email-otp-bypass');
+    Route::post('admissions/{student}/toggle-sms-otp-bypass', [AdmissionController::class, 'toggleSmsOtpBypass'])->name('admissions.toggle-sms-otp-bypass');
     Route::post('admissions/{student}/status', [AdmissionController::class, 'updateStudentStatus'])->name('admissions.status.update');
 
     // Admission Documents (shared across all guards)

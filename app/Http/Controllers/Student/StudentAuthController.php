@@ -50,12 +50,12 @@ class StudentAuthController extends Controller
         $expiryMinutes   = $platform?->otp_expiry_minutes ?? 5;
         $cooldownSeconds = $platform?->otp_resend_cooldown_seconds ?? 30;
 
-        if ($student->email) {
+        if (!$student->email_otp_bypass && $student->email) {
             InstituteMailer::send($student->institute_id, $student->email, new StudentOtpMail($student, $otp));
         }
 
         $mobile = $student->mobile ?? $student->father_mobile;
-        if ($mobile) {
+        if (!$student->sms_otp_bypass && $mobile) {
             try {
                 SmsService::sendInstituteOtp($student->institute_id, $mobile, $otp);
             } catch (Throwable) {}
@@ -102,8 +102,11 @@ class StudentAuthController extends Controller
             return back()->withErrors(['student_uid' => 'Your ID is blocked. Contact admin.']);
         }
 
-        // If no email, skip OTP and login directly
-        if (!$student->email) {
+        $emailChannel = !$student->email_otp_bypass && $student->email;
+        $smsChannel   = !$student->sms_otp_bypass && ($student->mobile ?? $student->father_mobile);
+
+        // If neither channel is usable, skip OTP and login directly
+        if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($student, $request->boolean('remember'));
             return $this->afterLogin($student);

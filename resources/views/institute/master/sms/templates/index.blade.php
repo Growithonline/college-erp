@@ -43,7 +43,10 @@
                         <td>
                             <div class="fw-semibold small">{{ $row['meta']['label'] }}</div>
                             @if(! $row['meta']['wired'])
-                                <span class="badge bg-secondary-subtle text-secondary border small">Feature not built yet — template ready for later</span>
+                                @php($manualSendRoute = in_array($type, ['admit_card', 'exam_info']) ? route('master.sms.broadcasts.admit-exam') : route('master.sms.broadcasts.create'))
+                                <span class="badge bg-info-subtle text-info border small">
+                                    No auto-trigger yet — send manually from <a href="{{ $manualSendRoute }}">{{ in_array($type, ['admit_card', 'exam_info']) ? 'Admit Card & Exam SMS' : 'Send SMS' }}</a>
+                                </span>
                             @endif
                         </td>
                         <td>
@@ -364,29 +367,29 @@ function initTemplateVarHelper(textarea) {
 
         let html = '';
         if (named.length) {
-            html += '<div class="small text-success mt-1 mb-1"><i class="bi bi-check-circle me-1"></i>Variables mile — naam badalna ho to yahin edit karke "Naam Update Karo" dabao:</div>' +
+            html += '<div class="small text-success mt-1 mb-1"><i class="bi bi-check-circle me-1"></i>Variables found — to rename one, edit it here and click "Update Names":</div>' +
                 '<div class="rename-named-rows"></div>' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary mt-1 rename-named-btn"><i class="bi bi-pencil me-1"></i>Naam Update Karo</button>';
+                '<button type="button" class="btn btn-sm btn-outline-secondary mt-1 rename-named-btn"><i class="bi bi-pencil me-1"></i>Update Names</button>';
         }
         if (repeated.length) {
             html += '<div class="small p-2 rounded mt-1" style="background:#fff8e1;border:1px solid #ffe082;">' +
                 '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>' +
-                `<strong>${repeated.map(r => `${r} (${counts[r]}x)`).join(', ')}</strong> multiple jagah use ho raha hai — abhi sabko EK hi value milegi jab bhejoge. ` +
-                'Agar har jagah alag value honi chahiye:' +
-                ' <button type="button" class="btn btn-sm btn-outline-warning mt-1 split-duplicates-btn"><i class="bi bi-magic me-1"></i>Alag-Alag Banao</button>' +
+                `<strong>${repeated.map(r => `${r} (${counts[r]}x)`).join(', ')}</strong> is used in multiple places — right now everyone gets the SAME value there. ` +
+                'If each spot should have its own value:' +
+                ' <button type="button" class="btn btn-sm btn-outline-warning mt-1 split-duplicates-btn"><i class="bi bi-magic me-1"></i>Split Into Separate Fields</button>' +
                 '</div>';
         }
         if (generic.length) {
             html += '<div class="small p-2 rounded mt-1" style="background:#fff8e1;border:1px solid #ffe082;">' +
                 '<i class="bi bi-exclamation-triangle me-1 text-warning"></i>' +
-                `<strong>${generic.length} generic <code>{#VAR#}</code> placeholder(s) mile</strong> — ye DLT portal se copy-paste kiya hua lagta hai. ` +
-                'Ye is form me kaam nahi karega jab tak har ek ko ek naam na do (jaise: course, date, venue).' +
+                `<strong>${generic.length} generic <code>{#VAR#}</code> placeholder(s) found</strong> — this looks like it was copy-pasted from the DLT portal. ` +
+                'It won\'t work in this form until each one gets a name (e.g. course, date, venue).' +
                 '<div class="rename-rows mt-2"></div>' +
-                '<button type="button" class="btn btn-sm btn-outline-primary mt-1 apply-rename-btn"><i class="bi bi-magic me-1"></i>Naam Apply Karo</button>' +
+                '<button type="button" class="btn btn-sm btn-outline-primary mt-1 apply-rename-btn"><i class="bi bi-magic me-1"></i>Apply Names</button>' +
                 '</div>';
         }
         if (!named.length && !generic.length && text.trim()) {
-            html += '<div class="small text-muted mt-1"><i class="bi bi-info-circle me-1"></i>Koi variable nahi mila — poora message fixed text jaega, kisi ke liye alag nahi hoga.</div>';
+            html += '<div class="small text-muted mt-1"><i class="bi bi-info-circle me-1"></i>No variables found — the whole message will be sent as fixed text, the same for everyone.</div>';
         }
         slot.innerHTML = html;
 
@@ -453,7 +456,7 @@ function initTemplateVarHelper(textarea) {
                 const row = document.createElement('div');
                 row.className = 'd-flex align-items-center gap-2 mb-1';
                 row.innerHTML = `<span style="min-width:95px;">Placeholder #${i + 1}:</span>` +
-                    '<input type="text" class="form-control form-control-sm rename-input" placeholder="jaise: mobile, exam_date" style="max-width:220px;">';
+                    '<input type="text" class="form-control form-control-sm rename-input" placeholder="e.g. mobile, exam_date" style="max-width:220px;">';
                 rows.appendChild(row);
             });
             slot.querySelector('.apply-rename-btn').addEventListener('click', () => {

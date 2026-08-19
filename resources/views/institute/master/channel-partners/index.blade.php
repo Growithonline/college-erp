@@ -103,13 +103,20 @@
                             </form>
                         </td>
                         <td>
-                            <form method="POST" action="{{ route('master.channel-partners.toggle-otp-bypass', $partner) }}" title="When ON, this partner logs in without OTP">
-                                @csrf
-                                <button class="btn btn-sm {{ $partner->otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}">
-                                    <i class="bi bi-{{ $partner->otp_bypass ? 'shield-slash' : 'shield-check' }}"></i>
-                                    {{ $partner->otp_bypass ? 'Bypass' : 'Required' }}
-                                </button>
-                            </form>
+                            <div class="d-flex gap-1">
+                                <form method="POST" action="{{ route('master.channel-partners.toggle-email-otp-bypass', $partner) }}" title="When ON, this partner logs in without Email OTP">
+                                    @csrf
+                                    <button class="btn btn-sm {{ $partner->email_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                        <i class="bi bi-envelope{{ $partner->email_otp_bypass ? '-slash' : '-check' }}"></i>
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('master.channel-partners.toggle-sms-otp-bypass', $partner) }}" title="When ON, this partner logs in without SMS OTP">
+                                    @csrf
+                                    <button class="btn btn-sm {{ $partner->sms_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                        <i class="bi bi-chat-dots{{ $partner->sms_otp_bypass ? '-fill' : '' }}"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                         <td>
                             <form method="POST" action="{{ route('master.channel-partners.toggle-login-block', $partner) }}" title="When blocked, this partner cannot log in but still appears as an admission source">

@@ -197,6 +197,7 @@
                     <th style="min-width:85px; white-space:nowrap;">Source</th>
                     <th style="min-width:80px; white-space:nowrap;">Adm. Date</th>
                     <th style="min-width:68px; white-space:nowrap;">Status</th>
+                    <th style="min-width:60px; white-space:nowrap;">OTP</th>
                     <th style="min-width:90px; white-space:nowrap;">Actions</th>
                 </tr>
             </thead>
@@ -346,6 +347,24 @@
                         <span class="badge border {{ $statusColor }}" style="font-size:10px; font-weight:600;">
                             {{ ucfirst($student->status ?? 'pending') }}
                         </span>
+                    </td>
+
+                    {{-- OTP Channels --}}
+                    <td>
+                        <div class="d-flex gap-1">
+                            <form method="POST" action="{{ route('admissions.toggle-email-otp-bypass', $student->id) }}" title="When ON, this student logs in without Email OTP">
+                                @csrf
+                                <button class="btn btn-sm {{ $student->email_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                    <i class="bi bi-envelope{{ $student->email_otp_bypass ? '-slash' : '-check' }}"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ route('admissions.toggle-sms-otp-bypass', $student->id) }}" title="When ON, this student logs in without SMS OTP">
+                                @csrf
+                                <button class="btn btn-sm {{ $student->sms_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                    <i class="bi bi-chat-dots{{ $student->sms_otp_bypass ? '-fill' : '' }}"></i>
+                                </button>
+                            </form>
+                        </div>
                     </td>
 
                     {{-- Actions --}}

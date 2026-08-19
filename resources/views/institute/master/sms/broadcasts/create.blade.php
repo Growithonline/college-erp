@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-send me-2 text-primary"></i>New SMS Broadcast</h4>
-        <small class="text-muted">Ek registered DLT template select karo, uske variables fill karo, aur audience target karo.</small>
+        <small class="text-muted">Select a registered DLT template, fill in its variables, and target your audience.</small>
     </div>
     <a href="{{ route('master.sms.broadcasts.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back
@@ -30,7 +30,7 @@
 
         {{-- Audience --}}
         <div class="mb-3">
-            <label class="form-label fw-semibold">Kisko bhejna hai? <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold">Who should receive this? <span class="text-danger">*</span></label>
             @php($audience = old('audience_type', 'student'))
             <div class="d-flex gap-3">
                 <div class="form-check">
@@ -58,7 +58,7 @@
             @error('sms_template_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             @if($templates->isEmpty())
                 <div class="form-text text-danger">
-                    Koi active template nahi mila. Pehle <a href="{{ route('master.sms.templates.index') }}">Message Templates</a> page pe jaake ek template register/enable karo.
+                    No active template found. Go to <a href="{{ route('master.sms.templates.index') }}">Message Templates</a> and register or enable one first.
                 </div>
             @endif
         </div>
@@ -80,18 +80,18 @@
         <div id="studentTargeting" class="mb-3" style="display:none;">
             <div class="card border-0 rounded-3 p-3" style="background:#f8fafc;border:1.5px dashed #e2e8f0 !important;">
                 <div class="mb-2" style="font-size:12px;font-weight:600;color:#475569;">
-                    <i class="bi bi-funnel me-1"></i>Target Students <span class="text-muted fw-normal">(sab blank chhodo = sab active students)</span>
+                    <i class="bi bi-funnel me-1"></i>Target Students <span class="text-muted fw-normal">(leave everything blank = all active students)</span>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold">Course Type</label>
                         <select id="courseTypeSelect" class="form-select form-select-sm">
-                            <option value="">— Sab —</option>
+                            <option value="">— All —</option>
                             @foreach($courseTypes as $ct)
                                 <option value="{{ $ct->id }}">{{ $ct->name }}</option>
                             @endforeach
                         </select>
-                        <div class="form-text">Course list ko narrow karne ke liye (optional).</div>
+                        <div class="form-text">Narrows the Course list (optional).</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold">Course(s)</label>
@@ -102,7 +102,7 @@
                                         {{ in_array($course->id, $selectedCourses) ? 'selected' : '' }}>{{ $course->name }}</option>
                             @endforeach
                         </select>
-                        <div class="form-text">Ctrl/Cmd+click se multiple select karo.</div>
+                        <div class="form-text">Ctrl/Cmd+click to select multiple.</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold">Stream(s)</label>
@@ -115,7 +115,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <div class="form-text">Course select karne pe list filter ho jaegi.</div>
+                        <div class="form-text">The list filters when you pick a course.</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold">Semester(s)</label>
@@ -129,7 +129,7 @@
                             </div>
                             @endfor
                         </div>
-                        <div class="form-text">Course select karne pe uske actual semesters tak simit ho jaega.</div>
+                        <div class="form-text">Picking a course limits this to its actual semesters.</div>
                     </div>
                 </div>
             </div>
@@ -139,7 +139,7 @@
         <div id="staffTargeting" class="mb-3" style="display:none;">
             <div class="card border-0 rounded-3 p-3" style="background:#f8fafc;border:1.5px dashed #e2e8f0 !important;">
                 <div class="mb-2" style="font-size:12px;font-weight:600;color:#475569;">
-                    <i class="bi bi-funnel me-1"></i>Target Staff Role(s) <span class="text-muted fw-normal">(blank = sab active staff)</span>
+                    <i class="bi bi-funnel me-1"></i>Target Staff Role(s) <span class="text-muted fw-normal">(blank = all active staff)</span>
                 </div>
                 @php($selectedRoles = old('target_staff_role_ids', []))
                 <select name="target_staff_role_ids[]" id="roleSelect" class="form-select form-select-sm" multiple size="5">
@@ -163,11 +163,11 @@
                         @php($recipientMode = old('recipient_mode', 'all'))
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="recipient_mode" id="mode_all" value="all" {{ $recipientMode === 'all' ? 'checked' : '' }}>
-                            <label class="form-check-label small" for="mode_all">Sabko bhejo</label>
+                            <label class="form-check-label small" for="mode_all">Send to everyone</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="recipient_mode" id="mode_specific" value="specific" {{ $recipientMode === 'specific' ? 'checked' : '' }}>
-                            <label class="form-check-label small" for="mode_specific">Specific hii chuno</label>
+                            <label class="form-check-label small" for="mode_specific">Choose specific recipients</label>
                         </div>
                     </div>
                 </div>
@@ -176,7 +176,7 @@
                 <div id="selectedContainer"></div>
 
                 <div class="mt-3">
-                    <input type="text" id="recipientSearch" class="form-control form-control-sm" placeholder="List me naam se search karo...">
+                    <input type="text" id="recipientSearch" class="form-control form-control-sm" placeholder="Search the list by name...">
                     <div id="recipientList" class="border rounded mt-2 bg-white" style="max-height:240px;overflow-y:auto;"></div>
                     <div id="recipientListNote" class="form-text mt-1"></div>
                 </div>
@@ -189,7 +189,7 @@
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" name="link_notice" id="link_notice" value="1" {{ old('link_notice') ? 'checked' : '' }}>
                     <label class="form-check-label fw-semibold" for="link_notice">
-                        <i class="bi bi-megaphone me-1 text-success"></i> Iske saath in-app Notice bhi post karo?
+                        <i class="bi bi-megaphone me-1 text-success"></i> Also post an in-app Notice with this?
                     </label>
                 </div>
                 <div id="noticeFields" style="display:{{ old('link_notice') ? 'block' : 'none' }};">
@@ -200,7 +200,7 @@
                     <div>
                         <label class="form-label small fw-semibold">Notice Body <span class="text-danger">*</span></label>
                         <textarea name="notice_body" id="noticeBody" class="form-control form-control-sm" rows="4">{{ old('notice_body') }}</textarea>
-                        <div class="form-text">Preview se auto-fill hota hai, edit kar sakte ho (jaise {name} jaisi cheezein sahi wording me badlo).</div>
+                        <div class="form-text">Pre-filled from the preview — feel free to edit it (e.g. rewrite bits like {name} into proper wording).</div>
                     </div>
                 </div>
             </div>
@@ -213,7 +213,7 @@
     <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i>Save Draft</button>
     <a href="{{ route('master.sms.broadcasts.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
 </div>
-<div class="form-text mt-2">SMS abhi nahi jaega — draft save hone ke baad review karke confirm karna hoga.</div>
+<div class="form-text mt-2">The SMS won't send yet — after saving the draft you'll review it and confirm.</div>
 
 </form>
 
@@ -276,7 +276,7 @@ function renderVarsAndPreview() {
 
     if (autoFixed.length) {
         autoVarsNote.style.display = 'block';
-        autoVarsNote.innerHTML = '<i class="bi bi-info-circle me-1"></i>Auto-fill honge (har recipient ka apna): ' +
+        autoVarsNote.innerHTML = '<i class="bi bi-info-circle me-1"></i>Auto-filled per recipient: ' +
             autoFixed.map(v => `<code>{${v}}</code>`).join(', ');
     } else {
         autoVarsNote.style.display = 'none';
@@ -292,12 +292,12 @@ function renderVarsAndPreview() {
         wrap.className = 'mb-2';
         const label = document.createElement('label');
         label.className = 'form-label small';
-        label.innerHTML = `${v} <span class="text-muted fw-normal">(blank = har recipient ka apna ${v}; bharo to sabko yahi fixed jaega — jaise college office number)</span>`;
+        label.innerHTML = `${v} <span class="text-muted fw-normal">(blank = each recipient's own ${v}; fill it in to send the same fixed value to everyone — e.g. the college office number)</span>`;
         const input = document.createElement('input');
         input.type = 'text';
         input.name = `template_values[${v}]`;
         input.className = 'form-control form-control-sm var-input';
-        input.placeholder = 'Blank chhodo = auto';
+        input.placeholder = 'Leave blank for auto-fill';
         input.value = oldVal;
         wrap.appendChild(label);
         wrap.appendChild(input);
@@ -344,7 +344,7 @@ function renderPreviewOnly() {
     });
     previewBox.textContent = text;
     const segments = Math.max(1, Math.ceil(text.length / 160));
-    charCount.textContent = `${text.length} characters (~${segments} SMS segment${segments > 1 ? 's' : ''}). [bracketed] = us student/staff ka apna data, jo actual send pe fill hoga.`;
+    charCount.textContent = `${text.length} characters (~${segments} SMS segment${segments > 1 ? 's' : ''}). [bracketed] = that student's/staff's own data, filled in at send time.`;
 
     if (document.getElementById('link_notice').checked && !noticeBody.dataset.userEdited) {
         noticeBody.value = text.replace(/\[|\]/g, '');
@@ -496,7 +496,7 @@ function renderRecipientList(rows) {
     recipientList.innerHTML = '';
 
     if (!rows.length) {
-        recipientList.innerHTML = '<div class="p-2 small text-muted">Koi match nahi mila.</div>';
+        recipientList.innerHTML = '<div class="p-2 small text-muted">No matches found.</div>';
         recipientListNote.textContent = '';
         return;
     }
@@ -526,7 +526,7 @@ function renderRecipientList(rows) {
     });
 
     recipientListNote.textContent = rows.length >= 50
-        ? 'Top 50 dikha rahe hain — search karke aur specific banda dhundo.'
+        ? 'Showing the top 50 — search to find someone specific.'
         : '';
 }
 

@@ -49,15 +49,15 @@
                     @foreach($targetingLabels as $label)<li>{{ $label }}</li>@endforeach
                 </ul>
             @else
-                <div class="small">No restriction — sabhi active {{ $broadcast->audience_type }}</div>
+                <div class="small">No restriction — all active {{ $broadcast->audience_type }}</div>
             @endif
             @if($broadcast->recipient_mode === 'specific')
-                <div class="small text-muted mt-1">Sirf specifically selected recipients ({{ count($broadcast->specific_recipient_ids ?? []) }})</div>
+                <div class="small text-muted mt-1">Specifically selected recipients only ({{ count($broadcast->specific_recipient_ids ?? []) }})</div>
             @endif
         </div>
 
         <div class="mb-3">
-            <div class="text-muted small mb-1">Sample Message <span class="fw-normal">([bracketed] = us recipient ka apna data)</span></div>
+            <div class="text-muted small mb-1">Sample Message <span class="fw-normal">([bracketed] = that recipient's own data)</span></div>
             <div class="p-2 rounded bg-light border small" style="white-space:pre-wrap;">{{ $sampleText }}</div>
         </div>
 
@@ -69,11 +69,11 @@
 
         @if($broadcast->linkedNotice)
         <div class="mt-3 small text-muted">
-            <i class="bi bi-megaphone me-1"></i>In-app Notice bhi post hua: <strong>{{ $broadcast->linkedNotice->title }}</strong>
+            <i class="bi bi-megaphone me-1"></i>An in-app Notice was also posted: <strong>{{ $broadcast->linkedNotice->title }}</strong>
         </div>
         @elseif($broadcast->notice_title)
         <div class="mt-3 small text-muted">
-            <i class="bi bi-megaphone me-1"></i>Send karne pe ek in-app Notice bhi post hogi: <strong>{{ $broadcast->notice_title }}</strong>
+            <i class="bi bi-megaphone me-1"></i>An in-app Notice will also be posted on send: <strong>{{ $broadcast->notice_title }}</strong>
         </div>
         @endif
 
@@ -93,19 +93,19 @@
 @if($broadcast->status === 'draft')
 <div class="d-flex gap-2">
     <form method="POST" action="{{ route('master.sms.broadcasts.send', $broadcast) }}"
-          onsubmit="return confirm('{{ $recipientCount }} recipients ko SMS bhejna confirm karo? Ye undo nahi ho sakta.');">
+          onsubmit="return confirm('Send SMS to {{ $recipientCount }} recipient(s)? This can\'t be undone.');">
         @csrf
         <button type="submit" class="btn btn-primary px-4"><i class="bi bi-send-fill me-1"></i>Confirm &amp; Send</button>
     </form>
     <form method="POST" action="{{ route('master.sms.broadcasts.destroy', $broadcast) }}"
-          onsubmit="return confirm('Ye draft delete kar du?');">
+          onsubmit="return confirm('Discard this draft?');">
         @csrf
         @method('DELETE')
         <button type="submit" class="btn btn-outline-danger px-4"><i class="bi bi-trash me-1"></i>Discard Draft</button>
     </form>
 </div>
 @elseif($broadcast->status === 'queued' || $broadcast->status === 'sending')
-<div class="alert alert-info mb-0">SMS bhej jaa rahe hain — thodi der me status update hoga (page reload karo).</div>
+<div class="alert alert-info mb-0">SMS are being sent — the status will update shortly (reload the page).</div>
 @endif
 
 @if($deliveryLogs !== null)
@@ -115,7 +115,7 @@
         <a href="{{ route('master.sms.logs', ['broadcast' => $broadcast->id]) }}" class="small">Open in SMS History</a>
     </div>
     @if($deliveryLogs->isEmpty())
-        <div class="text-center py-4 text-muted small">Abhi tak koi delivery attempt record nahi hua.</div>
+        <div class="text-center py-4 text-muted small">No delivery attempts recorded yet.</div>
     @else
         <div class="table-responsive">
             <table class="table table-sm table-hover mb-0 small">

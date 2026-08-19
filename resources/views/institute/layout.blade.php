@@ -1196,9 +1196,13 @@
                            href="{{ route('master.sms.templates.index') }}">
                         <i class="bi bi-file-earmark-text"></i> Message Templates
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('master.sms.broadcasts.*') ? 'active' : '' }}"
+                    <li><a class="nav-link {{ request()->routeIs('master.sms.broadcasts.*') && !request()->routeIs('master.sms.broadcasts.admit-exam*') ? 'active' : '' }}"
                            href="{{ route('master.sms.broadcasts.index') }}">
                         <i class="bi bi-send"></i> Send SMS
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('master.sms.broadcasts.admit-exam*') ? 'active' : '' }}"
+                           href="{{ route('master.sms.broadcasts.admit-exam') }}">
+                        <i class="bi bi-mortarboard"></i> Admit Card &amp; Exam SMS
                     </a></li>
                 </ul>
             </div>

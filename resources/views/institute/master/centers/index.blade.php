@@ -95,13 +95,20 @@
                         </span>
                     </td>
                     <td>
-                        <form method="POST" action="{{ route('master.centers.toggle-otp-bypass', $c) }}" title="When ON, this center logs in without OTP">
-                            @csrf
-                            <button class="btn btn-sm {{ $c->otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}">
-                                <i class="bi bi-{{ $c->otp_bypass ? 'shield-slash' : 'shield-check' }}"></i>
-                                {{ $c->otp_bypass ? 'Bypass' : 'Required' }}
-                            </button>
-                        </form>
+                        <div class="d-flex gap-1">
+                            <form method="POST" action="{{ route('master.centers.toggle-email-otp-bypass', $c) }}" title="When ON, this center logs in without Email OTP">
+                                @csrf
+                                <button class="btn btn-sm {{ $c->email_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                    <i class="bi bi-envelope{{ $c->email_otp_bypass ? '-slash' : '-check' }}"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ route('master.centers.toggle-sms-otp-bypass', $c) }}" title="When ON, this center logs in without SMS OTP">
+                                @csrf
+                                <button class="btn btn-sm {{ $c->sms_otp_bypass ? 'btn-warning' : 'btn-outline-secondary' }}" style="padding:2px 6px; font-size:11px;">
+                                    <i class="bi bi-chat-dots{{ $c->sms_otp_bypass ? '-fill' : '' }}"></i>
+                                </button>
+                            </form>
+                        </div>
                     </td>
                     <td>
                         <form method="POST" action="{{ route('master.centers.toggle-login-block', $c) }}" title="When blocked, this center cannot log in but still appears as an admission source">

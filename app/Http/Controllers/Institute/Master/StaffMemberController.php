@@ -748,15 +748,26 @@ class StaffMemberController extends Controller
         return back()->with('success', 'Status updated!');
     }
 
-    public function toggleOtpBypass(StaffMember $staffMember)
+    public function toggleEmailOtpBypass(StaffMember $staffMember)
     {
         abort_if($staffMember->institute_id !== $this->instituteId(), 403);
-        $staffMember->update(['otp_bypass' => !$staffMember->otp_bypass]);
+        $staffMember->update(['email_otp_bypass' => !$staffMember->email_otp_bypass]);
 
-        AuditLogService::log($this->instituteId(), 'staff', 'staff_otp_bypass_toggled',
-            'Staff OTP bypass ' . ($staffMember->otp_bypass ? 'enabled' : 'disabled') . '.', $staffMember);
+        AuditLogService::log($this->instituteId(), 'staff', 'staff_email_otp_bypass_toggled',
+            'Staff email OTP bypass ' . ($staffMember->email_otp_bypass ? 'enabled' : 'disabled') . '.', $staffMember);
 
-        return back()->with('success', 'OTP bypass ' . ($staffMember->otp_bypass ? 'enabled' : 'disabled') . '!');
+        return back()->with('success', 'Email OTP bypass ' . ($staffMember->email_otp_bypass ? 'enabled' : 'disabled') . '!');
+    }
+
+    public function toggleSmsOtpBypass(StaffMember $staffMember)
+    {
+        abort_if($staffMember->institute_id !== $this->instituteId(), 403);
+        $staffMember->update(['sms_otp_bypass' => !$staffMember->sms_otp_bypass]);
+
+        AuditLogService::log($this->instituteId(), 'staff', 'staff_sms_otp_bypass_toggled',
+            'Staff SMS OTP bypass ' . ($staffMember->sms_otp_bypass ? 'enabled' : 'disabled') . '.', $staffMember);
+
+        return back()->with('success', 'SMS OTP bypass ' . ($staffMember->sms_otp_bypass ? 'enabled' : 'disabled') . '!');
     }
 
     public function updateLoginAccess(Request $request, StaffMember $staffMember)

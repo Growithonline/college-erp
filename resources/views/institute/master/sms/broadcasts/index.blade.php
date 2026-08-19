@@ -12,9 +12,14 @@
         <h4 class="mb-0 fw-bold mt-1">Send SMS</h4>
         <small class="text-muted">Bulk SMS using your registered DLT templates — targeted by course, stream, semester or staff role</small>
     </div>
-    <a href="{{ route('master.sms.broadcasts.create') }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-lg me-1"></i>New Broadcast
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('master.sms.broadcasts.admit-exam') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-mortarboard me-1"></i>Admit Card &amp; Exam SMS
+        </a>
+        <a href="{{ route('master.sms.broadcasts.create') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>New Broadcast
+        </a>
+    </div>
 </div>
 
 @if(session('success'))
@@ -72,7 +77,7 @@
                 @empty
                     <tr>
                         <td colspan="6" class="text-center text-muted small py-4">
-                            Koi SMS broadcast nahi bheja gaya abhi tak — "New Broadcast" pe click karke shuru karo.
+                            No SMS broadcasts sent yet — click "New Broadcast" to get started.
                         </td>
                     </tr>
                 @endforelse
