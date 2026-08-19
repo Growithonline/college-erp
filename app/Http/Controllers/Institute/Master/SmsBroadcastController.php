@@ -57,7 +57,19 @@ class SmsBroadcastController extends Controller
         $staffRoles = StaffRole::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $typeLabels = self::BROADCASTABLE_TYPES;
 
-        return view('institute.master.sms.broadcasts.create', compact('templates', 'courses', 'streams', 'staffRoles', 'typeLabels'));
+        // Shaped here (not inline in the blade's @json calls) — keeps the view a plain template.
+        $templatesForJs = $templates->map(fn (SmsTemplate $t) => [
+            'id'      => $t->id,
+            'content' => $t->content,
+            'vars'    => array_values(array_unique($t->variable_names_array)),
+        ])->values();
+        $autoVarsStudent = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STUDENT);
+        $autoVarsStaff   = SmsBroadcastTargeting::recipientAutoVarNames(SmsBroadcast::AUDIENCE_STAFF);
+
+        return view('institute.master.sms.broadcasts.create', compact(
+            'templates', 'courses', 'streams', 'staffRoles', 'typeLabels',
+            'templatesForJs', 'autoVarsStudent', 'autoVarsStaff'
+        ));
     }
 
     public function store(Request $request)

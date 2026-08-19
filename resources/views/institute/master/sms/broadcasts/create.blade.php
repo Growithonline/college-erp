@@ -203,21 +203,8 @@
 
 </form>
 
-@php
-    // Precomputed here (not inline inside @json(...)) — a multi-line closure expression as a
-    // directive argument trips up Blade's directive-argument parser and corrupts compilation.
-    $templatesForJs = $templates->map(function ($t) {
-        return [
-            'id'      => $t->id,
-            'content' => $t->content,
-            'vars'    => array_values(array_unique($t->variable_names_array)),
-        ];
-    });
-    $autoVarsStudent = \App\Services\SmsBroadcastTargeting::recipientAutoVarNames('student');
-    $autoVarsStaff   = \App\Services\SmsBroadcastTargeting::recipientAutoVarNames('staff');
-    $oldTemplateValues = old('template_values', new stdClass());
-    $oldSpecificIds    = old('specific_recipient_ids', []);
-@endphp
+@php($oldTemplateValues = old('template_values', new stdClass()))
+@php($oldSpecificIds = old('specific_recipient_ids', []))
 @push('scripts')
 <script>
 const TEMPLATES = @json($templatesForJs);
