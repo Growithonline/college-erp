@@ -67,7 +67,7 @@
     .gt-item .gt-val { font-size: 14px; font-weight: bold; }
 
     @media print {
-        @page { size: A4 landscape; margin: 14mm 10mm 12mm 10mm; }
+        @page { size: A4 landscape; margin: 12mm 10mm 10mm 10mm; }
         .no-print { display: none !important; }
         body { padding: 4mm 3mm 3mm 3mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .course-section { page-break-inside: avoid; }
