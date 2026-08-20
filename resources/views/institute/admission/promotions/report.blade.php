@@ -3,7 +3,7 @@
 @section('breadcrumb', 'Admissions / Promotion Report')
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2 text-success"></i>Promotion Report</h4>
         <small class="text-muted">Full promotion history — date, time, promoted by</small>
@@ -32,7 +32,7 @@
 </div>
 
 {{-- Filters --}}
-<div class="card border-0 shadow-sm mb-3">
+<div class="card border-0 shadow-sm mb-3 no-print">
     <div class="card-body py-2">
         <form method="GET" class="row g-2 align-items-end">
             <div class="col-md-2">
@@ -219,28 +219,54 @@
 </div>
 
 <style>
+.print-logo-box {
+    width:36px; height:36px; border:1.5px solid #000; border-radius:4px;
+    text-align:center; line-height:36px; font-size:14px; font-weight:800;
+    color:#000; overflow:hidden; background:#e8e8e8; flex-shrink:0;
+}
+.print-logo-box img { width:36px; height:36px; object-fit:cover; border-radius:4px; display:block; }
+.print-header { display: none; }
+
 @media print {
+    @page { margin: 12mm 10mm 10mm 10mm; }
     .no-print, form, .card-footer, nav[aria-label="pagination"], .alert { display: none !important; }
     .print-header { display: block !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 4mm 3mm 3mm 3mm; }
     body, table, th, td { font-size: 8.5px !important; }
     th, td { padding: 2px 4px !important; white-space: nowrap; }
+    table thead th { background:#1e3a5f !important; color:#fff !important; font-weight:700 !important; border-color:#0d2540 !important; }
     .badge { font-size: 7.5px !important; padding: 1px 3px !important; background: none !important; border: none !important; color: inherit !important; }
     .opacity-50 { opacity: 1 !important; }
     h4, h5 { font-size: 13px !important; }
     .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; }
 }
-.print-header { display: none; }
 </style>
 
+@php
+    $printInstitute = auth()->guard('staff')->check()
+        ? auth()->guard('staff')->user()->institute
+        : auth()->user()->institute;
+@endphp
+
 <div class="print-header mb-2">
-    <div class="d-flex justify-content-between align-items-end border-bottom pb-1">
-        <div>
-            <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-1"></i>Promotion Report</h5>
-            <small class="text-muted">Full promotion history — date, time, promoted by</small>
+    <div class="d-flex justify-content-between align-items-center border-bottom border-dark pb-2">
+        <div class="d-flex align-items-center gap-2">
+            <div class="print-logo-box">
+                @if($printInstitute?->image)
+                    <img src="{{ asset('storage/' . $printInstitute->image) }}" alt="Logo">
+                @else
+                    {{ strtoupper(substr($printInstitute?->short_name ?: $printInstitute?->name ?: 'IN', 0, 2)) }}
+                @endif
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0" style="font-size:14px;">{{ $printInstitute?->name }}</h6>
+                <div style="font-size:10px;font-weight:600;">Promotion Report</div>
+                <small class="text-muted" style="font-size:8.5px;">Full promotion history — date, time, promoted by</small>
+            </div>
         </div>
-        <div class="text-end">
-            <div style="font-size:10px;"><strong>Total:</strong> {{ $total }}</div>
-            <div style="font-size:9px;color:#666;">Printed: {{ now()->setTimezone('Asia/Kolkata')->format('d M Y, h:i A') }}</div>
+        <div class="text-end" style="font-size:9px;font-weight:600;">
+            <div>Total Records: <strong>{{ $total }}</strong></div>
+            <div>Printed: <strong>{{ now()->setTimezone('Asia/Kolkata')->format('d M Y, h:i A') }}</strong></div>
         </div>
     </div>
 </div>
