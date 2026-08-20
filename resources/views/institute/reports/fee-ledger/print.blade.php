@@ -8,10 +8,20 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; background: #fff; }
 
-    .report-header { text-align: center; padding: 12px 0 8px; border-bottom: 2px solid #1e40af; margin-bottom: 10px; }
-    .report-header h1 { font-size: 18px; font-weight: bold; color: #1e40af; margin-bottom: 2px; }
-    .report-header h2 { font-size: 13px; font-weight: normal; color: #374151; }
-    .report-header .meta { font-size: 11px; color: #6b7280; margin-top: 4px; }
+    .hdr { display:table; width:100%; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; }
+    .hdr-l, .hdr-m, .hdr-r { display:table-cell; vertical-align:middle; }
+    .hdr-l { width:50px; padding-right:10px; }
+    .logo-box {
+        width:44px; height:44px; border:1.5px solid #000; border-radius:4px;
+        text-align:center; line-height:44px; font-size:17px; font-weight:800;
+        color:#000; overflow:hidden; background:#e8e8e8;
+    }
+    .logo-box img { width:44px; height:44px; object-fit:cover; border-radius:4px; display:block; }
+    .inst-name { font-size:18px; font-weight:800; color:#000; letter-spacing:0.2px; }
+    .inst-sub  { font-size:12px; color:#000; font-weight:600; margin-top:2px; }
+    .hdr-r { text-align:right; font-size:10.5px; color:#000; font-weight:600; white-space:nowrap; }
+    .hdr-r div { margin-bottom:2px; }
+    .hdr-r strong { font-weight:800; color:#000; }
 
     .summary-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
     .summary-card { flex: 1; min-width: 120px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; }
@@ -22,7 +32,7 @@
 
     .course-section { margin-bottom: 20px; page-break-inside: avoid; }
     .course-header {
-        background: #1e40af; color: #fff;
+        background: #1e3a5f; color: #fff;
         padding: 6px 10px; font-size: 12px; font-weight: bold;
         display: flex; justify-content: space-between; align-items: center;
         border-radius: 4px 4px 0 0;
@@ -30,8 +40,8 @@
     .course-header .course-stats { font-size: 10px; font-weight: normal; opacity: 0.9; }
 
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    thead tr { background: #f1f5f9; }
-    th { padding: 5px 6px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db; white-space: nowrap; }
+    thead tr { background: #1e3a5f; }
+    th { padding: 5px 6px; text-align: left; font-weight: bold; color: #fff; border: 0.5px solid #0d2540; white-space: nowrap; }
     td { padding: 4px 6px; border: 1px solid #e5e7eb; vertical-align: top; }
     tr:nth-child(even) td { background: #f9fafb; }
     tr.due-row td { background: #fef2f2; }
@@ -43,18 +53,19 @@
     .status-paid   { color: #16a34a; font-weight: bold; }
     .status-none   { color: #9ca3af; }
 
-    .course-total td { background: #f1f5f9 !important; font-weight: bold; border-top: 2px solid #1e40af; }
+    .course-total td { background: #f1f5f9 !important; font-weight: bold; border-top: 2px solid #1e3a5f; }
 
-    .grand-total-section { margin-top: 16px; border: 2px solid #1e40af; border-radius: 4px; padding: 10px 14px; }
-    .grand-total-section h3 { font-size: 13px; color: #1e40af; margin-bottom: 8px; }
+    .grand-total-section { margin-top: 16px; border: 2px solid #1e3a5f; border-radius: 4px; padding: 10px 14px; }
+    .grand-total-section h3 { font-size: 13px; color: #1e3a5f; margin-bottom: 8px; }
     .gt-grid { display: flex; gap: 20px; flex-wrap: wrap; }
     .gt-item { }
     .gt-item .gt-label { font-size: 10px; color: #6b7280; }
     .gt-item .gt-val { font-size: 14px; font-weight: bold; }
 
     @media print {
-        @page { size: A4 landscape; margin: 10mm; }
+        @page { size: A4 landscape; margin: 12mm 10mm 10mm 10mm; }
         .no-print { display: none !important; }
+        body { padding: 4mm 3mm 3mm 3mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .course-section { page-break-inside: avoid; }
         .course-section:not(:last-child) { page-break-after: auto; }
     }
@@ -64,7 +75,7 @@
 
 {{-- Print button --}}
 <div class="no-print" style="padding:10px; background:#f9fafb; border-bottom:1px solid #e5e7eb; display:flex; gap:8px; align-items:center;">
-    <button onclick="window.print()" style="padding:6px 14px; background:#1e40af; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:13px;">
+    <button onclick="window.print()" style="padding:6px 14px; background:#1e3a5f; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:13px;">
         &#128438; Print
     </button>
     <button onclick="window.close()" style="padding:6px 14px; background:#6b7280; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:13px;">
@@ -75,14 +86,37 @@
 
 <div style="padding: 12px 16px;">
 
+    @php
+        $logoUrl = null;
+        if (!empty($institute?->image)) {
+            if (file_exists(public_path('storage/' . $institute->image))) {
+                $logoUrl = asset('storage/' . $institute->image);
+            } elseif (file_exists(public_path($institute->image))) {
+                $logoUrl = asset($institute->image);
+            }
+        }
+        $initials = strtoupper(substr($institute?->short_name ?: ($institute?->name ?: 'IN'), 0, 2));
+    @endphp
+
     {{-- Header --}}
-    <div class="report-header">
-        <h1>{{ $institute?->name ?? 'College ERP' }}</h1>
-        <h2>Fee Ledger Report — Course Wise</h2>
-        <div class="meta">
-            Generated: {{ now()->format('d M Y, h:i A') }}
-            @if(!empty($filters['session_id'])) &nbsp;|&nbsp; Session filtered @endif
-            @if(!empty($filters['due_only'])) &nbsp;|&nbsp; Due students only @endif
+    <div class="hdr">
+        <div class="hdr-l">
+            <div class="logo-box">
+                @if($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="Logo">
+                @else
+                    {{ $initials }}
+                @endif
+            </div>
+        </div>
+        <div class="hdr-m">
+            <div class="inst-name">{{ $institute?->name ?? 'College ERP' }}</div>
+            <div class="inst-sub">Fee Ledger Report &mdash; Course Wise</div>
+        </div>
+        <div class="hdr-r">
+            <div>Generated: <strong>{{ now()->format('d M Y, h:i A') }}</strong></div>
+            @if(!empty($filters['session_id']))<div>Session: <strong>Filtered</strong></div>@endif
+            @if(!empty($filters['due_only']))<div>Scope: <strong>Due students only</strong></div>@endif
         </div>
     </div>
 
