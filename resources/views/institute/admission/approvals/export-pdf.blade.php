@@ -6,64 +6,62 @@
 <style>
     @page { size: A4 landscape; margin: 8mm 10mm 8mm 10mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 8.5px; color: #1e293b; background: #fff; }
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 9px; color: #000; background: #fff; font-weight: 600; line-height: 1.3; }
 
     /* ── Print / Close buttons ── */
     .no-print { margin-bottom: 10px; display: flex; gap: 8px; }
-    .no-print button { padding: 5px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-    .btn-print { background: #0f766e; color: #fff; }
+    .no-print button { padding: 5px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700; }
+    .btn-print { background: #1e3a5f; color: #fff; }
     .btn-close-btn { background: #e2e8f0; color: #334155; }
 
-    /* ── Institute Header ── */
-    .inst-header { border-bottom: 2.5px solid #0f766e; padding-bottom: 8px; margin-bottom: 8px; }
-    .inst-header table { width: 100%; border-collapse: collapse; }
-    .inst-header td { vertical-align: middle; padding: 0; }
-
+    /* ── Header ── */
+    .hdr { display:table; width:100%; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:5px; }
+    .hdr-l, .hdr-m, .hdr-r { display:table-cell; vertical-align:middle; }
+    .hdr-l { width:44px; padding-right:7px; }
     .logo-box {
-        width: 50px; height: 50px; border: 1px solid #d1d5db; border-radius: 6px;
-        text-align: center; line-height: 50px; font-size: 16px; font-weight: 700;
-        color: #0f766e; overflow: hidden; background: #f0fdf4;
+        width:38px; height:38px; border:1.5px solid #000; border-radius:4px;
+        text-align:center; line-height:38px; font-size:15px; font-weight:800;
+        color:#000; overflow:hidden; background:#e8e8e8;
     }
-    .logo-box img { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; }
+    .logo-box img { width:38px; height:38px; object-fit:cover; border-radius:4px; display:block; }
+    .inst-name  { font-size:16px; font-weight:800; color:#000; letter-spacing:0.2px; }
+    .inst-sub   { font-size:9px; color:#000; font-weight:600; margin-top:1px; }
+    .hdr-r { text-align:right; font-size:8.5px; color:#000; font-weight:600; width:230px; }
+    .hdr-r div  { margin-bottom:2px; }
+    .hdr-r strong { font-weight:800; color:#000; }
 
-    .inst-name  { font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.2; }
-    .inst-addr  { font-size: 8px; color: #64748b; margin-top: 2px; line-height: 1.5; }
-    .report-tag { font-size: 10px; font-weight: 700; color: #0f766e; margin-top: 3px; }
-
-    .meta-right { text-align: right; font-size: 8px; color: #475569; line-height: 1.8; }
-    .meta-right strong { color: #1e293b; }
-
-    /* ── Summary boxes ── */
-    .summary-table { width: 100%; border-collapse: separate; border-spacing: 6px 0; margin-bottom: 8px; }
-    .summary-table td { width: 33%; }
-    .summary-box {
-        border: 1px solid #e2e8f0; border-radius: 5px; padding: 5px 8px;
-        text-align: center;
-    }
-    .summary-box .s-label { font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; }
-    .summary-box .s-value { font-size: 14px; font-weight: 700; margin-top: 1px; }
-    .box-total   { border-left: 3px solid #2563eb; }
-    .box-total   .s-value { color: #2563eb; }
-    .box-pending { border-left: 3px solid #f59e0b; }
-    .box-pending .s-value { color: #d97706; }
-    .box-active  { border-left: 3px solid #16a34a; }
-    .box-active  .s-value { color: #16a34a; }
-
-    /* ── Data Table ── */
-    table.data { width: 100%; border-collapse: collapse; }
-    table.data thead tr { background: #0f766e; color: #fff; }
+    /* ── Table ── */
+    table.data { width: 100%; border-collapse: collapse; table-layout:fixed; }
     table.data thead th {
-        padding: 5px 4px; font-size: 7.5px; font-weight: 700;
-        text-align: left; white-space: nowrap; letter-spacing: 0.3px;
+        background:#1e3a5f;
+        color:#fff;
+        font-size:8.5px;
+        font-weight:800;
+        padding:4px 3px;
+        text-align:left;
+        white-space:nowrap;
+        overflow:hidden;
+        border: 0.5px solid #0d2540;
     }
-    table.data tbody tr:nth-child(even) { background: #f8fafc; }
-    table.data tbody tr { border-bottom: 1px solid #e2e8f0; }
-    table.data tbody td { padding: 4px 4px; font-size: 8px; vertical-align: top; }
-    table.data tbody tr:last-child td { border-bottom: none; }
+    table.data thead th.c { text-align:center; }
+    table.data tbody tr:nth-child(even) td { background:#efefef; }
+    table.data tbody td.c { text-align:center; }
+    table.data tbody td {
+        padding:3px 3px;
+        font-size:8.5px;
+        font-weight:600;
+        color:#000;
+        border-bottom:0.5px solid #bbb;
+        border-right:0.5px solid #ddd;
+        vertical-align:middle;
+        white-space:normal;
+        word-wrap:break-word;
+        overflow-wrap:break-word;
+    }
 
-    .fw { font-weight: 700; }
-    .muted { font-size: 7px; color: #64748b; margin-top: 1px; }
-    .uid { font-size: 7.5px; font-weight: 700; color: #1d4ed8; }
+    .fw { font-weight: 800; }
+    .sub { font-size:7px; font-weight:600; color:#000; display:block; margin-top:1px; }
+    .uid { font-weight: 700; }
 
     /* ── Badges ── */
     .badge { display: inline-block; padding: 1px 5px; border-radius: 8px; font-size: 7px; font-weight: 700; }
@@ -74,12 +72,15 @@
     .badge-other     { background: #e2e8f0; color: #334155; }
 
     /* ── Footer ── */
-    .report-footer {
-        margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 5px;
-        font-size: 7.5px; color: #94a3b8;
+    .ftr {
+        margin-top:5px;
+        border-top:1.5px solid #000;
+        padding-top:3px;
+        display:table;
+        width:100%;
     }
-    .report-footer table { width: 100%; }
-    .report-footer td:last-child { text-align: right; }
+    .ftr-l, .ftr-r { display:table-cell; font-size:8px; color:#000; font-weight:600; }
+    .ftr-r { text-align:right; }
 
     @media print {
         .no-print { display: none !important; }
@@ -96,76 +97,67 @@
     <button class="btn-close-btn" onclick="window.close()">Close</button>
 </div>
 
-{{-- Institute Header --}}
-<div class="inst-header">
-    <table cellpadding="0" cellspacing="0">
-        <tr>
-            <td style="width:58px; padding-right:10px;">
-                <div class="logo-box">
-                    @if(!empty($institute->image) && \Illuminate\Support\Facades\Storage::disk('public')->exists($institute->image))
-                        <img src="{{ \Illuminate\Support\Facades\Storage::url($institute->image) }}" alt="Logo">
-                    @else
-                        {{ strtoupper(substr($institute->short_name ?: $institute->name, 0, 2)) }}
-                    @endif
-                </div>
-            </td>
-            <td>
-                <div class="inst-name">{{ $institute->name }}</div>
-                @if(!empty($institute->address) || !empty($institute->city))
-                <div class="inst-addr">
-                    {{ implode(', ', array_filter([$institute->address ?? null, $institute->city ?? null, $institute->state ?? null])) }}
-                    @if(!empty($institute->mobile)) &nbsp;|&nbsp; Mobile: {{ $institute->mobile }} @endif
-                    @if(!empty($institute->email)) &nbsp;|&nbsp; {{ $institute->email }} @endif
-                </div>
-                @endif
-                <div class="report-tag">Admission Approval Queue — Detailed Report</div>
-            </td>
-            <td class="meta-right" style="width:160px;">
-                <div>Session: <strong>{{ $filterLabel }}</strong></div>
-                <div>Generated: <strong>{{ now()->format('d M Y, h:i A') }}</strong></div>
-                <div>Total Records: <strong>{{ $exportStudents->count() }}</strong></div>
-                @php
-                    $pCount = $exportStudents->where('status', 'pending')->count();
-                    $aCount = $exportStudents->where('status', 'active')->count();
-                @endphp
-                <div>Pending: <strong>{{ $pCount }}</strong> &nbsp;|&nbsp; Approved: <strong>{{ $aCount }}</strong></div>
-            </td>
-        </tr>
-    </table>
-</div>
-
-{{-- Summary --}}
 @php
     $totalCount   = $exportStudents->count();
     $pendingCount = $exportStudents->where('status', 'pending')->count();
     $activeCount  = $exportStudents->where('status', 'active')->count();
 @endphp
-<table class="summary-table" cellpadding="0" cellspacing="0">
-    <tr>
-        <td><div class="summary-box box-total"><div class="s-label">Total Admissions</div><div class="s-value">{{ $totalCount }}</div></div></td>
-        <td><div class="summary-box box-pending"><div class="s-label">Pending Approval</div><div class="s-value">{{ $pendingCount }}</div></div></td>
-        <td><div class="summary-box box-active"><div class="s-label">Approved / Active</div><div class="s-value">{{ $activeCount }}</div></div></td>
-    </tr>
-</table>
+
+{{-- ── HEADER ─────────────────────────────────────────────── --}}
+<div class="hdr">
+    <div class="hdr-l">
+        <div class="logo-box">
+            @if(!empty($institute->image) && \Illuminate\Support\Facades\Storage::disk('public')->exists($institute->image))
+                <img src="{{ \Illuminate\Support\Facades\Storage::url($institute->image) }}" alt="Logo">
+            @else
+                {{ strtoupper(substr($institute->short_name ?: $institute->name, 0, 2)) }}
+            @endif
+        </div>
+    </div>
+    <div class="hdr-m">
+        <div class="inst-name">{{ $institute->name }}</div>
+        <div class="inst-sub">Admission Approval Queue &mdash; {{ $filterLabel }}</div>
+    </div>
+    <div class="hdr-r">
+        <div>Total: <strong>{{ $totalCount }}</strong> &nbsp;|&nbsp; Pending: <strong>{{ $pendingCount }}</strong> &nbsp;|&nbsp; Approved: <strong>{{ $activeCount }}</strong></div>
+        <div>Generated: <strong>{{ now()->format('d M Y, h:i A') }}</strong></div>
+    </div>
+</div>
 
 {{-- Data Table --}}
-<table class="data">
+<table class="data" cellspacing="0" cellpadding="0">
+    <colgroup>
+        <col style="width:2%;">
+        <col style="width:9%;">
+        <col style="width:12%;">
+        <col style="width:9%;">
+        <col style="width:9%;">
+        <col style="width:7%;">
+        <col style="width:10%;">
+        <col style="width:7%;">
+        <col style="width:6%;">
+        <col style="width:8%;">
+        <col style="width:6%;">
+        <col style="width:5%;">
+        <col style="width:8%;">
+        <col style="width:6%;">
+    </colgroup>
     <thead>
         <tr>
-            <th style="width:18px;">#</th>
-            <th style="width:75px;">Student ID</th>
-            <th style="width:110px;">Name</th>
-            <th style="width:70px;">Father Name</th>
-            <th style="width:70px;">Mother Name</th>
-            <th style="width:60px;">Mobile</th>
-            <th style="width:80px;">Course</th>
-            <th style="width:55px;">Stream</th>
-            <th style="width:50px;">Adm. Date</th>
-            <th style="width:55px;">Admitted By</th>
-            <th style="width:50px;">Source</th>
-            <th style="width:38px;">Status</th>
-            <th style="width:60px;">Approved By</th>
-            <th style="width:45px;">Appr. Date</th>
+            <th class="c">#</th>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>Father Name</th>
+            <th>Mother Name</th>
+            <th>Mobile</th>
+            <th>Course</th>
+            <th>Stream</th>
+            <th>Adm. Date</th>
+            <th>Admitted By</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Approved By</th>
+            <th>Appr. Date</th>
         </tr>
     </thead>
     <tbody>
@@ -202,7 +194,7 @@
                 };
             @endphp
             <tr>
-                <td style="color:#94a3b8;">{{ $i + 1 }}</td>
+                <td class="c">{{ $i + 1 }}</td>
                 <td><span class="uid">{{ $student->student_uid ?? '-' }}</span></td>
                 <td><span class="fw">{{ $student->name }}</span></td>
                 <td>{{ $student->father_name ?? '-' }}</td>
@@ -210,16 +202,16 @@
                 <td>{{ $student->mobile ?? '-' }}</td>
                 <td>{{ $student->stream?->course?->name ?? '-' }}</td>
                 <td>{{ $student->stream?->name ?? '-' }}</td>
-                <td>{{ $student->admission_date?->format('d M Y') ?? '-' }}</td>
+                <td style="white-space:nowrap;">{{ $student->admission_date?->format('d/m/Y') ?? '-' }}</td>
                 <td>{{ $admittedBy }}</td>
                 <td>{{ $sourceLabel }}</td>
                 <td><span class="badge {{ $badgeClass }}">{{ ucwords(str_replace('_',' ',$student->status ?? '-')) }}</span></td>
                 <td>{{ $student->approved_by_name ?? ($student->approvedByStaff?->name ?? '-') }}</td>
-                <td>{{ $student->approved_at?->format('d M Y') ?? '-' }}</td>
+                <td style="white-space:nowrap;">{{ $student->approved_at?->format('d/m/Y') ?? '-' }}</td>
             </tr>
         @empty
             <tr>
-                <td colspan="14" style="text-align:center; padding:16px; color:#94a3b8; font-style:italic;">
+                <td colspan="14" style="text-align:center; padding:16px; font-weight:700; font-size:8px;">
                     No records found.
                 </td>
             </tr>
@@ -227,14 +219,10 @@
     </tbody>
 </table>
 
-{{-- Footer --}}
-<div class="report-footer">
-    <table cellpadding="0" cellspacing="0">
-        <tr>
-            <td>{{ $institute->name }} &mdash; Admission Approval Queue</td>
-            <td>Generated: {{ now()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $exportStudents->count() }} records</td>
-        </tr>
-    </table>
+{{-- ── FOOTER ──────────────────────────────────────────────── --}}
+<div class="ftr">
+    <div class="ftr-l">{{ $institute->name }} &mdash; Admission Approval Queue &mdash; Confidential</div>
+    <div class="ftr-r">Generated: {{ now()->format('d M Y, h:i A') }} &nbsp;|&nbsp; Total: {{ $exportStudents->count() }} records</div>
 </div>
 
 </body>
