@@ -3,6 +3,35 @@
 @section('breadcrumb', 'Admissions / Promotion Report')
 @section('content')
 
+@php
+    $printInstitute = auth()->guard('staff')->check()
+        ? auth()->guard('staff')->user()->institute
+        : auth()->user()->institute;
+@endphp
+
+<div class="print-header mb-2">
+    <div class="d-flex justify-content-between align-items-center border-bottom border-dark pb-2">
+        <div class="d-flex align-items-center gap-2">
+            <div class="print-logo-box">
+                @if($printInstitute?->image)
+                    <img src="{{ asset('storage/' . $printInstitute->image) }}" alt="Logo">
+                @else
+                    {{ strtoupper(substr($printInstitute?->short_name ?: $printInstitute?->name ?: 'IN', 0, 2)) }}
+                @endif
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0" style="font-size:14px;">{{ $printInstitute?->name }}</h6>
+                <div style="font-size:10px;font-weight:600;">Promotion Report</div>
+                <small class="text-muted" style="font-size:8.5px;">Full promotion history — date, time, promoted by</small>
+            </div>
+        </div>
+        <div class="text-end" style="font-size:9px;font-weight:600;">
+            <div>Total Records: <strong>{{ $total }}</strong></div>
+            <div>Printed: <strong>{{ now()->setTimezone('Asia/Kolkata')->format('d M Y, h:i A') }}</strong></div>
+        </div>
+    </div>
+</div>
+
 <div class="d-flex justify-content-between align-items-center mb-3 no-print">
     <div>
         <h4 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2 text-success"></i>Promotion Report</h4>
@@ -234,42 +263,16 @@
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 4mm 3mm 3mm 3mm; }
     body, table, th, td { font-size: 8.5px !important; }
     th, td { padding: 2px 4px !important; white-space: nowrap; }
-    table thead th { background:#1e3a5f !important; color:#fff !important; font-weight:700 !important; border-color:#0d2540 !important; }
+    table thead th {
+        background:#1e3a5f !important; color:#fff !important; font-weight:700 !important; border-color:#0d2540 !important;
+        -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+    }
     .badge { font-size: 7.5px !important; padding: 1px 3px !important; background: none !important; border: none !important; color: inherit !important; }
     .opacity-50 { opacity: 1 !important; }
     h4, h5 { font-size: 13px !important; }
     .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; }
 }
 </style>
-
-@php
-    $printInstitute = auth()->guard('staff')->check()
-        ? auth()->guard('staff')->user()->institute
-        : auth()->user()->institute;
-@endphp
-
-<div class="print-header mb-2">
-    <div class="d-flex justify-content-between align-items-center border-bottom border-dark pb-2">
-        <div class="d-flex align-items-center gap-2">
-            <div class="print-logo-box">
-                @if($printInstitute?->image)
-                    <img src="{{ asset('storage/' . $printInstitute->image) }}" alt="Logo">
-                @else
-                    {{ strtoupper(substr($printInstitute?->short_name ?: $printInstitute?->name ?: 'IN', 0, 2)) }}
-                @endif
-            </div>
-            <div>
-                <h6 class="fw-bold mb-0" style="font-size:14px;">{{ $printInstitute?->name }}</h6>
-                <div style="font-size:10px;font-weight:600;">Promotion Report</div>
-                <small class="text-muted" style="font-size:8.5px;">Full promotion history — date, time, promoted by</small>
-            </div>
-        </div>
-        <div class="text-end" style="font-size:9px;font-weight:600;">
-            <div>Total Records: <strong>{{ $total }}</strong></div>
-            <div>Printed: <strong>{{ now()->setTimezone('Asia/Kolkata')->format('d M Y, h:i A') }}</strong></div>
-        </div>
-    </div>
-</div>
 
 {{-- Reversal Modal --}}
 <div class="modal fade" id="reverseModal" tabindex="-1">
