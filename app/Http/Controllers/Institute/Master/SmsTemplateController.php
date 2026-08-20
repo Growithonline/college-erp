@@ -126,17 +126,16 @@ class SmsTemplateController extends Controller
         }
         $request->validate($rules);
 
-        // Multi-template types (notice) use free-form variable names — whatever the institute
-        // types — since content shape varies per template. Single-template types stay
-        // restricted to their known variable set. Either way: only what's actually in the
-        // content, in appearance order, repeats preserved — see save() history for why (Fast2SMS
-        // positional variables_values needs an exact count match with the DLT-registered template).
+        // Always extract every {variable} actually in the content, in appearance order, repeats
+        // preserved — never restricted to $meta['vars'] (that list is only quick-insert-badge
+        // suggestions now). Filtering to a fixed known set used to silently drop anything else
+        // the admin typed (e.g. {course_stream}), which is exactly what corrupted Fast2SMS's
+        // positional variables_values: it needs one value per {var} actually in the DLT-approved
+        // text, so dropping one here shifts every value after it into the wrong slot.
         // Allows digits after the first char (e.g. {text_2}, {text_3}) — needed for the compose
         // page's auto-disambiguated duplicate-variable names (text, text_2, text_3, ...).
         preg_match_all('/\{([a-z_][a-z0-9_]*)\}/', $request->content, $matches);
-        $usedVars = $isMulti
-            ? array_values($matches[1])
-            : array_values(array_intersect($matches[1], $meta['vars']));
+        $usedVars = array_values($matches[1]);
 
         $data = [
             'category'        => $request->category,
