@@ -126,17 +126,17 @@
         <col style="width:10px;">   {{-- # --}}
         <col style="width:22px;">   {{-- Session --}}
         <col style="width:50px;">   {{-- Student ID --}}
-        <col style="width:65px;">   {{-- Student Name --}}
-        <col style="width:48px;">   {{-- Father Name --}}
-        <col style="width:48px;">   {{-- Mother Name --}}
-        <col style="width:28px;">   {{-- Roll No --}}
-        <col style="width:32px;">   {{-- Enroll No --}}
-        <col style="width:28px;">   {{-- UIN No --}}
-        <col style="width:60px;">   {{-- Course / Stream --}}
-        <col style="width:26px;">   {{-- Year/Sem --}}
+        <col style="width:59px;">   {{-- Student Name --}}
+        <col style="width:44px;">   {{-- Father Name --}}
+        <col style="width:44px;">   {{-- Mother Name --}}
+        <col style="width:42px;">   {{-- Roll No --}}
+        <col style="width:50px;">   {{-- Enroll No --}}
+        <col style="width:42px;">   {{-- UIN No --}}
+        <col style="width:44px;">   {{-- Course / Stream --}}
+        <col style="width:24px;">   {{-- Year/Sem --}}
         <col style="width:16px;">   {{-- Gender --}}
         <col style="width:14px;">   {{-- Cat --}}
-        <col style="width:52px;">   {{-- Admitted By --}}
+        <col style="width:38px;">   {{-- Admitted By --}}
         <col style="width:26px;">   {{-- Adm. Date --}}
         @if($type === 'full-form') <col style="width:26px;"> @endif {{-- Submitted --}}
         <col style="width:20px;">   {{-- Status --}}

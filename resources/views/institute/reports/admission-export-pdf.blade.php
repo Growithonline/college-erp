@@ -122,19 +122,19 @@
         <col style="width:10px;">   {{-- # --}}
         <col style="width:22px;">   {{-- Session --}}
         <col style="width:50px;">   {{-- Student ID --}}
-        <col style="width:65px;">   {{-- Student Name --}}
-        <col style="width:48px;">   {{-- Father Name --}}
-        <col style="width:48px;">   {{-- Mother Name --}}
-        <col style="width:28px;">   {{-- Roll No --}}
-        <col style="width:32px;">   {{-- Enroll No --}}
-        <col style="width:28px;">   {{-- UIN No --}}
-        <col style="width:52px;">   {{-- Course --}}
-        <col style="width:28px;">   {{-- Year/Sem --}}
+        <col style="width:59px;">   {{-- Student Name --}}
+        <col style="width:44px;">   {{-- Father Name --}}
+        <col style="width:44px;">   {{-- Mother Name --}}
+        <col style="width:42px;">   {{-- Roll No --}}
+        <col style="width:50px;">   {{-- Enroll No --}}
+        <col style="width:42px;">   {{-- UIN No --}}
+        <col style="width:38px;">   {{-- Course --}}
+        <col style="width:26px;">   {{-- Year/Sem --}}
         <col style="width:16px;">   {{-- Gender --}}
         <col style="width:14px;">   {{-- Cat --}}
-        <col style="width:36px;">   {{-- Source --}}
-        <col style="width:46px;">   {{-- Admitted By --}}
-        <col style="width:26px;">   {{-- Adm. Date --}}
+        <col style="width:34px;">   {{-- Source --}}
+        <col style="width:34px;">   {{-- Admitted By --}}
+        <col style="width:24px;">   {{-- Adm. Date --}}
         <col style="width:18px;">   {{-- Status --}}
     </colgroup>
     <thead>
