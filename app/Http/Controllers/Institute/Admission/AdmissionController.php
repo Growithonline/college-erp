@@ -2934,11 +2934,14 @@ class AdmissionController extends Controller
 
             if ($export === 'pdf') {
                 $institute = Institute::findOrFail($instituteId);
+                $centersMap = $centers->pluck('name', 'id');
+                $partnersMap = $partners->pluck('name', 'id');
+
                 return Pdf::loadView('institute.admission.export-pdf', [
                     'institute' => $institute,
                     'students' => $students,
-                    'headers' => $headers,
-                    'rows' => $rows,
+                    'centersMap' => $centersMap,
+                    'partnersMap' => $partnersMap,
                     'appliedFilters' => $appliedFilters,
                     'generatedAt' => $generatedAt,
                 ])->setPaper('a4', 'landscape')->download($filename . '.pdf');

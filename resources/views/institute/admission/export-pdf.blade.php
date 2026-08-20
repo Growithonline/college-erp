@@ -4,137 +4,220 @@
     <meta charset="UTF-8">
     <title>Admissions Export Report</title>
     <style>
-        @page { size: A4 landscape; margin: 16mm 10mm 14mm 10mm; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1f2937; }
-        .header { border-bottom: 2px solid #0f766e; padding-bottom: 10px; margin-bottom: 12px; }
-        .brand { width: 100%; }
-        .brand td { vertical-align: top; }
-        .logo { width: 56px; height: 56px; border: 1px solid #d1d5db; border-radius: 12px; text-align: center; }
-        .logo img { width: 56px; height: 56px; object-fit: cover; }
-        .title { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
-        .subtitle { color: #475569; font-size: 11px; }
-        .meta { text-align: right; font-size: 10px; color: #475569; }
-        .summary-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
-        .summary-title { font-size: 11px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
-        .chips { width: 100%; }
-        .chips td { width: 33.33%; padding: 3px 6px 3px 0; vertical-align: top; }
-        .chip { background: #ffffff; border: 1px solid #dbeafe; color: #1d4ed8; border-radius: 7px; padding: 5px 7px; }
-        .chip strong { color: #0f172a; }
-        .metrics { width: 100%; margin-bottom: 12px; }
-        .metric-card { background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #bae6fd; border-radius: 10px; padding: 10px 12px; }
-        .metric-label { font-size: 10px; color: #475569; text-transform: uppercase; }
-        .metric-value { font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 4px; }
-        table.report { width: 100%; border-collapse: collapse; }
-        table.report th, table.report td { border: 1px solid #dbe2ea; padding: 6px; vertical-align: top; }
-        table.report thead th { background: #0f766e; color: #ffffff; font-size: 10px; text-align: left; }
-        table.report tbody tr:nth-child(even) { background: #f8fafc; }
-        .muted { color: #64748b; }
-        .footer { margin-top: 10px; font-size: 9px; color: #64748b; text-align: right; }
+        @page { size: A4 landscape; margin: 14mm 12mm 12mm 12mm; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 9px;
+            color: #000;
+            margin: 0;
+            padding: 4mm 2mm 2mm 2mm;
+            line-height: 1.3;
+            font-weight: 600;
+        }
+
+        /* ── Header ── */
+        .hdr { display:table; width:100%; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:5px; }
+        .hdr-l, .hdr-m, .hdr-r { display:table-cell; vertical-align:middle; }
+        .hdr-l { width:44px; padding-right:7px; }
+        .logo-box {
+            width:38px; height:38px; border:1.5px solid #000; border-radius:4px;
+            text-align:center; line-height:38px; font-size:15px; font-weight:800;
+            color:#000; overflow:hidden; background:#e8e8e8;
+        }
+        .logo-box img { width:38px; height:38px; object-fit:cover; border-radius:4px; display:block; }
+        .inst-name  { font-size:16px; font-weight:800; color:#000; letter-spacing:0.2px; }
+        .inst-sub   { font-size:9px; color:#000; font-weight:600; margin-top:1px; }
+        .hdr-r { text-align:right; font-size:8.5px; color:#000; font-weight:600; width:230px; }
+        .hdr-r div  { margin-bottom:2px; }
+        .hdr-r strong { font-weight:800; color:#000; }
+
+        /* ── Table ── */
+        table.t { width:100%; border-collapse:collapse; table-layout:fixed; }
+
+        table.t thead th {
+            background:#1e3a5f;
+            color:#fff;
+            font-size:8.5px;
+            font-weight:800;
+            padding:4px 3px;
+            text-align:left;
+            white-space:nowrap;
+            overflow:hidden;
+            border: 0.5px solid #0d2540;
+        }
+        table.t thead th.c { text-align:center; }
+
+        table.t tbody td {
+            padding:3px 3px;
+            font-size:8.5px;
+            font-weight:600;
+            color:#000;
+            border-bottom:0.5px solid #bbb;
+            border-right:0.5px solid #ddd;
+            vertical-align:middle;
+            white-space:normal;
+            word-wrap:break-word;
+            overflow-wrap:break-word;
+        }
+        table.t tbody tr:nth-child(even) td { background:#efefef; }
+        table.t tbody td.c { text-align:center; }
+        .sub { font-size:7px; font-weight:600; color:#000; display:block; margin-top:1px; }
+
+        /* ── Footer ── */
+        .ftr {
+            margin-top:5px;
+            border-top:1.5px solid #000;
+            padding-top:3px;
+            display:table;
+            width:100%;
+        }
+        .ftr-l, .ftr-r { display:table-cell; font-size:8px; color:#000; font-weight:600; }
+        .ftr-r { text-align:right; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <table class="brand" cellpadding="0" cellspacing="0">
-            <tr>
-                <td style="width:70px;">
-                    <div class="logo">
-                        @if(!empty($institute->image) && file_exists(public_path($institute->image)))
-                            <img src="{{ public_path($institute->image) }}" alt="Institute Logo">
-                        @else
-                            <div style="line-height:56px; font-size:20px; font-weight:700; color:#0f766e;">
-                                {{ strtoupper(substr($institute->short_name ?: $institute->name, 0, 2)) }}
-                            </div>
-                        @endif
-                    </div>
-                </td>
-                <td>
-                    <div class="title">{{ $institute->name }}</div>
-                    <div class="subtitle">Admissions Export Report</div>
-                    <div class="muted">
-                        {{ collect([$institute->city, $institute->state])->filter()->implode(', ') }}
-                    </div>
-                </td>
-                <td class="meta" style="width:220px;">
-                    <div><strong>Generated:</strong> {{ $generatedAt }}</div>
-                    <div><strong>Total Records:</strong> {{ number_format($students->count()) }}</div>
-                    <div><strong>Report Type:</strong> Filtered Admissions</div>
-                </td>
-            </tr>
-        </table>
-    </div>
 
-    <div class="summary-box">
-        <div class="summary-title">Applied Filters</div>
-        @if(!empty($appliedFilters))
-            <table class="chips" cellpadding="0" cellspacing="0">
-                @foreach(array_chunk($appliedFilters, 3, true) as $chunk)
-                    <tr>
-                        @foreach($chunk as $label => $value)
-                            <td><div class="chip"><strong>{{ $label }}:</strong> {{ $value }}</div></td>
-                        @endforeach
-                        @for($filler = count($chunk); $filler < 3; $filler++)
-                            <td></td>
-                        @endfor
-                    </tr>
-                @endforeach
-            </table>
-        @else
-            <div class="muted">Default admission listing filters applied.</div>
-        @endif
-    </div>
+@php
+    $logoPath = null;
+    if (!empty($institute->image)) {
+        if (file_exists(public_path('storage/' . $institute->image))) {
+            $logoPath = public_path('storage/' . $institute->image);
+        } elseif (file_exists(public_path($institute->image))) {
+            $logoPath = public_path($institute->image);
+        }
+    }
+    $initials = strtoupper(substr($institute->short_name ?: $institute->name, 0, 2));
 
-    <table class="metrics" cellpadding="0" cellspacing="0">
+    $filterSummary = !empty($appliedFilters)
+        ? implode(' | ', array_map(fn($label, $value) => "{$label}: {$value}", array_keys($appliedFilters), $appliedFilters))
+        : 'Default listing filters';
+@endphp
+
+{{-- ── HEADER ─────────────────────────────────────────────── --}}
+<div class="hdr">
+    <div class="hdr-l">
+        <div class="logo-box">
+            @if($logoPath)
+                <img src="{{ $logoPath }}" alt="Logo">
+            @else
+                {{ $initials }}
+            @endif
+        </div>
+    </div>
+    <div class="hdr-m">
+        <div class="inst-name">{{ $institute->name }}</div>
+        <div class="inst-sub">Admissions Export Report</div>
+    </div>
+    <div class="hdr-r">
+        <div>Total Records: <strong>{{ number_format($students->count()) }}</strong></div>
+        <div>Generated: <strong>{{ $generatedAt }}</strong></div>
+        <div>Filtered By: <strong>{{ $filterSummary }}</strong></div>
+    </div>
+</div>
+
+{{-- ── TABLE ───────────────────────────────────────────────── --}}
+<table class="t" cellspacing="0" cellpadding="0">
+    <colgroup>
+        <col style="width:2%;">    {{-- # --}}
+        <col style="width:4%;">    {{-- Session --}}
+        <col style="width:9%;">    {{-- Student ID --}}
+        <col style="width:12%;">   {{-- Student Name --}}
+        <col style="width:9%;">    {{-- Father Name --}}
+        <col style="width:9%;">    {{-- Mother Name --}}
+        <col style="width:5%;">    {{-- Roll No --}}
+        <col style="width:6%;">    {{-- Enroll No --}}
+        <col style="width:5%;">    {{-- UIN No --}}
+        <col style="width:10%;">   {{-- Course --}}
+        <col style="width:5%;">    {{-- Year/Sem --}}
+        <col style="width:8%;">    {{-- Admitted By --}}
+        <col style="width:7%;">    {{-- Source --}}
+        <col style="width:5%;">    {{-- Adm. Date --}}
+        <col style="width:4%;">    {{-- Status --}}
+    </colgroup>
+    <thead>
         <tr>
-            <td style="width:33.33%; padding-right:8px;">
-                <div class="metric-card">
-                    <div class="metric-label">Students Found</div>
-                    <div class="metric-value">{{ number_format($students->count()) }}</div>
-                </div>
+            <th class="c">#</th>
+            <th>Session</th>
+            <th>Student ID</th>
+            <th>Student Name</th>
+            <th>Father Name</th>
+            <th>Mother Name</th>
+            <th>Roll No</th>
+            <th>Enroll No</th>
+            <th>UIN No</th>
+            <th>Course / Stream</th>
+            <th>Year/Sem</th>
+            <th>Admitted By</th>
+            <th>Source</th>
+            <th>Adm. Date</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse($students as $i => $student)
+        @php
+            $pdfSrc = $student->admission_source ?? 'direct';
+            $pdfSourceName = match($pdfSrc) {
+                'center'  => ($centersMap[$student->admission_source_id] ?? null)
+                                ? 'Ctr: ' . $centersMap[$student->admission_source_id]
+                                : 'Center',
+                'partner', 'channel_partner' => ($partnersMap[$student->admission_source_id] ?? null)
+                                ? 'Prt: ' . $partnersMap[$student->admission_source_id]
+                                : 'Partner',
+                default   => 'Direct',
+            };
+            $pdfAdmittedBy = $student->admittedBy?->name
+                ?? match($pdfSrc) {
+                    'center'                     => $pdfSourceName,
+                    'partner', 'channel_partner' => $pdfSourceName,
+                    default                      => 'Admin / Direct',
+                };
+        @endphp
+        <tr>
+            <td class="c">{{ $i + 1 }}</td>
+            <td>{{ $student->session?->name ?? '—' }}</td>
+            <td style="font-weight:700;">{{ $student->student_uid ?? '—' }}</td>
+            <td>
+                {{ $student->name }}
+                @if($student->mobile)
+                    <span class="sub">{{ $student->mobile }}</span>
+                @endif
             </td>
-            <td style="width:33.33%; padding-right:8px;">
-                <div class="metric-card">
-                    <div class="metric-label">Statuses Covered</div>
-                    <div class="metric-value">{{ number_format($students->pluck('status')->filter()->unique()->count()) }}</div>
-                </div>
+            <td>{{ $student->father_name ?: '—' }}</td>
+            <td>{{ $student->mother_name ?: '—' }}</td>
+            <td>{{ $student->roll_no ?: '—' }}</td>
+            <td>{{ $student->enrollment_no ?: '—' }}</td>
+            <td>{{ $student->uin_no ?: '—' }}</td>
+            <td>
+                {{ $student->stream?->course?->name ?? '—' }}
+                @if($student->stream?->name)
+                    <span class="sub">{{ $student->stream->name }}</span>
+                @endif
             </td>
-            <td style="width:33.33%;">
-                <div class="metric-card">
-                    <div class="metric-label">Sources Covered</div>
-                    <div class="metric-value">{{ number_format($students->pluck('admission_source')->filter()->unique()->count()) }}</div>
-                </div>
+            <td>
+                {{ $student->coursePart?->year_label ?? '—' }}@if($student->current_semester) / S{{ $student->current_semester }}@endif
+            </td>
+            <td>{{ $pdfAdmittedBy }}</td>
+            <td>{{ $pdfSourceName }}</td>
+            <td style="white-space:nowrap;">{{ $student->admission_date?->format('d/m/Y') ?? '—' }}</td>
+            <td style="font-weight:700;">{{ ucfirst($student->status ?? 'pending') }}</td>
+        </tr>
+        @empty
+        <tr>
+            <td colspan="15" style="text-align:center; padding:12px; font-weight:700; font-size:8px;">
+                No admissions matched the selected filters.
             </td>
         </tr>
-    </table>
+        @endforelse
+    </tbody>
+</table>
 
-    <table class="report">
-        <thead>
-            <tr>
-                <th style="width:28px;">#</th>
-                @foreach($headers as $header)
-                    <th>{{ $header }}</th>
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($rows as $index => $row)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    @foreach($row as $cell)
-                        <td>{{ $cell !== '' ? $cell : '-' }}</td>
-                    @endforeach
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="{{ count($headers) + 1 }}" style="text-align:center; padding:18px;">
-                        No admissions matched the selected filters.
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
+{{-- ── FOOTER ──────────────────────────────────────────────── --}}
+<div class="ftr">
+    <div class="ftr-l">{{ $institute->name }} &mdash; Admissions Report &mdash; Confidential</div>
+    <div class="ftr-r">Generated: {{ $generatedAt }}</div>
+</div>
 
-    <div class="footer">
-        System generated admissions report
-    </div>
 </body>
 </html>
