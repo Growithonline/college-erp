@@ -8,11 +8,11 @@
         * { box-sizing: border-box; }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 7px;
+            font-size: 9.5px;
             color: #000;
             margin: 0;
             padding: 4mm 2mm 2mm 2mm;
-            line-height: 1.25;
+            line-height: 1.3;
             font-weight: 600;
         }
 
@@ -26,9 +26,9 @@
             color:#000; overflow:hidden; background:#e8e8e8;
         }
         .logo-box img { width:38px; height:38px; object-fit:cover; border-radius:4px; display:block; }
-        .inst-name  { font-size:15px; font-weight:800; color:#000; letter-spacing:0.2px; }
-        .inst-sub   { font-size:7.5px; color:#000; font-weight:600; margin-top:1px; }
-        .hdr-r { text-align:right; font-size:6.5px; color:#000; font-weight:600; white-space:nowrap; }
+        .inst-name  { font-size:16px; font-weight:800; color:#000; letter-spacing:0.2px; }
+        .inst-sub   { font-size:9px; color:#000; font-weight:600; margin-top:1px; }
+        .hdr-r { text-align:right; font-size:8.5px; color:#000; font-weight:600; white-space:nowrap; }
         .hdr-r div  { margin-bottom:2px; }
         .hdr-r strong { font-weight:800; color:#000; }
 
@@ -38,9 +38,9 @@
         table.t thead th {
             background:#1e3a5f;
             color:#fff;
-            font-size:6.5px;
+            font-size:8.5px;
             font-weight:800;
-            padding:3px 2px;
+            padding:4px 3px;
             text-align:left;
             white-space:nowrap;
             overflow:hidden;
@@ -49,8 +49,8 @@
         table.t thead th.c { text-align:center; }
 
         table.t tbody td {
-            padding:2px 3px;
-            font-size:6.5px;
+            padding:3px 3px;
+            font-size:8.5px;
             font-weight:600;
             color:#000;
             border-bottom:0.5px solid #bbb;
@@ -62,7 +62,7 @@
         table.t tbody tr:nth-child(even) td { background:#efefef; }
         table.t tbody td.c { text-align:center; }
         table.t tbody td.wrap { white-space:normal; }
-        .sub { font-size:5.5px; font-weight:600; color:#000; display:block; margin-top:1px; }
+        .sub { font-size:7px; font-weight:600; color:#000; display:block; margin-top:1px; }
 
         /* ── Footer ── */
         .ftr {
@@ -72,7 +72,7 @@
             display:table;
             width:100%;
         }
-        .ftr-l, .ftr-r { display:table-cell; font-size:6px; color:#000; font-weight:600; }
+        .ftr-l, .ftr-r { display:table-cell; font-size:8px; color:#000; font-weight:600; }
         .ftr-r { text-align:right; }
 
         @media print {
@@ -217,7 +217,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="17" style="text-align:center; padding:12px; font-weight:700; font-size:8px;">
+            <td colspan="17" style="text-align:center; padding:12px; font-weight:700; font-size:9.5px;">
                 No students found.
             </td>
         </tr>
