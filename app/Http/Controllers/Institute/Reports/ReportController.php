@@ -3118,9 +3118,9 @@ class ReportController extends Controller
             if ($request->export === 'csv')   return $this->exportCsv($eHeaders, $eRows, 'staff-collection.csv');
             if ($request->export === 'excel') return $this->exportSimpleExcel($eTitle, $eHeaders, $eRows, 'staff-collection.xlsx');
             if ($request->export === 'pdf') {
-                $instituteName = Institute::find($instituteId)?->name ?? 'Institute';
+                $institute = Institute::find($instituteId);
                 return view('institute.reports.staff-collection-print', compact(
-                    'instituteName', 'staffData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo', 'bankWise', 'bankDetailWise'
+                    'institute', 'staffData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo', 'bankWise', 'bankDetailWise'
                 ));
             }
         }
@@ -3245,9 +3245,9 @@ class ReportController extends Controller
             if ($request->export === 'csv')   return $this->exportCsv($eHeaders, $eRows, 'centre-collection.csv');
             if ($request->export === 'excel') return $this->exportSimpleExcel($eTitle, $eHeaders, $eRows, 'centre-collection.xlsx');
             if ($request->export === 'pdf') {
-                $instituteName = Institute::find($instituteId)?->name ?? 'Institute';
+                $institute = Institute::find($instituteId);
                 return view('institute.reports.centre-collection-print', compact(
-                    'instituteName', 'centreData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo', 'bankWise', 'bankDetailWise'
+                    'institute', 'centreData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo', 'bankWise', 'bankDetailWise'
                 ));
             }
         }
@@ -3371,9 +3371,9 @@ class ReportController extends Controller
             if ($request->export === 'csv')   return $this->exportCsv($eHeaders, $eRows, 'channel-partner-collection.csv');
             if ($request->export === 'excel') return $this->exportSimpleExcel($eTitle, $eHeaders, $eRows, 'channel-partner-collection.xlsx');
             if ($request->export === 'pdf') {
-                $instituteName = Institute::find($instituteId)?->name ?? 'Institute';
+                $institute = Institute::find($instituteId);
                 return view('institute.reports.channel-partner-collection-print', compact(
-                    'instituteName', 'partnerData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo', 'bankWise', 'bankDetailWise'
+                    'institute', 'partnerData', 'grandTotal', 'grandCount', 'dateFrom', 'dateTo', 'bankWise', 'bankDetailWise'
                 ));
             }
         }

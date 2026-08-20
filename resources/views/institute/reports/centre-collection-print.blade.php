@@ -6,34 +6,81 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: Arial, sans-serif; font-size: 9px; color: #1a1a1a; }
-.header { text-align: center; padding: 8px 0 6px; border-bottom: 2px solid #1e40af; margin-bottom: 8px; }
-.header h1 { font-size: 14px; font-weight: bold; color: #1e40af; }
-.header h2 { font-size: 10px; color: #374151; margin-top: 2px; }
-.header .meta { font-size: 8px; color: #6b7280; margin-top: 2px; }
+
+.hdr { display:table; width:100%; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px; }
+.hdr-l, .hdr-m, .hdr-r { display:table-cell; vertical-align:middle; }
+.hdr-l { width:44px; padding-right:9px; }
+.logo-box {
+    width:38px; height:38px; border:1.5px solid #000; border-radius:4px;
+    text-align:center; line-height:38px; font-size:15px; font-weight:800;
+    color:#000; overflow:hidden; background:#e8e8e8;
+}
+.logo-box img { width:38px; height:38px; object-fit:cover; border-radius:4px; display:block; }
+.inst-name { font-size:15px; font-weight:800; color:#000; letter-spacing:0.2px; }
+.inst-sub  { font-size:10.5px; color:#000; font-weight:600; margin-top:2px; }
+.hdr-r { text-align:right; font-size:9px; color:#000; font-weight:600; white-space:nowrap; }
+.hdr-r div { margin-bottom:2px; }
+.hdr-r strong { font-weight:800; color:#000; }
+
 .summary { display: flex; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .summary-box { border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 10px; min-width: 100px; }
 .summary-box .lbl { font-size: 7px; color: #6b7280; }
 .summary-box .val { font-size: 11px; font-weight: bold; color: #111827; }
-.section-title { font-size: 11px; font-weight: bold; color: #1e40af; border-bottom: 1px solid #1e40af; padding-bottom: 3px; margin: 14px 0 6px; page-break-after: avoid; }
+.section-title { font-size: 11px; font-weight: bold; color: #1e3a5f; border-bottom: 1px solid #1e3a5f; padding-bottom: 3px; margin: 14px 0 6px; page-break-after: avoid; }
 table { width: 100%; border-collapse: collapse; font-size: 8px; }
-th { background: #1e40af; color: #fff; padding: 3px 6px; text-align: left; border: 1px solid #1e40af; }
+thead { display: table-header-group; }
+tfoot { display: table-footer-group; }
+th { background: #1e3a5f; color: #fff; padding: 4px 6px; text-align: left; border: 0.5px solid #0d2540; }
 th.r, td.r { text-align: right; }
 th.c, td.c { text-align: center; }
-td { padding: 2px 6px; border: 1px solid #e5e7eb; }
+td { padding: 3px 6px; border: 1px solid #e5e7eb; }
 tr:nth-child(even) td { background: #f8fafc; }
-tfoot td { background: #e2e8f0; font-weight: bold; border-top: 2px solid #1e40af; }
+tbody tr { page-break-inside: avoid; break-inside: avoid; }
+tfoot td { background: #e2e8f0; font-weight: bold; border-top: 2px solid #1e3a5f; }
+tfoot tr { page-break-inside: avoid; break-inside: avoid; page-break-before: avoid; break-before: avoid-page; }
 tr.bank-row td { background: #dbeafe !important; }
 .green { color: #16a34a; }
 .no-print { display: none; }
 .bank-section { page-break-inside: avoid; }
-@media print { .no-print { display: none; } }
+@media print {
+    @page { size: A4 landscape; margin: 16mm 10mm 12mm 10mm; }
+    .no-print { display: none; }
+    body { padding: 4mm 3mm 3mm 3mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 </style>
 </head>
 <body>
-<div class="header">
-    <h1>{{ $instituteName }}</h1>
-    <h2>Centre Collection Report</h2>
-    <div class="meta">Period: {{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }} — {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }} &nbsp;|&nbsp; Generated: {{ now()->setTimezone('Asia/Kolkata')->format('d M Y, h:i A') }}</div>
+
+@php
+    $logoUrl = null;
+    if (!empty($institute?->image)) {
+        if (file_exists(public_path('storage/' . $institute->image))) {
+            $logoUrl = asset('storage/' . $institute->image);
+        } elseif (file_exists(public_path($institute->image))) {
+            $logoUrl = asset($institute->image);
+        }
+    }
+    $initials = strtoupper(substr($institute?->short_name ?: ($institute?->name ?: 'IN'), 0, 2));
+@endphp
+
+<div class="hdr">
+    <div class="hdr-l">
+        <div class="logo-box">
+            @if($logoUrl)
+                <img src="{{ $logoUrl }}" alt="Logo">
+            @else
+                {{ $initials }}
+            @endif
+        </div>
+    </div>
+    <div class="hdr-m">
+        <div class="inst-name">{{ $institute?->name ?? 'Institute' }}</div>
+        <div class="inst-sub">Centre Collection Report</div>
+    </div>
+    <div class="hdr-r">
+        <div>Period: <strong>{{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }} &ndash; {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }}</strong></div>
+        <div>Generated: <strong>{{ now()->setTimezone('Asia/Kolkata')->format('d M Y, h:i A') }}</strong></div>
+    </div>
 </div>
 
 <div class="summary">
