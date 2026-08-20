@@ -40,7 +40,9 @@
         border-bottom: 2px solid {{ $color }};
     }
 
-    .meta-row { display: flex; justify-content: space-between; font-size: 10.5px; color: #666; margin-bottom: 22px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .meta-row { display: table; width: 100%; font-size: 10.5px; color: #666; margin-bottom: 22px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .meta-row .meta-l, .meta-row .meta-r { display: table-cell; }
+    .meta-row .meta-r { text-align: right; }
     .meta-row strong { color: #333; text-transform: none; letter-spacing: 0; }
 
     /* ─── Body ───────────────────────────────── */
@@ -99,8 +101,8 @@
     <div class="cert-title-underline"><span></span></div>
 
     <div class="meta-row">
-        <span>Certificate No.: <strong>{{ $certificate->certificate_number }}</strong></span>
-        <span>Date of Issue: <strong>{{ \Carbon\Carbon::parse($certificate->issued_at)->format('d F, Y') }}</strong></span>
+        <div class="meta-l">Certificate No.: <strong>{{ $certificate->certificate_number }}</strong></div>
+        <div class="meta-r">Date of Issue: <strong>{{ \Carbon\Carbon::parse($certificate->issued_at)->format('d F, Y') }}</strong></div>
     </div>
 
     <div class="body-content">
