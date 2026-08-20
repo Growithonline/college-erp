@@ -40,11 +40,15 @@
     .course-header .course-stats { font-size: 10px; font-weight: normal; opacity: 0.9; }
 
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
     thead tr { background: #1e3a5f; }
     th { padding: 5px 6px; text-align: left; font-weight: bold; color: #fff; border: 0.5px solid #0d2540; white-space: nowrap; }
     td { padding: 4px 6px; border: 1px solid #e5e7eb; vertical-align: top; }
     tr:nth-child(even) td { background: #f9fafb; }
     tr.due-row td { background: #fef2f2; }
+    tbody tr { page-break-inside: avoid; break-inside: avoid; }
+    tfoot tr { page-break-inside: avoid; break-inside: avoid; page-break-before: avoid; break-before: avoid-page; }
 
     td.text-right, th.text-right { text-align: right; }
     td.text-center, th.text-center { text-align: center; }
@@ -63,7 +67,7 @@
     .gt-item .gt-val { font-size: 14px; font-weight: bold; }
 
     @media print {
-        @page { size: A4 landscape; margin: 12mm 10mm 10mm 10mm; }
+        @page { size: A4 landscape; margin: 18mm 10mm 12mm 10mm; }
         .no-print { display: none !important; }
         body { padding: 4mm 3mm 3mm 3mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .course-section { page-break-inside: avoid; }
