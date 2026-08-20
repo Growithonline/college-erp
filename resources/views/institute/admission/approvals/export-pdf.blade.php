@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <title>{{ $printTitle }}</title>
 <style>
-    @page { size: A4 landscape; margin: 8mm 10mm 8mm 10mm; }
+    @page { size: A4 landscape; margin: 14mm 12mm 12mm 12mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 9px; color: #000; background: #fff; font-weight: 600; line-height: 1.3; }
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 9px; color: #000; background: #fff; font-weight: 600; line-height: 1.3; padding: 5mm 4mm 4mm 4mm; }
 
     /* ── Print / Close buttons ── */
     .no-print { margin-bottom: 10px; display: flex; gap: 8px; }
