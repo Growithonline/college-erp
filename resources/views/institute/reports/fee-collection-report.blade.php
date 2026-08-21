@@ -873,7 +873,7 @@ body { font-family: Arial, sans-serif; font-size: 9px; color: #1e293b; backgroun
     border-bottom: 2px solid #1e293b; padding-bottom: 5px; margin-bottom: 6px; }
 .print-header .inst-name { font-size: 14px; font-weight: 700; color: #1e293b; }
 .print-header .report-title { font-size: 11px; font-weight: 600; color: #1d4ed8; margin-top: 1px; }
-.print-header .meta { text-align: right; font-size: 9px; color: #475569; line-height: 1.5; }
+.print-header .meta { text-align: right; font-size: 9px; color: #000; font-weight: 600; line-height: 1.5; }
 .filter-bar { font-size: 8.5px; color: #64748b; margin-bottom: 5px; padding: 3px 6px;
     background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 3px; }
 
@@ -899,9 +899,9 @@ tfoot td.r { text-align: right; }
 .t-success { color: #16a34a; font-weight: 600; }
 .t-danger  { color: #dc2626; font-weight: 600; }
 .t-purple  { color: #7c3aed; font-weight: 600; }
-.t-muted   { color: #94a3b8; }
+.t-muted   { color: #000; }
 .footer { margin-top: 8px; display: flex; justify-content: space-between;
-    font-size: 8px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 4px; }
+    font-size: 8px; color: #000; font-weight: 600; border-top: 1px solid #e2e8f0; padding-top: 4px; }
 </style>
 </head>
 <body>
@@ -964,7 +964,7 @@ rows.forEach((r, i) => {
         <td class="t-muted">\${i+1}</td>
         <td style="font-weight:600;">\${r.invoice}</td>
         <td>\${r.date}<br><span class="t-muted">\${r.time}</span></td>
-        <td class="c">\${r.year ? '<span style="font-size:7.5px;color:#64748b;">'+r.year+'</span><br>' : ''}<span style="background:#eff6ff;color:#1d4ed8;padding:1px 3px;border-radius:2px;font-weight:600;">\${r.sem}</span></td>
+        <td class="c">\${r.year ? '<span style="font-size:7.5px;color:#000;font-weight:600;">'+r.year+'</span><br>' : ''}<span style="background:#eff6ff;color:#1d4ed8;padding:1px 3px;border-radius:2px;font-weight:600;">\${r.sem}</span></td>
         <td><span style="font-weight:600;">\${r.student}</span></td>
         <td class="t-muted">\${r.father}</td>
         <td class="t-muted">\${r.rollno}</td>

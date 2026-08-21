@@ -12,10 +12,10 @@
                    border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 10px; }
     .page-header .inst-name { font-size: 16px; font-weight: 700; color: #1e293b; }
     .page-header .report-title { font-size: 12px; font-weight: 600; color: #1d4ed8; margin-top: 2px; }
-    .page-header .meta { text-align: right; font-size: 9px; color: #475569; line-height: 1.6; }
+    .page-header .meta { text-align: right; font-size: 9px; color: #000; font-weight: 600; line-height: 1.6; }
 
     .filter-info { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;
-                   padding: 5px 10px; margin-bottom: 10px; font-size: 9px; color: #555;
+                   padding: 5px 10px; margin-bottom: 10px; font-size: 9px; color: #000;
                    display: flex; flex-wrap: wrap; gap: 14px; }
     .filter-info strong { color: #1e293b; }
 
@@ -36,7 +36,7 @@
     .t-danger  { color: #dc2626; font-weight: 600; }
     .t-purple  { color: #7c3aed; font-weight: 600; }
     .t-warning { color: #d97706; font-weight: 600; }
-    .t-muted   { color: #94a3b8; }
+    .t-muted   { color: #000; }
 
     .grand-total { background: #1e293b; color: #fff; padding: 7px 12px; border-radius: 4px;
                    font-size: 11px; font-weight: 700; display: flex; justify-content: space-between;
@@ -44,7 +44,7 @@
     .grand-total span { font-size: 10px; font-weight: 400; margin-left: 16px; }
 
     .footer { margin-top: 8px; display: flex; justify-content: space-between;
-              font-size: 8px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 4px; }
+              font-size: 8px; color: #000; font-weight: 600; border-top: 1px solid #e2e8f0; padding-top: 4px; }
 
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>

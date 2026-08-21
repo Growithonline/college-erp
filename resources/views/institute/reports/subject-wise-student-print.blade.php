@@ -12,7 +12,7 @@
                    border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 10px; }
     .page-header .inst-name { font-size: 16px; font-weight: 700; color: #1e293b; }
     .page-header .report-title { font-size: 12px; font-weight: 600; color: #1d4ed8; margin-top: 2px; }
-    .page-header .meta { text-align: right; font-size: 9px; color: #475569; line-height: 1.6; }
+    .page-header .meta { text-align: right; font-size: 9px; color: #000; font-weight: 600; line-height: 1.6; }
 
     table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
     thead th { background: #1e293b; color: #fff; padding: 4px 5px; font-size: 8.5px;
@@ -24,10 +24,10 @@
     tfoot td { padding: 4px 5px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 9.5px;
                background: #f1f5f9; }
 
-    .t-muted { color: #94a3b8; }
+    .t-muted { color: #000; }
 
     .footer { margin-top: 8px; display: flex; justify-content: space-between;
-              font-size: 8px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 4px; }
+              font-size: 8px; color: #000; font-weight: 600; border-top: 1px solid #e2e8f0; padding-top: 4px; }
 
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>

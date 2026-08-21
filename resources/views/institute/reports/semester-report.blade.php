@@ -1,13 +1,67 @@
 @php
     $isStaff = auth()->guard('staff')->check();
     $layout = $isStaff ? 'staff.layout' : 'institute.layout';
+
+    $printInstitute = $isStaff ? auth()->guard('staff')->user()->institute : auth()->user()->institute;
+    $printLogoUrl = null;
+    if (!empty($printInstitute?->image)) {
+        if (file_exists(public_path('storage/' . $printInstitute->image))) {
+            $printLogoUrl = asset('storage/' . $printInstitute->image);
+        } elseif (file_exists(public_path($printInstitute->image))) {
+            $printLogoUrl = asset($printInstitute->image);
+        }
+    }
+    $printInitials = strtoupper(substr($printInstitute?->short_name ?: ($printInstitute?->name ?: 'IN'), 0, 2));
 @endphp
 @extends($layout)
 @section('title','Semester Wise Report')
 @section('breadcrumb','Reports / Semester Wise')
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<style>
+.print-header { display:none; }
+@media print {
+    @page { size: A4 portrait; margin: 16mm 12mm 12mm 12mm; }
+    .no-print { display:none !important; }
+    .print-header { display:block !important; }
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    thead.table-light th { background:#1e3a5f !important; color:#fff !important; font-weight:700 !important; }
+    tfoot.table-dark td { background:#1e3a5f !important; color:#fff !important; }
+}
+.print-header .hdr { display:table; width:100%; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:12px; }
+.print-header .hdr-l, .print-header .hdr-m, .print-header .hdr-r { display:table-cell; vertical-align:middle; }
+.print-header .hdr-l { width:44px; padding-right:9px; }
+.print-header .logo-box { width:38px; height:38px; border:1.5px solid #000; border-radius:4px; text-align:center; line-height:38px; font-size:15px; font-weight:800; color:#000; overflow:hidden; background:#e8e8e8; }
+.print-header .logo-box img { width:38px; height:38px; object-fit:cover; border-radius:4px; display:block; }
+.print-header .inst-name { font-size:15px; font-weight:800; color:#000; }
+.print-header .inst-sub  { font-size:10.5px; font-weight:600; color:#000; margin-top:2px; }
+.print-header .hdr-r { text-align:right; font-size:9px; font-weight:600; color:#000; white-space:nowrap; }
+.print-header .hdr-r strong { font-weight:800; }
+</style>
+
+<div class="print-header">
+    <div class="hdr">
+        <div class="hdr-l">
+            <div class="logo-box">
+                @if($printLogoUrl)
+                    <img src="{{ $printLogoUrl }}" alt="Logo">
+                @else
+                    {{ $printInitials }}
+                @endif
+            </div>
+        </div>
+        <div class="hdr-m">
+            <div class="inst-name">{{ $printInstitute?->name ?? 'Institute' }}</div>
+            <div class="inst-sub">Semester Wise Collection &mdash; {{ $sessionObj?->name }}</div>
+        </div>
+        <div class="hdr-r">
+            <div>Total Collection: <strong>₹ {{ number_format($totalCollected, 0) }}</strong></div>
+            <div>Generated: <strong>{{ now()->format('d M Y, h:i A') }}</strong></div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
     <div>
         <h4 class="mb-0 fw-bold">Semester Wise Collection</h4>
         <small class="text-muted">Semester aur course wise fee breakdown</small>
@@ -23,7 +77,7 @@
 </div>
 
 {{-- Filters --}}
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 shadow-sm mb-4 no-print">
     <div class="card-body py-3">
         <form method="GET" class="row g-3 align-items-end">
             <div class="col-md-3">
@@ -44,7 +98,7 @@
 </div>
 
 {{-- Summary --}}
-<div class="card border-0 shadow-sm mb-4">
+<div class="card border-0 shadow-sm mb-4 no-print">
     <div class="card-body py-3">
         <div class="small text-muted mb-1">Total Collection ({{ $sessionObj?->name }})</div>
         <div class="fw-bold fs-4 text-primary">₹ {{ number_format($totalCollected, 0) }}</div>
