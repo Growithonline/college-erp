@@ -92,16 +92,16 @@
             <h6 class="mb-0 fw-semibold">Template Excel Download</h6>
             <small class="text-muted">{{ number_format($studentsCount) }} students match current selection</small>
         </div>
-        <a href="{{ route('admissions.bulk-correction.template', array_merge(request()->only(['course_type_id','course_id','course_stream_id','current_semester']), ['session_id' => $sessionId])) }}"
-           class="btn btn-outline-secondary btn-sm">
+        <button type="submit" form="bulkFilterForm" formaction="{{ route('admissions.bulk-correction.template') }}"
+                class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Excel Template
-        </a>
+        </button>
     </div>
     <div class="card-body">
-        <form method="GET" action="{{ route('admissions.bulk-correction') }}" class="row g-3 align-items-end">
+        <form id="bulkFilterForm" method="GET" action="{{ route('admissions.bulk-correction') }}" class="row g-3 align-items-end">
             <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">Session</label>
-                <select name="session_id" class="form-select form-select-sm">
+                <select name="session_id" id="bcSession" class="form-select form-select-sm">
                     @foreach($sessions as $s)
                         <option value="{{ $s->id }}" {{ $sessionId == $s->id ? 'selected':'' }}>
                             {{ $s->name }}{{ $s->is_active ? ' ✓':'' }}
@@ -209,6 +209,21 @@
         if (initialCourseId) {
             bcLoadStreams(initialCourseId, initialStreamId, initialSemester);
         }
+
+        // Upload form has its own hidden filter fields (session/course/stream/
+        // semester) so the file input can stay outside the GET filter form.
+        // Sync them from the live dropdowns right before submit so an upload
+        // fired without clicking "Filter" first still carries the current
+        // on-screen selection instead of stale page-load values.
+        const uploadForm = document.getElementById('bulkUploadForm');
+        uploadForm?.addEventListener('submit', function () {
+            const val = (id) => document.getElementById(id)?.value || '';
+            document.getElementById('bcUploadSession').value     = val('bcSession');
+            document.getElementById('bcUploadCourseType').value  = val('bcCourseType');
+            document.getElementById('bcUploadCourse').value      = val('bcCourse');
+            document.getElementById('bcUploadStream').value      = val('bcStream');
+            document.getElementById('bcUploadSemester').value    = val('bcSemester');
+        });
     });
 })();
 </script>
@@ -218,13 +233,13 @@
         <h6 class="mb-0 fw-semibold">Upload Corrected Excel</h6>
     </div>
     <div class="card-body">
-        <form method="POST" action="{{ route('admissions.bulk-correction.upload') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+        <form id="bulkUploadForm" method="POST" action="{{ route('admissions.bulk-correction.upload') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
             @csrf
-            <input type="hidden" name="session_id" value="{{ $sessionId }}">
-            <input type="hidden" name="course_type_id" value="{{ request('course_type_id') }}">
-            <input type="hidden" name="course_id" value="{{ request('course_id') }}">
-            <input type="hidden" name="course_stream_id" value="{{ request('course_stream_id') }}">
-            <input type="hidden" name="current_semester" value="{{ request('current_semester') }}">
+            <input type="hidden" name="session_id" id="bcUploadSession" value="{{ $sessionId }}">
+            <input type="hidden" name="course_type_id" id="bcUploadCourseType" value="{{ request('course_type_id') }}">
+            <input type="hidden" name="course_id" id="bcUploadCourse" value="{{ request('course_id') }}">
+            <input type="hidden" name="course_stream_id" id="bcUploadStream" value="{{ request('course_stream_id') }}">
+            <input type="hidden" name="current_semester" id="bcUploadSemester" value="{{ request('current_semester') }}">
 
             <div class="col-md-4">
                 <label class="form-label small fw-semibold mb-1">Upload File</label>
