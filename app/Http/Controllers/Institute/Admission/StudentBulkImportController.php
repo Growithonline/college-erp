@@ -11,9 +11,13 @@ use App\Models\CoursePart;
 use App\Models\CourseStream;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
+use App\Services\AuditLogService;
+use App\Services\StudentAcademicChangeService;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
+use App\Support\StudentSnapshotBuilder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -33,6 +37,9 @@ class StudentBulkImportController extends Controller
         'application/octet-stream', // some browsers send this for xlsx
     ];
 
+    private const RELIGION_OPTIONS = ['hindu', 'muslim', 'sikh', 'christian', 'jain', 'parsi', 'buddhist', 'others'];
+    private const GUARDIAN_RELATION_OPTIONS = ['father', 'mother', 'uncle', 'aunt', 'brother', 'sister', 'grandfather', 'grandmother', 'others'];
+
     // ── Resolve institute_id for any guard ────────────────────────────
     private function instituteId(): int
     {
@@ -45,9 +52,28 @@ class StudentBulkImportController extends Controller
         abort(403, 'Institute context missing.');
     }
 
+    // ── Permission gate — no-op for the institute-owner (web) guard,
+    // mirrors PromotionController::ensurePromotionAccess() for consistency
+    // if these routes are ever extended to the staff guard.
+    private function ensureBulkImportAccess(): void
+    {
+        $staff = Auth::guard('staff')->user();
+        if (!$staff) return;
+        abort_if(!$staff->hasPermission('admission_add'), 403, 'You are not allowed to bulk-import students.');
+    }
+
+    // Strip leading formula-trigger characters so a value like
+    // =HYPERLINK(...) can't execute if this data is later opened in Excel.
+    private function sanitizeCell(string $value): string
+    {
+        $value = trim(strip_tags($value));
+        return preg_replace('/^[=+\-@]+/', '', $value);
+    }
+
     // ── Show upload page ──────────────────────────────────────────────
     public function index()
     {
+        $this->ensureBulkImportAccess();
         $instituteId    = $this->instituteId();
         $sessions       = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $activeSession  = $sessions->firstWhere('is_active', true);
@@ -57,6 +83,7 @@ class StudentBulkImportController extends Controller
     // ── Download Excel Template ───────────────────────────────────────
     public function downloadTemplate()
     {
+        $this->ensureBulkImportAccess();
         $instituteId = $this->instituteId();
 
         $courses = Course::where('institute_id', $instituteId)
@@ -136,6 +163,8 @@ class StudentBulkImportController extends Controller
             'BI' => 'Student Status',
             'BJ' => 'Due Semesters (comma-separated)',
             'BK' => 'Due Amounts (comma-separated)',
+            'BL' => 'Major Subject',
+            'BM' => 'Minor Subjects (comma-separated)',
         ];
 
         foreach ($headers as $col => $label) {
@@ -225,6 +254,8 @@ class StudentBulkImportController extends Controller
             'BI' => 'Active',
             'BJ' => '',
             'BK' => '',
+            'BL' => '',
+            'BM' => '',
         ];
 
         foreach ($example as $col => $val) {
@@ -300,7 +331,7 @@ class StudentBulkImportController extends Controller
             ['Field',                       'Allowed Values / Notes'],
             ['Student UID',                 'Leave blank to auto-generate. If given, must be unique across the system.'],
             ['Name *',                      'Required. Full student name.'],
-            ['Mobile *',                    'Required. 10-digit mobile number. Must be unique.'],
+            ['Mobile *',                    'Required. 10-digit mobile number. Can repeat across students (e.g. siblings sharing a number).'],
             ['Course Name *',               'Required. Must match EXACTLY from "Courses_Streams" sheet (case-insensitive).'],
             ['Stream Name *',               'Required. Must match EXACTLY from "Courses_Streams" sheet for that course.'],
             ['Semester *',                  'Required. Absolute semester/term number for that course (e.g. a 3-year, 2-semester/year course allows 1-6; a 4-year trimester course allows 1-12) — NOT a fixed 1-8 range.'],
@@ -322,16 +353,18 @@ class StudentBulkImportController extends Controller
             ['Semester * (for non-Active)', 'For Passed Out/Detained/Transferred/Cancelled students, enter their LAST/final semester here — not a currently-ongoing one.'],
             ['Due Semesters',               'Optional. Comma-separated list of semester numbers that still have a pending balance from before joining this system. Example: 2,3'],
             ['Due Amounts',                 'Optional. Comma-separated amounts matching Due Semesters 1-to-1, same order. Example: 4000,2500 means Semester 2 owes 4000 and Semester 3 owes 2500. For Active students, only semesters BEFORE the Semester * value can carry a due (the current semester\'s fee is auto-calculated by the system). For Passed Out/Detained/etc., dues up to and including the Semester * value are allowed. Shows up as "Previous Due (Semester N)" on the student\'s fee ledger.'],
+            ['Major Subject',               'Optional. Must match a subject name available for that Course/Stream/Semester. Unmatched names are skipped, not blocked.'],
+            ['Minor Subjects',              'Optional. Comma-separated. Same matching rule as Major Subject. Compulsory subjects for that stream are auto-enrolled regardless of this column.'],
             ['',                            ''],
             ['IMPORTANT RULES',             ''],
-            ['',                            '1. Columns marked with * are REQUIRED.'],
+            ['',                            '1. Columns marked with * are REQUIRED — a row missing these cannot be imported.'],
             ['',                            '2. DO NOT change column header names or order.'],
             ['',                            '3. DELETE the example rows (row 2–3) before uploading.'],
             ['',                            '4. Maximum ' . self::MAX_ROWS . ' data rows per file.'],
             ['',                            '5. File size must be under ' . self::MAX_FILE_MB . ' MB.'],
             ['',                            '6. Accepted formats: .xlsx, .xls only.'],
-            ['',                            '7. Duplicate mobile numbers will be flagged as errors.'],
-            ['',                            '8. If Student UID is left blank, system generates one automatically.'],
+            ['',                            '7. Duplicate Student UID / Roll No / Enrollment No / UIN / Exam Form No are flagged as minor issues — you choose at preview time whether to still import that row.'],
+            ['',                            '8. If Student UID is left blank (or is a duplicate), the system generates one automatically.'],
         ];
         foreach ($rows as $i => $row) {
             $instrSheet->setCellValue('A' . ($i + 1), $row[0]);
@@ -358,6 +391,7 @@ class StudentBulkImportController extends Controller
     // ── Preview: parse, validate, store in session ────────────────────
     public function preview(Request $request)
     {
+        $this->ensureBulkImportAccess();
         $request->validate([
             'file'       => ['required', 'file', 'mimes:xlsx,xls', 'max:' . (self::MAX_FILE_MB * 1024)],
             'session_id' => ['required', 'integer', 'min:1'],
@@ -432,7 +466,9 @@ class StudentBulkImportController extends Controller
         $existingExamForms = Student::where('institute_id', $instituteId)->whereNotNull('exam_form_no')->pluck('exam_form_no')->flip()->toArray();
 
         $validRows   = [];
+        $softRows    = [];
         $invalidRows = [];
+        $subjectLookupCache = []; // "streamId|year" => ['available' => [...], 'compulsory' => [...]]
         $seenUids        = [];
         $seenRolls       = [];
         $seenEnrolls     = [];
@@ -442,10 +478,10 @@ class StudentBulkImportController extends Controller
         foreach ($dataRows as $rowIdx => $rawCols) {
             $rowNum = $rowIdx + 2; // Excel row number (header=1, data starts at 2)
 
-            // Pad to 63 columns, convert all to trimmed strings
+            // Pad to 65 columns, convert all to trimmed, formula-defanged strings
             $c = array_map(
-                fn($v) => trim(strip_tags((string)($v ?? ''))),
-                array_pad(array_values($rawCols), 63, '')
+                fn($v) => $this->sanitizeCell((string)($v ?? '')),
+                array_pad(array_values($rawCols), 65, '')
             );
 
             // Map columns by index (matches template header order)
@@ -461,31 +497,37 @@ class StudentBulkImportController extends Controller
              $commSame, $commAddr, $commCity, $commPost, $commThana, $commDist, $commState, $commPin,
              $hasScholar, $scholarName, $scholarType, $scholarAuth,
              $scholarAmt, $scholarRef, $scholarDate,
-             $studentStatusRaw, $dueSemestersRaw, $dueAmountsRaw]
-                = array_pad($c, 63, '');
+             $studentStatusRaw, $dueSemestersRaw, $dueAmountsRaw,
+             $majorSubjectsRaw, $minorSubjectsRaw]
+                = array_pad($c, 65, '');
 
-            $errors = [];
+            // Hard errors block the row entirely (mandatory fields: Name, Mobile,
+            // Course, Stream, Semester). Soft errors are optional-field problems —
+            // the row still previews as importable, but the user is asked to
+            // confirm before those specific fields get left blank.
+            $hardErrors = [];
+            $softErrors = [];
 
             // Clean mobile
             $mobile = preg_replace('/[^0-9]/', '', $mobile);
 
             // ── Required fields ───────────────────────────────────────
-            if ($name === '') $errors[] = 'Name is required';
+            if ($name === '') $hardErrors[] = 'Name is required';
             if ($mobile === '') {
-                $errors[] = 'Mobile is required';
+                $hardErrors[] = 'Mobile is required';
             } elseif (strlen($mobile) !== 10) {
-                $errors[] = 'Mobile must be exactly 10 digits';
+                $hardErrors[] = 'Mobile must be exactly 10 digits';
             }
 
             // Course
             $courseObj = null;
             $courseId  = null;
             if ($courseName === '') {
-                $errors[] = 'Course Name is required';
+                $hardErrors[] = 'Course Name is required';
             } else {
                 $courseObj = $coursesLower[strtolower($courseName)] ?? null;
                 if (!$courseObj) {
-                    $errors[] = "Course \"{$courseName}\" not found — check spelling or Courses_Streams sheet";
+                    $hardErrors[] = "Course \"{$courseName}\" not found — check spelling or Courses_Streams sheet";
                 } else {
                     $courseId = $courseObj->id;
                 }
@@ -495,11 +537,11 @@ class StudentBulkImportController extends Controller
             $streamObj = null;
             $streamId  = null;
             if ($streamName === '') {
-                $errors[] = 'Stream Name is required';
+                $hardErrors[] = 'Stream Name is required';
             } elseif ($courseId) {
                 $streamObj = $streamsLower[strtolower($streamName) . '|' . $courseId] ?? null;
                 if (!$streamObj) {
-                    $errors[] = "Stream \"{$streamName}\" not found in course \"{$courseName}\" — check Courses_Streams sheet";
+                    $hardErrors[] = "Stream \"{$streamName}\" not found in course \"{$courseName}\" — check Courses_Streams sheet";
                 } else {
                     $streamId = $streamObj->id;
                 }
@@ -510,14 +552,19 @@ class StudentBulkImportController extends Controller
             // number: a 3-year semester course tops out at 6, a 5-year course at 10,
             // a 4-year trimester course at 12, etc.
             $sem = (int) $semester;
+            $semestersPerYear = $courseObj ? max(1, $courseObj->effectiveSemestersPerYear()) : 1;
             $courseMaxPart = $courseObj
-                ? max(1, (int) ($courseObj->duration ?? 1)) * $courseObj->effectiveSemestersPerYear()
+                ? max(1, (int) ($courseObj->duration ?? 1)) * $semestersPerYear
                 : 8;
             if ($sem < 1 || $sem > $courseMaxPart) {
-                $errors[] = $courseObj
+                $hardErrors[] = $courseObj
                     ? "Semester must be a number from 1 to {$courseMaxPart} for course \"{$courseName}\""
                     : 'Semester must be a positive number';
             }
+            // Year/Part this semester falls in — uses the course's actual
+            // semesters-per-year instead of a hardcoded ÷2, so a trimester or
+            // yearly course maps to the right CoursePart and subject list.
+            $yearNumber = max(1, (int) ceil($sem / $semestersPerYear));
 
             // ── Student Status ────────────────────────────────────────
             $statusNorm = match(strtolower(trim($studentStatusRaw))) {
@@ -529,7 +576,7 @@ class StudentBulkImportController extends Controller
                 default                                 => null,
             };
             if ($statusNorm === null) {
-                $errors[] = "Student Status \"{$studentStatusRaw}\" invalid — use Active / Passed Out / Detained / Transferred / Cancelled";
+                $softErrors[] = "Student Status \"{$studentStatusRaw}\" not recognized — treated as Active";
                 $statusNorm = 'active';
             }
             $isTerminalStatus = $statusNorm !== 'active';
@@ -549,31 +596,31 @@ class StudentBulkImportController extends Controller
             $dueAmtList = array_values(array_filter(array_map('trim', explode(',', $dueAmountsRaw)), fn($v) => $v !== ''));
 
             if (count($dueSemList) !== count($dueAmtList)) {
-                $errors[] = 'Due Semesters and Due Amounts have a different number of values — they must be a matching, comma-separated pair';
+                $softErrors[] = 'Due Semesters and Due Amounts have a different number of values — dues for this row skipped';
             } else {
                 foreach ($dueSemList as $i => $rawSemNum) {
                     $rawAmt = $dueAmtList[$i];
                     if (!ctype_digit($rawSemNum)) {
-                        $errors[] = "Due Semesters value \"{$rawSemNum}\" is not a valid semester number";
+                        $softErrors[] = "Due Semesters value \"{$rawSemNum}\" is not a valid semester number — skipped";
                         continue;
                     }
                     if (!is_numeric($rawAmt)) {
-                        $errors[] = "Due Amounts value \"{$rawAmt}\" is not a valid number";
+                        $softErrors[] = "Due Amounts value \"{$rawAmt}\" is not a valid number — skipped";
                         continue;
                     }
                     $semNum = (int) $rawSemNum;
                     $dueAmount = (float) $rawAmt;
                     if ($dueAmount < 0) {
-                        $errors[] = "Due amount for Semester {$semNum} cannot be negative";
+                        $softErrors[] = "Due amount for Semester {$semNum} cannot be negative — skipped";
                         continue;
                     }
                     if ($semNum < 1 || $semNum > $maxDueSemester) {
-                        $errors[] = "Due for Semester {$semNum} not allowed — current Semester is {$sem}"
-                            . ($isTerminalStatus ? '' : ' (only semesters before it can carry a due)');
+                        $softErrors[] = "Due for Semester {$semNum} not allowed — current Semester is {$sem}"
+                            . ($isTerminalStatus ? '' : ' (only semesters before it can carry a due)') . ' — skipped';
                         continue;
                     }
                     if (isset($semesterDues[$semNum])) {
-                        $errors[] = "Semester {$semNum} appears more than once in Due Semesters";
+                        $softErrors[] = "Semester {$semNum} appears more than once in Due Semesters — later value skipped";
                         continue;
                     }
                     if ($dueAmount > 0) {
@@ -582,13 +629,16 @@ class StudentBulkImportController extends Controller
                 }
             }
 
-            // ── Duplicate checks (only truly unique fields) ───────────
+            // ── Duplicate checks (only truly unique fields) — soft, since a
+            // duplicate here just means that specific identifier gets dropped
+            // (Student UID auto-regenerates; the rest are left blank) rather
+            // than blocking the whole student from being imported.
             $cleanUid = $uid ?: null;
             if ($cleanUid !== null) {
                 if (isset($existingUids[$cleanUid])) {
-                    $errors[] = "Student UID \"{$cleanUid}\" already exists in the system";
+                    $softErrors[] = "Student UID \"{$cleanUid}\" already exists — a new one will be auto-generated";
                 } elseif (isset($seenUids[$cleanUid])) {
-                    $errors[] = "Student UID \"{$cleanUid}\" appears more than once in this file";
+                    $softErrors[] = "Student UID \"{$cleanUid}\" appears more than once in this file — a new one will be auto-generated";
                 } else {
                     $seenUids[$cleanUid] = true;
                 }
@@ -597,9 +647,9 @@ class StudentBulkImportController extends Controller
             $cleanRoll = $rollNo ?: null;
             if ($cleanRoll !== null) {
                 if (isset($existingRolls[$cleanRoll])) {
-                    $errors[] = "Roll No \"{$cleanRoll}\" already exists in the system";
+                    $softErrors[] = "Roll No \"{$cleanRoll}\" already exists in the system";
                 } elseif (isset($seenRolls[$cleanRoll])) {
-                    $errors[] = "Roll No \"{$cleanRoll}\" appears more than once in this file";
+                    $softErrors[] = "Roll No \"{$cleanRoll}\" appears more than once in this file";
                 } else {
                     $seenRolls[$cleanRoll] = true;
                 }
@@ -608,9 +658,9 @@ class StudentBulkImportController extends Controller
             $cleanEnroll = $enrollNo ?: null;
             if ($cleanEnroll !== null) {
                 if (isset($existingEnrolls[$cleanEnroll])) {
-                    $errors[] = "Enrollment No \"{$cleanEnroll}\" already exists in the system";
+                    $softErrors[] = "Enrollment No \"{$cleanEnroll}\" already exists in the system";
                 } elseif (isset($seenEnrolls[$cleanEnroll])) {
-                    $errors[] = "Enrollment No \"{$cleanEnroll}\" appears more than once in this file";
+                    $softErrors[] = "Enrollment No \"{$cleanEnroll}\" appears more than once in this file";
                 } else {
                     $seenEnrolls[$cleanEnroll] = true;
                 }
@@ -619,9 +669,9 @@ class StudentBulkImportController extends Controller
             $cleanUin = $uinNo ?: null;
             if ($cleanUin !== null) {
                 if (isset($existingUins[$cleanUin])) {
-                    $errors[] = "UIN No \"{$cleanUin}\" already exists in the system";
+                    $softErrors[] = "UIN No \"{$cleanUin}\" already exists in the system";
                 } elseif (isset($seenUins[$cleanUin])) {
-                    $errors[] = "UIN No \"{$cleanUin}\" appears more than once in this file";
+                    $softErrors[] = "UIN No \"{$cleanUin}\" appears more than once in this file";
                 } else {
                     $seenUins[$cleanUin] = true;
                 }
@@ -630,15 +680,18 @@ class StudentBulkImportController extends Controller
             $cleanExamForm = $examFormNo ?: null;
             if ($cleanExamForm !== null) {
                 if (isset($existingExamForms[$cleanExamForm])) {
-                    $errors[] = "Exam Form No \"{$cleanExamForm}\" already exists in the system";
+                    $softErrors[] = "Exam Form No \"{$cleanExamForm}\" already exists in the system";
                 } elseif (isset($seenExamForms[$cleanExamForm])) {
-                    $errors[] = "Exam Form No \"{$cleanExamForm}\" appears more than once in this file";
+                    $softErrors[] = "Exam Form No \"{$cleanExamForm}\" appears more than once in this file";
                 } else {
                     $seenExamForms[$cleanExamForm] = true;
                 }
             }
 
             // ── Admission source ──────────────────────────────────────
+            // 'channel_partner' is the actual DB enum value — 'channel' (the
+            // template's display word) is not, and used to fail silently at
+            // insert time with a truncation error.
             $admSourceNorm = 'direct';
             $admSourceId   = null;
             $srcLower = strtolower($admSource);
@@ -646,14 +699,18 @@ class StudentBulkImportController extends Controller
                 $admSourceNorm = 'center';
                 if ($sourceName !== '') {
                     $admSourceId = $centersLower[strtolower($sourceName)] ?? null;
-                    if (!$admSourceId) $errors[] = "Center \"{$sourceName}\" not found — check Sources sheet";
+                    if (!$admSourceId) $softErrors[] = "Center \"{$sourceName}\" not found — Source Name left unlinked";
                 }
-            } elseif ($srcLower === 'channel') {
-                $admSourceNorm = 'channel';
+            } elseif (in_array($srcLower, ['channel', 'channel_partner', 'channel partner'])) {
+                $admSourceNorm = 'channel_partner';
                 if ($sourceName !== '') {
                     $admSourceId = $partnersLower[strtolower($sourceName)] ?? null;
-                    if (!$admSourceId) $errors[] = "Channel Partner \"{$sourceName}\" not found — check Sources sheet";
+                    if (!$admSourceId) $softErrors[] = "Channel Partner \"{$sourceName}\" not found — Source Name left unlinked";
                 }
+            } elseif ($srcLower === 'online') {
+                $admSourceNorm = 'online';
+            } elseif ($srcLower !== '' && $srcLower !== 'direct') {
+                $softErrors[] = "Admission Source \"{$admSource}\" not recognized — treated as Direct";
             }
 
             // ── Date parsing ──────────────────────────────────────────
@@ -661,8 +718,9 @@ class StudentBulkImportController extends Controller
             $parsedDob         = $this->parseDate($dob);
             $parsedScholarDate = $this->parseDate($scholarDate);
 
-            if ($dob !== '' && !$parsedDob)         $errors[] = "DOB \"{$dob}\" invalid — use DD/MM/YYYY";
-            if ($admDate !== '' && !$this->parseDate($admDate)) $errors[] = "Admission Date \"{$admDate}\" invalid — use DD/MM/YYYY";
+            if ($dob !== '' && !$parsedDob)         $softErrors[] = "DOB \"{$dob}\" invalid — left blank";
+            if ($admDate !== '' && !$this->parseDate($admDate)) $softErrors[] = "Admission Date \"{$admDate}\" invalid — defaulted to today";
+            if ($scholarDate !== '' && !$parsedScholarDate) $softErrors[] = "Scholarship Applied Date \"{$scholarDate}\" invalid — left blank";
 
             // ── Enum normalisation ────────────────────────────────────
             // Mapped to the exact enum values the `students` table accepts (see
@@ -671,7 +729,10 @@ class StudentBulkImportController extends Controller
             // 're_admission') fails at insert time with a MySQL "Data truncated"
             // error instead of a friendly validation message, since these are
             // native ENUM columns, not free-text.
-            $genderNorm     = match(strtolower(trim($gender))) { 'male' => 'male', 'female' => 'female', 'other' => 'other', default => null };
+            $genderNorm = match(strtolower(trim($gender))) { 'male' => 'male', 'female' => 'female', 'other' => 'other', '' => null, default => null };
+            if ($gender !== '' && $genderNorm === null) {
+                $softErrors[] = "Gender \"{$gender}\" not recognized — left blank";
+            }
             $categoryNorm   = match(strtolower(trim($category))) {
                 'general', 'gen' => 'gen',
                 'obc'            => 'obc',
@@ -681,29 +742,114 @@ class StudentBulkImportController extends Controller
                 'others', 'other'=> 'others',
                 default          => null,
             };
+            if ($category !== '' && $categoryNorm === null) {
+                $softErrors[] = "Category \"{$category}\" not recognized — left blank";
+            }
             $maritalNorm    = match(strtolower(trim($maritalStatus))) {
-                'single'            => 'single',
+                '', 'single'        => 'single',
                 'married'           => 'married',
                 'divorced'          => 'divorced',
                 'widowed'           => 'widowed',
-                default             => 'single',
+                default             => null,
             };
+            if ($maritalNorm === null) {
+                $softErrors[] = "Marital Status \"{$maritalStatus}\" not recognized — treated as Single";
+                $maritalNorm = 'single';
+            }
             $admTypeNorm    = match(strtolower(trim($admType))) {
-                'new'                            => 'new',
+                '', 'new'                        => 'new',
                 'lateral'                        => 'lateral',
                 'transfer'                       => 'transfer',
                 'readmission', 're_admission', 're-admission' => 're_admission',
-                default                          => 'new',
+                default                          => null,
             };
+            if ($admTypeNorm === null) {
+                $softErrors[] = "Admission Type \"{$admType}\" not recognized — treated as New";
+                $admTypeNorm = 'new';
+            }
+            // special_category is a free-text varchar column (not an ENUM), so
+            // an unrecognized value is passed through as-is instead of rejected.
             $specialCatNorm = match(strtolower(trim($specialCat))) {
-                '', 'none'                        => 'none',
+                '', 'none', 'na', 'n/a'                  => 'none',
                 'scholarship quota', 'scholarship_quota' => 'scholarship_quota',
-                'sports quota', 'sports_quota'    => 'sports_quota',
-                'others', 'other'                 => 'others',
-                default                            => null,
+                'sports quota', 'sports_quota', 'sports' => 'sports_quota',
+                'pwd'                                    => 'pwd',
+                'ex_serviceman', 'ex-serviceman', 'ex serviceman' => 'ex_serviceman',
+                'ncc'                                    => 'ncc',
+                'others', 'other'                        => 'others',
+                default                                  => mb_substr(trim($specialCat), 0, 50),
             };
-            if ($specialCat !== '' && $specialCatNorm === null) {
-                $errors[] = "Special Category \"{$specialCat}\" invalid — use Scholarship Quota / Sports Quota / Others / None";
+
+            $religionNorm = null;
+            if ($religion !== '') {
+                $religionLower = strtolower(trim($religion));
+                if (in_array($religionLower, self::RELIGION_OPTIONS, true)) {
+                    $religionNorm = $religionLower;
+                } else {
+                    $softErrors[] = "Religion \"{$religion}\" not recognized — left blank";
+                }
+            }
+
+            $guardianRelNorm = null;
+            if ($guardianRel !== '') {
+                $guardianRelLower = strtolower(trim($guardianRel));
+                if (in_array($guardianRelLower, self::GUARDIAN_RELATION_OPTIONS, true)) {
+                    $guardianRelNorm = $guardianRelLower;
+                } else {
+                    $softErrors[] = "Guardian Relation \"{$guardianRel}\" not recognized — left blank";
+                }
+            }
+
+            $emailNorm = null;
+            if ($email !== '') {
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $emailNorm = $email;
+                } else {
+                    $softErrors[] = "Email \"{$email}\" is not valid — left blank";
+                }
+            }
+
+            $scholarAmtNorm = null;
+            if ($scholarAmt !== '') {
+                if (is_numeric($scholarAmt)) {
+                    $scholarAmtNorm = (float) $scholarAmt;
+                } else {
+                    $softErrors[] = "Scholarship Amount \"{$scholarAmt}\" is not numeric — left blank";
+                }
+            }
+
+            // ── Subject enrollment (optional) ─────────────────────────
+            // Course/Stream stay mandatory as before; individual subjects do
+            // not. Unmatched subject names are skipped (soft error), not
+            // blocking. Compulsory subjects for the stream/year are always
+            // auto-included, same as the normal admission form.
+            $subjectRoleRows = [];
+            if ($streamObj) {
+                $cacheKey = $streamObj->id . '|' . $yearNumber;
+                if (!isset($subjectLookupCache[$cacheKey])) {
+                    $subjectLookupCache[$cacheKey] = [
+                        'available'   => $streamObj->subjectsForYear($yearNumber)->get()
+                            ->mapWithKeys(fn($s) => [strtolower(trim($s->name)) => $s->id]),
+                        'compulsory'  => $streamObj->compulsorySubjectsForYear($yearNumber)->get()
+                            ->map(fn($s) => ['subject_id' => $s->id, 'subject_role' => $s->pivot->subject_role]),
+                    ];
+                }
+                $subjectCacheEntry = $subjectLookupCache[$cacheKey];
+
+                foreach (['major' => $majorSubjectsRaw, 'minor' => $minorSubjectsRaw] as $role => $rawList) {
+                    foreach (array_filter(array_map('trim', explode(',', $rawList)), fn($v) => $v !== '') as $subjName) {
+                        $subjId = $subjectCacheEntry['available'][strtolower($subjName)] ?? null;
+                        if ($subjId) {
+                            $subjectRoleRows[] = ['subject_id' => $subjId, 'subject_role' => $role, 'is_auto_included' => false];
+                        } else {
+                            $softErrors[] = ucfirst($role) . " Subject \"{$subjName}\" not found for \"{$streamName}\" Semester {$sem} — skipped";
+                        }
+                    }
+                }
+
+                foreach ($subjectCacheEntry['compulsory'] as $compulsory) {
+                    $subjectRoleRows[] = $compulsory + ['is_auto_included' => true];
+                }
             }
 
             $rowData = [
@@ -717,6 +863,8 @@ class StudentBulkImportController extends Controller
                 'course_type_id'           => $courseObj?->course_type_id ?? null,
                 'stream_id'                => $streamId,
                 'current_semester'         => $sem,
+                'year_number'              => $yearNumber,
+                'subject_role_rows'        => $subjectRoleRows,
                 'enrollment_no'            => $enrollNo ?: null,
                 'roll_no'                  => $rollNo ?: null,
                 'uin_no'                   => $uinNo ?: null,
@@ -737,13 +885,13 @@ class StudentBulkImportController extends Controller
                 'mother_occupation'        => $motherOcc ?: null,
                 'guardian_name'            => $guardianName ?: null,
                 'guardian_mobile'          => preg_replace('/[^0-9]/', '', $guardianMobile) ?: null,
-                'guardian_relation'        => $guardianRel ?: null,
-                'email'                    => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null,
+                'guardian_relation'        => $guardianRelNorm,
+                'email'                    => $emailNorm,
                 'dob'                      => $parsedDob,
                 'gender'                   => $genderNorm,
                 'category'                 => $categoryNorm,
-                'special_category'         => $specialCatNorm ?? 'none',
-                'religion'                 => $religion ?: null,
+                'special_category'         => $specialCatNorm,
+                'religion'                 => $religionNorm,
                 'nationality'              => match(strtolower(trim($nationality))) {
                     'indian'      => 'indian',
                     'nepali'      => 'nepali',
@@ -775,42 +923,48 @@ class StudentBulkImportController extends Controller
                 'scholarship_name'         => $scholarName ?: null,
                 'scholarship_type'         => $scholarType ?: null,
                 'scholarship_authority'    => $scholarAuth ?: null,
-                'scholarship_amount'       => is_numeric($scholarAmt) ? (float) $scholarAmt : null,
+                'scholarship_amount'       => $scholarAmtNorm,
                 'scholarship_ref_no'       => $scholarRef ?: null,
                 'scholarship_applied_date' => $parsedScholarDate,
                 'student_status'           => $statusNorm,
                 'semester_dues'            => $semesterDues,
-                'errors'                   => $errors,
+                'soft_errors'              => $softErrors,
+                'errors'                   => array_merge($hardErrors, $softErrors),
             ];
 
-            if (empty($errors)) {
-                $validRows[] = $rowData;
-            } else {
+            if (!empty($hardErrors)) {
                 $invalidRows[] = $rowData;
+            } elseif (!empty($softErrors)) {
+                $softRows[] = $rowData;
+            } else {
+                $validRows[] = $rowData;
             }
         }
 
-        if (empty($validRows) && empty($invalidRows)) {
+        if (empty($validRows) && empty($softRows) && empty($invalidRows)) {
             return back()->withErrors(['file' => 'No readable data found in the file.']);
         }
 
-        // Store valid rows in session with expiring token
+        // Store valid + soft-issue rows in session with an expiring token —
+        // import() decides at confirm time whether to include the soft ones.
         $token = Str::random(48);
         session([
             'bulk_import_token'      => $token,
             'bulk_import_session_id' => $session->id,
             'bulk_import_rows'       => $validRows,
+            'bulk_import_soft_rows'  => $softRows,
             'bulk_import_expires_at' => now()->addMinutes(self::SESSION_TTL)->timestamp,
         ]);
 
         return view('institute.admission.bulk-import-preview', compact(
-            'validRows', 'invalidRows', 'token', 'session'
+            'validRows', 'softRows', 'invalidRows', 'token', 'session'
         ));
     }
 
     // ── Import: consume session and create students ───────────────────
     public function import(Request $request)
     {
+        $this->ensureBulkImportAccess();
         $request->validate(['token' => ['required', 'string', 'size:48']]);
 
         $instituteId = $this->instituteId();
@@ -821,13 +975,19 @@ class StudentBulkImportController extends Controller
                 ->withErrors(['token' => 'Import session expired or invalid. Please upload the file again.']);
         }
         if ((int) session('bulk_import_expires_at', 0) < now()->timestamp) {
-            session()->forget(['bulk_import_token', 'bulk_import_rows', 'bulk_import_session_id', 'bulk_import_expires_at']);
+            session()->forget(['bulk_import_token', 'bulk_import_rows', 'bulk_import_soft_rows', 'bulk_import_session_id', 'bulk_import_expires_at']);
             return redirect()->route('admissions.bulk-import.index')
                 ->withErrors(['token' => 'Import session expired (30 min limit). Please upload again.']);
         }
 
-        $sessionId       = (int) session('bulk_import_session_id');
-        $rows            = session('bulk_import_rows', []);
+        $sessionId  = (int) session('bulk_import_session_id');
+        $rows       = session('bulk_import_rows', []);
+        $softRows   = session('bulk_import_soft_rows', []);
+        $includeSoft = $request->boolean('include_soft_rows');
+        $softIncludedCount = $includeSoft ? count($softRows) : 0;
+        if ($includeSoft) {
+            $rows = array_merge($rows, $softRows);
+        }
 
         // Verify session still belongs to institute
         $academicSession = AcademicSession::where('id', $sessionId)
@@ -838,6 +998,11 @@ class StudentBulkImportController extends Controller
             return redirect()->route('admissions.bulk-import.index')
                 ->withErrors(['token' => 'No valid rows to import.']);
         }
+
+        // Re-verify course/stream still exist, are active, and belong to this
+        // institute — the preview snapshot can be up to 30 minutes old.
+        $validCourseIds = Course::where('institute_id', $instituteId)->where('status', true)->pluck('id')->flip();
+        $validStreamIds = CourseStream::whereIn('course_id', $validCourseIds->keys())->where('status', true)->pluck('id')->flip();
 
         $year      = StudentIdService::getYearFromSession($academicSession->name);
         $imported  = 0;
@@ -850,10 +1015,15 @@ class StudentBulkImportController extends Controller
             ->groupBy(fn($p) => $p->course_id . '|' . $p->year_number);
 
         DB::transaction(function () use (
-            $rows, $instituteId, $sessionId, $year, $coursePartsByYear, &$imported, &$failed, &$lastError
+            $rows, $instituteId, $sessionId, $year, $coursePartsByYear,
+            $validCourseIds, $validStreamIds, &$imported, &$failed, &$lastError
         ) {
             foreach ($rows as $rowData) {
                 try {
+                    if (!isset($validCourseIds[$rowData['course_id'] ?? 0]) || !isset($validStreamIds[$rowData['stream_id'] ?? 0])) {
+                        throw new \RuntimeException('Course or Stream is no longer active/available.');
+                    }
+
                     // Generate or use provided UID
                     $uid = $rowData['student_uid'] ?: null;
                     if (!$uid) {
@@ -863,8 +1033,9 @@ class StudentBulkImportController extends Controller
                         $uid = StudentIdService::generateStudentId($instituteId, $year);
                     }
 
-                    // Resolve course part from semester
-                    $yearNumber  = (int) ceil(($rowData['current_semester'] ?? 1) / 2);
+                    // Resolve course part from the year computed at preview time
+                    // (course's own semesters-per-year, not a hardcoded ÷2).
+                    $yearNumber  = $rowData['year_number'] ?? 1;
                     $partKey     = ($rowData['course_id'] ?? 0) . '|' . $yearNumber;
                     $coursePartId = $coursePartsByYear->get($partKey)?->first()?->id ?? null;
 
@@ -935,6 +1106,8 @@ class StudentBulkImportController extends Controller
                         'scholarship_applied_date' => $rowData['scholarship_applied_date'],
                         'status'                   => $rowData['student_status'] ?? 'active',
                         'is_quick_admission'       => false,
+                        'admitted_by_staff_id'     => Auth::guard('staff')->check() ? Auth::guard('staff')->id() : null,
+                        'admitted_by_type'         => Auth::guard('staff')->check() ? 'staff' : 'admin',
                     ]);
 
                     // Only auto-charge the current-semester fee for students who are
@@ -948,6 +1121,15 @@ class StudentBulkImportController extends Controller
                         WalletService::chargeBulkImportPreviousDue($student, $semNum, $dueAmount);
                     }
 
+                    $subjectIds = [];
+                    if (!empty($rowData['subject_role_rows'])) {
+                        $subjectIds = StudentAcademicChangeService::syncSubjects(
+                            $student, $sessionId, $yearNumber, $rowData['subject_role_rows']
+                        );
+                    }
+
+                    $student->load('educationDetails');
+
                     StudentAcademicIdentity::firstOrCreate(
                         [
                             'student_id'          => $student->id,
@@ -959,7 +1141,7 @@ class StudentBulkImportController extends Controller
                             'course_stream_id'          => $student->course_stream_id,
                             'course_part_id'            => $student->course_part_id,
                             'semester_at_time'          => $student->current_semester,
-                            'subjects_json'             => [],
+                            'subjects_json'             => $subjectIds,
                             'form_no'                   => last(explode('/', $student->student_uid)),
                             'sr_no_snapshot'            => $student->sr_no,
                             'enrollment_no_snapshot'    => $student->enrollment_no,
@@ -967,6 +1149,7 @@ class StudentBulkImportController extends Controller
                             'admission_source_snapshot' => $student->admission_source,
                             'source'                    => 'admission',
                             'admission_type'            => $student->admission_type ?? 'new',
+                            'profile_snapshot'          => StudentSnapshotBuilder::build($student),
                         ]
                     );
 
@@ -983,7 +1166,7 @@ class StudentBulkImportController extends Controller
             }
         });
 
-        session()->forget(['bulk_import_token', 'bulk_import_rows', 'bulk_import_session_id', 'bulk_import_expires_at']);
+        session()->forget(['bulk_import_token', 'bulk_import_rows', 'bulk_import_soft_rows', 'bulk_import_session_id', 'bulk_import_expires_at']);
 
         if ($imported === 0) {
             $errMsg = $lastError
@@ -993,7 +1176,17 @@ class StudentBulkImportController extends Controller
         }
 
         $msg = "{$imported} student(s) imported successfully.";
+        if ($softIncludedCount > 0) $msg .= " ({$softIncludedCount} of them had minor data issues you chose to import anyway.)";
         if ($failed > 0) $msg .= " {$failed} row(s) failed to save — check Laravel logs.";
+
+        AuditLogService::log(
+            $instituteId,
+            'admission',
+            'bulk_import_completed',
+            $msg,
+            null,
+            ['session_id' => $sessionId, 'imported' => $imported, 'failed' => $failed, 'soft_issue_rows_included' => $softIncludedCount]
+        );
 
         return redirect()->route('admissions.index')->with('success', $msg);
     }

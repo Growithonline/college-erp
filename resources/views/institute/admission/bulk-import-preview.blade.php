@@ -16,7 +16,7 @@
 
 {{-- Summary Cards --}}
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
         <div class="card border-0 shadow-sm h-100" style="border-left:3px solid #16a34a !important;">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2">
@@ -31,7 +31,22 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
+        <div class="card border-0 shadow-sm h-100" style="border-left:3px solid #d97706 !important;">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-3 bg-warning bg-opacity-10 p-2">
+                        <i class="bi bi-exclamation-triangle text-warning fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Minor Issues</div>
+                        <div class="fw-bold fs-5 text-warning">{{ count($softRows) }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
         <div class="card border-0 shadow-sm h-100" style="border-left:3px solid #dc2626 !important;">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2">
@@ -46,7 +61,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2">
@@ -55,13 +70,13 @@
                     </div>
                     <div>
                         <div class="small text-muted">Total Rows</div>
-                        <div class="fw-bold fs-5">{{ count($validRows) + count($invalidRows) }}</div>
+                        <div class="fw-bold fs-5">{{ count($validRows) + count($softRows) + count($invalidRows) }}</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body py-3">
                 <div class="d-flex align-items-center gap-2">
@@ -78,44 +93,65 @@
     </div>
 </div>
 
-{{-- Alert: invalid rows --}}
+{{-- Alert: hard-invalid rows --}}
 @if(count($invalidRows) > 0)
-<div class="alert alert-warning alert-dismissible fade show d-flex align-items-start gap-2">
-    <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
+<div class="alert alert-danger alert-dismissible fade show d-flex align-items-start gap-2">
+    <i class="bi bi-x-circle-fill fs-5 mt-1 flex-shrink-0"></i>
     <div>
-        <strong>{{ count($invalidRows) }} row(s) have errors</strong> and will NOT be imported.
-        Review them below, fix in your Excel file, and re-upload to import them.
-        Only the <strong>{{ count($validRows) }} valid row(s)</strong> will be imported when you confirm.
+        <strong>{{ count($invalidRows) }} row(s)</strong> are missing a mandatory field (Name / Mobile / Course / Stream / Semester)
+        and will NOT be imported. Fix them in your Excel file and re-upload.
     </div>
     <button type="button" class="btn-close ms-auto flex-shrink-0" data-bs-dismiss="alert"></button>
 </div>
 @endif
 
-@if(count($validRows) === 0)
+{{-- Alert: soft-issue rows --}}
+@if(count($softRows) > 0)
+<div class="alert alert-warning alert-dismissible fade show d-flex align-items-start gap-2">
+    <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
+    <div>
+        <strong>{{ count($softRows) }} row(s)</strong> have minor issues in optional fields only (mandatory fields are fine).
+        You choose below whether to import them anyway — the problematic fields will just be left blank.
+    </div>
+    <button type="button" class="btn-close ms-auto flex-shrink-0" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+@if(count($validRows) === 0 && count($softRows) === 0)
 <div class="alert alert-danger">
     <i class="bi bi-x-circle-fill me-2"></i>
-    <strong>No valid rows found.</strong> All rows have errors. Please fix the issues in your Excel file and upload again.
+    <strong>No importable rows found.</strong> All rows are missing a mandatory field. Please fix the issues in your Excel file and upload again.
 </div>
 @endif
 
 {{-- Confirm Import Button --}}
-@if(count($validRows) > 0)
+@if(count($validRows) > 0 || count($softRows) > 0)
 <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #16a34a !important;">
-    <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3 py-3">
-        <div>
-            <div class="fw-semibold text-success">
-                <i class="bi bi-check-circle-fill me-1"></i>
-                Ready to import {{ count($validRows) }} student(s)
+    <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <div class="fw-semibold text-success">
+                    <i class="bi bi-check-circle-fill me-1"></i>
+                    Ready to import <span id="readyCount">{{ count($validRows) }}</span> student(s)
+                </div>
+                <small class="text-muted">
+                    Rows with mandatory-field errors ({{ count($invalidRows) }}) will always be skipped.
+                    This action cannot be undone.
+                </small>
             </div>
-            <small class="text-muted">
-                Invalid rows ({{ count($invalidRows) }}) will be skipped.
-                This action cannot be undone.
-            </small>
+            <button type="button" class="btn btn-success px-4" data-bs-toggle="modal" data-bs-target="#importConfirmModal">
+                <i class="bi bi-cloud-upload me-1"></i>
+                Confirm Import
+            </button>
         </div>
-        <button type="button" class="btn btn-success px-4" data-bs-toggle="modal" data-bs-target="#importConfirmModal">
-            <i class="bi bi-cloud-upload me-1"></i>
-            Confirm Import ({{ count($validRows) }} students)
-        </button>
+        @if(count($softRows) > 0)
+        <div class="form-check mt-3 pt-3 border-top">
+            <input class="form-check-input" type="checkbox" id="includeSoftTop" data-soft-checkbox>
+            <label class="form-check-label small" for="includeSoftTop">
+                Also import the <strong>{{ count($softRows) }}</strong> row(s) with minor issues (their problematic fields will be left blank)
+            </label>
+        </div>
+        @endif
     </div>
 </div>
 @endif
@@ -224,6 +260,59 @@
 </div>
 @endif
 
+{{-- Soft-Issue Rows Table --}}
+@if(count($softRows) > 0)
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small text-warning">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            Rows with Minor Issues ({{ count($softRows) }}) — Optional fields only
+        </span>
+        <button class="btn btn-outline-secondary btn-sm" type="button"
+                data-bs-toggle="collapse" data-bs-target="#softTable">
+            Show / Hide
+        </button>
+    </div>
+    <div class="collapse show" id="softTable">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0" style="font-size:12px;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Row</th>
+                        <th>Name</th>
+                        <th>Mobile</th>
+                        <th>Course</th>
+                        <th>Stream</th>
+                        <th class="text-center">Sem</th>
+                        <th>Minor Issues</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($softRows as $row)
+                    <tr class="table-warning" style="--bs-table-bg:rgba(217,119,6,0.06);">
+                        <td class="ps-3 fw-semibold">{{ $row['row_num'] }}</td>
+                        <td>{{ $row['name'] }}</td>
+                        <td>{{ $row['mobile'] }}</td>
+                        <td class="text-muted small">{{ $row['course_name'] }}</td>
+                        <td class="text-muted small">{{ $row['stream_name'] }}</td>
+                        <td class="text-center text-muted small">{{ $row['current_semester'] }}</td>
+                        <td>
+                            @foreach($row['soft_errors'] as $err)
+                                <div class="d-flex align-items-start gap-1 mb-1">
+                                    <i class="bi bi-exclamation-circle-fill text-warning flex-shrink-0 mt-1" style="font-size:10px;"></i>
+                                    <span class="text-warning-emphasis small">{{ $err }}</span>
+                                </div>
+                            @endforeach
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- Invalid Rows Table --}}
 @if(count($invalidRows) > 0)
 <div class="card border-0 shadow-sm mb-4">
@@ -278,20 +367,20 @@
 @endif
 
 {{-- Bottom Confirm Button --}}
-@if(count($validRows) > 0)
+@if(count($validRows) > 0 || count($softRows) > 0)
 <div class="d-flex justify-content-between align-items-center">
     <a href="{{ route('admissions.bulk-import.index') }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i> Upload Different File
     </a>
     <button type="button" class="btn btn-success px-5" data-bs-toggle="modal" data-bs-target="#importConfirmModal">
         <i class="bi bi-cloud-upload me-1"></i>
-        Confirm &amp; Import {{ count($validRows) }} Students
+        Confirm &amp; Import
     </button>
 </div>
 @endif
 
 {{-- Import Confirmation Modal --}}
-@if(count($validRows) > 0)
+@if(count($validRows) > 0 || count($softRows) > 0)
 <div class="modal fade" id="importConfirmModal" tabindex="-1" aria-labelledby="importConfirmLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -308,14 +397,22 @@
                 <div class="alert alert-success border-0 bg-success bg-opacity-10 mb-3">
                     <div class="fw-semibold text-success mb-1">
                         <i class="bi bi-check-circle-fill me-1"></i>
-                        {{ count($validRows) }} student(s) will be imported
+                        <span id="modalImportCount">{{ count($validRows) }}</span> student(s) will be imported
                     </div>
                     <small class="text-muted">Session: <strong>{{ $session->name }}</strong></small>
                 </div>
+                @if(count($softRows) > 0)
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="includeSoftModal" data-soft-checkbox>
+                    <label class="form-check-label small" for="includeSoftModal">
+                        Also import the <strong>{{ count($softRows) }}</strong> row(s) with minor issues (problematic fields left blank)
+                    </label>
+                </div>
+                @endif
                 @if(count($invalidRows) > 0)
-                <div class="alert alert-warning border-0 bg-warning bg-opacity-10 py-2 mb-3">
-                    <i class="bi bi-exclamation-triangle me-1 text-warning"></i>
-                    <small><strong>{{ count($invalidRows) }} row(s)</strong> with errors will be skipped.</small>
+                <div class="alert alert-danger border-0 bg-danger bg-opacity-10 py-2 mb-3">
+                    <i class="bi bi-x-circle me-1 text-danger"></i>
+                    <small><strong>{{ count($invalidRows) }} row(s)</strong> with mandatory-field errors will always be skipped.</small>
                 </div>
                 @endif
                 <p class="text-muted small mb-0">
@@ -330,9 +427,10 @@
                 <form method="POST" action="{{ route('admissions.bulk-import.import') }}" id="importForm">
                     @csrf
                     <input type="hidden" name="token" value="{{ $token }}">
+                    <input type="hidden" name="include_soft_rows" id="includeSoftRowsField" value="0">
                     <button type="submit" class="btn btn-success px-4" id="importBtn">
                         <i class="bi bi-cloud-upload me-1"></i>
-                        Yes, Import {{ count($validRows) }} Students
+                        Yes, Import <span id="modalImportBtnCount">{{ count($validRows) }}</span> Students
                     </button>
                 </form>
             </div>
@@ -345,6 +443,27 @@
 
 @push('scripts')
 <script>
+const VALID_COUNT = {{ count($validRows) }};
+const SOFT_COUNT   = {{ count($softRows) }};
+const softCheckboxes = document.querySelectorAll('[data-soft-checkbox]');
+const includeSoftField = document.getElementById('includeSoftRowsField');
+const readyCountEl = document.getElementById('readyCount');
+const modalCountEl = document.getElementById('modalImportCount');
+const modalBtnCountEl = document.getElementById('modalImportBtnCount');
+
+function syncSoftCheckboxes(checked, source) {
+    softCheckboxes.forEach(cb => { if (cb !== source) cb.checked = checked; });
+    const total = VALID_COUNT + (checked ? SOFT_COUNT : 0);
+    if (includeSoftField) includeSoftField.value = checked ? '1' : '0';
+    if (readyCountEl) readyCountEl.textContent = total;
+    if (modalCountEl) modalCountEl.textContent = total;
+    if (modalBtnCountEl) modalBtnCountEl.textContent = total;
+}
+
+softCheckboxes.forEach(cb => {
+    cb.addEventListener('change', function () { syncSoftCheckboxes(this.checked, this); });
+});
+
 document.getElementById('importForm')?.addEventListener('submit', function() {
     const btn = document.getElementById('importBtn');
     btn.disabled = true;

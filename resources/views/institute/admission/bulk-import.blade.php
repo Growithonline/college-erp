@@ -157,9 +157,9 @@
             <div class="col-md-6">
                 <ul class="list-unstyled small mb-0">
                     <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i> Leave Student UID blank — system will auto-generate</li>
-                    <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i> Duplicate mobile numbers or UIDs will be flagged as errors</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i> Mobile numbers can repeat (e.g. siblings) — duplicate UID/Roll/Enrollment No. are flagged as minor issues, not blocked</li>
                     <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i> Maximum 500 rows per file, max 5 MB</li>
-                    <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i> Only valid rows are imported — invalid rows are skipped</li>
+                    <li class="mb-1"><i class="bi bi-check-circle text-success me-1"></i> Rows with missing mandatory fields (Name/Mobile/Course/Stream/Semester) are always skipped; rows with only minor issues can be imported anyway — you choose at preview time</li>
                 </ul>
             </div>
         </div>
