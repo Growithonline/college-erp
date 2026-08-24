@@ -39,6 +39,7 @@ class StudentBulkImportController extends Controller
 
     private const RELIGION_OPTIONS = ['hindu', 'muslim', 'sikh', 'christian', 'jain', 'parsi', 'buddhist', 'others'];
     private const GUARDIAN_RELATION_OPTIONS = ['father', 'mother', 'uncle', 'aunt', 'brother', 'sister', 'grandfather', 'grandmother', 'others'];
+    private const SCHOLARSHIP_TYPE_OPTIONS = ['govt_central', 'govt_state', 'university', 'institute', 'private', 'other'];
 
     // ── Resolve institute_id for any guard ────────────────────────────
     private function instituteId(): int
@@ -347,6 +348,7 @@ class StudentBulkImportController extends Controller
             ['Marital Status',              'Single / Married / Divorced / Widowed (default: Single)'],
             ['Comm Same as Perm',           'Yes / No — If Yes, communication address auto-copied from permanent.'],
             ['Has Scholarship',             'Yes / No'],
+            ['Scholarship Type',            'Govt Central / Govt State / University / Institute / Private / Other'],
             ['Scholarship Amount',          'Numeric value only. Example: 5000'],
             ['Scholarship Applied Date',    'Format: DD/MM/YYYY'],
             ['Student Status',              'Active / Passed Out / Detained / Transferred / Cancelled (default: Active). Passed Out/Detained/Transferred/Cancelled students do NOT get a fresh current-semester fee charge — use this for migrating existing/previous-year or already-graduated students.'],
@@ -823,6 +825,23 @@ class StudentBulkImportController extends Controller
                 }
             }
 
+            $scholarTypeNorm = null;
+            if ($scholarType !== '') {
+                $scholarTypeLower = strtolower(str_replace([' ', '-'], '_', trim($scholarType)));
+                $scholarTypeNorm = match ($scholarTypeLower) {
+                    'govt_central', 'central_govt', 'central_government', 'government_central' => 'govt_central',
+                    'govt_state', 'state_govt', 'state_government', 'government_state' => 'govt_state',
+                    'university' => 'university',
+                    'institute', 'college' => 'institute',
+                    'private' => 'private',
+                    'other', 'others' => 'other',
+                    default => null,
+                };
+                if ($scholarTypeNorm === null) {
+                    $softErrors[] = "Scholarship Type \"{$scholarType}\" not recognized — left blank. Use: Govt Central / Govt State / University / Institute / Private / Other";
+                }
+            }
+
             $emailNorm = null;
             if ($email !== '') {
                 if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -944,7 +963,7 @@ class StudentBulkImportController extends Controller
                 'comm_pincode'             => $commPin ?: null,
                 'has_scholarship'          => strtolower($hasScholar) === 'yes',
                 'scholarship_name'         => $scholarName ?: null,
-                'scholarship_type'         => $scholarType ?: null,
+                'scholarship_type'         => $scholarTypeNorm,
                 'scholarship_authority'    => $scholarAuth ?: null,
                 'scholarship_amount'       => $scholarAmtNorm,
                 'scholarship_ref_no'       => $scholarRef ?: null,
