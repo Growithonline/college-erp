@@ -2836,7 +2836,10 @@ class PromotionController extends Controller
 
         $identitySuggestion = '';
         foreach ($headers as $header) {
-            if (in_array($this->normalizeBulkHeading($header), ['uin', 'uin_no', 'uin_number', 'enrollment'], true)) {
+            // "enrollment" deliberately excluded — that word means the separate
+            // enrollment_no field, not the UIN identity column, and auto-picking
+            // it here would silently match/update the wrong students.
+            if (in_array($this->normalizeBulkHeading($header), ['uin', 'uin_no', 'uin_number'], true)) {
                 $identitySuggestion = $header;
                 break;
             }
@@ -3125,7 +3128,9 @@ class PromotionController extends Controller
         $aliases += [
             'uin' => 'uin_no',
             'uin_number' => 'uin_no',
-            'enrollment' => 'uin_no',
+            // "enrollment" deliberately excluded — that word means the separate
+            // enrollment_no field, not uin_no; auto-aliasing it here would
+            // silently map the wrong Excel column during identity matching.
             'student_id' => 'student_uid',
             'application_no' => 'student_uid',
             'student_name' => 'name',
