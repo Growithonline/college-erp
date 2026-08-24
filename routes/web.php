@@ -718,8 +718,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
     Route::post('admissions/confirm', [AdmissionController::class, 'confirmStore'])->name('admissions.confirm');
     Route::get('admissions/bulk-correction', [PromotionController::class, 'bulkCorrectionIndex'])->name('admissions.bulk-correction');
     Route::get('admissions/bulk-correction/template', [PromotionController::class, 'bulkCorrectionTemplate'])->name('admissions.bulk-correction.template');
-    Route::post('admissions/bulk-correction/upload', [PromotionController::class, 'bulkCorrectionUpload'])->name('admissions.bulk-correction.upload');
-    Route::post('admissions/bulk-correction/apply', [PromotionController::class, 'bulkCorrectionApply'])->name('admissions.bulk-correction.apply');
+    Route::post('admissions/bulk-correction/upload', [PromotionController::class, 'bulkCorrectionUpload'])->name('admissions.bulk-correction.upload')->middleware('throttle:20,1');
+    Route::post('admissions/bulk-correction/apply', [PromotionController::class, 'bulkCorrectionApply'])->name('admissions.bulk-correction.apply')->middleware('throttle:20,1');
 
     Route::get('admissions/promote/parts',    [StudentPromoteController::class, 'getParts'])->name('admissions.promote.parts');
     Route::post('admissions/promote/preview', [StudentPromoteController::class, 'preview'])->name('admissions.promote.preview');
@@ -760,7 +760,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get ('identity',               [PromotionController::class, 'identityIndex'])   ->name('identity');
         Route::get ('identity/template',      [PromotionController::class, 'identityTemplate'])->name('identity.template');
         Route::post('identity/{identity}',    [PromotionController::class, 'identityUpdate'])  ->name('identity.update');
-        Route::post('identity-bulk',          [PromotionController::class, 'identityBulkUpdate'])->name('identity.bulk');
+        Route::post('identity-bulk',          [PromotionController::class, 'identityBulkUpdate'])->name('identity.bulk')->middleware('throttle:20,1');
         // Short-term course completion (modular/certificate courses)
         Route::post('mark-complete/{student}', [PromotionController::class, 'markComplete'])->name('mark-complete');
         // Re-admission: reinstate a terminal student

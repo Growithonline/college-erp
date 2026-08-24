@@ -92,14 +92,14 @@
             <h6 class="mb-0 fw-semibold">Template Excel Download</h6>
             <small class="text-muted">{{ number_format($studentsCount) }} students match current selection</small>
         </div>
-        <a href="{{ route('admissions.bulk-correction.template', array_merge(request()->only(['course_id','course_part_id','current_semester']), ['session_id' => $sessionId])) }}"
+        <a href="{{ route('admissions.bulk-correction.template', array_merge(request()->only(['course_type_id','course_id','course_stream_id','current_semester']), ['session_id' => $sessionId])) }}"
            class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Excel Template
         </a>
     </div>
     <div class="card-body">
         <form method="GET" action="{{ route('admissions.bulk-correction') }}" class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">Session</label>
                 <select name="session_id" class="form-select form-select-sm">
                     @foreach($sessions as $s)
@@ -109,37 +109,109 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold mb-1">Course</label>
-                <select name="course_id" class="form-select form-select-sm">
-                    <option value="">All Courses</option>
-                    @foreach($courses as $c)
-                        <option value="{{ $c->id }}" {{ request('course_id') == $c->id ? 'selected':'' }}>{{ $c->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold mb-1">Year/Part</label>
-                <select name="course_part_id" class="form-select form-select-sm">
-                    <option value="">All Parts</option>
-                    @foreach($courseParts as $part)
-                        <option value="{{ $part->id }}" {{ request('course_part_id') == $part->id ? 'selected':'' }}>
-                            {{ $part->course->name ?? 'Course' }} - {{ $part->year_label }}
-                        </option>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Course Type</label>
+                <select name="course_type_id" id="bcCourseType" class="form-select form-select-sm" onchange="bcFilterCourses(this.value)">
+                    <option value="">All Types</option>
+                    @foreach($courseTypes as $ct)
+                        <option value="{{ $ct->id }}" {{ (string) request('course_type_id') === (string) $ct->id ? 'selected':'' }}>{{ $ct->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small fw-semibold mb-1">Semester</label>
-                <input type="number" name="current_semester" min="1" max="20" value="{{ request('current_semester') }}"
-                       class="form-control form-control-sm" placeholder="All">
+                <label class="form-label small fw-semibold mb-1">Course</label>
+                <select name="course_id" id="bcCourse" class="form-select form-select-sm" onchange="bcLoadStreams(this.value)">
+                    <option value="">All Courses</option>
+                    @foreach($courses as $c)
+                        <option value="{{ $c->id }}" data-type-id="{{ $c->course_type_id }}" {{ (string) request('course_id') === (string) $c->id ? 'selected':'' }}>{{ $c->name }}</option>
+                    @endforeach
+                </select>
             </div>
-            <div class="col-md-1">
-                <button class="btn btn-primary btn-sm w-100"><i class="bi bi-filter"></i></button>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Stream</label>
+                <select name="course_stream_id" id="bcStream" class="form-select form-select-sm">
+                    <option value="">All Streams</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Semester</label>
+                <select name="current_semester" id="bcSemester" class="form-select form-select-sm">
+                    <option value="">All Semesters</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary btn-sm w-100"><i class="bi bi-filter me-1"></i>Filter</button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    const courseCascade = @json($courseCascade);
+
+    function bcFilterCourses(typeId) {
+        const courseSel = document.getElementById('bcCourse');
+        const currentOpt = courseSel.options[courseSel.selectedIndex];
+        const currentMatches = !typeId || (currentOpt && currentOpt.dataset.typeId === String(typeId));
+
+        Array.from(courseSel.options).forEach(opt => {
+            if (!opt.value) return;
+            const matches = !typeId || opt.dataset.typeId === String(typeId);
+            opt.hidden = !matches;
+            opt.disabled = !matches;
+        });
+
+        if (!currentMatches) {
+            courseSel.value = '';
+            window.bcLoadStreams('');
+        }
+    }
+
+    function bcLoadStreams(courseId, preselectStreamId, preselectSemester) {
+        const streamSel = document.getElementById('bcStream');
+        const semSel = document.getElementById('bcSemester');
+        streamSel.innerHTML = '<option value="">All Streams</option>';
+        semSel.innerHTML = '<option value="">All Semesters</option>';
+
+        const data = courseId ? courseCascade[courseId] : null;
+        if (!data) return;
+
+        (data.streams || []).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            if (preselectStreamId && String(preselectStreamId) === String(s.id)) opt.selected = true;
+            streamSel.appendChild(opt);
+        });
+
+        (data.semesters || []).forEach(sem => {
+            const opt = document.createElement('option');
+            opt.value = sem.value;
+            opt.textContent = sem.label;
+            if (preselectSemester && String(preselectSemester) === String(sem.value)) opt.selected = true;
+            semSel.appendChild(opt);
+        });
+    }
+
+    window.bcFilterCourses = bcFilterCourses;
+    window.bcLoadStreams = bcLoadStreams;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const initialTypeId   = @json((string) request('course_type_id'));
+        const initialCourseId = @json((string) request('course_id'));
+        const initialStreamId = @json((string) request('course_stream_id'));
+        const initialSemester = @json((string) request('current_semester'));
+
+        if (initialTypeId) {
+            bcFilterCourses(initialTypeId);
+        }
+        if (initialCourseId) {
+            bcLoadStreams(initialCourseId, initialStreamId, initialSemester);
+        }
+    });
+})();
+</script>
 
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-bottom py-3">
@@ -149,8 +221,9 @@
         <form method="POST" action="{{ route('admissions.bulk-correction.upload') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
             @csrf
             <input type="hidden" name="session_id" value="{{ $sessionId }}">
+            <input type="hidden" name="course_type_id" value="{{ request('course_type_id') }}">
             <input type="hidden" name="course_id" value="{{ request('course_id') }}">
-            <input type="hidden" name="course_part_id" value="{{ request('course_part_id') }}">
+            <input type="hidden" name="course_stream_id" value="{{ request('course_stream_id') }}">
             <input type="hidden" name="current_semester" value="{{ request('current_semester') }}">
 
             <div class="col-md-4">

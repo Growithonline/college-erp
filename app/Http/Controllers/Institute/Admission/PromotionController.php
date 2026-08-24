@@ -7,6 +7,7 @@ use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CoursePart;
 use App\Models\CourseType;
+use App\Models\CourseStream;
 use App\Models\CourseStreamSubject;
 use App\Models\PromotionLog;
 use App\Models\Student;
@@ -18,6 +19,7 @@ use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
 use App\Models\TransportAllocation;
 use App\Http\Controllers\Institute\Master\AdmissionFormController;
+use App\Services\AuditLogService;
 use App\Services\FeeCalculatorService;
 use App\Services\WalletService;
 use App\Support\SimpleSpreadsheet;
@@ -34,6 +36,39 @@ use Illuminate\Support\Str;
 class PromotionController extends Controller
 {
     private const TERMINAL_STATUSES = ['passed_out', 'backlog', 'failed', 'dropped'];
+
+    // Defense-in-depth: never mass-assignable via bulk correction even if a future
+    // admission-form field config collides with one of these Student::$fillable keys.
+    private const BULK_CORRECTION_FORBIDDEN_FIELDS = [
+        'id', 'institute_id', 'created_at', 'updated_at',
+        'password', 'portal_enabled', 'first_login', 'login_blocked', 'suspended_until',
+        'email_otp_bypass', 'sms_otp_bypass', 'status', 'status_reason',
+        'approved_by_staff_id', 'approved_by_name', 'approved_at', 'approval_notes',
+        'admitted_by_staff_id', 'admitted_by_type', 'is_quick_admission', 'fee_plan_id',
+    ];
+
+    private const BULK_SKIP = '__bulk_skip__';
+
+    // Values must match the native ENUM columns on the `students` table exactly
+    // (see create_students_table migration) — a value that merely looks right
+    // fails at insert time with a DB error instead of a friendly message.
+    private const BULK_ENUM_OPTIONS = [
+        'gender' => ['male', 'female', 'other'],
+        'nationality' => ['indian', 'nepali', 'bhutanese', 'sri_lankan', 'others'],
+        'religion' => ['hindu', 'muslim', 'sikh', 'christian', 'jain', 'parsi', 'buddhist', 'others'],
+        'category' => ['gen', 'obc', 'sc', 'st', 'ews', 'others'],
+        'special_category' => ['scholarship_quota', 'sports_quota', 'others', 'none'],
+        'admission_type' => ['new', 'lateral', 'transfer', 're_admission'],
+        'admission_source' => ['direct', 'center', 'channel_partner', 'online'],
+        'marital_status' => ['single', 'married', 'divorced', 'widowed'],
+        'guardian_relation' => ['father', 'mother', 'uncle', 'aunt', 'brother', 'sister', 'grandfather', 'grandmother', 'others'],
+    ];
+
+    // Keys here are already lowercased with spaces/dashes collapsed to underscores
+    // by validateEnumBulkValue() before this lookup runs.
+    private const BULK_ENUM_ALIASES = [
+        'general' => 'gen', 'other' => 'others', 'srilankan' => 'sri_lankan', 'readmission' => 're_admission',
+    ];
 
     private function hasPromotionLogColumn(): bool
     {
@@ -2082,6 +2117,7 @@ class PromotionController extends Controller
 
     public function bulkCorrectionIndex(Request $request)
     {
+        $this->ensurePromotionAccess();
         $extra = [];
         $token = $request->query('upload_token');
         if ($token) {
@@ -2105,12 +2141,14 @@ class PromotionController extends Controller
 
     public function bulkCorrectionUpload(Request $request)
     {
+        $this->ensurePromotionAccess();
         $request->validate([
-            'bulk_file' => 'required|file|mimes:csv,txt,xlsx',
+            'bulk_file' => 'required|file|mimes:csv,txt,xlsx|max:5120',
             'session_id' => 'nullable|integer',
+            'course_type_id' => 'nullable|integer',
             'course_id' => 'nullable|integer',
-            'course_part_id' => 'nullable|integer',
-            'current_semester' => 'nullable|integer|min:1|max:20',
+            'course_stream_id' => 'nullable|integer',
+            'current_semester' => 'nullable|integer|min:0|max:60',
         ]);
 
         try {
@@ -2131,8 +2169,9 @@ class PromotionController extends Controller
             'institute_id' => $this->instituteId(),
             'context' => [
                 'session_id' => $request->input('session_id'),
+                'course_type_id' => $request->input('course_type_id'),
                 'course_id' => $request->input('course_id'),
-                'course_part_id' => $request->input('course_part_id'),
+                'course_stream_id' => $request->input('course_stream_id'),
                 'current_semester' => $request->input('current_semester'),
             ],
             'headers' => $headerRow,
@@ -2142,8 +2181,9 @@ class PromotionController extends Controller
 
         return redirect()->route('admissions.bulk-correction', array_filter([
             'session_id' => $request->input('session_id'),
+            'course_type_id' => $request->input('course_type_id'),
             'course_id' => $request->input('course_id'),
-            'course_part_id' => $request->input('course_part_id'),
+            'course_stream_id' => $request->input('course_stream_id'),
             'current_semester' => $request->input('current_semester'),
             'upload_token' => $token,
         ]));
@@ -2151,6 +2191,7 @@ class PromotionController extends Controller
 
     public function bulkCorrectionApply(Request $request)
     {
+        $this->ensurePromotionAccess();
         $request->validate([
             'upload_token' => 'required|string',
             'identity_column' => 'required|string',
@@ -2200,6 +2241,25 @@ class PromotionController extends Controller
 
         $contextRequest = new Request(array_filter($context, fn($value) => $value !== null && $value !== ''));
 
+        // Pre-scan UINs so students can be fetched in one query instead of one
+        // per row, and so a UIN repeated within the file is caught up front
+        // instead of silently applying "last row wins".
+        $uinCounts = [];
+        foreach ($rows as $row) {
+            if (count(array_filter($row, fn($value) => trim((string) $value) !== '')) === 0) {
+                continue;
+            }
+            $rowUin = trim((string) ($row[$headerIndexMap[$identityColumn] ?? null] ?? ''));
+            if ($rowUin !== '') {
+                $uinCounts[$rowUin] = ($uinCounts[$rowUin] ?? 0) + 1;
+            }
+        }
+        $studentsByUin = $this->bulkCorrectionStudentQuery($contextRequest, $instituteId)
+            ->whereIn('uin_no', array_keys($uinCounts))
+            ->with('educationDetails')
+            ->get()
+            ->groupBy('uin_no');
+
         foreach ($rows as $offset => $row) {
             if (count(array_filter($row, fn($value) => trim((string) $value) !== '')) === 0) {
                 continue;
@@ -2215,16 +2275,24 @@ class PromotionController extends Controller
                 continue;
             }
 
-            $student = $this->bulkCorrectionStudentQuery($contextRequest, $instituteId)
-                ->where('uin_no', $uin)
-                ->with('educationDetails')
-                ->first();
+            if (($uinCounts[$uin] ?? 0) > 1) {
+                $errors[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => '', 'error' => 'UIN appears more than once in the uploaded file. Fix duplicates and re-upload.'];
+                $skipped++;
+                continue;
+            }
 
-            if (!$student) {
+            $matches = $studentsByUin->get($uin);
+            if (!$matches || $matches->isEmpty()) {
                 $errors[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => '', 'error' => 'Student not found in selected session/course/semester context.'];
                 $skipped++;
                 continue;
             }
+            if ($matches->count() > 1) {
+                $errors[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => '', 'error' => 'Multiple students share this UIN in this institute. Fix the duplicate UIN before bulk-correcting.'];
+                $skipped++;
+                continue;
+            }
+            $student = $matches->first();
 
             $mappedData = ['uin_no' => $uin];
             foreach ($fieldMap as $fieldKey => $excelColumn) {
@@ -2250,48 +2318,7 @@ class PromotionController extends Controller
                 continue;
             }
 
-            $academicFields = ['course_stream_id', 'course_part_id', 'current_semester'];
-            $isAcademicChange = !empty(array_intersect($academicFields, array_keys($studentUpdate)));
-
-            if ($isAcademicChange) {
-                $student->loadMissing(['stream.course', 'coursePart']);
-            }
-            $oldSnapshot = $isAcademicChange
-                ? \App\Services\StudentAcademicChangeService::buildSnapshot($student)
-                : null;
-
-            DB::transaction(function () use ($student, $studentUpdate, $educationUpdate, $isAcademicChange, $oldSnapshot) {
-                if ($studentUpdate) {
-                    $student->update($studentUpdate);
-                }
-
-                foreach ($educationUpdate as $examName => $values) {
-                    if (!collect($values)->contains(fn($value) => filled($value))) {
-                        continue;
-                    }
-
-                    StudentEducationDetail::updateOrCreate(
-                        ['student_id' => $student->id, 'exam_name' => $examName],
-                        $values + ['exam_name' => $examName]
-                    );
-                }
-
-                if ($isAcademicChange && $oldSnapshot) {
-                    $student->refresh()->load(['stream.course', 'coursePart']);
-                    $sessionId   = (int) $student->academic_session_id;
-                    $subjectIds  = \App\Services\StudentAcademicChangeService::currentSubjectIds($student, $sessionId);
-                    $newSnapshot = \App\Services\StudentAcademicChangeService::buildSnapshot($student);
-                    $adjustment  = \App\Services\StudentAcademicChangeService::applyFeeDelta(
-                        $student, $oldSnapshot, $newSnapshot,
-                        'Academic data corrected via bulk update'
-                    );
-                    \App\Services\StudentAcademicChangeService::syncCurrentIdentity($student, $subjectIds);
-                    \App\Services\StudentAcademicChangeService::createChangeLog(
-                        $student, $oldSnapshot, $newSnapshot, $adjustment,
-                        'web', auth()->user()?->name ?? 'Bulk Correction'
-                    );
-                }
-            });
+            $this->applyBulkStudentRowUpdate($student, $studentUpdate, $educationUpdate);
 
             $successRows[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => $student->name];
             $updated++;
@@ -2562,6 +2589,23 @@ class PromotionController extends Controller
         $errors = [];
         $successRows = [];
 
+        $uinColumnIndex = array_search('uin_no', $headerMap, true);
+        $uinCounts = [];
+        foreach ($rows as $row) {
+            if (count(array_filter($row, fn($value) => trim((string) $value) !== '')) === 0) {
+                continue;
+            }
+            $rowUin = trim((string) ($row[$uinColumnIndex] ?? ''));
+            if ($rowUin !== '') {
+                $uinCounts[$rowUin] = ($uinCounts[$rowUin] ?? 0) + 1;
+            }
+        }
+        $studentsByUin = $this->bulkCorrectionStudentQuery($request, $instituteId)
+            ->whereIn('uin_no', array_keys($uinCounts))
+            ->with('educationDetails')
+            ->get()
+            ->groupBy('uin_no');
+
         foreach ($rows as $offset => $row) {
             $rowNumber = $offset + 2;
             if (count(array_filter($row, fn($value) => trim((string) $value) !== '')) === 0) {
@@ -2584,16 +2628,24 @@ class PromotionController extends Controller
                 continue;
             }
 
-            $student = $this->bulkCorrectionStudentQuery($request, $instituteId)
-                ->where('uin_no', $uin)
-                ->with('educationDetails')
-                ->first();
+            if (($uinCounts[$uin] ?? 0) > 1) {
+                $errors[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => '', 'error' => 'UIN appears more than once in the uploaded file. Fix duplicates and re-upload.'];
+                $skipped++;
+                continue;
+            }
 
-            if (!$student) {
+            $matches = $studentsByUin->get($uin);
+            if (!$matches || $matches->isEmpty()) {
                 $errors[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => '', 'error' => 'Student not found in selected session/course/semester context.'];
                 $skipped++;
                 continue;
             }
+            if ($matches->count() > 1) {
+                $errors[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => '', 'error' => 'Multiple students share this UIN in this institute. Fix the duplicate UIN before bulk-correcting.'];
+                $skipped++;
+                continue;
+            }
+            $student = $matches->first();
 
             [$studentUpdate, $educationUpdate, $rowErrors] = $this->validateBulkCorrectionRow($data, $fields, $student);
 
@@ -2611,48 +2663,7 @@ class PromotionController extends Controller
                 continue;
             }
 
-            $academicFields = ['course_stream_id', 'course_part_id', 'current_semester'];
-            $isAcademicChange = !empty(array_intersect($academicFields, array_keys($studentUpdate)));
-
-            if ($isAcademicChange) {
-                $student->loadMissing(['stream.course', 'coursePart']);
-            }
-            $oldSnapshot = $isAcademicChange
-                ? \App\Services\StudentAcademicChangeService::buildSnapshot($student)
-                : null;
-
-            DB::transaction(function () use ($student, $studentUpdate, $educationUpdate, $isAcademicChange, $oldSnapshot) {
-                if ($studentUpdate) {
-                    $student->update($studentUpdate);
-                }
-
-                foreach ($educationUpdate as $examName => $values) {
-                    if (!collect($values)->contains(fn($value) => filled($value))) {
-                        continue;
-                    }
-
-                    StudentEducationDetail::updateOrCreate(
-                        ['student_id' => $student->id, 'exam_name' => $examName],
-                        $values + ['exam_name' => $examName]
-                    );
-                }
-
-                if ($isAcademicChange && $oldSnapshot) {
-                    $student->refresh()->load(['stream.course', 'coursePart']);
-                    $sessionId   = (int) $student->academic_session_id;
-                    $subjectIds  = \App\Services\StudentAcademicChangeService::currentSubjectIds($student, $sessionId);
-                    $newSnapshot = \App\Services\StudentAcademicChangeService::buildSnapshot($student);
-                    $adjustment  = \App\Services\StudentAcademicChangeService::applyFeeDelta(
-                        $student, $oldSnapshot, $newSnapshot,
-                        'Academic data corrected via bulk update'
-                    );
-                    \App\Services\StudentAcademicChangeService::syncCurrentIdentity($student, $subjectIds);
-                    \App\Services\StudentAcademicChangeService::createChangeLog(
-                        $student, $oldSnapshot, $newSnapshot, $adjustment,
-                        'web', auth()->user()?->name ?? 'Bulk Correction'
-                    );
-                }
-            });
+            $this->applyBulkStudentRowUpdate($student, $studentUpdate, $educationUpdate);
 
             $successRows[] = ['row' => $rowNumber, 'uin' => $uin, 'student' => $student->name];
             $updated++;
@@ -2675,12 +2686,30 @@ class PromotionController extends Controller
         $instituteId   = $this->instituteId();
         $activeSession = AcademicSession::viewSession($instituteId);
         $sessions      = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
+        $courseTypes   = CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get();
         $courses       = Course::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
-        $courseParts   = CoursePart::with('course')
-            ->whereHas('course', fn($q) => $q->where('institute_id', $instituteId))
-            ->orderBy('course_id')
-            ->orderBy('year_number')
-            ->get();
+        $streams       = CourseStream::whereHas('course', fn($q) => $q->where('institute_id', $instituteId))
+            ->where('status', true)
+            ->orderBy('name')
+            ->get(['id', 'course_id', 'name']);
+
+        // Session→Course Type→Course→Stream→Semester filter cascade, rendered
+        // client-side (see bulk-correction.blade.php) — semester count comes
+        // from each course's own duration/structure, never hardcoded.
+        $courseCascade = $courses->mapWithKeys(function (Course $course) use ($streams) {
+            $totalSemesters = max(1, (int) $course->duration * $course->effectiveSemestersPerYear());
+            $semesters = [];
+            for ($i = 1; $i <= $totalSemesters; $i++) {
+                $semesters[] = ['value' => $i, 'label' => $course->semesterLabel($i)];
+            }
+
+            return [$course->id => [
+                'type_id'   => $course->course_type_id,
+                'streams'   => $streams->where('course_id', $course->id)->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values(),
+                'semesters' => $semesters,
+            ]];
+        });
+
         $sessionId = $request->input('session_id', $activeSession?->id);
 
         $countRequest = new Request(array_merge($request->all(), ['session_id' => $sessionId]));
@@ -2689,8 +2718,9 @@ class PromotionController extends Controller
         return array_merge([
             'activeSession' => $activeSession,
             'sessions' => $sessions,
+            'courseTypes' => $courseTypes,
             'courses' => $courses,
-            'courseParts' => $courseParts,
+            'courseCascade' => $courseCascade,
             'sessionId' => $sessionId,
             'studentsCount' => $studentsCount,
             'mappingFields' => $this->bulkCorrectionMappableFields($instituteId),
@@ -2825,6 +2855,8 @@ class PromotionController extends Controller
 
     private function storeBulkCorrectionUpload(array $payload): string
     {
+        $this->pruneStaleBulkCorrectionUploads();
+
         $token = (string) Str::uuid();
         Storage::disk('local')->put(
             "bulk-correction/{$token}.json",
@@ -2832,6 +2864,18 @@ class PromotionController extends Controller
         );
 
         return $token;
+    }
+
+    private function pruneStaleBulkCorrectionUploads(): void
+    {
+        $disk = Storage::disk('local');
+        $cutoff = now()->subHours(2)->timestamp;
+
+        foreach ($disk->files('bulk-correction') as $file) {
+            if ($disk->lastModified($file) < $cutoff) {
+                $disk->delete($file);
+            }
+        }
     }
 
     private function readBulkCorrectionUpload(string $token): ?array
@@ -2850,6 +2894,82 @@ class PromotionController extends Controller
         Storage::disk('local')->delete("bulk-correction/{$token}.json");
     }
 
+    /**
+     * Applies one validated bulk-correction row: writes the student/education
+     * updates, runs fee/subject reconciliation when an academic field changed
+     * (course, part, semester, or session), and records an audit log entry.
+     * Shared by bulkCorrectionApply() and importStudentBulkSpreadsheet() so a
+     * fix here covers both upload paths.
+     */
+    private function applyBulkStudentRowUpdate(Student $student, array $studentUpdate, array $educationUpdate): void
+    {
+        $academicFields = ['academic_session_id', 'course_stream_id', 'course_part_id', 'current_semester'];
+        $isAcademicChange = !empty(array_intersect($academicFields, array_keys($studentUpdate)));
+
+        if ($isAcademicChange) {
+            $student->loadMissing(['stream.course', 'coursePart']);
+        }
+        $oldSnapshot = $isAcademicChange
+            ? \App\Services\StudentAcademicChangeService::buildSnapshot($student)
+            : null;
+        $beforeValues = $studentUpdate ? $student->only(array_keys($studentUpdate)) : [];
+
+        DB::transaction(function () use ($student, $studentUpdate, $educationUpdate, $isAcademicChange, $oldSnapshot) {
+            if ($studentUpdate) {
+                $student->update($studentUpdate);
+            }
+
+            foreach ($educationUpdate as $examName => $values) {
+                if (!$values) {
+                    continue;
+                }
+
+                StudentEducationDetail::updateOrCreate(
+                    ['student_id' => $student->id, 'exam_name' => $examName],
+                    $values + ['exam_name' => $examName]
+                );
+            }
+
+            if ($isAcademicChange && $oldSnapshot) {
+                $student->refresh()->load(['stream.course', 'coursePart']);
+                $sessionId   = (int) $student->academic_session_id;
+                $subjectIds  = \App\Services\StudentAcademicChangeService::currentSubjectIds($student, $sessionId);
+                $newSnapshot = \App\Services\StudentAcademicChangeService::buildSnapshot($student);
+                $adjustment  = \App\Services\StudentAcademicChangeService::applyFeeDelta(
+                    $student, $oldSnapshot, $newSnapshot,
+                    'Academic data corrected via bulk update'
+                );
+                \App\Services\StudentAcademicChangeService::syncCurrentIdentity($student, $subjectIds);
+                \App\Services\StudentAcademicChangeService::createChangeLog(
+                    $student, $oldSnapshot, $newSnapshot, $adjustment,
+                    'web', auth()->user()?->name ?? 'Bulk Correction'
+                );
+            }
+        });
+
+        if ($studentUpdate) {
+            AuditLogService::log(
+                $student->institute_id,
+                'student',
+                'bulk_corrected',
+                "Student {$student->name} (UIN {$student->uin_no}) updated via bulk correction.",
+                $student,
+                ['before' => $beforeValues, 'after' => $student->only(array_keys($studentUpdate))]
+            );
+        }
+
+        if ($educationUpdate) {
+            AuditLogService::log(
+                $student->institute_id,
+                'student',
+                'bulk_corrected_education',
+                "Student {$student->name} (UIN {$student->uin_no}) education details updated via bulk correction.",
+                $student,
+                ['exams_changed' => array_keys($educationUpdate)]
+            );
+        }
+    }
+
     private function bulkCorrectionStudentQuery(Request $request, int $instituteId)
     {
         $query = Student::where('institute_id', $instituteId);
@@ -2858,12 +2978,16 @@ class PromotionController extends Controller
             $query->where('academic_session_id', $request->integer('session_id'));
         }
 
+        if ($request->filled('course_type_id')) {
+            $query->where('course_type_id', $request->integer('course_type_id'));
+        }
+
         if ($request->filled('course_id')) {
             $query->whereHas('stream', fn($stream) => $stream->where('course_id', $request->integer('course_id')));
         }
 
-        if ($request->filled('course_part_id')) {
-            $query->where('course_part_id', $request->integer('course_part_id'));
+        if ($request->filled('course_stream_id')) {
+            $query->where('course_stream_id', $request->integer('course_stream_id'));
         }
 
         if ($request->filled('current_semester')) {
@@ -2905,6 +3029,9 @@ class PromotionController extends Controller
                     continue;
                 }
                 if (isset($seen[$key]) || in_array($key, ['photo', 'form_no', 'academic_session'], true)) {
+                    continue;
+                }
+                if (in_array($key, self::BULK_CORRECTION_FORBIDDEN_FIELDS, true)) {
                     continue;
                 }
 
@@ -2982,6 +3109,7 @@ class PromotionController extends Controller
             'gap_year', 'comm_same_as_perm', 'has_scholarship' => 'boolean',
             'scholarship_amount' => 'numeric',
             'academic_session_id', 'course_type_id', 'course_stream_id', 'course_part_id', 'current_semester' => 'integer',
+            'gender', 'nationality', 'religion', 'category', 'special_category', 'admission_type', 'admission_source', 'marital_status', 'guardian_relation' => 'enum',
             default => 'string',
         };
     }
@@ -3072,18 +3200,20 @@ class PromotionController extends Controller
 
             if (!empty($field['education'])) {
                 $normalized = $this->normalizeBulkValue($value, $field, $errors);
-                if ($normalized !== '__invalid__') {
+                if ($normalized !== '__invalid__' && $normalized !== self::BULK_SKIP) {
                     $educationUpdate[$field['exam']][$field['column']] = $normalized;
                 }
                 continue;
             }
 
-            if (!isset($studentColumns[$key])) {
+            if (!isset($studentColumns[$key]) || in_array($key, self::BULK_CORRECTION_FORBIDDEN_FIELDS, true)) {
                 continue;
             }
 
             $normalized = $this->normalizeBulkValue($value, $field, $errors);
-            if ($normalized === '__invalid__') {
+            if ($normalized === '__invalid__' || $normalized === self::BULK_SKIP) {
+                // A blank cell on a mapped column means "leave this field unchanged",
+                // not "clear it" — so it is deliberately excluded from the update.
                 continue;
             }
 
@@ -3123,7 +3253,8 @@ class PromotionController extends Controller
                 $errors[] = "{$label} is required.";
                 return '__invalid__';
             }
-            return null;
+            // A blank cell means "no change" for this row, not "clear the field".
+            return self::BULK_SKIP;
         }
 
         return match ($field['type'] ?? 'string') {
@@ -3134,6 +3265,7 @@ class PromotionController extends Controller
             'integer' => $this->validateIntegerBulkValue($value, $label, $errors),
             'numeric' => $this->validateNumericBulkValue($value, $label, $errors),
             'boolean' => $this->validateBooleanBulkValue($value, $label, $errors),
+            'enum' => $this->validateEnumBulkValue($value, $label, $field['key'] ?? '', $errors),
             default => mb_substr($value, 0, 255),
         };
     }
@@ -3175,7 +3307,9 @@ class PromotionController extends Controller
             return \Carbon\Carbon::create(1899, 12, 30)->addDays((int) $value)->format('Y-m-d');
         }
 
-        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y', 'm/d/Y'] as $format) {
+        // m/d/Y deliberately excluded — this ERP is India-only, and a date like
+        // 01/02/2025 would silently resolve differently depending on format order.
+        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $format) {
             try {
                 $date = \Carbon\Carbon::createFromFormat($format, $value);
                 if ($date && $date->format($format) === $value) {
@@ -3221,6 +3355,24 @@ class PromotionController extends Controller
         }
 
         $errors[] = "{$label} must be yes/no or 1/0.";
+        return '__invalid__';
+    }
+
+    private function validateEnumBulkValue(string $value, string $label, string $key, array &$errors)
+    {
+        $options = self::BULK_ENUM_OPTIONS[$key] ?? null;
+        if ($options === null) {
+            return mb_substr($value, 0, 255);
+        }
+
+        $normalized = strtolower(str_replace([' ', '-'], '_', trim($value)));
+        $normalized = self::BULK_ENUM_ALIASES[$normalized] ?? $normalized;
+
+        if (in_array($normalized, $options, true)) {
+            return $normalized;
+        }
+
+        $errors[] = "{$label} must be one of: " . implode(', ', $options) . '.';
         return '__invalid__';
     }
 
