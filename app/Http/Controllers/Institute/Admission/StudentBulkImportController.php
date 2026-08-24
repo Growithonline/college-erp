@@ -365,6 +365,7 @@ class StudentBulkImportController extends Controller
             ['',                            '6. Accepted formats: .xlsx, .xls only.'],
             ['',                            '7. Duplicate Student UID / Roll No / Enrollment No / UIN / Exam Form No are flagged as minor issues — you choose at preview time whether to still import that row.'],
             ['',                            '8. If Student UID is left blank (or is a duplicate), the system generates one automatically.'],
+            ['',                            '9. Re-uploading a file that still has already-imported rows in it: if the same Name + Mobile already exists, it is flagged as a "possible duplicate" minor issue — remove those rows or leave "Import Anyway" unchecked to skip them.'],
         ];
         foreach ($rows as $i => $row) {
             $instrSheet->setCellValue('A' . ($i + 1), $row[0]);
@@ -465,6 +466,16 @@ class StudentBulkImportController extends Controller
         $existingUins     = Student::where('institute_id', $instituteId)->whereNotNull('uin_no')->pluck('uin_no')->flip()->toArray();
         $existingExamForms = Student::where('institute_id', $instituteId)->whereNotNull('exam_form_no')->pluck('exam_form_no')->flip()->toArray();
 
+        // Name+Mobile combo lookup — catches the common "re-uploaded the same
+        // file after fixing a few rows" case, where Student UID/Roll/etc. were
+        // left blank the first time (so those checks above never trigger) but
+        // the student was already created. Soft only: Mobile alone can repeat
+        // legitimately (e.g. siblings), so this only flags when BOTH match.
+        $existingByNameMobile = Student::where('institute_id', $instituteId)
+            ->get(['student_uid', 'name', 'mobile'])
+            ->keyBy(fn($s) => strtolower(trim($s->name)) . '|' . $s->mobile);
+        $seenNameMobile = [];
+
         $validRows   = [];
         $softRows    = [];
         $invalidRows = [];
@@ -517,6 +528,18 @@ class StudentBulkImportController extends Controller
                 $hardErrors[] = 'Mobile is required';
             } elseif (strlen($mobile) !== 10) {
                 $hardErrors[] = 'Mobile must be exactly 10 digits';
+            }
+
+            // ── Possible duplicate (same Name + Mobile already imported) ──
+            if ($name !== '' && $mobile !== '') {
+                $comboKey = strtolower(trim($name)) . '|' . $mobile;
+                if ($existingMatch = $existingByNameMobile->get($comboKey)) {
+                    $softErrors[] = "Possible duplicate — \"{$name}\" with this mobile already exists (UID \"{$existingMatch->student_uid}\"). Check before importing again.";
+                } elseif (isset($seenNameMobile[$comboKey])) {
+                    $softErrors[] = "Possible duplicate — \"{$name}\" with this mobile appears more than once in this file.";
+                } else {
+                    $seenNameMobile[$comboKey] = true;
+                }
             }
 
             // Course
