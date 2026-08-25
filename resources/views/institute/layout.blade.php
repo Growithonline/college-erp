@@ -318,6 +318,7 @@
                                 <li><a class="nav-link" href="{{ route('master.forms.builder', 'quick') }}"><i class="bi bi-lightning"></i> Quick Form</a></li>
                                 <li><a class="nav-link" href="{{ route('master.forms.builder', 'online') }}"><i class="bi bi-globe"></i> Online Form</a></li>
                                 <li><a class="nav-link" href="{{ route('master.forms.builder', 'receipt') }}"><i class="bi bi-receipt"></i> Fee Receipt</a></li>
+                                <li><a class="nav-link {{ request()->routeIs('master.forms.fee-balance') ? 'active' : '' }}" href="{{ route('master.forms.fee-balance') }}"><i class="bi bi-search-heart"></i> Fee Balance</a></li>
                             </ul>
                         </div>
                     </li>

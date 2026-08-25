@@ -2,6 +2,13 @@
 @section('title', 'Branding')
 @section('breadcrumb', 'Settings / Branding')
 
+@php
+    $admissionUrl = url('/apply/' . $institute->short_name);
+    $admissionEmbedCode = '<iframe src="' . $admissionUrl . '" style="width:100%;max-width:560px;height:900px;border:none;" title="Admission Enquiry"></iframe>';
+    $feeBalanceUrl = url('/fee-balance/' . $institute->short_name);
+    $feeBalanceEmbedCode = '<iframe src="' . $feeBalanceUrl . '" style="width:100%;max-width:560px;height:900px;border:none;" title="Know Your Fee Balance"></iframe>';
+@endphp
+
 @section('content')
 
 <div class="mb-4">
@@ -47,14 +54,20 @@
             <div class="card-body p-4">
                 <div class="mb-4">
                     <label class="form-label fw-semibold small">Admission Enquiry</label>
-                    <div class="input-group input-group-sm">
+                    <div class="input-group input-group-sm mb-2">
                         <input type="text" class="form-control" readonly
-                               value="{{ url('/apply/' . $institute->short_name) }}" id="admissionUrlInput">
+                               value="{{ $admissionUrl }}" id="admissionUrlInput">
                         <button class="btn btn-outline-secondary copy-url-btn" type="button" data-target="admissionUrlInput">
                             <i class="bi bi-clipboard"></i> Copy
                         </button>
                     </div>
-                    <small class="text-muted d-block mt-1">Share or embed this on your website — students can enquire about admission.</small>
+                    <div class="input-group input-group-sm">
+                        <textarea class="form-control font-monospace" readonly rows="2" style="font-size:11px;" id="admissionEmbedInput">{{ $admissionEmbedCode }}</textarea>
+                        <button class="btn btn-outline-secondary copy-url-btn" type="button" data-target="admissionEmbedInput">
+                            <i class="bi bi-clipboard"></i> Copy Embed
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-1">Share the link or paste the embed code into your website — students can enquire about admission.</small>
                 </div>
 
                 <hr>
@@ -70,11 +83,17 @@
                         </div>
                     </form>
                 </div>
-                <div class="input-group input-group-sm">
+                <div class="input-group input-group-sm mb-2">
                     <input type="text" class="form-control" readonly
-                           value="{{ url('/fee-balance/' . $institute->short_name) }}" id="feeBalanceUrlInput">
+                           value="{{ $feeBalanceUrl }}" id="feeBalanceUrlInput">
                     <button class="btn btn-outline-secondary copy-url-btn" type="button" data-target="feeBalanceUrlInput">
                         <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                </div>
+                <div class="input-group input-group-sm">
+                    <textarea class="form-control font-monospace" readonly rows="2" style="font-size:11px;" id="feeBalanceEmbedInput">{{ $feeBalanceEmbedCode }}</textarea>
+                    <button class="btn btn-outline-secondary copy-url-btn" type="button" data-target="feeBalanceEmbedInput">
+                        <i class="bi bi-clipboard"></i> Copy Embed
                     </button>
                 </div>
                 <small class="text-muted d-block mt-1">

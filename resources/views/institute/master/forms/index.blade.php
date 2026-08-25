@@ -12,9 +12,8 @@
     <div>
         <i class="bi bi-search-heart text-primary me-1"></i>
         <strong>Know Your Fee Balance</strong> — public page jaha students apna fee balance khud check kar sakte hain (OTP verified).
-        <span class="text-muted">Turn it on/off and copy the link from Settings → Branding.</span>
     </div>
-    <a href="{{ route('master.settings.branding') }}" class="btn btn-outline-primary btn-sm flex-shrink-0">
+    <a href="{{ route('master.forms.fee-balance') }}" class="btn btn-outline-primary btn-sm flex-shrink-0">
         <i class="bi bi-gear me-1"></i> Manage
     </a>
 </div>

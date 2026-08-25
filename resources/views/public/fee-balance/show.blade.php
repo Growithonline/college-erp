@@ -128,11 +128,13 @@
         </div>
     </div>
 
-    <script>
-        const baseUrl = @json(url('/fee-balance/' . $institute->short_name));
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        const alertBox = document.getElementById('formAlert');
-        const courseTypesData = @json($courseTypes->map(fn ($ct) => [
+    @php
+        // NOTE: @json() splits its argument on every top-level comma (see
+        // Illuminate\View\Compilers\Concerns\CompilesJson::compileJson), so it
+        // silently breaks on any expression containing commas of its own — an
+        // array literal with multiple keys must be built into a plain variable
+        // first and passed to @json() as a bare reference (zero commas).
+        $courseTypesForJs = $courseTypes->map(fn ($ct) => [
             'id'      => $ct->id,
             'courses' => $ct->courses->map(fn ($c) => [
                 'id'              => $c->id,
@@ -140,7 +142,13 @@
                 'semesterOptions' => $c->semesterOptions(),
                 'streams'         => $c->streams->map(fn ($s) => ['id' => $s->id, 'name' => $s->name]),
             ]),
-        ]));
+        ]);
+    @endphp
+    <script>
+        const baseUrl = @json(url('/fee-balance/' . $institute->short_name));
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const alertBox = document.getElementById('formAlert');
+        const courseTypesData = @json($courseTypesForJs);
 
         let otpToken = null;
 

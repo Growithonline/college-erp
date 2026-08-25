@@ -342,7 +342,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::patch('bank-accounts/{bankAccount}/set-online-default', [BankAccountController::class, 'setOnlineDefault'])->name('bank-accounts.set-online-default');
         Route::delete('bank-accounts/{bankAccount}',       [BankAccountController::class, 'destroy'])->name('bank-accounts.destroy');
 
-        Route::get('forms',         [AdmissionFormController::class, 'index'])->name('forms.index');
+        Route::get('forms',              [AdmissionFormController::class, 'index'])->name('forms.index');
+        Route::get('forms/fee-balance',  [AdmissionFormController::class, 'feeBalance'])->name('forms.fee-balance');
         Route::get('forms/{type}',  [AdmissionFormController::class, 'builder'])->name('forms.builder')
              ->where('type', 'admission|quick|online|receipt');
         Route::post('forms/{type}', [AdmissionFormController::class, 'save'])->name('forms.save')

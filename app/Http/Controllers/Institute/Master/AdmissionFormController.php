@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Institute\Master;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdmissionFormSetting;
+use App\Models\Institute;
 use Illuminate\Http\Request;
 
 class AdmissionFormController extends Controller
@@ -238,6 +239,14 @@ class AdmissionFormController extends Controller
     {
         $formTypes = self::FORM_TYPES;
         return view('institute.master.forms.index', compact('formTypes'));
+    }
+
+    // ─── Fee Balance (public page toggle + link — no field config) ─────────
+    public function feeBalance()
+    {
+        $institute = Institute::findOrFail(auth()->user()->institute_id);
+
+        return view('institute.master.forms.fee-balance', compact('institute'));
     }
 
     // ─── Builder ───────────────────────────────────────────────────────────
