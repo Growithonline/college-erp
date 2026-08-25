@@ -9,7 +9,7 @@ class LibraryAuthorController extends BaseLibraryController
 {
     public function index()
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('authors');
         $records = LibraryAuthor::forInstitute($this->instituteId())
             ->withCount('books')
             ->orderBy('name')
@@ -33,7 +33,7 @@ class LibraryAuthorController extends BaseLibraryController
 
     public function store(Request $request)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('authors');
         $request->validate(['name' => 'required|string|max:150']);
 
         LibraryAuthor::create([
@@ -47,7 +47,7 @@ class LibraryAuthorController extends BaseLibraryController
 
     public function update(Request $request, LibraryAuthor $author)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('authors');
         abort_if($author->institute_id !== $this->instituteId(), 403);
         $request->validate(['name' => 'required|string|max:150']);
         $author->update(['name' => trim($request->name)]);
@@ -57,7 +57,7 @@ class LibraryAuthorController extends BaseLibraryController
 
     public function toggle(LibraryAuthor $author)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('authors');
         abort_if($author->institute_id !== $this->instituteId(), 403);
         $author->update(['is_active' => !$author->is_active]);
 
@@ -66,7 +66,7 @@ class LibraryAuthorController extends BaseLibraryController
 
     public function destroy(LibraryAuthor $author)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('authors');
         abort_if($author->institute_id !== $this->instituteId(), 403);
 
         if ($author->books()->exists()) {

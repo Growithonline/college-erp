@@ -6,6 +6,7 @@ use App\Models\Library\LibraryBookCopy;
 use App\Models\Library\LibraryFinePayment;
 use App\Models\Library\LibraryMember;
 use App\Models\Library\LibraryTransaction;
+use App\Services\JournalService;
 use App\Services\LibraryManagementService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -92,6 +93,7 @@ class LibraryCirculationController extends BaseLibraryController
 
             $copy = LibraryBookCopy::forInstitute($instituteId)
                 ->with('book')
+                ->lockForUpdate()
                 ->findOrFail($data['library_book_copy_id']);
 
             $rule = LibraryManagementService::ensureMemberCanBorrow($member);
@@ -195,7 +197,10 @@ class LibraryCirculationController extends BaseLibraryController
         ]);
 
         $instituteId = $this->instituteId();
-        DB::transaction(function () use ($transaction, $data, $instituteId) {
+        $receiptNo = trim((string) ($data['receipt_no'] ?? ''))
+            ?: 'LIB-RCP-' . now()->format('Ymd') . '-' . $transaction->id . '-' . strtoupper(substr(uniqid(), -6));
+
+        DB::transaction(function () use ($transaction, $data, $instituteId, $receiptNo) {
             $tx = LibraryTransaction::where('id', $transaction->id)
                 ->where('institute_id', $instituteId)
                 ->lockForUpdate()
@@ -212,13 +217,13 @@ class LibraryCirculationController extends BaseLibraryController
             }
 
             LibraryFinePayment::create([
-                'institute_id' => $this->instituteId(),
+                'institute_id' => $instituteId,
                 'library_member_id' => $tx->library_member_id,
                 'library_transaction_id' => $tx->id,
                 'amount' => $data['amount'],
                 'payment_mode' => $data['payment_mode'],
                 'payment_date' => $data['payment_date'],
-                'receipt_no' => trim((string) ($data['receipt_no'] ?? '')) ?: null,
+                'receipt_no' => $receiptNo,
                 'remarks' => trim((string) ($data['remarks'] ?? '')) ?: null,
                 'collected_by' => $this->actorName(),
             ]);
@@ -229,6 +234,19 @@ class LibraryCirculationController extends BaseLibraryController
 
             LibraryManagementService::postFinePaymentToWallet($tx->loadMissing(['member.student', 'copy.book']), (float) $data['amount'], $data['payment_date']);
         });
+
+        $transaction->loadMissing(['member', 'copy.book']);
+
+        JournalService::safePostLibraryFineCollection(
+            instituteId:       $instituteId,
+            totalAmount:       (float) $data['amount'],
+            paymentMode:       $data['payment_mode'],
+            bankAccountId:     null,
+            paymentDate:       $data['payment_date'],
+            receiptNo:         $receiptNo,
+            narration:         'Library fine collected - ' . ($transaction->member->name ?? 'Member') . ' (' . ($transaction->member->member_code ?? '-') . ')',
+            academicSessionId: $this->activeSessionId(),
+        );
 
         return back()->with('success', 'Fine payment recorded successfully.');
     }

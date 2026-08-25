@@ -9,7 +9,7 @@ class LibraryVendorController extends BaseLibraryController
 {
     public function index()
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('vendors');
         $records = LibraryVendor::forInstitute($this->instituteId())
             ->withCount('copies')
             ->orderBy('name')
@@ -37,7 +37,7 @@ class LibraryVendorController extends BaseLibraryController
 
     public function store(Request $request)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('vendors');
         $request->validate([
             'name' => 'required|string|max:150',
             'mobile' => 'nullable|string|max:20',
@@ -59,7 +59,7 @@ class LibraryVendorController extends BaseLibraryController
 
     public function update(Request $request, LibraryVendor $vendor)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('vendors');
         abort_if($vendor->institute_id !== $this->instituteId(), 403);
 
         $request->validate([
@@ -81,7 +81,7 @@ class LibraryVendorController extends BaseLibraryController
 
     public function toggle(LibraryVendor $vendor)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('vendors');
         abort_if($vendor->institute_id !== $this->instituteId(), 403);
         $vendor->update(['is_active' => !$vendor->is_active]);
 
@@ -90,7 +90,7 @@ class LibraryVendorController extends BaseLibraryController
 
     public function destroy(LibraryVendor $vendor)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('vendors');
         abort_if($vendor->institute_id !== $this->instituteId(), 403);
 
         if ($vendor->copies()->exists()) {

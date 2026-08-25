@@ -147,6 +147,13 @@ class LibraryStaff extends Authenticatable
     public function canGenerateLibraryNoDue(): bool     { return $this->hasPermission('members_view'); }
     public function canCollectLibraryFines(): bool      { return $this->hasPermission('fine_collect'); }
 
+    public function canCreateLibraryBooks(): bool       { return $this->hasPermission('books_create') || $this->canManageLibrary(); }
+    public function canManageLibraryCategories(): bool  { return $this->hasPermission('categories_manage') || $this->canManageLibrary(); }
+    public function canManageLibraryAuthors(): bool     { return $this->hasPermission('authors_manage') || $this->canManageLibrary(); }
+    public function canManageLibraryPublishers(): bool  { return $this->hasPermission('publishers_manage') || $this->canManageLibrary(); }
+    public function canManageLibraryRacks(): bool       { return $this->hasPermission('racks_manage') || $this->canManageLibrary(); }
+    public function canManageLibraryVendors(): bool     { return $this->hasPermission('vendors_manage') || $this->canManageLibrary(); }
+
     // ── Security helpers ────────────────────────────────────────────
 
     public function isLocked(): bool

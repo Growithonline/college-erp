@@ -141,12 +141,14 @@ class LibraryReservationController extends BaseLibraryController
             if ($request->filled('copy_id')) {
                 $copy = LibraryBookCopy::forInstitute($this->instituteId())
                     ->where('book_id', $reservation->book_id)
+                    ->lockForUpdate()
                     ->findOrFail((int) $request->input('copy_id'));
             } else {
                 $copy = LibraryBookCopy::forInstitute($this->instituteId())
                     ->where('book_id', $reservation->book_id)
                     ->where('status', 'available')
                     ->orderBy('id')
+                    ->lockForUpdate()
                     ->first();
             }
 

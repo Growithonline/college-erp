@@ -9,7 +9,7 @@ class LibraryPublisherController extends BaseLibraryController
 {
     public function index()
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('publishers');
         $records = LibraryPublisher::forInstitute($this->instituteId())
             ->withCount('books')
             ->orderBy('name')
@@ -37,7 +37,7 @@ class LibraryPublisherController extends BaseLibraryController
 
     public function store(Request $request)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('publishers');
         $request->validate([
             'name' => 'required|string|max:150',
             'mobile' => 'nullable|string|max:20',
@@ -59,7 +59,7 @@ class LibraryPublisherController extends BaseLibraryController
 
     public function update(Request $request, LibraryPublisher $publisher)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('publishers');
         abort_if($publisher->institute_id !== $this->instituteId(), 403);
 
         $request->validate([
@@ -81,7 +81,7 @@ class LibraryPublisherController extends BaseLibraryController
 
     public function toggle(LibraryPublisher $publisher)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('publishers');
         abort_if($publisher->institute_id !== $this->instituteId(), 403);
         $publisher->update(['is_active' => !$publisher->is_active]);
 
@@ -90,7 +90,7 @@ class LibraryPublisherController extends BaseLibraryController
 
     public function destroy(LibraryPublisher $publisher)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('publishers');
         abort_if($publisher->institute_id !== $this->instituteId(), 403);
 
         if ($publisher->books()->exists()) {

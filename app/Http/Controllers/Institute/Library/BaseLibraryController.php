@@ -104,10 +104,12 @@ abstract class BaseLibraryController extends Controller
         }
 
         // Staff portal guard — uses StaffMember permission methods
+        // (StaffMember has no per-catalog-area split; all catalog abilities fall back to the general library_manage permission)
         if ($guard === 'staff') {
             $staff   = $this->authUser();
             $allowed = match ($ability) {
-                'manage'       => $staff?->canManageLibrary(),
+                'manage', 'books_create', 'categories', 'authors', 'publishers', 'racks', 'vendors'
+                               => $staff?->canManageLibrary(),
                 'issue'        => $staff?->canIssueLibraryBooks(),
                 'reports'      => $staff?->canViewLibraryReports(),
                 'members'      => $staff?->canManageLibraryMembers(),
@@ -124,6 +126,12 @@ abstract class BaseLibraryController extends Controller
             $libStaff = $this->authUser();
             $allowed  = match ($ability) {
                 'manage'       => $libStaff?->canManageLibrary(),
+                'books_create' => $libStaff?->canCreateLibraryBooks(),
+                'categories'   => $libStaff?->canManageLibraryCategories(),
+                'authors'      => $libStaff?->canManageLibraryAuthors(),
+                'publishers'   => $libStaff?->canManageLibraryPublishers(),
+                'racks'        => $libStaff?->canManageLibraryRacks(),
+                'vendors'      => $libStaff?->canManageLibraryVendors(),
                 'issue'        => $libStaff?->canIssueLibraryBooks(),
                 'reports'      => $libStaff?->canViewLibraryReports(),
                 'members'      => $libStaff?->canManageLibraryMembers(),

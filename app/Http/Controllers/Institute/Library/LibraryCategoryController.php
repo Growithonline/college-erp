@@ -9,7 +9,7 @@ class LibraryCategoryController extends BaseLibraryController
 {
     public function index()
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('categories');
         $records = LibraryCategory::forInstitute($this->instituteId())
             ->withCount('books')
             ->orderBy('name')
@@ -35,7 +35,7 @@ class LibraryCategoryController extends BaseLibraryController
 
     public function store(Request $request)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('categories');
         $request->validate([
             'name' => 'required|string|max:100',
             'code' => 'nullable|string|max:30',
@@ -53,7 +53,7 @@ class LibraryCategoryController extends BaseLibraryController
 
     public function update(Request $request, LibraryCategory $category)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('categories');
         abort_if($category->institute_id !== $this->instituteId(), 403);
 
         $request->validate([
@@ -71,7 +71,7 @@ class LibraryCategoryController extends BaseLibraryController
 
     public function toggle(LibraryCategory $category)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('categories');
         abort_if($category->institute_id !== $this->instituteId(), 403);
         $category->update(['is_active' => !$category->is_active]);
 
@@ -80,7 +80,7 @@ class LibraryCategoryController extends BaseLibraryController
 
     public function destroy(LibraryCategory $category)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('categories');
         abort_if($category->institute_id !== $this->instituteId(), 403);
 
         if ($category->books()->exists()) {

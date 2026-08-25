@@ -43,13 +43,13 @@ class LibraryBookController extends BaseLibraryController
 
     public function create()
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('books_create');
         return view('institute.library.books.form', $this->formData(new LibraryBook(), 'store'));
     }
 
     public function store(Request $request)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('books_create');
         $data = $this->validatedBookData($request);
         $data['institute_id'] = $this->instituteId();
         $data['is_active'] = true;
@@ -93,7 +93,7 @@ class LibraryBookController extends BaseLibraryController
 
     public function generateBarcodes(LibraryBook $book)
     {
-        $this->ensureLibraryPermission('edit');
+        $this->ensureLibraryPermission('manage');
         abort_if($book->institute_id !== $this->instituteId(), 403);
 
         $copies = $book->copies()->whereNull('barcode')->orWhere('barcode', '')->get();

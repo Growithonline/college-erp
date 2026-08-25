@@ -9,7 +9,7 @@ class LibraryRackController extends BaseLibraryController
 {
     public function index()
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('racks');
         $records = LibraryRack::forInstitute($this->instituteId())
             ->withCount('copies')
             ->orderBy('room_name')
@@ -38,7 +38,7 @@ class LibraryRackController extends BaseLibraryController
 
     public function store(Request $request)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('racks');
         $request->validate([
             'room_name' => 'nullable|string|max:100',
             'rack_code' => 'required|string|max:50',
@@ -60,7 +60,7 @@ class LibraryRackController extends BaseLibraryController
 
     public function update(Request $request, LibraryRack $rack)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('racks');
         abort_if($rack->institute_id !== $this->instituteId(), 403);
 
         $request->validate([
@@ -82,7 +82,7 @@ class LibraryRackController extends BaseLibraryController
 
     public function toggle(LibraryRack $rack)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('racks');
         abort_if($rack->institute_id !== $this->instituteId(), 403);
         $rack->update(['is_active' => !$rack->is_active]);
 
@@ -91,7 +91,7 @@ class LibraryRackController extends BaseLibraryController
 
     public function destroy(LibraryRack $rack)
     {
-        $this->ensureLibraryPermission('manage');
+        $this->ensureLibraryPermission('racks');
         abort_if($rack->institute_id !== $this->instituteId(), 403);
 
         if ($rack->copies()->exists()) {
