@@ -25,43 +25,43 @@
             overflow: hidden;
         }
         .fb-header {
-            padding: 28px 28px 20px;
+            padding: 18px 28px 14px;
             text-align: center;
             border-bottom: 1px solid #f1f5f9;
         }
-        .fb-logo { max-height: 56px; max-width: 180px; object-fit: contain; margin-bottom: 10px; }
-        .fb-institute-name { font-size: 1.05rem; font-weight: 700; margin: 0; color: #0f172a; }
+        .fb-logo { max-height: 42px; max-width: 160px; object-fit: contain; margin-bottom: 6px; }
+        .fb-institute-name { font-size: .98rem; font-weight: 700; margin: 0; color: #0f172a; }
         .fb-subtitle {
             display: inline-flex; align-items: center; gap: 6px;
-            font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-            color: var(--bs-primary); margin-top: 8px;
+            font-size: .68rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+            color: var(--bs-primary); margin-top: 5px;
         }
 
-        .fb-steps { display: flex; align-items: center; padding: 18px 28px 0; }
+        .fb-steps { display: flex; align-items: center; padding: 12px 28px 0; }
         .fb-step-dot {
-            width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+            width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
-            font-size: .72rem; font-weight: 700;
+            font-size: .68rem; font-weight: 700;
             background: #e2e8f0; color: #94a3b8;
             transition: background .2s, color .2s;
         }
-        .fb-step-dot.done { background: var(--bs-primary); color: #fff; font-size: .8rem; }
+        .fb-step-dot.done { background: var(--bs-primary); color: #fff; font-size: .76rem; }
         .fb-step-dot.done::before { content: "\2713"; }
         .fb-step-line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 6px; transition: background .2s; }
         .fb-step-line.done { background: var(--bs-primary); }
         .fb-step-label { font-size: .68rem; color: #94a3b8; text-align: center; margin-top: 6px; }
 
-        .fb-body { padding: 20px 28px 28px; }
+        .fb-body { padding: 12px 24px 20px; }
         .fb-section-label {
-            font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-            color: #94a3b8; display: flex; align-items: center; gap: 6px; margin: 20px 0 10px;
+            font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+            color: #94a3b8; display: flex; align-items: center; gap: 6px; margin: 12px 0 6px;
         }
         .fb-section-label:first-child { margin-top: 0; }
-        .fb-section-label i { font-size: .85rem; }
+        .fb-section-label i { font-size: .8rem; }
 
-        .form-label.small { color: #334155; font-weight: 600; margin-bottom: 5px; }
+        .form-label.small { color: #334155; font-weight: 600; margin-bottom: 3px; font-size: .82rem; }
         .form-select, .form-control {
-            border-color: #e2e8f0; border-radius: 9px; padding: .5rem .75rem; font-size: .9rem;
+            border-color: #e2e8f0; border-radius: 8px; padding: .4rem .7rem; font-size: .87rem;
         }
         .form-select:focus, .form-control:focus {
             border-color: var(--bs-primary); box-shadow: 0 0 0 .18rem color-mix(in srgb, var(--bs-primary) 18%, transparent);
@@ -73,7 +73,7 @@
 
         .fb-captcha-box {
             background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px;
-            padding: 12px 14px; display: flex; align-items: center; gap: 10px; margin-top: 4px;
+            padding: 9px 12px; display: flex; align-items: center; gap: 10px; margin-top: 2px;
         }
         .fb-captcha-box i { color: var(--bs-primary); font-size: 1.05rem; }
         .fb-captcha-box .fb-captcha-q { font-weight: 700; font-size: .92rem; color: #0f172a; white-space: nowrap; }
@@ -84,34 +84,34 @@
         .fb-refresh-btn:hover { color: var(--bs-primary); }
 
         .fb-submit-btn {
-            width: 100%; padding: .65rem 1rem; border-radius: 10px; font-weight: 600; font-size: .95rem;
-            margin-top: 22px; display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: .55rem 1rem; border-radius: 10px; font-weight: 600; font-size: .92rem;
+            margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;
             box-shadow: 0 4px 10px color-mix(in srgb, var(--bs-primary) 25%, transparent);
         }
 
         .fb-otp-icon {
-            width: 52px; height: 52px; border-radius: 50%; background: color-mix(in srgb, var(--bs-primary) 12%, white);
-            display: flex; align-items: center; justify-content: center; margin: 4px auto 16px;
+            width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, var(--bs-primary) 12%, white);
+            display: flex; align-items: center; justify-content: center; margin: 2px auto 12px;
         }
-        .fb-otp-icon i { color: var(--bs-primary); font-size: 1.4rem; }
+        .fb-otp-icon i { color: var(--bs-primary); font-size: 1.2rem; }
         #otpInput {
-            text-align: center; font-size: 1.4rem; font-weight: 700; letter-spacing: .5em;
+            text-align: center; font-size: 1.3rem; font-weight: 700; letter-spacing: .5em;
             padding-left: .5em;
         }
         #otpInput::placeholder { letter-spacing: normal; font-size: .85rem; font-weight: 400; }
 
         .fb-result-icon {
-            width: 60px; height: 60px; border-radius: 50%; margin: 4px auto 14px;
+            width: 50px; height: 50px; border-radius: 50%; margin: 2px auto 10px;
             display: flex; align-items: center; justify-content: center;
         }
-        .fb-result-icon i { font-size: 1.7rem; }
+        .fb-result-icon i { font-size: 1.4rem; }
         .fb-result-icon.due { background: #fef3ee; }
         .fb-result-icon.due i { color: #ea580c; }
         .fb-result-icon.clear { background: #ecfdf5; }
         .fb-result-icon.clear i { color: #059669; }
-        .due-amount { font-size: 2.1rem; font-weight: 800; letter-spacing: -.02em; }
+        .due-amount { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; }
 
-        .fb-footer-note { text-align: center; font-size: .72rem; color: #cbd5e1; margin-top: 18px; }
+        .fb-footer-note { text-align: center; font-size: .7rem; color: #cbd5e1; margin-top: 12px; }
 
         .step { display: none; }
         .step.active { display: block; animation: fbFadeIn .25s ease; }
@@ -150,21 +150,22 @@
 
                         <div class="fb-section-label"><i class="bi bi-mortarboard"></i> Academic Details</div>
 
-                        <div class="mb-3">
-                            <label class="form-label small">Course Type *</label>
-                            <select id="courseTypeSelect" class="form-select" required>
-                                <option value="">Select course type</option>
-                                @foreach($courseTypes as $courseType)
-                                    <option value="{{ $courseType->id }}">{{ $courseType->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label small">Course *</label>
-                            <select id="courseSelect" name="course_id" class="form-select" required disabled>
-                                <option value="">Select course type first</option>
-                            </select>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small">Course Type *</label>
+                                <select id="courseTypeSelect" class="form-select" required>
+                                    <option value="">Select</option>
+                                    @foreach($courseTypes as $courseType)
+                                        <option value="{{ $courseType->id }}">{{ $courseType->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">Course *</label>
+                                <select id="courseSelect" name="course_id" class="form-select" required disabled>
+                                    <option value="">Select type first</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="row g-2">
@@ -186,7 +187,7 @@
 
                         <div class="fb-section-label"><i class="bi bi-person-badge"></i> Identity Verification</div>
 
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="form-label small">Search By *</label>
                             <div class="input-group">
                                 <select name="identifier_type" id="identifierTypeSelect" class="form-select" style="max-width: 42%;" required>
@@ -229,8 +230,8 @@
                 {{-- Step 2: OTP --}}
                 <div id="step2" class="step text-center">
                     <div class="fb-otp-icon"><i class="bi bi-shield-lock"></i></div>
-                    <p class="text-muted small mb-3 px-2" id="otpIntro">An OTP has been sent to the mobile number on file.</p>
-                    <div class="mb-3 text-start">
+                    <p class="text-muted small mb-2 px-2" id="otpIntro">An OTP has been sent to the mobile number on file.</p>
+                    <div class="mb-2 text-start">
                         <label class="form-label small">Enter 6-digit OTP *</label>
                         <input type="text" id="otpInput" class="form-control" maxlength="6" inputmode="numeric" placeholder="——————" required>
                     </div>
