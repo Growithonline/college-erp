@@ -169,6 +169,17 @@ Route::middleware('embed.cookies')->group(function () {
     });
 });
 
+// ── Public "Know Your Fee Balance" lookup (per-institute, no auth required) ───
+// Wrapped in 'embed.cookies' so this can also be iframe-embedded on an
+// institute's own website, same as the admission enquiry form above.
+Route::middleware('embed.cookies')->group(function () {
+    Route::get ('/fee-balance/{shortName}',            [\App\Http\Controllers\Public\FeeBalanceController::class, 'show'])->name('public.fee-balance.show')->middleware('throttle:30,1');
+    Route::get ('/fee-balance/{shortName}/captcha',     [\App\Http\Controllers\Public\FeeBalanceController::class, 'captcha'])->name('public.fee-balance.captcha')->middleware('throttle:20,1');
+    Route::post('/fee-balance/{shortName}/verify',      [\App\Http\Controllers\Public\FeeBalanceController::class, 'verify'])->name('public.fee-balance.verify')->middleware('throttle:6,1');
+    Route::post('/fee-balance/{shortName}/verify-otp',  [\App\Http\Controllers\Public\FeeBalanceController::class, 'verifyOtp'])->name('public.fee-balance.verify-otp')->middleware('throttle:10,1');
+    Route::post('/fee-balance/{shortName}/resend-otp',  [\App\Http\Controllers\Public\FeeBalanceController::class, 'resendOtp'])->name('public.fee-balance.resend-otp')->middleware('throttle:3,1');
+});
+
 Route::get('/login',       [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login',      [LoginController::class, 'login'])->name('login.submit')->middleware('throttle:5,1');
 Route::get('/otp-verify',  [LoginController::class, 'showOtpForm'])->name('otp.form');
