@@ -111,6 +111,15 @@
         .fb-result-icon.clear i { color: #059669; }
         .due-amount { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; }
 
+        .fb-detail-grid {
+            background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px;
+            padding: 10px 14px; margin-top: 16px; font-size: .83rem;
+        }
+        .fb-detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+        .fb-detail-row + .fb-detail-row { border-top: 1px solid #eef2f7; }
+        .fb-detail-label { color: #94a3b8; }
+        .fb-detail-value { font-weight: 600; color: #0f172a; text-align: right; }
+
         .fb-footer-note { text-align: center; font-size: .7rem; color: #cbd5e1; margin-top: 12px; }
 
         .step { display: none; }
@@ -246,6 +255,9 @@
                     <div class="fb-result-icon due" id="resultIcon"><i class="bi bi-cash-coin"></i></div>
                     <div class="text-muted small mb-1">Your Fee Balance</div>
                     <div class="due-amount text-primary" id="dueAmount">-</div>
+
+                    <div class="fb-detail-grid text-start" id="resultDetails"></div>
+
                     <div class="text-muted small mt-3">Contact the institute office for payment details.</div>
                 </div>
 
@@ -285,6 +297,44 @@
 
         function clearError() {
             alertBox.classList.add('d-none');
+        }
+
+        function showBalance(data) {
+            document.getElementById('dueAmount').textContent = '₹ ' + data.due;
+
+            const icon = document.getElementById('resultIcon');
+            const hasDue = parseFloat(String(data.due).replace(/,/g, '')) > 0;
+            icon.classList.toggle('due', hasDue);
+            icon.classList.toggle('clear', !hasDue);
+            icon.querySelector('i').className = hasDue ? 'bi bi-cash-coin' : 'bi bi-check-circle';
+
+            const yearSem = [data.year, data.semester ? ('Sem ' + data.semester) : null].filter(Boolean).join(' · ');
+            const rows = [
+                ['Name', data.name],
+                ["Father's Name", data.father_name],
+                ['Roll No.', data.roll_no],
+                ['Course', data.course],
+                ['Year / Semester', yearSem],
+                ['Session', data.session],
+            ];
+
+            const grid = document.getElementById('resultDetails');
+            grid.innerHTML = '';
+            rows.forEach(([label, value]) => {
+                const row = document.createElement('div');
+                row.className = 'fb-detail-row';
+                const lbl = document.createElement('span');
+                lbl.className = 'fb-detail-label';
+                lbl.textContent = label;
+                const val = document.createElement('span');
+                val.className = 'fb-detail-value';
+                val.textContent = value || '—';
+                row.appendChild(lbl);
+                row.appendChild(val);
+                grid.appendChild(row);
+            });
+
+            showStep('step3');
         }
 
         function showStep(id) {
@@ -413,10 +463,14 @@
 
             try {
                 const data = await postJson('/verify', payload);
-                otpToken = data.token;
-                document.getElementById('otpIntro').textContent = data.message;
-                document.getElementById('otpInput').value = '';
-                showStep('step2');
+                if (data.skip_otp) {
+                    showBalance(data);
+                } else {
+                    otpToken = data.token;
+                    document.getElementById('otpIntro').textContent = data.message;
+                    document.getElementById('otpInput').value = '';
+                    showStep('step2');
+                }
             } catch (err) {
                 showError(err.message);
             } finally {
@@ -431,15 +485,7 @@
             if (!otp) { showError('Please enter the OTP.'); return; }
             try {
                 const data = await postJson('/verify-otp', { token: otpToken, otp });
-                document.getElementById('dueAmount').textContent = '₹ ' + data.due;
-
-                const icon = document.getElementById('resultIcon');
-                const hasDue = parseFloat(String(data.due).replace(/,/g, '')) > 0;
-                icon.classList.toggle('due', hasDue);
-                icon.classList.toggle('clear', !hasDue);
-                icon.querySelector('i').className = hasDue ? 'bi bi-cash-coin' : 'bi bi-check-circle';
-
-                showStep('step3');
+                showBalance(data);
             } catch (err) {
                 showError(err.message);
             }

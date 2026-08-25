@@ -39,4 +39,15 @@ class BrandingSettingController extends Controller
 
         return back()->with('success', 'Fee balance page setting updated.');
     }
+
+    public function saveFeeBalanceOtp(Request $request)
+    {
+        // The checkbox reads "Require OTP Verification" (positive framing); the stored
+        // column is the inverse, matching the existing students.sms_otp_bypass convention.
+        $this->institute()->update([
+            'fee_balance_otp_bypass' => !$request->boolean('require_otp'),
+        ]);
+
+        return back()->with('success', 'Fee balance OTP setting updated.');
+    }
 }

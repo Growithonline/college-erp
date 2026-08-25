@@ -8,6 +8,7 @@ use App\Models\Institute;
 use App\Models\PlatformSmsSetting;
 use App\Models\Student;
 use App\Services\SmsService;
+use App\Support\AcademicState;
 use App\Traits\BuildsStudentStatements;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -202,6 +203,13 @@ class FeeBalanceController extends Controller
 
         $student = $matches->first();
 
+        if ($institute->fee_balance_otp_bypass) {
+            return response()->json(array_merge(
+                ['skip_otp' => true],
+                $this->resultFor($student, $institute->id)
+            ));
+        }
+
         $otp   = (string) random_int(100000, 999999);
         $token = Str::random(48);
 
@@ -273,10 +281,39 @@ class FeeBalanceController extends Controller
             return response()->json(['message' => self::GENERIC_OTP_MESSAGE], 422);
         }
 
-        $balances = $this->buildBalances($student, $institute->id);
+        return response()->json($this->resultFor($student, $institute->id));
+    }
+
+    /**
+     * The result payload shown after verification: due amount plus the basic
+     * identity fields the institute requires on screen (name, father's name,
+     * roll no, course, year/semester, session) — not the mobile number or
+     * anything beyond what the student already supplied to search.
+     */
+    private function resultFor(Student $student, int $instituteId): array
+    {
+        $balances = $this->buildBalances($student, $instituteId);
         $due      = (float) ($balances->last()['due'] ?? 0);
 
-        return response()->json(['due' => number_format($due, 2)]);
+        $course = $student->stream?->course;
+
+        $yearLabel = AcademicState::yearLabel(
+            $course?->structure_type,
+            $student->current_semester,
+            $student->coursePart?->year_number,
+            $course?->effectiveSemestersPerYear() ?? 0
+        );
+
+        return [
+            'due'         => number_format($due, 2),
+            'name'        => $student->name,
+            'father_name' => $student->father_name,
+            'roll_no'     => $student->roll_no,
+            'course'      => $course?->name,
+            'year'        => $yearLabel,
+            'semester'    => $student->current_semester,
+            'session'     => $student->session?->name,
+        ];
     }
 
     public function resendOtp(Request $request, string $shortName)

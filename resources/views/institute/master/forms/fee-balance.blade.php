@@ -59,11 +59,40 @@
 
                 <small class="text-muted d-block mt-2">
                     @if($institute->fee_balance_enabled)
-                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>Live</span> — students can check their fee balance here. Make sure your SMS OTP provider is configured, since this page sends an OTP before showing any balance.
+                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>Live</span> — students can check their fee balance here.
                     @else
-                        <span class="text-muted"><i class="bi bi-slash-circle me-1"></i>Off</span> — this link currently shows a 404. Turn it on above once your SMS OTP provider is configured.
+                        <span class="text-muted"><i class="bi bi-slash-circle me-1"></i>Off</span> — this link currently shows a 404. Turn it on above to make it live.
                     @endif
                 </small>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+                <span class="fw-semibold"><i class="bi bi-shield-lock text-primary me-2"></i>Require OTP Verification</span>
+                <form method="POST" action="{{ route('master.settings.branding.fee-balance-otp') }}" class="mb-0">
+                    @csrf
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" name="require_otp" value="1"
+                               id="requireOtpToggle" {{ !$institute->fee_balance_otp_bypass ? 'checked' : '' }}
+                               onchange="if (!this.checked && !confirm('Turning this off means students will see their fee balance right after their details match — without an OTP step. This is less secure. Continue?')) { this.checked = true; return; } this.form.submit();"
+                               style="cursor:pointer;">
+                    </div>
+                </form>
+            </div>
+            <div class="card-body p-4">
+                @if($institute->fee_balance_otp_bypass)
+                    <small class="text-warning d-block">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Off</strong> — students see their balance immediately once their details match (course + identifier + DOB + mobile). No OTP is sent.
+                    </small>
+                @else
+                    <small class="text-success d-block">
+                        <i class="bi bi-check-circle me-1"></i>
+                        <strong>On (recommended)</strong> — an OTP is sent to the mobile number on file before any balance is shown.
+                    </small>
+                    <small class="text-muted d-block mt-2">Needs your SMS OTP provider configured — otherwise students will see a "Failed to send OTP" error. If SMS isn't set up yet, turn this off temporarily so the page still works.</small>
+                @endif
             </div>
         </div>
 
@@ -76,8 +105,12 @@
                     <li>Student picks Course Type / Course / Stream / Semester</li>
                     <li>Enters one identifier (Student ID / Aadhar / Enrollment No / UIN / Roll No), Date of Birth, and Mobile Number</li>
                     <li>Solves a simple verification question (captcha)</li>
-                    <li>An OTP is sent to the mobile number on file — only after all details match exactly</li>
-                    <li>Once verified, only the due amount is shown — no other student details</li>
+                    @if($institute->fee_balance_otp_bypass)
+                        <li>Once details match, the balance is shown immediately — <strong>OTP is currently off</strong> for this institute</li>
+                    @else
+                        <li>An OTP is sent to the mobile number on file — only after all details match exactly</li>
+                        <li>Once verified, the balance is shown along with Name, Father's Name, Roll No., Course, Year/Semester, and Session</li>
+                    @endif
                 </ol>
             </div>
         </div>

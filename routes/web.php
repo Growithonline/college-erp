@@ -410,6 +410,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('settings/branding',                     [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'index'])->name('settings.branding');
         Route::post('settings/branding/save',                [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'save'])->name('settings.branding.save');
         Route::post('settings/branding/fee-balance',         [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'saveFeeBalance'])->name('settings.branding.fee-balance');
+        Route::post('settings/branding/fee-balance-otp',     [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'saveFeeBalanceOtp'])->name('settings.branding.fee-balance-otp');
 
         // Data Export / Backup
         Route::get('settings/data-export', [\App\Http\Controllers\Institute\Settings\DataExportController::class, 'download'])->name('settings.data-export');

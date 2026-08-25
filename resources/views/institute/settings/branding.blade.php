@@ -98,9 +98,31 @@
                 </div>
                 <small class="text-muted d-block mt-1">
                     @if($institute->fee_balance_enabled)
-                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>Live</span> — students can check their fee balance here. Make sure your SMS OTP provider is configured under Settings, since this page sends an OTP before showing any balance.
+                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>Live</span> — students can check their fee balance here.
                     @else
-                        <span class="text-muted"><i class="bi bi-slash-circle me-1"></i>Off</span> — this link currently shows a 404. Turn it on above once your SMS OTP provider is configured.
+                        <span class="text-muted"><i class="bi bi-slash-circle me-1"></i>Off</span> — this link currently shows a 404. Turn it on above to make it live.
+                    @endif
+                </small>
+
+                <hr>
+
+                <div class="mb-2 d-flex align-items-center justify-content-between">
+                    <label class="form-label fw-semibold small mb-0">Require OTP Verification</label>
+                    <form method="POST" action="{{ route('master.settings.branding.fee-balance-otp') }}" class="mb-0">
+                        @csrf
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="require_otp" value="1"
+                                   id="requireOtpToggle" {{ !$institute->fee_balance_otp_bypass ? 'checked' : '' }}
+                                   onchange="if (!this.checked && !confirm('Turning this off means students will see their fee balance right after their details match — without an OTP step. This is less secure. Continue?')) { this.checked = true; return; } this.form.submit();"
+                                   style="cursor:pointer;">
+                        </div>
+                    </form>
+                </div>
+                <small class="text-muted d-block">
+                    @if($institute->fee_balance_otp_bypass)
+                        <span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Off</span> — students see their balance immediately once details match, no OTP sent.
+                    @else
+                        <span class="text-success"><i class="bi bi-check-circle me-1"></i>On</span> — an OTP is sent to the mobile on file before any balance is shown. Needs your SMS OTP provider configured, or students will see a "Failed to send OTP" error — if SMS isn't set up yet, turn this off temporarily.
                     @endif
                 </small>
             </div>
