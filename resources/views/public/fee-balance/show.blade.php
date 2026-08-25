@@ -6,40 +6,152 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Know Your Fee Balance — {{ $institute->name }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @include('public.admission.partials._brand-style')
     <style>
-        body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
-        .fee-balance-card { max-width: 560px; margin: 40px auto; }
-        .institute-logo { max-height: 64px; max-width: 200px; object-fit: contain; }
-        .honeypot-field { position: absolute; left: -9999px; top: -9999px; }
-        .due-amount { font-size: 2.25rem; font-weight: 800; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: #eef2f7;
+            min-height: 100vh;
+            color: #1e293b;
+        }
+        .fb-wrap { max-width: 480px; margin: 32px auto; padding: 0 16px; }
+        .fb-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+            overflow: hidden;
+        }
+        .fb-header {
+            padding: 28px 28px 20px;
+            text-align: center;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .fb-logo { max-height: 56px; max-width: 180px; object-fit: contain; margin-bottom: 10px; }
+        .fb-institute-name { font-size: 1.05rem; font-weight: 700; margin: 0; color: #0f172a; }
+        .fb-subtitle {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+            color: var(--bs-primary); margin-top: 8px;
+        }
+
+        .fb-steps { display: flex; align-items: center; padding: 18px 28px 0; }
+        .fb-step-dot {
+            width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .72rem; font-weight: 700;
+            background: #e2e8f0; color: #94a3b8;
+            transition: background .2s, color .2s;
+        }
+        .fb-step-dot.done { background: var(--bs-primary); color: #fff; font-size: .8rem; }
+        .fb-step-dot.done::before { content: "\2713"; }
+        .fb-step-line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 6px; transition: background .2s; }
+        .fb-step-line.done { background: var(--bs-primary); }
+        .fb-step-label { font-size: .68rem; color: #94a3b8; text-align: center; margin-top: 6px; }
+
+        .fb-body { padding: 20px 28px 28px; }
+        .fb-section-label {
+            font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+            color: #94a3b8; display: flex; align-items: center; gap: 6px; margin: 20px 0 10px;
+        }
+        .fb-section-label:first-child { margin-top: 0; }
+        .fb-section-label i { font-size: .85rem; }
+
+        .form-label.small { color: #334155; font-weight: 600; margin-bottom: 5px; }
+        .form-select, .form-control {
+            border-color: #e2e8f0; border-radius: 9px; padding: .5rem .75rem; font-size: .9rem;
+        }
+        .form-select:focus, .form-control:focus {
+            border-color: var(--bs-primary); box-shadow: 0 0 0 .18rem color-mix(in srgb, var(--bs-primary) 18%, transparent);
+        }
+        .form-select:disabled { background-color: #f8fafc; color: #94a3b8; }
+        .input-group .btn-outline-secondary { border-color: #e2e8f0; color: #64748b; }
+
+        .fb-honeypot { position: absolute; left: -9999px; top: -9999px; }
+
+        .fb-captcha-box {
+            background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px;
+            padding: 12px 14px; display: flex; align-items: center; gap: 10px; margin-top: 4px;
+        }
+        .fb-captcha-box i { color: var(--bs-primary); font-size: 1.05rem; }
+        .fb-captcha-box .fb-captcha-q { font-weight: 700; font-size: .92rem; color: #0f172a; white-space: nowrap; }
+        .fb-captcha-box input { border-radius: 8px; text-align: center; }
+        .fb-refresh-btn {
+            border: none; background: transparent; color: #94a3b8; padding: 4px 6px; line-height: 1;
+        }
+        .fb-refresh-btn:hover { color: var(--bs-primary); }
+
+        .fb-submit-btn {
+            width: 100%; padding: .65rem 1rem; border-radius: 10px; font-weight: 600; font-size: .95rem;
+            margin-top: 22px; display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 0 4px 10px color-mix(in srgb, var(--bs-primary) 25%, transparent);
+        }
+
+        .fb-otp-icon {
+            width: 52px; height: 52px; border-radius: 50%; background: color-mix(in srgb, var(--bs-primary) 12%, white);
+            display: flex; align-items: center; justify-content: center; margin: 4px auto 16px;
+        }
+        .fb-otp-icon i { color: var(--bs-primary); font-size: 1.4rem; }
+        #otpInput {
+            text-align: center; font-size: 1.4rem; font-weight: 700; letter-spacing: .5em;
+            padding-left: .5em;
+        }
+        #otpInput::placeholder { letter-spacing: normal; font-size: .85rem; font-weight: 400; }
+
+        .fb-result-icon {
+            width: 60px; height: 60px; border-radius: 50%; margin: 4px auto 14px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .fb-result-icon i { font-size: 1.7rem; }
+        .fb-result-icon.due { background: #fef3ee; }
+        .fb-result-icon.due i { color: #ea580c; }
+        .fb-result-icon.clear { background: #ecfdf5; }
+        .fb-result-icon.clear i { color: #059669; }
+        .due-amount { font-size: 2.1rem; font-weight: 800; letter-spacing: -.02em; }
+
+        .fb-footer-note { text-align: center; font-size: .72rem; color: #cbd5e1; margin-top: 18px; }
+
         .step { display: none; }
-        .step.active { display: block; }
+        .step.active { display: block; animation: fbFadeIn .25s ease; }
+        @keyframes fbFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+        #formAlert { border-radius: 10px; font-size: .87rem; }
     </style>
 </head>
 <body>
-    <div class="container fee-balance-card">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    @if($institute->image)
-                        <img src="{{ asset('storage/' . $institute->image) }}" alt="{{ $institute->name }}" class="institute-logo mb-2 d-block mx-auto">
-                    @endif
-                    <h4 class="fw-bold mb-0">{{ $institute->name }}</h4>
-                    <div class="text-muted small">Know Your Fee Balance</div>
-                </div>
+    <div class="fb-wrap">
+        <div class="fb-card">
+            <div class="fb-header">
+                @if($institute->image)
+                    <img src="{{ asset('storage/' . $institute->image) }}" alt="{{ $institute->name }}" class="fb-logo d-block mx-auto">
+                @endif
+                <p class="fb-institute-name">{{ $institute->name }}</p>
+                <div class="fb-subtitle"><i class="bi bi-wallet2"></i> Know Your Fee Balance</div>
+            </div>
 
-                <div id="formAlert" class="alert alert-danger d-none" role="alert"></div>
+            <div class="fb-steps" id="fbSteps">
+                <div class="fb-step-dot" id="dot1">1</div>
+                <div class="fb-step-line" id="line1"></div>
+                <div class="fb-step-dot" id="dot2">2</div>
+                <div class="fb-step-line" id="line2"></div>
+                <div class="fb-step-dot" id="dot3">3</div>
+            </div>
+
+            <div class="fb-body">
+                <div id="formAlert" class="alert alert-danger py-2 px-3 d-none" role="alert"></div>
 
                 {{-- Step 1: academic context + identity + captcha --}}
                 <div id="step1" class="step active">
                     <form id="verifyForm" novalidate>
                         @csrf
-                        <input type="text" name="website" class="honeypot-field" tabindex="-1" autocomplete="off">
+                        <input type="text" name="website" class="fb-honeypot" tabindex="-1" autocomplete="off">
+
+                        <div class="fb-section-label"><i class="bi bi-mortarboard"></i> Academic Details</div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Course Type *</label>
+                            <label class="form-label small">Course Type *</label>
                             <select id="courseTypeSelect" class="form-select" required>
                                 <option value="">Select course type</option>
                                 @foreach($courseTypes as $courseType)
@@ -49,34 +161,35 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Course *</label>
+                            <label class="form-label small">Course *</label>
                             <select id="courseSelect" name="course_id" class="form-select" required disabled>
                                 <option value="">Select course type first</option>
                             </select>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Stream *</label>
-                            <select id="streamSelect" name="course_stream_id" class="form-select" required disabled>
-                                <option value="">Select course first</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Semester</label>
-                            <select id="semesterSelect" name="semester" class="form-select" disabled>
-                                <option value="">Select course first</option>
-                            </select>
+                        <div class="row g-2">
+                            <div class="col-7">
+                                <label class="form-label small">Stream *</label>
+                                <select id="streamSelect" name="course_stream_id" class="form-select" required disabled>
+                                    <option value="">Select course first</option>
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small">Semester</label>
+                                <select id="semesterSelect" name="semester" class="form-select" disabled>
+                                    <option value="">Skip</option>
+                                </select>
+                            </div>
                         </div>
 
                         <input type="hidden" id="courseTypeIdInput" name="course_type_id">
 
-                        <hr>
+                        <div class="fb-section-label"><i class="bi bi-person-badge"></i> Identity Verification</div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Search By *</label>
+                            <label class="form-label small">Search By *</label>
                             <div class="input-group">
-                                <select name="identifier_type" id="identifierTypeSelect" class="form-select" style="max-width: 40%;" required>
+                                <select name="identifier_type" id="identifierTypeSelect" class="form-select" style="max-width: 42%;" required>
                                     @foreach($identifierOptions as $value => $label)
                                         <option value="{{ $value }}">{{ $label }}</option>
                                     @endforeach
@@ -85,45 +198,57 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Date of Birth *</label>
-                            <input type="date" name="dob" class="form-control" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Mobile Number *</label>
-                            <input type="text" name="mobile" class="form-control" required maxlength="20" placeholder="As registered with the institute">
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label small fw-semibold" id="captchaLabel">{{ $captchaQuestion }} *</label>
-                            <div class="input-group">
-                                <input type="number" name="captcha_answer" id="captchaAnswerInput" class="form-control" required>
-                                <button type="button" id="refreshCaptchaBtn" class="btn btn-outline-secondary" title="New question">&#8635;</button>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small">Date of Birth *</label>
+                                <input type="date" name="dob" class="form-control" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">Mobile Number *</label>
+                                <input type="text" name="mobile" class="form-control" required maxlength="20" placeholder="Registered no.">
                             </div>
                         </div>
 
-                        <button type="submit" id="verifyBtn" class="btn btn-primary w-100">Submit</button>
+                        <div class="fb-section-label"><i class="bi bi-shield-check"></i> Security Check</div>
+
+                        <div class="fb-captcha-box">
+                            <i class="bi bi-calculator"></i>
+                            <span class="fb-captcha-q" id="captchaLabel">{{ $captchaQuestion }}</span>
+                            <input type="number" name="captcha_answer" id="captchaAnswerInput" class="form-control form-control-sm" placeholder="?" required style="max-width:80px;">
+                            <button type="button" id="refreshCaptchaBtn" class="fb-refresh-btn ms-auto" title="New question">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        </div>
+
+                        <button type="submit" id="verifyBtn" class="btn btn-primary fb-submit-btn">
+                            <span>Continue</span> <i class="bi bi-arrow-right"></i>
+                        </button>
                     </form>
                 </div>
 
                 {{-- Step 2: OTP --}}
-                <div id="step2" class="step">
-                    <p class="text-muted small mb-3" id="otpIntro">An OTP has been sent to the mobile number on file.</p>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold">Enter OTP *</label>
-                        <input type="text" id="otpInput" class="form-control" maxlength="6" required>
+                <div id="step2" class="step text-center">
+                    <div class="fb-otp-icon"><i class="bi bi-shield-lock"></i></div>
+                    <p class="text-muted small mb-3 px-2" id="otpIntro">An OTP has been sent to the mobile number on file.</p>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small">Enter 6-digit OTP *</label>
+                        <input type="text" id="otpInput" class="form-control" maxlength="6" inputmode="numeric" placeholder="——————" required>
                     </div>
-                    <button type="button" id="verifyOtpBtn" class="btn btn-primary w-100 mb-2">Verify OTP</button>
-                    <button type="button" id="resendOtpBtn" class="btn btn-link w-100 small">Resend OTP</button>
+                    <button type="button" id="verifyOtpBtn" class="btn btn-primary fb-submit-btn mb-1">
+                        <span>Verify OTP</span> <i class="bi bi-check2"></i>
+                    </button>
+                    <button type="button" id="resendOtpBtn" class="btn btn-link btn-sm text-decoration-none">Resend OTP</button>
                 </div>
 
                 {{-- Step 3: result --}}
                 <div id="step3" class="step text-center">
-                    <div class="text-muted small mb-2">Your Fee Balance</div>
+                    <div class="fb-result-icon due" id="resultIcon"><i class="bi bi-cash-coin"></i></div>
+                    <div class="text-muted small mb-1">Your Fee Balance</div>
                     <div class="due-amount text-primary" id="dueAmount">-</div>
                     <div class="text-muted small mt-3">Contact the institute office for payment details.</div>
                 </div>
+
+                <div class="fb-footer-note"><i class="bi bi-lock-fill"></i> Verified with OTP · No data stored on this device</div>
             </div>
         </div>
     </div>
@@ -164,6 +289,15 @@
         function showStep(id) {
             document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
             document.getElementById(id).classList.add('active');
+
+            const stepNum = { step1: 1, step2: 2, step3: 3 }[id];
+            [1, 2, 3].forEach(n => {
+                document.getElementById('dot' + n).classList.toggle('done', n <= stepNum);
+                document.getElementById('dot' + n).textContent = n < stepNum ? '' : n;
+            });
+            [1, 2].forEach(n => {
+                document.getElementById('line' + n).classList.toggle('done', n < stepNum);
+            });
         }
 
         async function postJson(path, body) {
@@ -175,7 +309,7 @@
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
                 if (data.field === 'captcha' && data.question) {
-                    document.getElementById('captchaLabel').textContent = data.question + ' *';
+                    document.getElementById('captchaLabel').textContent = data.question;
                     document.getElementById('captchaAnswerInput').value = '';
                 }
                 throw new Error(data.message || 'Something went wrong.');
@@ -228,7 +362,7 @@
 
         function populateSemesters() {
             const semesterSelect = document.getElementById('semesterSelect');
-            semesterSelect.innerHTML = '<option value="">Not sure / skip</option>';
+            semesterSelect.innerHTML = '<option value="">Skip</option>';
             const course = currentCourse();
             semesterSelect.disabled = !course;
             if (course) {
@@ -249,7 +383,7 @@
             try {
                 const response = await fetch(baseUrl + '/captcha', { headers: { 'Accept': 'application/json' } });
                 const data = await response.json();
-                document.getElementById('captchaLabel').textContent = data.question + ' *';
+                document.getElementById('captchaLabel').textContent = data.question;
                 document.getElementById('captchaAnswerInput').value = '';
             } catch (err) { /* silent — user can still submit and get a fresh one on mismatch */ }
         });
@@ -297,6 +431,13 @@
             try {
                 const data = await postJson('/verify-otp', { token: otpToken, otp });
                 document.getElementById('dueAmount').textContent = '₹ ' + data.due;
+
+                const icon = document.getElementById('resultIcon');
+                const hasDue = parseFloat(String(data.due).replace(/,/g, '')) > 0;
+                icon.classList.toggle('due', hasDue);
+                icon.classList.toggle('clear', !hasDue);
+                icon.querySelector('i').className = hasDue ? 'bi bi-cash-coin' : 'bi bi-check-circle';
+
                 showStep('step3');
             } catch (err) {
                 showError(err.message);
