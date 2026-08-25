@@ -30,4 +30,13 @@ class BrandingSettingController extends Controller
 
         return back()->with('success', 'Brand color updated.');
     }
+
+    public function saveFeeBalance(Request $request)
+    {
+        $this->institute()->update([
+            'fee_balance_enabled' => $request->boolean('fee_balance_enabled'),
+        ]);
+
+        return back()->with('success', 'Fee balance page setting updated.');
+    }
 }

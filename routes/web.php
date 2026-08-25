@@ -405,9 +405,10 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('settings/email/test',       [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'testConnection'])->name('settings.email.test');
         Route::post('settings/email/disconnect', [\App\Http\Controllers\Institute\Settings\SmtpSettingController::class, 'disconnect'])->name('settings.email.disconnect');
 
-        // Branding (public admission form color)
-        Route::get('settings/branding',       [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'index'])->name('settings.branding');
-        Route::post('settings/branding/save', [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'save'])->name('settings.branding.save');
+        // Branding (public admission form color) + public link toggles
+        Route::get('settings/branding',                     [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'index'])->name('settings.branding');
+        Route::post('settings/branding/save',                [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'save'])->name('settings.branding.save');
+        Route::post('settings/branding/fee-balance',         [\App\Http\Controllers\Institute\Settings\BrandingSettingController::class, 'saveFeeBalance'])->name('settings.branding.fee-balance');
 
         // Data Export / Backup
         Route::get('settings/data-export', [\App\Http\Controllers\Institute\Settings\DataExportController::class, 'download'])->name('settings.data-export');

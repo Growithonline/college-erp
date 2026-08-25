@@ -18,6 +18,7 @@ class Institute extends Model
         'email',
         'image',
         'primary_color',
+        'fee_balance_enabled',
         'address',
         'city',
         'state',
@@ -43,8 +44,9 @@ class Institute extends Model
     ];
 
     protected $casts = [
-        'smtp_password' => 'encrypted',
-        'smtp_verified' => 'boolean',
+        'smtp_password'        => 'encrypted',
+        'smtp_verified'        => 'boolean',
+        'fee_balance_enabled'  => 'boolean',
     ];
 
     public function hasSmtp(): bool

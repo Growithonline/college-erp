@@ -38,7 +38,7 @@ class FeeBalanceController extends Controller
     {
         $institute = Institute::where('short_name', strtoupper($shortName))->first();
 
-        abort_if(!$institute || $institute->status !== 'active', 404);
+        abort_if(!$institute || $institute->status !== 'active' || !$institute->fee_balance_enabled, 404);
 
         return $institute;
     }

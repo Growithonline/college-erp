@@ -8,6 +8,17 @@
     <small class="text-muted">Har form ke fields aur layout configure karo</small>
 </div>
 
+<div class="alert alert-light border d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <div>
+        <i class="bi bi-search-heart text-primary me-1"></i>
+        <strong>Know Your Fee Balance</strong> — public page jaha students apna fee balance khud check kar sakte hain (OTP verified).
+        <span class="text-muted">Turn it on/off and copy the link from Settings → Branding.</span>
+    </div>
+    <a href="{{ route('master.settings.branding') }}" class="btn btn-outline-primary btn-sm flex-shrink-0">
+        <i class="bi bi-gear me-1"></i> Manage
+    </a>
+</div>
+
 <div class="row g-4">
     @foreach($formTypes as $type => $info)
     <div class="col-md-6">
