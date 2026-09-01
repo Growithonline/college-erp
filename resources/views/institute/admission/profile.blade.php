@@ -542,10 +542,22 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
                     <td class="text-nowrap">{{ $snapVal('perm_state', $student->perm_state) }}</td>
                     <td class="text-nowrap">{{ $snapVal('perm_pincode', $student->perm_pincode) }}</td>
                 </tr>
+                @if($commSameAsPerm)
                 <tr>
                     <td class="fw-bold text-nowrap">Present</td>
-                    <td colspan="6">{{ $commSameAsPerm ? 'Same as Permanent Address' : $snapVal('comm_address', $student->comm_address) }}</td>
+                    <td colspan="6">Same as Permanent Address</td>
                 </tr>
+                @else
+                <tr>
+                    <td class="fw-bold text-nowrap">Present</td>
+                    <td class="text-nowrap">{{ $snapVal('comm_city', $student->comm_city) }}</td>
+                    <td class="text-nowrap">{{ $snapVal('comm_post', $student->comm_post) }}</td>
+                    <td class="text-nowrap">{{ $snapVal('comm_thana', $student->comm_thana) }}</td>
+                    <td class="text-nowrap">{{ $snapVal('comm_district', $student->comm_district) }}</td>
+                    <td class="text-nowrap">{{ $snapVal('comm_state', $student->comm_state) }}</td>
+                    <td class="text-nowrap">{{ $snapVal('comm_pincode', $student->comm_pincode) }}</td>
+                </tr>
+                @endif
             </tbody>
         </table>
     </div>

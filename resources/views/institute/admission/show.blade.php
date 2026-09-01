@@ -240,6 +240,20 @@
                 <span class="fw-bold small"><i class="bi bi-geo-alt me-2"></i>Address Details</span>
             </div>
             <div class="card-body p-0">
+                @php
+                    $commParts = array_filter([
+                        $student->comm_address,
+                        $student->comm_city,
+                        $student->comm_thana,
+                        $student->comm_post,
+                        $student->comm_district,
+                        $student->comm_state,
+                        $student->comm_pincode,
+                    ]);
+                    $commDisplay = $student->comm_same_as_perm
+                        ? 'Same as above'
+                        : (count($commParts) ? implode(', ', $commParts) : '—');
+                @endphp
                 @foreach([
                     'Village/City' => $student->perm_village ?? '—',
                     'Post'         => $student->perm_post ?? '—',
@@ -247,7 +261,7 @@
                     'District'     => $student->perm_district ?? '—',
                     'State'        => $student->perm_state ?? '—',
                     'Pin Code'     => $student->perm_pincode ?? '—',
-                    'Comm. Address'=> ($student->comm_same_as_perm) ? 'Same as above' : ($student->comm_address ?? '—'),
+                    'Comm. Address'=> $commDisplay,
                 ] as $label => $value)
                 <div class="d-flex border-bottom px-3 py-2" style="font-size:13px;">
                     <div class="text-muted" style="width:145px;flex-shrink:0;">{{ $label }}</div>

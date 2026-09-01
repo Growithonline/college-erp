@@ -82,6 +82,20 @@ window.INDIA_GEO = {
         });
     }
 
+    // Full form — communication address
+    var commState = document.getElementById('commStateSelect');
+    var commDist  = document.getElementById('commDistrictSelect');
+    if (commState && commDist) {
+        var savedCommState    = commState.dataset.saved || '';
+        var savedCommDistrict = commDist.dataset.saved  || '';
+        populateStateSelect(commState, savedCommState);
+        if (savedCommState) populateDistrictSelect(commDist, savedCommState, savedCommDistrict);
+
+        commState.addEventListener('change', function () {
+            populateDistrictSelect(commDist, this.value, '');
+        });
+    }
+
     // Quick form — permanent address
     var qPermState = document.getElementById('quickPermState');
     var qPermDist  = document.getElementById('quickPermDistrict');

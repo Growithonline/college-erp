@@ -824,29 +824,40 @@
             <div class="col-12 mt-2">
                 <div class="small fw-semibold text-muted border-bottom pb-1 mb-2">Communication Address</div>
             </div>
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="comm_same_as_perm"
+                           id="editSameAddress" value="1"
+                           {{ (string) old('comm_same_as_perm', $student->comm_same_as_perm ? '1' : '0') === '1' ? 'checked' : '' }}
+                           onchange="toggleEditCommAddress(this.checked, true)">
+                    <label class="form-check-label small fw-semibold" for="editSameAddress">
+                        Communication address — same as above
+                    </label>
+                </div>
+            </div>
             @if($formConfig['comm_address']['enabled'] ?? false)
             <div class="col-md-6">
                 <label class="form-label small fw-semibold">Address</label>
-                <input type="text" name="comm_address" class="form-control form-control-sm"
+                <input type="text" name="comm_address" id="editCommAddress" class="form-control form-control-sm"
                        value="{{ old('comm_address', $student->comm_address) }}">
             </div>
             @endif
             @if($formConfig['perm_village']['enabled'] ?? false)
             <div class="col-md-4">
                 <label class="form-label small fw-semibold">Village / City</label>
-                <input type="text" name="comm_city" class="form-control form-control-sm"
+                <input type="text" name="comm_city" id="editCommCity" class="form-control form-control-sm"
                        value="{{ old('comm_city', $student->comm_city) }}">
             </div>
             @endif
             @if($formConfig['perm_post']['enabled'] ?? false)
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Thana</label>
-                <input type="text" name="comm_thana" class="form-control form-control-sm"
+                <input type="text" name="comm_thana" id="editCommThana" class="form-control form-control-sm"
                        value="{{ old('comm_thana', $student->comm_thana) }}">
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Post</label>
-                <input type="text" name="comm_post" class="form-control form-control-sm"
+                <input type="text" name="comm_post" id="editCommPost" class="form-control form-control-sm"
                        value="{{ old('comm_post', $student->comm_post) }}">
             </div>
             @endif
@@ -871,7 +882,7 @@
             @if($formConfig['perm_pincode']['enabled'] ?? false)
             <div class="col-md-2">
                 <label class="form-label small fw-semibold">Pin Code</label>
-                <input type="text" name="comm_pincode" class="form-control form-control-sm"
+                <input type="text" name="comm_pincode" id="editCommPincode" class="form-control form-control-sm"
                        value="{{ old('comm_pincode', $student->comm_pincode) }}" maxlength="6">
             </div>
             @endif
@@ -1164,6 +1175,41 @@ function toggleScholarshipEdit() {
     const hasScholarship = document.querySelector('input[name="has_scholarship"]:checked')?.value === '1';
     const box = document.getElementById('editScholarshipDetails');
     if (box) box.style.display = hasScholarship ? 'block' : 'none';
+}
+
+// forceSync=true copies the current permanent-address values into the communication
+// fields (used when the user actively checks the box). On page load we only apply the
+// locked styling, never overwrite what's already saved — the DB value may be a genuinely
+// different communication address that predates this checkbox being wired up.
+function toggleEditCommAddress(checked, forceSync) {
+    const fieldMap = [
+        ['editCommCity', 'perm_village'],
+        ['editCommPost', 'perm_post'],
+        ['editCommThana', 'perm_thana'],
+        ['editCommPincode', 'perm_pincode'],
+    ];
+    fieldMap.forEach(([id, permName]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (checked) {
+            if (forceSync) el.value = document.querySelector(`[name="${permName}"]`)?.value || '';
+            el.readOnly = true;
+            el.classList.add('bg-light');
+        } else {
+            el.readOnly = false;
+            el.classList.remove('bg-light');
+        }
+    });
+
+    const commState    = document.getElementById('editCommState');
+    const commDistrict = document.getElementById('editCommDist');
+    const permState     = document.getElementById('editPermState');
+    const permDistrict  = document.getElementById('editPermDist');
+    if (commState && commDistrict && checked && forceSync) {
+        commState.value = permState?.value || '';
+        commState.dispatchEvent(new Event('change'));
+        commDistrict.value = permDistrict?.value || '';
+    }
 }
 
 function calcPercent(input) {
@@ -1724,6 +1770,10 @@ window.addEventListener('DOMContentLoaded', function() {
             commState.addEventListener('change', function() { fillDistricts(commDist, this.value, ''); });
         }
     })();
+
+    // Comm address checkbox initial styling (no value overwrite — see toggleEditCommAddress)
+    var editSameAddrCb = document.getElementById('editSameAddress');
+    if (editSameAddrCb) toggleEditCommAddress(editSameAddrCb.checked, false);
 });
 </script>
 @endpush

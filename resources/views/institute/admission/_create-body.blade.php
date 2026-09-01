@@ -790,6 +790,22 @@
                 <label class="form-label small fw-semibold">Communication Address @if($fieldRequired('comm_address'))<span class="text-danger">*</span>@endif</label>
                 <textarea name="comm_address" id="commAddressField" rows="2" class="form-control form-control-sm" {{ $fieldRequired('comm_address') ? 'required' : '' }}>{{ $pv('comm_address') }}</textarea>
             </div>
+            <div class="col-md-3"><label class="form-label small fw-semibold">Village/City</label>
+            <input type="text" name="comm_city" id="commCityField" class="form-control form-control-sm" value="{{ $pv('comm_city') }}"></div>
+            <div class="col-md-2"><label class="form-label small fw-semibold">Post</label>
+            <input type="text" name="comm_post" id="commPostField" class="form-control form-control-sm" value="{{ $pv('comm_post') }}"></div>
+            <div class="col-md-2"><label class="form-label small fw-semibold">Thana</label>
+            <input type="text" name="comm_thana" id="commThanaField" class="form-control form-control-sm" value="{{ $pv('comm_thana') }}"></div>
+            <div class="col-md-3"><label class="form-label small fw-semibold">State</label>
+            <select name="comm_state" id="commStateSelect" class="form-select form-select-sm" data-saved="{{ $pv('comm_state') }}">
+                <option value="">— Select State —</option>
+            </select></div>
+            <div class="col-md-3"><label class="form-label small fw-semibold">District</label>
+            <select name="comm_district" id="commDistrictSelect" class="form-select form-select-sm" data-saved="{{ $pv('comm_district') }}">
+                <option value="">— Select District —</option>
+            </select></div>
+            <div class="col-md-2"><label class="form-label small fw-semibold">Pin Code</label>
+            <input type="text" name="comm_pincode" id="commPincodeField" class="form-control form-control-sm" maxlength="6" value="{{ $pv('comm_pincode') }}"></div>
             @endif
         </div>
     </div>
@@ -1634,6 +1650,41 @@ function toggleCommAddress(checked) {
         textarea.classList.remove('bg-light');
         textarea.value = '';
         textarea.focus();
+    }
+
+    const textFields = [
+        ['comm_city', 'perm_village'],
+        ['comm_post', 'perm_post'],
+        ['comm_thana', 'perm_thana'],
+        ['comm_pincode', 'perm_pincode'],
+    ];
+    textFields.forEach(([commName, permName]) => {
+        const el = document.querySelector(`[name="${commName}"]`);
+        if (!el) return;
+        if (checked) {
+            el.value    = document.querySelector(`[name="${permName}"]`)?.value || '';
+            el.readOnly = true;
+            el.classList.add('bg-light');
+        } else {
+            el.readOnly = false;
+            el.classList.remove('bg-light');
+            el.value = '';
+        }
+    });
+
+    const commState    = document.getElementById('commStateSelect');
+    const commDistrict = document.getElementById('commDistrictSelect');
+    const permState    = document.querySelector('[name="perm_state"]');
+    const permDistrict = document.querySelector('[name="perm_district"]');
+    if (commState && commDistrict) {
+        if (checked) {
+            commState.value = permState?.value || '';
+            commState.dispatchEvent(new Event('change'));
+            commDistrict.value = permDistrict?.value || '';
+        } else {
+            commState.value = '';
+            commDistrict.innerHTML = '<option value="">— Select District —</option>';
+        }
     }
 }
 

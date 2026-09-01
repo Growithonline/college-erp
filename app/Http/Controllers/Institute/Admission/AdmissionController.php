@@ -1922,6 +1922,15 @@ class AdmissionController extends Controller
         $this->appendFieldRule($rules, $formConfig, 'perm_state', ['string', 'max:100']);
         $this->appendFieldRule($rules, $formConfig, 'perm_pincode', $this->strictPincodeRules());
         $this->appendFieldRule($rules, $formConfig, 'comm_address', ['string', 'max:255']);
+        if ($this->fieldEnabled($formConfig, 'comm_address')) {
+            $rules['comm_same_as_perm'] = ['nullable', 'boolean'];
+            $rules['comm_city']         = ['nullable', 'string', 'max:100'];
+            $rules['comm_thana']        = ['nullable', 'string', 'max:100'];
+            $rules['comm_post']         = ['nullable', 'string', 'max:100'];
+            $rules['comm_district']     = ['nullable', 'string', 'max:100'];
+            $rules['comm_state']        = ['nullable', 'string', 'max:100'];
+            $rules['comm_pincode']      = array_merge(['nullable'], $this->strictPincodeRules());
+        }
 
         if (
             $this->fieldEnabled($formConfig, 'admission_source')
@@ -2523,7 +2532,7 @@ class AdmissionController extends Controller
                 'perm_state'          => $this->normalizeUppercaseString($formData['perm_state'] ?? null),
                 'perm_pincode'        => $formData['perm_pincode']        ?? null,
                 'perm_address'        => $this->normalizeUppercaseString($formData['perm_address'] ?? null),
-                'comm_same_as_perm'   => (bool) ($formData['comm_same_as_perm'] ?? true),
+                'comm_same_as_perm'   => (bool) ($formData['comm_same_as_perm'] ?? false),
                 'comm_state'          => $this->normalizeUppercaseString($formData['comm_state'] ?? null),
                 'comm_district'       => $this->normalizeUppercaseString($formData['comm_district'] ?? null),
                 'comm_post'           => $this->normalizeUppercaseString($formData['comm_post'] ?? null),
@@ -3621,6 +3630,7 @@ class AdmissionController extends Controller
             'comm_district' => 'nullable|string|max:100',
             'comm_state' => 'nullable|string|max:100',
             'comm_pincode' => ['nullable', ...$this->strictPincodeRules()],
+            'comm_same_as_perm' => 'nullable|boolean',
             'course_type_id'   => ['required', 'integer', \Illuminate\Validation\Rule::exists('course_types', 'id')->where('institute_id', $this->instituteId())],
             'course_stream_id' => 'required|integer|exists:course_streams,id',
             'course_part_id'   => 'nullable|integer|exists:course_parts,id',
@@ -3751,6 +3761,7 @@ class AdmissionController extends Controller
                 'comm_district'       => $request->input('comm_district', $student->comm_district),
                 'comm_state'          => $request->input('comm_state', $student->comm_state),
                 'comm_pincode'        => $request->input('comm_pincode', $student->comm_pincode),
+                'comm_same_as_perm'   => $request->boolean('comm_same_as_perm'),
                 'course_type_id'      => $request->input('course_type_id', $student->course_type_id),
                 'course_stream_id'    => $stream->id,
                 'course_part_id'      => $selectedPart->id,
