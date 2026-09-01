@@ -41,25 +41,35 @@ window.INDIA_GEO = {
 (function initIndiaGeoSelects() {
     var states = Object.keys(window.INDIA_GEO).sort();
 
+    // DB me state/district hamesha UPPERCASE save hote hain (normalizeUppercaseString), is-liye
+    // saved value ko INDIA_GEO ke Title-Case names se match karte waqt case ignore karo.
+    function sameIgnoreCase(a, b) {
+        return String(a || '').trim().toUpperCase() === String(b || '').trim().toUpperCase();
+    }
+
+    function findStateKey(stateName) {
+        return states.find(function(s) { return sameIgnoreCase(s, stateName); }) || stateName;
+    }
+
     function populateStateSelect(sel, savedState) {
         sel.innerHTML = '<option value="">— Select State —</option>';
         states.forEach(function(s) {
             var opt = document.createElement('option');
             opt.value = s;
             opt.textContent = s;
-            if (s === savedState) opt.selected = true;
+            if (sameIgnoreCase(s, savedState)) opt.selected = true;
             sel.appendChild(opt);
         });
     }
 
     function populateDistrictSelect(distSel, stateName, savedDistrict) {
         distSel.innerHTML = '<option value="">— Select District —</option>';
-        var districts = (window.INDIA_GEO[stateName] || []);
+        var districts = (window.INDIA_GEO[findStateKey(stateName)] || []);
         districts.forEach(function(d) {
             var opt = document.createElement('option');
             opt.value = d;
             opt.textContent = d;
-            if (d === savedDistrict) opt.selected = true;
+            if (sameIgnoreCase(d, savedDistrict)) opt.selected = true;
             distSel.appendChild(opt);
         });
     }

@@ -1723,7 +1723,11 @@ window.addEventListener('DOMContentLoaded', function() {
     // Auto-uppercase all text inputs (email type excluded automatically by selector)
     document.querySelectorAll('#editAdmissionForm input[type="text"]').forEach(function(input) {
         if (input.value) input.value = input.value.toUpperCase();
-        input.addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+        input.addEventListener('input', function() {
+            const pos = this.selectionStart;
+            this.value = this.value.toUpperCase();
+            try { this.setSelectionRange(pos, pos); } catch (_) {}
+        });
     });
 
     // State/District dropdowns — edit form (uses window.INDIA_GEO from _india-geo partial)
@@ -1731,21 +1735,29 @@ window.addEventListener('DOMContentLoaded', function() {
         var geo = window.INDIA_GEO || {};
         var states = Object.keys(geo).sort();
 
+        // DB me state/district hamesha UPPERCASE save hote hain (normalizeUppercaseString),
+        // is-liye saved value ko INDIA_GEO ke Title-Case names se case-insensitive match karo —
+        // warna existing student ka State/District select blank dikhta rehta tha.
+        function sameIgnoreCase(a, b) {
+            return String(a || '').trim().toUpperCase() === String(b || '').trim().toUpperCase();
+        }
+
         function fillStates(sel, saved) {
             states.forEach(function(s) {
                 var o = document.createElement('option');
                 o.value = s; o.textContent = s;
-                if (s === saved) o.selected = true;
+                if (sameIgnoreCase(s, saved)) o.selected = true;
                 sel.appendChild(o);
             });
         }
 
         function fillDistricts(sel, stateName, saved) {
             sel.innerHTML = '<option value="">— Select District —</option>';
-            (geo[stateName] || []).forEach(function(d) {
+            var stateKey = states.find(function(s) { return sameIgnoreCase(s, stateName); }) || stateName;
+            (geo[stateKey] || []).forEach(function(d) {
                 var o = document.createElement('option');
                 o.value = d; o.textContent = d;
-                if (d === saved) o.selected = true;
+                if (sameIgnoreCase(d, saved)) o.selected = true;
                 sel.appendChild(o);
             });
         }
