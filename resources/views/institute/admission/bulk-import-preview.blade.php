@@ -111,7 +111,8 @@
     <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
     <div>
         <strong>{{ count($softRows) }} row(s)</strong> have minor issues in optional fields only (mandatory fields are fine).
-        You choose below whether to import them anyway — the problematic fields will just be left blank.
+        You choose below whether to import them anyway — unrecognized values are left blank or defaulted, and duplicate IDs
+        (Roll / Enrollment / UIN / Exam Form No) are saved exactly as entered.
     </div>
     <button type="button" class="btn-close ms-auto flex-shrink-0" data-bs-dismiss="alert"></button>
 </div>
@@ -148,7 +149,7 @@
         <div class="form-check mt-3 pt-3 border-top">
             <input class="form-check-input" type="checkbox" id="includeSoftTop" data-soft-checkbox>
             <label class="form-check-label small" for="includeSoftTop">
-                Also import the <strong>{{ count($softRows) }}</strong> row(s) with minor issues (their problematic fields will be left blank)
+                Also import the <strong>{{ count($softRows) }}</strong> row(s) with minor issues (unrecognized values left blank/defaulted, duplicate IDs saved as entered)
             </label>
         </div>
         @endif
@@ -344,7 +345,7 @@
                     @foreach($invalidRows as $row)
                     <tr class="table-danger" style="--bs-table-bg:rgba(220,53,69,0.05);">
                         <td class="ps-3 fw-semibold">{{ $row['row_num'] }}</td>
-                        <td>{{ $row['name'] ?: '<em class="text-muted">—</em>' }}</td>
+                        <td>@if($row['name'] !== '') {{ $row['name'] }} @else <em class="text-muted">—</em> @endif</td>
                         <td>{{ $row['mobile'] ?: '—' }}</td>
                         <td class="text-muted small">{{ $row['course_name'] ?: '—' }}</td>
                         <td class="text-muted small">{{ $row['stream_name'] ?: '—' }}</td>
@@ -405,7 +406,7 @@
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="includeSoftModal" data-soft-checkbox>
                     <label class="form-check-label small" for="includeSoftModal">
-                        Also import the <strong>{{ count($softRows) }}</strong> row(s) with minor issues (problematic fields left blank)
+                        Also import the <strong>{{ count($softRows) }}</strong> row(s) with minor issues (unrecognized values left blank/defaulted, duplicate IDs saved as entered)
                     </label>
                 </div>
                 @endif

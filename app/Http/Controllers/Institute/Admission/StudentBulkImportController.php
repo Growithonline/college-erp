@@ -11,6 +11,7 @@ use App\Models\CoursePart;
 use App\Models\CourseStream;
 use App\Models\Student;
 use App\Models\StudentAcademicIdentity;
+use App\Models\StudentType;
 use App\Services\AuditLogService;
 use App\Services\StudentAcademicChangeService;
 use App\Services\StudentIdService;
@@ -31,11 +32,12 @@ class StudentBulkImportController extends Controller
     private const MAX_ROWS       = 500;
     private const MAX_FILE_MB    = 5;
     private const SESSION_TTL    = 30; // minutes
-    private const ALLOWED_MIMES  = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel',
-        'application/octet-stream', // some browsers send this for xlsx
-    ];
+    private const TEMPLATE_SHEET = 'Import Template';
+
+    // The template's sample row — if it is left in the file it would otherwise pass
+    // validation as a real student (it uses a real course/stream from the institute).
+    private const EXAMPLE_NAME   = 'Rahul Sharma';
+    private const EXAMPLE_MOBILE = '9876543210';
 
     private const RELIGION_OPTIONS = ['hindu', 'muslim', 'sikh', 'christian', 'jain', 'parsi', 'buddhist', 'others'];
     private const GUARDIAN_RELATION_OPTIONS = ['father', 'mother', 'uncle', 'aunt', 'brother', 'sister', 'grandfather', 'grandmother', 'others'];
@@ -65,10 +67,29 @@ class StudentBulkImportController extends Controller
 
     // Strip leading formula-trigger characters so a value like
     // =HYPERLINK(...) can't execute if this data is later opened in Excel.
+    // A plain number ("-500") or comma-separated list of numbers ("-500,300") is data,
+    // not a formula: its sign is kept so the negative-amount checks can still catch it
+    // (stripping it would silently turn a −500 into a +500 due).
     private function sanitizeCell(string $value): string
     {
         $value = trim(strip_tags($value));
+        if (is_numeric($value) || preg_match('/^[+-]?\d+(?:\.\d+)?(?:\s*,\s*[+-]?\d+(?:\.\d+)?)*$/', $value)) {
+            return $value;
+        }
         return preg_replace('/^[=+\-@]+/', '', $value);
+    }
+
+    // Truncation-safe guard for fixed-length varchar columns: a longer value would
+    // otherwise only fail at insert time ("Data too long"), after the user already
+    // confirmed the preview. Flag it as a minor issue and leave the field blank.
+    private function fitLength(string $value, int $max, string $label, array &$softErrors): ?string
+    {
+        if ($value === '') return null;
+        if (mb_strlen($value) > $max) {
+            $softErrors[] = "{$label} is too long (max {$max} characters) — left blank";
+            return null;
+        }
+        return $value;
     }
 
     // ── Show upload page ──────────────────────────────────────────────
@@ -95,10 +116,13 @@ class StudentBulkImportController extends Controller
         $centers  = Center::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
         $partners = ChannelPartner::where('institute_id', $instituteId)->orderBy('name')->get();
 
+        $studentTypes = StudentType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get();
+        $exampleStudentType = $studentTypes->firstWhere('slug', 'regular')?->name ?? $studentTypes->first()?->name ?? 'Regular';
+
         $spreadsheet = new Spreadsheet();
 
         // ── Sheet 1: Import Template ──────────────────────────────────
-        $sheet = $spreadsheet->getActiveSheet()->setTitle('Import Template');
+        $sheet = $spreadsheet->getActiveSheet()->setTitle(self::TEMPLATE_SHEET);
 
         $headers = [
             'A'  => 'Student UID',
@@ -193,8 +217,8 @@ class StudentBulkImportController extends Controller
         // Example data row
         $example = [
             'A' => '',  // leave blank = auto-generate
-            'B' => 'Rahul Sharma',
-            'C' => '9876543210',
+            'B' => self::EXAMPLE_NAME,
+            'C' => self::EXAMPLE_MOBILE,
             'D' => $courses->first()?->name ?? 'B.Sc.',
             'E' => $courses->first()?->streams->first()?->name ?? 'B.Sc. Physics',
             'F' => '1',
@@ -229,7 +253,7 @@ class StudentBulkImportController extends Controller
             'AI' => 'Single',
             'AJ' => '1234-5678-9012',
             'AK' => '',
-            'AL' => 'Regular',
+            'AL' => $exampleStudentType,
             'AM' => 'Sector 5, Near Temple',
             'AN' => 'VillageName',
             'AO' => '',
@@ -346,6 +370,7 @@ class StudentBulkImportController extends Controller
             ['Category',                    'General / OBC / SC / ST / EWS / Others'],
             ['Special Category',            'Scholarship Quota / Sports Quota / Others / None (default: None)'],
             ['Marital Status',              'Single / Married / Divorced / Widowed (default: Single)'],
+            ['Student Type',                ($studentTypes->isNotEmpty() ? $studentTypes->pluck('name')->implode(' / ') : 'Regular') . '  (default: Regular). Must match one of your institute\'s Student Types — this drives which fee rules apply. Unrecognized values are treated as Regular.'],
             ['Comm Same as Perm',           'Yes / No — If Yes, communication address auto-copied from permanent.'],
             ['Has Scholarship',             'Yes / No'],
             ['Scholarship Type',            'Govt Central / Govt State / University / Institute / Private / Other'],
@@ -361,7 +386,7 @@ class StudentBulkImportController extends Controller
             ['IMPORTANT RULES',             ''],
             ['',                            '1. Columns marked with * are REQUIRED — a row missing these cannot be imported.'],
             ['',                            '2. DO NOT change column header names or order.'],
-            ['',                            '3. DELETE the example rows (row 2–3) before uploading.'],
+            ['',                            '3. DELETE the example rows (row 2–3) before uploading — the sample student (' . self::EXAMPLE_NAME . ') is rejected if left in.'],
             ['',                            '4. Maximum ' . self::MAX_ROWS . ' data rows per file.'],
             ['',                            '5. File size must be under ' . self::MAX_FILE_MB . ' MB.'],
             ['',                            '6. Accepted formats: .xlsx, .xls only.'],
@@ -402,24 +427,27 @@ class StudentBulkImportController extends Controller
 
         $instituteId = $this->instituteId();
 
-        // Double MIME check
-        $mime = $request->file('file')->getMimeType();
-        if (!in_array($mime, self::ALLOWED_MIMES)) {
-            return back()->withErrors(['file' => 'Invalid file type. Only .xlsx or .xls files are accepted.']);
-        }
-
         // Verify session belongs to this institute
         $session = AcademicSession::where('id', $request->session_id)
             ->where('institute_id', $instituteId)
             ->firstOrFail();
 
         // ── Parse Excel ───────────────────────────────────────────────
+        // The reader is restricted to real Excel formats by file CONTENT. That replaces a
+        // strict MIME whitelist (which can wrongly reject valid files whose detected type
+        // differs, e.g. application/zip or application/CDFV2) and also stops IOFactory from
+        // auto-detecting the HTML/CSV/XML readers for a renamed file.
         $realPath = $request->file('file')->getRealPath();
         try {
-            $reader      = IOFactory::createReaderForFile($realPath);
+            $reader = IOFactory::createReaderForFile($realPath, [IOFactory::READER_XLSX, IOFactory::READER_XLS]);
             $reader->setReadDataOnly(true);
             $spreadsheet = $reader->load($realPath);
-            $rawRows     = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+            // Don't trust getActiveSheet(): for legacy .xls the reader honours whichever tab
+            // was open when the file was saved (and the UI sends people to the Courses_Streams
+            // tab to look names up), and for .xlsx it is simply the first sheet even if the
+            // sheets were reordered. Read the template's own sheet, first sheet as fallback.
+            $sheet   = $spreadsheet->getSheetByName(self::TEMPLATE_SHEET) ?? $spreadsheet->getSheet(0);
+            $rawRows = $sheet->toArray(null, true, true, false);
         } catch (\Throwable $e) {
             return back()->withErrors(['file' => 'Could not read file. Make sure it is a valid Excel file.']);
         }
@@ -431,11 +459,13 @@ class StudentBulkImportController extends Controller
         // Remove header row
         array_shift($rawRows);
 
-        // Filter out completely empty rows
-        $dataRows = array_values(array_filter(
+        // Filter out completely empty rows. Keys are deliberately preserved (no
+        // array_values): after the header shift, key 0 == Excel row 2, so the key still
+        // identifies the true Excel row even when blank rows sit between data rows.
+        $dataRows = array_filter(
             $rawRows,
             fn($r) => !empty(array_filter(array_map('strval', $r), fn($v) => trim($v) !== ''))
-        ));
+        );
 
         if (empty($dataRows)) {
             return back()->withErrors(['file' => 'No data rows found. Please fill in student data and remove example rows.']);
@@ -461,22 +491,53 @@ class StudentBulkImportController extends Controller
         $partnersLower = ChannelPartner::where('institute_id', $instituteId)->get()
             ->mapWithKeys(fn($p) => [strtolower(trim($p->name)) => $p->id])->toArray();
 
-        // Existing records for duplicate detection (only truly unique fields)
-        $existingUids     = Student::where('institute_id', $instituteId)->pluck('student_uid')->flip()->toArray();
-        $existingRolls    = Student::where('institute_id', $instituteId)->whereNotNull('roll_no')->pluck('roll_no')->flip()->toArray();
-        $existingEnrolls  = Student::where('institute_id', $instituteId)->whereNotNull('enrollment_no')->pluck('enrollment_no')->flip()->toArray();
-        $existingUins     = Student::where('institute_id', $instituteId)->whereNotNull('uin_no')->pluck('uin_no')->flip()->toArray();
-        $existingExamForms = Student::where('institute_id', $instituteId)->whereNotNull('exam_form_no')->pluck('exam_form_no')->flip()->toArray();
+        // Existing records for duplicate detection (only truly unique fields). Looked up
+        // only for the values actually present in this file (at most MAX_ROWS each)
+        // instead of loading every student of the institute into memory.
+        $fileValues = fn(int $col, bool $digitsOnly = false) => collect($dataRows)
+            ->map(function ($r) use ($col, $digitsOnly) {
+                $v = $this->sanitizeCell((string) ($r[$col] ?? ''));
+                return $digitsOnly ? preg_replace('/[^0-9]/', '', $v) : $v;
+            })
+            ->filter(fn($v) => $v !== '')->unique()->values()->all();
+
+        $existingOf = function (string $column, int $col) use ($fileValues, $instituteId) {
+            $values = $fileValues($col);
+            return $values
+                ? Student::where('institute_id', $instituteId)->whereIn($column, $values)->pluck($column)->flip()->toArray()
+                : [];
+        };
+
+        // student_uid is unique across ALL institutes, so this one is intentionally not
+        // institute-scoped (matches the check in importRow()).
+        $uidValues         = $fileValues(0);
+        $existingUids      = $uidValues ? Student::whereIn('student_uid', $uidValues)->pluck('student_uid')->flip()->toArray() : [];
+        $existingRolls     = $existingOf('roll_no', 7);
+        $existingEnrolls   = $existingOf('enrollment_no', 6);
+        $existingUins      = $existingOf('uin_no', 8);
+        $existingExamForms = $existingOf('exam_form_no', 9);
 
         // Name+Mobile combo lookup — catches the common "re-uploaded the same
         // file after fixing a few rows" case, where Student UID/Roll/etc. were
         // left blank the first time (so those checks above never trigger) but
         // the student was already created. Soft only: Mobile alone can repeat
         // legitimately (e.g. siblings), so this only flags when BOTH match.
-        $existingByNameMobile = Student::where('institute_id', $instituteId)
-            ->get(['student_uid', 'name', 'mobile'])
-            ->keyBy(fn($s) => strtolower(trim($s->name)) . '|' . $s->mobile);
+        $mobileValues = $fileValues(2, true);
+        $existingByNameMobile = $mobileValues
+            ? Student::where('institute_id', $instituteId)->whereIn('mobile', $mobileValues)
+                ->get(['student_uid', 'name', 'mobile'])
+                ->keyBy(fn($s) => strtolower(trim($s->name)) . '|' . $s->mobile)
+            : collect();
         $seenNameMobile = [];
+
+        // Institute's own Student Types, keyed by lower-cased slug AND name → slug.
+        // Fee rules match on the slug (e.g. "lateral_entry"), so free text from the sheet
+        // ("Lateral Entry", "Regular") must be resolved to it, not stored as typed.
+        $studentTypesLower = [];
+        foreach (StudentType::forInstitute($instituteId)->active()->get() as $st) {
+            $studentTypesLower[strtolower($st->slug)] = $st->slug;
+            $studentTypesLower[strtolower(trim($st->name))] = $st->slug;
+        }
 
         $validRows   = [];
         $softRows    = [];
@@ -489,7 +550,7 @@ class StudentBulkImportController extends Controller
         $seenExamForms   = [];
 
         foreach ($dataRows as $rowIdx => $rawCols) {
-            $rowNum = $rowIdx + 2; // Excel row number (header=1, data starts at 2)
+            $rowNum = $rowIdx + 2; // true Excel row number (header=1, data starts at 2)
 
             // Pad to 65 columns, convert all to trimmed, formula-defanged strings
             $c = array_map(
@@ -530,6 +591,12 @@ class StudentBulkImportController extends Controller
                 $hardErrors[] = 'Mobile is required';
             } elseif (strlen($mobile) !== 10) {
                 $hardErrors[] = 'Mobile must be exactly 10 digits';
+            }
+
+            // The template's sample student carries a real course/stream, so it would
+            // otherwise validate cleanly and be imported as a ghost student.
+            if (strcasecmp($name, self::EXAMPLE_NAME) === 0 && $mobile === self::EXAMPLE_MOBILE) {
+                $hardErrors[] = 'This is the template\'s example row — delete it before uploading';
             }
 
             // ── Possible duplicate (same Name + Mobile already imported) ──
@@ -859,6 +926,39 @@ class StudentBulkImportController extends Controller
                     $softErrors[] = "Scholarship Amount \"{$scholarAmt}\" is not numeric — left blank";
                 }
             }
+            if ($scholarAmtNorm !== null && $scholarAmtNorm < 0) {
+                $softErrors[] = "Scholarship Amount \"{$scholarAmt}\" cannot be negative — left blank";
+                $scholarAmtNorm = null;
+            }
+
+            // ── Student Type ──────────────────────────────────────────
+            // Must resolve to one of the institute's own types (their slug drives fee-rule
+            // matching); free text is never stored as typed.
+            $studentTypeNorm = 'regular';
+            if ($studentType !== '') {
+                $studentTypeKey  = strtolower(trim($studentType));
+                $studentTypeNorm = $studentTypesLower[$studentTypeKey]
+                    ?? $studentTypesLower[str_replace([' ', '-'], '_', $studentTypeKey)]
+                    ?? null;
+                if ($studentTypeNorm === null) {
+                    $softErrors[] = "Student Type \"{$studentType}\" not recognized — treated as Regular. Use a name from the Instructions sheet";
+                    $studentTypeNorm = 'regular';
+                }
+            }
+
+            // ── Fixed-length columns — too-long values are flagged here instead of
+            // failing at insert time (after the user already confirmed the preview).
+            $aadharNorm       = $this->fitLength(preg_replace('/[^0-9\-]/', '', $aadhar), 20, 'Aadhar No', $softErrors);
+            $apaarNorm        = $this->fitLength($apaar, 20, 'APAAR No', $softErrors);
+            $fatherMobileNorm = $this->fitLength(preg_replace('/[^0-9]/', '', $fatherMobile), 15, 'Father Mobile', $softErrors);
+            $motherMobileNorm = $this->fitLength(preg_replace('/[^0-9]/', '', $motherMobile), 15, 'Mother Mobile', $softErrors);
+            $guardianMobileNorm = $this->fitLength(preg_replace('/[^0-9]/', '', $guardianMobile), 15, 'Guardian Mobile', $softErrors);
+            $permPinNorm      = $this->fitLength($permPin, 10, 'Perm Pincode', $softErrors);
+            $commPinNorm      = $this->fitLength($commPin, 10, 'Comm Pincode', $softErrors);
+            $examFormNorm     = $this->fitLength($examFormNo, 50, 'Exam Form No', $softErrors);
+            $uinNorm          = $this->fitLength($uinNo, 50, 'UIN No', $softErrors);
+            $instFormNorm     = $this->fitLength($instFormNo, 50, 'Institute Form No', $softErrors);
+            $refNorm          = $this->fitLength($refNo, 100, 'Reference No', $softErrors);
 
             // ── Subject enrollment (optional) ─────────────────────────
             // Course/Stream stay mandatory as before; individual subjects do
@@ -909,24 +1009,24 @@ class StudentBulkImportController extends Controller
                 'subject_role_rows'        => $subjectRoleRows,
                 'enrollment_no'            => $enrollNo ?: null,
                 'roll_no'                  => $rollNo ?: null,
-                'uin_no'                   => $uinNo ?: null,
-                'exam_form_no'             => $examFormNo ?: null,
-                'institute_form_no'        => $instFormNo ?: null,
+                'uin_no'                   => $uinNorm,
+                'exam_form_no'             => $examFormNorm,
+                'institute_form_no'        => $instFormNorm,
                 'sr_no'                    => $srNo ?: null,
-                'reference_no'             => $refNo ?: null,
+                'reference_no'             => $refNorm,
                 'admission_type'           => $admTypeNorm,
                 'admission_source'         => $admSourceNorm,
                 'admission_source_id'      => $admSourceId,
                 'admission_date'           => $parsedAdmDate,
                 'gap_year'                 => strtolower($gapYear) === 'yes',
                 'father_name'              => $fatherName ?: null,
-                'father_mobile'            => preg_replace('/[^0-9]/', '', $fatherMobile) ?: null,
+                'father_mobile'            => $fatherMobileNorm,
                 'father_occupation'        => $fatherOcc ?: null,
                 'mother_name'              => $motherName ?: null,
-                'mother_mobile'            => preg_replace('/[^0-9]/', '', $motherMobile) ?: null,
+                'mother_mobile'            => $motherMobileNorm,
                 'mother_occupation'        => $motherOcc ?: null,
                 'guardian_name'            => $guardianName ?: null,
-                'guardian_mobile'          => preg_replace('/[^0-9]/', '', $guardianMobile) ?: null,
+                'guardian_mobile'          => $guardianMobileNorm,
                 'guardian_relation'        => $guardianRelNorm,
                 'email'                    => $emailNorm,
                 'dob'                      => $parsedDob,
@@ -943,16 +1043,16 @@ class StudentBulkImportController extends Controller
                     default       => 'indian',
                 },
                 'marital_status'           => $maritalNorm,
-                'aadhar_no'                => preg_replace('/[^0-9\-]/', '', $aadhar) ?: null,
-                'apaar_no'                 => $apaar ?: null,
-                'student_type'             => $studentType ?: 'regular',
+                'aadhar_no'                => $aadharNorm,
+                'apaar_no'                 => $apaarNorm,
+                'student_type'             => $studentTypeNorm,
                 'perm_address'             => $permAddr ?: null,
                 'perm_village'             => $permVillage ?: null,
                 'perm_post'                => $permPost ?: null,
                 'perm_thana'               => $permThana ?: null,
                 'perm_district'            => $permDist ?: null,
                 'perm_state'               => $permState ?: null,
-                'perm_pincode'             => $permPin ?: null,
+                'perm_pincode'             => $permPinNorm,
                 'comm_same_as_perm'        => strtolower($commSame) === 'yes',
                 'comm_address'             => $commAddr ?: null,
                 'comm_city'                => $commCity ?: null,
@@ -960,7 +1060,7 @@ class StudentBulkImportController extends Controller
                 'comm_thana'               => $commThana ?: null,
                 'comm_district'            => $commDist ?: null,
                 'comm_state'               => $commState ?: null,
-                'comm_pincode'             => $commPin ?: null,
+                'comm_pincode'             => $commPinNorm,
                 'has_scholarship'          => strtolower($hasScholar) === 'yes',
                 'scholarship_name'         => $scholarName ?: null,
                 'scholarship_type'         => $scholarTypeNorm,
@@ -1056,157 +1156,28 @@ class StudentBulkImportController extends Controller
             ->get()
             ->groupBy(fn($p) => $p->course_id . '|' . $p->year_number);
 
-        DB::transaction(function () use (
-            $rows, $instituteId, $sessionId, $year, $coursePartsByYear,
-            $validCourseIds, $validStreamIds, &$imported, &$failed, &$lastError
-        ) {
-            foreach ($rows as $rowData) {
-                try {
-                    if (!isset($validCourseIds[$rowData['course_id'] ?? 0]) || !isset($validStreamIds[$rowData['stream_id'] ?? 0])) {
-                        throw new \RuntimeException('Course or Stream is no longer active/available.');
-                    }
-
-                    // Generate or use provided UID
-                    $uid = $rowData['student_uid'] ?: null;
-                    if (!$uid) {
-                        $uid = StudentIdService::generateStudentId($instituteId, $year);
-                    } elseif (Student::where('institute_id', $instituteId)->where('student_uid', $uid)->exists()) {
-                        // Provided UID already taken — auto-generate instead
-                        $uid = StudentIdService::generateStudentId($instituteId, $year);
-                    }
-
-                    // Resolve course part from the year computed at preview time
-                    // (course's own semesters-per-year, not a hardcoded ÷2).
-                    $yearNumber  = $rowData['year_number'] ?? 1;
-                    $partKey     = ($rowData['course_id'] ?? 0) . '|' . $yearNumber;
-                    $coursePartId = $coursePartsByYear->get($partKey)?->first()?->id ?? null;
-
-                    $student = Student::create([
-                        'institute_id'             => $instituteId,
-                        'academic_session_id'      => $sessionId,
-                        'student_uid'              => $uid,
-                        'name'                     => $rowData['name'],
-                        'mobile'                   => $rowData['mobile'],
-                        'email'                    => $rowData['email'],
-                        'dob'                      => $rowData['dob'],
-                        'gender'                   => $rowData['gender'],
-                        'religion'                 => $rowData['religion'],
-                        'category'                 => $rowData['category'],
-                        'special_category'         => $rowData['special_category'],
-                        'nationality'              => $rowData['nationality'],
-                        'marital_status'           => $rowData['marital_status'],
-                        'aadhar_no'                => $rowData['aadhar_no'],
-                        'apaar_no'                 => $rowData['apaar_no'],
-                        'student_type'             => $rowData['student_type'],
-                        'father_name'              => $rowData['father_name'],
-                        'father_mobile'            => $rowData['father_mobile'],
-                        'father_occupation'        => $rowData['father_occupation'],
-                        'mother_name'              => $rowData['mother_name'],
-                        'mother_mobile'            => $rowData['mother_mobile'],
-                        'mother_occupation'        => $rowData['mother_occupation'],
-                        'guardian_name'            => $rowData['guardian_name'],
-                        'guardian_mobile'          => $rowData['guardian_mobile'],
-                        'guardian_relation'        => $rowData['guardian_relation'],
-                        'enrollment_no'            => $rowData['enrollment_no'],
-                        'roll_no'                  => $rowData['roll_no'],
-                        'uin_no'                   => $rowData['uin_no'],
-                        'exam_form_no'             => $rowData['exam_form_no'],
-                        'institute_form_no'        => $rowData['institute_form_no'],
-                        'sr_no'                    => $rowData['sr_no'],
-                        'reference_no'             => $rowData['reference_no'],
-                        'admission_type'           => $rowData['admission_type'],
-                        'admission_source'         => $rowData['admission_source'],
-                        'admission_source_id'      => $rowData['admission_source_id'],
-                        'admission_date'           => $rowData['admission_date'],
-                        'submitted_date'           => now()->toDateString(),
-                        'gap_year'                 => $rowData['gap_year'],
-                        'course_type_id'           => $rowData['course_type_id'],
-                        'course_stream_id'         => $rowData['stream_id'],
-                        'course_part_id'           => $coursePartId,
-                        'current_semester'         => $rowData['current_semester'],
-                        'perm_address'             => $rowData['perm_address'],
-                        'perm_village'             => $rowData['perm_village'],
-                        'perm_post'                => $rowData['perm_post'],
-                        'perm_thana'               => $rowData['perm_thana'],
-                        'perm_district'            => $rowData['perm_district'],
-                        'perm_state'               => $rowData['perm_state'],
-                        'perm_pincode'             => $rowData['perm_pincode'],
-                        'comm_same_as_perm'        => $rowData['comm_same_as_perm'],
-                        'comm_address'             => $rowData['comm_address'],
-                        'comm_city'                => $rowData['comm_city'],
-                        'comm_post'                => $rowData['comm_post'],
-                        'comm_thana'               => $rowData['comm_thana'],
-                        'comm_district'            => $rowData['comm_district'],
-                        'comm_state'               => $rowData['comm_state'],
-                        'comm_pincode'             => $rowData['comm_pincode'],
-                        'has_scholarship'          => $rowData['has_scholarship'],
-                        'scholarship_name'         => $rowData['scholarship_name'],
-                        'scholarship_type'         => $rowData['scholarship_type'],
-                        'scholarship_authority'    => $rowData['scholarship_authority'],
-                        'scholarship_amount'       => $rowData['scholarship_amount'],
-                        'scholarship_ref_no'       => $rowData['scholarship_ref_no'],
-                        'scholarship_applied_date' => $rowData['scholarship_applied_date'],
-                        'status'                   => $rowData['student_status'] ?? 'active',
-                        'is_quick_admission'       => false,
-                        'admitted_by_staff_id'     => Auth::guard('staff')->check() ? Auth::guard('staff')->id() : null,
-                        'admitted_by_type'         => Auth::guard('staff')->check() ? 'staff' : 'admin',
-                    ]);
-
-                    // Only auto-charge the current-semester fee for students who are
-                    // actually still studying — a Passed Out/Detained/Transferred/
-                    // Cancelled row is a historical record, not a fresh enrollment.
-                    if (($rowData['student_status'] ?? 'active') === 'active') {
-                        WalletService::onAdmission($student);
-                    }
-
-                    foreach ($rowData['semester_dues'] ?? [] as $semNum => $dueAmount) {
-                        WalletService::chargeBulkImportPreviousDue($student, $semNum, $dueAmount);
-                    }
-
-                    $subjectIds = [];
-                    if (!empty($rowData['subject_role_rows'])) {
-                        $subjectIds = StudentAcademicChangeService::syncSubjects(
-                            $student, $sessionId, $yearNumber, $rowData['subject_role_rows']
-                        );
-                    }
-
-                    $student->load('educationDetails');
-
-                    StudentAcademicIdentity::firstOrCreate(
-                        [
-                            'student_id'          => $student->id,
-                            'academic_session_id' => $student->academic_session_id,
-                        ],
-                        [
-                            'institute_id'              => $student->institute_id,
-                            'course_id'                 => $rowData['course_id'],
-                            'course_stream_id'          => $student->course_stream_id,
-                            'course_part_id'            => $student->course_part_id,
-                            'semester_at_time'          => $student->current_semester,
-                            'subjects_json'             => $subjectIds,
-                            'form_no'                   => last(explode('/', $student->student_uid)),
-                            'sr_no_snapshot'            => $student->sr_no,
-                            'enrollment_no_snapshot'    => $student->enrollment_no,
-                            'roll_no_snapshot'          => $student->roll_no,
-                            'admission_source_snapshot' => $student->admission_source,
-                            'source'                    => 'admission',
-                            'admission_type'            => $student->admission_type ?? 'new',
-                            'profile_snapshot'          => StudentSnapshotBuilder::build($student),
-                        ]
-                    );
-
-                    $imported++;
-                } catch (\Throwable $e) {
-                    $failed++;
-                    $lastError = $e->getMessage();
-                    \Log::error('Bulk import row failed', [
-                        'row'   => $rowData['row_num'] ?? '?',
-                        'name'  => $rowData['name'] ?? '?',
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+        // Each row gets its own transaction: a row that fails half-way (e.g. the fee
+        // charge throws after the student row was created) rolls back completely
+        // instead of leaving a fee-less student behind, and the admission_counters
+        // lock taken by generateStudentId() is released per row rather than held for
+        // the whole file (which would block every other admission in the meantime).
+        foreach ($rows as $rowData) {
+            try {
+                DB::transaction(fn() => $this->importRow(
+                    $rowData, $instituteId, $sessionId, $year,
+                    $coursePartsByYear, $validCourseIds, $validStreamIds
+                ));
+                $imported++;
+            } catch (\Throwable $e) {
+                $failed++;
+                $lastError = $e->getMessage();
+                \Log::error('Bulk import row failed', [
+                    'row'   => $rowData['row_num'] ?? '?',
+                    'name'  => $rowData['name'] ?? '?',
+                    'error' => $e->getMessage(),
+                ]);
             }
-        });
+        }
 
         session()->forget(['bulk_import_token', 'bulk_import_rows', 'bulk_import_soft_rows', 'bulk_import_session_id', 'bulk_import_expires_at']);
 
@@ -1231,6 +1202,147 @@ class StudentBulkImportController extends Controller
         );
 
         return redirect()->route('admissions.index')->with('success', $msg);
+    }
+
+    // ── Create one student (+ fee charge, dues, subjects, identity) from a
+    // validated preview row. Always called inside a per-row transaction (see import()).
+    private function importRow(
+        array $rowData, int $instituteId, int $sessionId, int $year,
+        $coursePartsByYear, $validCourseIds, $validStreamIds
+    ): void {
+        if (!isset($validCourseIds[$rowData['course_id'] ?? 0]) || !isset($validStreamIds[$rowData['stream_id'] ?? 0])) {
+            throw new \RuntimeException('Course or Stream is no longer active/available.');
+        }
+
+        // Generate or use provided UID
+        $uid = $rowData['student_uid'] ?: null;
+        if (!$uid) {
+            $uid = StudentIdService::generateStudentId($instituteId, $year);
+        } elseif (Student::where('student_uid', $uid)->exists()) {
+            // Provided UID already taken (student_uid is unique across ALL institutes,
+            // so this check must not be scoped) — auto-generate instead
+            $uid = StudentIdService::generateStudentId($instituteId, $year);
+        }
+
+        // Resolve course part from the year computed at preview time
+        // (course's own semesters-per-year, not a hardcoded ÷2).
+        $yearNumber  = $rowData['year_number'] ?? 1;
+        $partKey     = ($rowData['course_id'] ?? 0) . '|' . $yearNumber;
+        $coursePartId = $coursePartsByYear->get($partKey)?->first()?->id ?? null;
+
+        $student = Student::create([
+            'institute_id'             => $instituteId,
+            'academic_session_id'      => $sessionId,
+            'student_uid'              => $uid,
+            'name'                     => $rowData['name'],
+            'mobile'                   => $rowData['mobile'],
+            'email'                    => $rowData['email'],
+            'dob'                      => $rowData['dob'],
+            'gender'                   => $rowData['gender'],
+            'religion'                 => $rowData['religion'],
+            'category'                 => $rowData['category'],
+            'special_category'         => $rowData['special_category'],
+            'nationality'              => $rowData['nationality'],
+            'marital_status'           => $rowData['marital_status'],
+            'aadhar_no'                => $rowData['aadhar_no'],
+            'apaar_no'                 => $rowData['apaar_no'],
+            'student_type'             => $rowData['student_type'],
+            'father_name'              => $rowData['father_name'],
+            'father_mobile'            => $rowData['father_mobile'],
+            'father_occupation'        => $rowData['father_occupation'],
+            'mother_name'              => $rowData['mother_name'],
+            'mother_mobile'            => $rowData['mother_mobile'],
+            'mother_occupation'        => $rowData['mother_occupation'],
+            'guardian_name'            => $rowData['guardian_name'],
+            'guardian_mobile'          => $rowData['guardian_mobile'],
+            'guardian_relation'        => $rowData['guardian_relation'],
+            'enrollment_no'            => $rowData['enrollment_no'],
+            'roll_no'                  => $rowData['roll_no'],
+            'uin_no'                   => $rowData['uin_no'],
+            'exam_form_no'             => $rowData['exam_form_no'],
+            'institute_form_no'        => $rowData['institute_form_no'],
+            'sr_no'                    => $rowData['sr_no'],
+            'reference_no'             => $rowData['reference_no'],
+            'admission_type'           => $rowData['admission_type'],
+            'admission_source'         => $rowData['admission_source'],
+            'admission_source_id'      => $rowData['admission_source_id'],
+            'admission_date'           => $rowData['admission_date'],
+            'submitted_date'           => now()->toDateString(),
+            'gap_year'                 => $rowData['gap_year'],
+            'course_type_id'           => $rowData['course_type_id'],
+            'course_stream_id'         => $rowData['stream_id'],
+            'course_part_id'           => $coursePartId,
+            'current_semester'         => $rowData['current_semester'],
+            'perm_address'             => $rowData['perm_address'],
+            'perm_village'             => $rowData['perm_village'],
+            'perm_post'                => $rowData['perm_post'],
+            'perm_thana'               => $rowData['perm_thana'],
+            'perm_district'            => $rowData['perm_district'],
+            'perm_state'               => $rowData['perm_state'],
+            'perm_pincode'             => $rowData['perm_pincode'],
+            'comm_same_as_perm'        => $rowData['comm_same_as_perm'],
+            'comm_address'             => $rowData['comm_address'],
+            'comm_city'                => $rowData['comm_city'],
+            'comm_post'                => $rowData['comm_post'],
+            'comm_thana'               => $rowData['comm_thana'],
+            'comm_district'            => $rowData['comm_district'],
+            'comm_state'               => $rowData['comm_state'],
+            'comm_pincode'             => $rowData['comm_pincode'],
+            'has_scholarship'          => $rowData['has_scholarship'],
+            'scholarship_name'         => $rowData['scholarship_name'],
+            'scholarship_type'         => $rowData['scholarship_type'],
+            'scholarship_authority'    => $rowData['scholarship_authority'],
+            'scholarship_amount'       => $rowData['scholarship_amount'],
+            'scholarship_ref_no'       => $rowData['scholarship_ref_no'],
+            'scholarship_applied_date' => $rowData['scholarship_applied_date'],
+            'status'                   => $rowData['student_status'] ?? 'active',
+            'is_quick_admission'       => false,
+            'admitted_by_staff_id'     => Auth::guard('staff')->check() ? Auth::guard('staff')->id() : null,
+            'admitted_by_type'         => Auth::guard('staff')->check() ? 'staff' : 'admin',
+        ]);
+
+        // Only auto-charge the current-semester fee for students who are
+        // actually still studying — a Passed Out/Detained/Transferred/
+        // Cancelled row is a historical record, not a fresh enrollment.
+        if (($rowData['student_status'] ?? 'active') === 'active') {
+            WalletService::onAdmission($student);
+        }
+
+        foreach ($rowData['semester_dues'] ?? [] as $semNum => $dueAmount) {
+            WalletService::chargeBulkImportPreviousDue($student, $semNum, $dueAmount);
+        }
+
+        $subjectIds = [];
+        if (!empty($rowData['subject_role_rows'])) {
+            $subjectIds = StudentAcademicChangeService::syncSubjects(
+                $student, $sessionId, $yearNumber, $rowData['subject_role_rows']
+            );
+        }
+
+        $student->load('educationDetails');
+
+        StudentAcademicIdentity::firstOrCreate(
+            [
+                'student_id'          => $student->id,
+                'academic_session_id' => $student->academic_session_id,
+            ],
+            [
+                'institute_id'              => $student->institute_id,
+                'course_id'                 => $rowData['course_id'],
+                'course_stream_id'          => $student->course_stream_id,
+                'course_part_id'            => $student->course_part_id,
+                'semester_at_time'          => $student->current_semester,
+                'subjects_json'             => $subjectIds,
+                'form_no'                   => last(explode('/', $student->student_uid)),
+                'sr_no_snapshot'            => $student->sr_no,
+                'enrollment_no_snapshot'    => $student->enrollment_no,
+                'roll_no_snapshot'          => $student->roll_no,
+                'admission_source_snapshot' => $student->admission_source,
+                'source'                    => 'admission',
+                'admission_type'            => $student->admission_type ?? 'new',
+                'profile_snapshot'          => StudentSnapshotBuilder::build($student),
+            ]
+        );
     }
 
     // ── Helper: parse date from common formats or Excel serial number ─
