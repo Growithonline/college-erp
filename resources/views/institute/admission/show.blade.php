@@ -13,7 +13,13 @@
     $studentUidParts = explode('/', (string) $student->student_uid);
     $serialNo = end($studentUidParts) ?: '—';
     $isPending = $student->status === 'pending';
-    $approvalRoute = auth()->guard('staff')->check() ? 'staff.admissions.approvals.show' : 'admissions.approvals.show';
+    // A student created by Bulk Excel Import has its own review flow (fee-history
+    // approval, not identity/document approval) — send it there instead of the
+    // regular Admissions Approval page, which explicitly excludes these students
+    // from its own queue (see AdmissionController::approvalStudentsQuery()).
+    $approvalRoute = ($student->is_bulk_import && $isPending)
+        ? 'admissions.bulk-import.pending.show'
+        : (auth()->guard('staff')->check() ? 'staff.admissions.approvals.show' : 'admissions.approvals.show');
 @endphp
 
 {{-- Pending Admission Banner ---}}

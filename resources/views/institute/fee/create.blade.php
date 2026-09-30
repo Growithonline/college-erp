@@ -390,7 +390,12 @@
     $isTerminalStudent = ($student->status ?? '') !== 'active' && ($student->status ?? '') !== 'pending';
     $isPendingStudent  = ($student->status ?? '') === 'pending' && !($isAdmissionFeeFlow ?? false);
     $canApproveAdmission = $canApproveAdmission ?? false;
-    $approvalRoute     = auth()->guard('staff')->check() ? 'staff.admissions.approvals.show' : 'admissions.approvals.show';
+    // A student created by Bulk Excel Import has its own review flow (fee-history
+    // approval) — send it there instead of the regular Admissions Approval page,
+    // matching profile.blade.php / show.blade.php.
+    $approvalRoute     = ($student->is_bulk_import ?? false)
+        ? 'admissions.bulk-import.pending.show'
+        : (auth()->guard('staff')->check() ? 'staff.admissions.approvals.show' : 'admissions.approvals.show');
 @endphp
 
 @if($isPendingStudent)

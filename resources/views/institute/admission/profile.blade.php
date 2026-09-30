@@ -13,7 +13,13 @@
         || auth()->guard('staff')->user()?->hasPermission('admission_edit');
     $isTerminalStudent = in_array($student->status, ['passed_out', 'backlog', 'failed', 'dropped']);
     $isPending = $student->status === 'pending';
-    $approvalRoute = $isStaff ? 'staff.admissions.approvals.show' : 'admissions.approvals.show';
+    // A student created by Bulk Excel Import has its own review flow (fee-history
+    // approval, not identity/document approval) — send it there instead of the
+    // regular Admissions Approval page, which explicitly excludes these students
+    // from its own queue (see AdmissionController::approvalStudentsQuery()).
+    $approvalRoute = ($student->is_bulk_import && $isPending)
+        ? 'admissions.bulk-import.pending.show'
+        : ($isStaff ? 'staff.admissions.approvals.show' : 'admissions.approvals.show');
     // Only active students can have new fee collected — matches the server-side
     // enforcement in FeeCollectionController::store(). Every other status is
     // blocked; outstanding dues can still be cleared via the wallet.

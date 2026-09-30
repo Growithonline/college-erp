@@ -378,6 +378,29 @@ class AdmissionController extends Controller
         }
     }
 
+    // A student created by Bulk Excel Import that is still awaiting its first review
+    // has its own dedicated flow (fee-history approval — see
+    // BulkImportApprovalController) — it must never be viewed or approved through
+    // this regular Admissions Approval page/actions instead, which would skip that
+    // review entirely (no past-semester dues would ever get recorded). This is
+    // deliberately a server-side redirect here, not just a hidden button on the
+    // student's profile page — the profile page link is the normal way in, but
+    // this is what actually stops someone reaching approvalShow()/approveAdmission()/
+    // updateApprovalStatus() directly by URL (e.g. a bookmarked or typed link) and
+    // approving a bulk-imported student without ever reviewing its fee history.
+    // Once actually approved (status no longer 'pending'), this student is treated
+    // like any other for FUTURE status changes — only the pending-and-unreviewed
+    // window is redirected.
+    private function redirectIfBulkImportPending(Student $student): ?\Illuminate\Http\RedirectResponse
+    {
+        if (!$student->is_bulk_import || $student->status !== 'pending') {
+            return null;
+        }
+
+        return redirect()->route('admissions.bulk-import.pending.show', $student->id)
+            ->with('info', "{$student->name} was created by Bulk Excel Import — review its fee history on the Bulk Import Pending Review page to approve it.");
+    }
+
     private function initialAdmissionStatus(): string
     {
         return 'pending';
@@ -3231,6 +3254,7 @@ class AdmissionController extends Controller
         $this->ensureAdmissionApprovalAccess();
         abort_if($student->institute_id !== $this->instituteId(), 403);
         $this->ensureStaffCanReviewStudent($student);
+        if ($redirect = $this->redirectIfBulkImportPending($student)) return $redirect;
 
         $student->load([
             'stream.course.type',
@@ -3303,6 +3327,7 @@ class AdmissionController extends Controller
         $this->ensureAdmissionApprovalAccess();
         abort_if($student->institute_id !== $this->instituteId(), 403);
         $this->ensureStaffCanReviewStudent($student);
+        if ($redirect = $this->redirectIfBulkImportPending($student)) return $redirect;
         $this->ensurePaymentVerifiedIfOnline($student);
 
         $validated = $request->validate([
@@ -3379,6 +3404,7 @@ class AdmissionController extends Controller
         $this->ensureAdmissionApprovalAccess();
         abort_if($student->institute_id !== $this->instituteId(), 403);
         $this->ensureStaffCanReviewStudent($student);
+        if ($redirect = $this->redirectIfBulkImportPending($student)) return $redirect;
 
         $validated = $request->validate([
             'action' => ['required', \Illuminate\Validation\Rule::in(['approve', 'reject', 'resubmit', 'cancel', 'inactive'])],
