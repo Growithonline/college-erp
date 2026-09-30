@@ -372,8 +372,8 @@ class StudentBulkImportController extends Controller
             ['Scholarship Type',            'Govt Central / Govt State / University / Institute / Private / Other'],
             ['Scholarship Amount',          'Numeric value only. Example: 5000'],
             ['Scholarship Applied Date',    'Format: DD/MM/YYYY'],
-            ['Student Status',              'Active / Passed Out / Detained / Transferred / Cancelled (default: Active). This is the status the student ends up with AFTER the fee-history review below is approved — see "Fee History Review" note.'],
-            ['Semester * (for non-Active)', 'For Passed Out/Detained/Transferred/Cancelled students, enter their LAST/final semester here — not a currently-ongoing one.'],
+            ['Student Status',              'Active / Passed Out / Detained / Transferred / Cancelled (default: Active). This is the status the student ends up with AFTER the fee-history review below is approved — see "Fee History Review" note. "Passed Out" specifically means the student COMPLETED the course, so it is only accepted when Semester equals the course\'s own LAST semester (e.g. Semester 6 for a 3-year/2-semester course) — a row claiming Passed Out at any earlier semester is rejected. Use Detained/Transferred/Cancelled instead for a student who left before finishing the course.'],
+            ['Semester * (for non-Active)', 'For Detained/Transferred/Cancelled students, enter their LAST/final semester here — not a currently-ongoing one. For Passed Out, this MUST be the course\'s final semester (see Student Status above).'],
             ['Major Subject',               'Optional. Must match a subject name available for that Course/Stream/Semester. Unmatched names are skipped, not blocked.'],
             ['Minor Subjects',              'Optional. Comma-separated. Same matching rule as Major Subject. Compulsory subjects for that stream are auto-enrolled regardless of this column.'],
             ['',                            ''],
@@ -669,6 +669,16 @@ class StudentBulkImportController extends Controller
             if ($statusNorm === null) {
                 $softErrors[] = "Student Status \"{$studentStatusRaw}\" not recognized — treated as Active";
                 $statusNorm = 'active';
+            }
+            // "Passed Out" specifically claims the student COMPLETED the entire course —
+            // it can only be true at the course's own final semester. Detained/
+            // Transferred/Cancelled can legitimately happen at any semester (none of
+            // those claim course completion), so only Passed Out needs this check. A row
+            // claiming Passed Out at an earlier semester would create a student record
+            // that says "graduated" without ever having studied the remaining semesters —
+            // a hard error, not a soft one, since it is not a cosmetic mismatch.
+            if ($statusNorm === 'passed_out' && $courseObj && $sem !== $courseMaxPart) {
+                $hardErrors[] = "Student Status \"Passed Out\" requires Semester to be {$courseMaxPart} (the last semester of \"{$courseName}\") — got Semester {$sem}. Use Detained/Transferred/Cancelled instead if the student left before completing the course.";
             }
             // Past-semester fee history (how much of each earlier semester was paid) is
             // no longer collected here — every imported student is held at status
