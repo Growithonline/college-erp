@@ -98,7 +98,23 @@
                 </thead>
                 <tbody>
                     @forelse($students as $student)
-                        @php $log = $logs->get($student->id)?->first(); @endphp
+                        @php
+                            $log = $logs->get($student->id)?->first();
+                            $displayDue = (float) ($log?->dues_carried_forward ?? 0);
+                            // Bulk-imported students never go through this Promotion module,
+                            // so they never get a PromotionLog row — without this, they would
+                            // always show "Clear" here regardless of what they actually owe.
+                            // Read-only fallback to their real recorded due (same
+                            // WalletService::buildPendingRows() the rest of the app already
+                            // uses for this) — nothing is written here, no PromotionLog/Student
+                            // row is touched, and every normally-promoted student (the log
+                            // exists) is completely unaffected.
+                            if (!$log && $student->is_bulk_import) {
+                                $displayDue = round((float) \App\Services\WalletService::buildPendingRows(
+                                    $student, (int) $student->academic_session_id
+                                )->sum('pending'), 2);
+                            }
+                        @endphp
                         <tr>
                             <td class="ps-3" style="white-space:nowrap;">
                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:10.5px;">
@@ -125,8 +141,8 @@
                                 <div class="text-muted" style="font-size:11px;">Sem {{ $student->current_semester ?? '—' }}</div>
                             </td>
                             <td class="text-end">
-                                @if((float) ($log?->dues_carried_forward ?? 0) > 0)
-                                    <span class="text-danger fw-semibold">₹ {{ number_format((float) $log->dues_carried_forward, 2) }}</span>
+                                @if($displayDue > 0)
+                                    <span class="text-danger fw-semibold">₹ {{ number_format($displayDue, 2) }}</span>
                                 @else
                                     <span class="text-success">Clear</span>
                                 @endif

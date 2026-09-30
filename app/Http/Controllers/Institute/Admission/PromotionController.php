@@ -3617,6 +3617,19 @@ class PromotionController extends Controller
                 foreach ($all as $i => $s) {
                     $log = $allLogs->get($s->id)?->first();
                     $due = (float) ($log?->dues_carried_forward ?? 0);
+                    // Bulk-imported students never go through this Promotion module, so
+                    // they never get a PromotionLog row at all — without this, they would
+                    // always export as "Clear" regardless of what they actually owe. This
+                    // is a read-only fallback to their real recorded due (via the same
+                    // WalletService::buildPendingRows() the rest of the app already uses
+                    // for this) — nothing here is written, no PromotionLog/Student row is
+                    // touched, and every normally-promoted student (the log exists) is
+                    // completely unaffected.
+                    if (!$log && $s->is_bulk_import) {
+                        $due = round((float) WalletService::buildPendingRows(
+                            $s, (int) $s->academic_session_id
+                        )->sum('pending'), 2);
+                    }
                     fputcsv($handle, [
                         $i + 1,
                         $s->student_uid ?? '',

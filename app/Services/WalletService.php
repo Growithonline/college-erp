@@ -1155,9 +1155,34 @@ class WalletService
         $context = self::resolveAcademicContext($student, $sessionId);
         $promotionLog = self::currentStatePromotionLog($student, $sessionId, $context['semester']);
 
+        // A Bulk Import student's fee record is ENTIRELY specified by what the reviewer
+        // entered on the "Bulk Import Pending Review" page — real invoices for whatever
+        // was paid, and "Previous Due (Semester N)" debits for whatever was not — never
+        // by a fresh recalculation of today's fee rules. Recomputing live here anyway is
+        // safe (and correct) for their OWN current session while still Active — that IS
+        // their genuine, ongoing fee obligation, tracked normally like any other student.
+        // It is NOT safe for a PAST session (resolveAcademicContext() has no
+        // PromotionLog/StudentAcademicIdentity trail to resolve the right historical
+        // semester for a bulk-imported student, since they never actually progressed
+        // through one — see StudentBulkImportController/BulkImportApprovalController),
+        // or once they are no longer Active (Passed Out/Detained/Transferred/Cancelled):
+        // with no matching FeeInvoiceItem to net it against (a wholly-unpaid historical
+        // semester never gets one — see BulkImportApprovalController::createHistoricalInvoice()),
+        // a live recalculation shows up as a completely separate, unrelated "still
+        // pending" line ON TOP OF the real, reviewer-entered due — e.g. a student
+        // reviewed with a ₹3,000 Semester 5 shortfall additionally showing a phantom
+        // ₹14,000 "Course Fee" pending that nobody actually approved, roughly
+        // quintupling their apparent due. Skipping it here leaves the real
+        // "Previous Due" / invoice-item figures below as the sole, authoritative source
+        // for exactly these two situations, and changes nothing for any other student.
+        $skipLiveFeeCalcForBulkImport = $student->is_bulk_import && (
+            $sessionId !== (int) $student->academic_session_id
+            || in_array($student->status, ['passed_out', 'detained', 'transferred', 'cancelled', 'inactive'], true)
+        );
+
         $feeData = ['total' => 0.0, 'items' => []];
 
-        if ($context['course_id'] > 0 && $student->stream) {
+        if (!$skipLiveFeeCalcForBulkImport && $context['course_id'] > 0 && $student->stream) {
             try {
                 $feeData = FeeCalculatorService::calculate(
                     instituteId:     $student->institute_id,
