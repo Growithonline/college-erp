@@ -2412,6 +2412,44 @@ class ReportController extends Controller
             ->get()
             ->groupBy('payment_mode');
 
+        // Bank-wise summary for period (which bank received how much)
+        $bankBaseJoin = fn($q) => $q
+            ->leftJoin('institute_bank_accounts as iba', 'fee_invoices.bank_account_id', '=', 'iba.id')
+            ->where('fee_invoices.institute_id', $instituteId)
+            ->where('fee_invoices.is_cancelled', false)
+            ->when($sessionId, fn($q2) => $q2->where('fee_invoices.academic_session_id', $sessionId))
+            ->whereDate('fee_invoices.payment_date', '>=', $dateFrom)
+            ->whereDate('fee_invoices.payment_date', '<=', $dateTo);
+
+        $bankWiseQ = FeeInvoice::query();
+        $bankBaseJoin($bankWiseQ);
+        $this->applyStaffFeeScope($bankWiseQ);
+        $bankWise = $bankWiseQ
+            ->selectRaw("COALESCE(iba.display_label, iba.bank_name, fee_invoices.bank_name, '— Cash / Direct —') as bank_label,
+                fee_invoices.bank_account_id,
+                COUNT(*) as cnt,
+                SUM(fee_invoices.paid_amount) as total")
+            ->groupBy('fee_invoices.bank_account_id', 'iba.display_label', 'iba.bank_name', 'fee_invoices.bank_name')
+            ->orderByDesc('total')
+            ->get();
+
+        // Bank -> Mode/Collector breakdown for popup
+        $bankDetailQ = FeeInvoice::query();
+        $bankBaseJoin($bankDetailQ);
+        $this->applyStaffFeeScope($bankDetailQ);
+        $bankDetailWise = $bankDetailQ
+            ->selectRaw("COALESCE(iba.display_label, iba.bank_name, fee_invoices.bank_name, '— Cash / Direct —') as bank_label,
+                fee_invoices.bank_account_id,
+                COALESCE(fee_invoices.collected_by, '—') as collector,
+                fee_invoices.payment_mode,
+                COUNT(*) as cnt,
+                SUM(fee_invoices.paid_amount) as total")
+            ->groupBy('fee_invoices.bank_account_id', 'iba.display_label', 'iba.bank_name', 'fee_invoices.bank_name',
+                      'fee_invoices.collected_by', 'fee_invoices.payment_mode')
+            ->orderByDesc('total')
+            ->get()
+            ->groupBy('bank_label');
+
         $totalCollected = (float) (clone $baseQ)->sum('paid_amount');
         $totalDiscount  = (float) (clone $baseQ)->sum('discount');
         $totalInvoices  = (clone $baseQ)->count();
@@ -2475,7 +2513,7 @@ class ReportController extends Controller
 
         return view('institute.reports.daily-report', compact(
             'sessions', 'sessionObj', 'sessionId', 'activeSession',
-            'grouped', 'modeWise', 'modeBankWise', 'dateFrom', 'dateTo', 'groupBy',
+            'grouped', 'modeWise', 'modeBankWise', 'bankWise', 'bankDetailWise', 'dateFrom', 'dateTo', 'groupBy',
             'totalCollected', 'totalDiscount', 'totalInvoices', 'totalStudents',
             'totalFine', 'fineGrouped', 'periodInvoices'
         ));

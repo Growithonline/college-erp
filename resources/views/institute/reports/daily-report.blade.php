@@ -224,6 +224,47 @@
                 </table>
             </div>
         </div>
+
+        {{-- Bank wise --}}
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold small">
+                    <i class="bi bi-bank me-2 text-info"></i>Bank Wise
+                </h6>
+                <span class="text-muted" style="font-size:10px;"><i class="bi bi-hand-index me-1"></i>Click for details</span>
+            </div>
+            <div class="card-body p-0" id="bankWiseTable">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Bank / Account</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-end pe-3">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($bankWise as $bw)
+                        <tr style="cursor:pointer;" onclick="showBankDetail('{{ addslashes($bw->bank_label) }}')">
+                            <td class="ps-3 small"><i class="bi bi-bank2 me-1 text-info"></i>{{ $bw->bank_label }}</td>
+                            <td class="text-end small fw-semibold">₹ {{ number_format($bw->total, 0) }}</td>
+                            <td class="text-end pe-3 small text-muted">{{ $bw->cnt }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="3" class="text-center text-muted small py-3">No data</td></tr>
+                        @endforelse
+                    </tbody>
+                    @if($bankWise->count() > 0)
+                    <tfoot class="table-light fw-semibold">
+                        <tr>
+                            <td class="ps-3 small">Total</td>
+                            <td class="text-end small text-success">₹ {{ number_format($bankWise->sum('total'), 0) }}</td>
+                            <td class="text-end pe-3 small">{{ $bankWise->sum('cnt') }}</td>
+                        </tr>
+                    </tfoot>
+                    @endif
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -257,6 +298,21 @@
     </div>
 </div>
 
+{{-- Bank Detail Modal --}}
+<div class="modal fade" id="bankDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title fw-bold" id="bankDetailTitle">Bank Collection Details</h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="bankDetailBody"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @php
     $periodInvoicesJson = [];
     foreach ($periodInvoices as $period => $rows) {
@@ -269,6 +325,15 @@
             'collector' => $r->collector,
             'cnt'       => $r->cnt,
             'total'     => $r->total,
+        ])->values()->toArray();
+    }
+    $bankDetailJson = [];
+    foreach ($bankDetailWise as $bankLbl => $rows) {
+        $bankDetailJson[$bankLbl] = $rows->map(fn($r) => [
+            'collector' => $r->collector,
+            'mode'      => strtoupper($r->payment_mode ?? ''),
+            'cnt'       => $r->cnt,
+            'total'     => (float) $r->total,
         ])->values()->toArray();
     }
 
@@ -285,6 +350,12 @@
         'mode'  => strtoupper($m->payment_mode),
         'total' => (float) $m->total,
         'cnt'   => (int) $m->cnt,
+    ])->values();
+
+    $printBankWise = $bankWise->map(fn($b) => [
+        'bank'  => $b->bank_label,
+        'total' => (float) $b->total,
+        'cnt'   => (int) $b->cnt,
     ])->values();
 
     $printInstitute = auth()->guard('staff')->check()
@@ -306,6 +377,7 @@
 <script>
 const PERIOD_DATA   = @json($periodInvoicesJson);
 const MODE_BANK     = @json($modeBankJson);
+const BANK_DETAIL   = @json($bankDetailJson);
 const MODE_LABELS   = {cash:'💵 Cash',upi:'📱 UPI',online:'🌐 Online',cheque:'🏦 Cheque',dd:'📄 DD',neft:'🔁 NEFT',rtgs:'🔄 RTGS'};
 const fmt = n => parseFloat(n).toLocaleString('en-IN',{maximumFractionDigits:0});
 
@@ -378,8 +450,41 @@ function showModeDetail(mode) {
     new bootstrap.Modal(document.getElementById('modeBankModal')).show();
 }
 
+function showBankDetail(bankLabel) {
+    const rows = BANK_DETAIL[bankLabel] || [];
+    document.getElementById('bankDetailTitle').textContent = bankLabel + ' — Mode & Collector Breakdown';
+    let html = '<div class="table-responsive"><table class="table table-sm mb-0" style="font-size:13px;"><thead class="table-light"><tr>'
+             + '<th class="ps-3">Collected By</th><th class="text-center">Mode</th><th class="text-center">Count</th><th class="text-end pe-3">Amount (₹)</th>'
+             + '</tr></thead><tbody>';
+    let grandTotal = 0, grandCnt = 0;
+    if (!rows.length) {
+        html += '<tr><td colspan="4" class="text-center text-muted py-3">No data</td></tr>';
+    } else {
+        const modeColors = {CASH:'bg-success',UPI:'bg-primary',ONLINE:'bg-info text-dark',CHEQUE:'bg-warning text-dark',DD:'bg-secondary',NEFT:'bg-dark',RTGS:'bg-danger'};
+        rows.forEach(r => {
+            grandTotal += parseFloat(r.total) || 0;
+            grandCnt   += parseInt(r.cnt) || 0;
+            const badgeCls = modeColors[r.mode] || 'bg-secondary';
+            html += `<tr>
+                <td class="ps-3 fw-semibold">${r.collector}</td>
+                <td class="text-center"><span class="badge ${badgeCls} bg-opacity-75" style="font-size:10px;">${r.mode}</span></td>
+                <td class="text-center">${r.cnt}</td>
+                <td class="text-end pe-3 fw-semibold text-success">₹ ${fmt(r.total)}</td>
+            </tr>`;
+        });
+    }
+    html += `</tbody><tfoot class="table-dark"><tr>
+        <td class="ps-3 fw-bold" colspan="2">Total</td>
+        <td class="text-center fw-bold">${grandCnt}</td>
+        <td class="text-end pe-3 fw-bold">₹ ${fmt(grandTotal)}</td>
+    </tr></tfoot></table></div>`;
+    document.getElementById('bankDetailBody').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('bankDetailModal')).show();
+}
+
 const PRINT_GROUPED       = @json($printGrouped);
 const PRINT_MODEWISE      = @json($printModeWise);
+const PRINT_BANKWISE      = @json($printBankWise);
 const PRINT_INSTITUTE     = @json($printInstitute?->name ?? 'Institute');
 const PRINT_LOGO_URL      = @json($printLogoUrl);
 const PRINT_INITIALS      = @json($printInitials);
@@ -426,6 +531,18 @@ function printReport() {
     });
     if (!PRINT_MODEWISE.length) {
         modeHtml = '<tr><td colspan="3" style="text-align:center; padding:12px; font-weight:700;">No data.</td></tr>';
+    }
+
+    let bankHtml = '';
+    PRINT_BANKWISE.forEach(b => {
+        bankHtml += `<tr>
+            <td style="font-weight:700;">${b.bank}</td>
+            <td class="r">${fmt(b.total)}</td>
+            <td class="r c">${b.cnt}</td>
+        </tr>`;
+    });
+    if (!PRINT_BANKWISE.length) {
+        bankHtml = '<tr><td colspan="3" style="text-align:center; padding:12px; font-weight:700;">No data.</td></tr>';
     }
 
     const win = window.open('', '_blank', 'width=1000,height=750');
@@ -548,6 +665,19 @@ table.t tfoot td { padding:4px 5px; font-size:9px; font-weight:800; background:#
                     <td>Total</td>
                     <td class="r">${fmt(PRINT_MODEWISE.reduce((s,m)=>s+m.total,0))}</td>
                     <td class="r c">${PRINT_MODEWISE.reduce((s,m)=>s+m.cnt,0)}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="sec-title" style="margin-top:10px;">Bank Wise</div>
+        <table class="t">
+            <thead><tr><th>Bank / Account</th><th class="r">Amount</th><th class="r c">Count</th></tr></thead>
+            <tbody>${bankHtml}</tbody>
+            <tfoot>
+                <tr>
+                    <td>Total</td>
+                    <td class="r">${fmt(PRINT_BANKWISE.reduce((s,b)=>s+b.total,0))}</td>
+                    <td class="r c">${PRINT_BANKWISE.reduce((s,b)=>s+b.cnt,0)}</td>
                 </tr>
             </tfoot>
         </table>
