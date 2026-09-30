@@ -226,11 +226,12 @@
             $canFeeReports       = $authGuard === 'staff' ? $authUser->canViewFeeReports() : false;
             $canPracticalTokens  = $authGuard === 'staff' ? $authUser->canManagePracticalTokens() : false;
             $canApproveFee       = $authGuard === 'staff' ? $authUser->canApproveFee() : false;
+            $canCollectPreviousDues = $authGuard === 'staff' ? $authUser->canCollectPreviousDues() : false;
             $pendingFeeApprovals = $canApproveFee
                 ? \App\Models\FeeInvoice::where('institute_id', $authUser->institute_id ?? 0)->pendingApproval()->count()
                 : 0;
         @endphp
-        @if($canCollectFee || $canFeeHistory || $canFeeWallet || $canApproveFee)
+        @if($canCollectFee || $canFeeHistory || $canFeeWallet || $canApproveFee || $canCollectPreviousDues)
         @php $feeGroupActive = request()->routeIs($authGuard.'.fee.*') || request()->routeIs('staff.fee.*'); @endphp
         <li class="nav-item mt-1">
             <a class="group-header {{ $feeGroupActive ? 'active-group' : '' }} d-flex"
@@ -246,6 +247,12 @@
                     <li><a class="nav-link {{ request()->routeIs($authGuard.'.fee.create') ? 'active' : '' }}"
                            href="{{ route($authGuard.'.fee.create') }}">
                         <i class="bi bi-cash-coin"></i> Collect Fee
+                    </a></li>
+                    @endif
+                    @if($canCollectPreviousDues)
+                    <li><a class="nav-link {{ request()->routeIs($authGuard.'.fee.previous-dues.*') ? 'active' : '' }}"
+                           href="{{ route($authGuard.'.fee.previous-dues.index') }}">
+                        <i class="bi bi-clock-history"></i> Collect Previous Dues
                     </a></li>
                     @endif
                     @if($canApproveFee)

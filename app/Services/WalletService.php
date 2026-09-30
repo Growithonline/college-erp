@@ -217,8 +217,9 @@ class WalletService
      * their final values by the caller.
      *
      * @param  bool  $postJournal  Forwarded to onFeeCollection() — see its own doc comment.
+     * @param  bool  $creditInstituteWallet  Forwarded to onFeeCollection() — see its own doc comment.
      */
-    public static function settleApprovedInvoice(FeeInvoice $invoice, iterable $validItems, bool $postJournal = true): void
+    public static function settleApprovedInvoice(FeeInvoice $invoice, iterable $validItems, bool $postJournal = true, bool $creditInstituteWallet = true): void
     {
         foreach ($validItems as $item) {
             $feeType = !empty($item['fee_type_id'])
@@ -248,7 +249,7 @@ class WalletService
 
         self::chargeCustomFeeItems($invoice, $validItems);
         self::chargeFineItems($invoice, $validItems);
-        self::onFeeCollection($invoice, $postJournal);
+        self::onFeeCollection($invoice, $postJournal, $creditInstituteWallet);
 
         // Settle transport allocations collected via this invoice
         foreach ($validItems as $tItem) {
@@ -443,8 +444,18 @@ class WalletService
      *   Posting it anyway would credit Fees Receivable with no matching debit, silently
      *   understating what the institute is really owed. Every normal caller keeps the
      *   default (true) and is unaffected.
+     * @param  bool  $creditInstituteWallet  Set to false only when the caller is going to
+     *   credit the Institute Wallet itself under a MORE SPECIFIC label than the generic
+     *   "Fee received: ..." this normally writes — e.g.
+     *   PreviousDueCollectionController records a non-active student's cleared due as a
+     *   categorized InstituteManualIncome entry instead (via
+     *   InstituteWalletService::creditManualIncome()), so accounts can see "how much came
+     *   from old dues" as its own line rather than lumped into ordinary fee income.
+     *   Skipping it here avoids crediting the institute wallet twice for the same money.
+     *   The STUDENT's own wallet is always credited regardless — only the institute side
+     *   is affected. Every normal caller keeps the default (true) and is unaffected.
      */
-    public static function onFeeCollection(FeeInvoice $invoice, bool $postJournal = true): void
+    public static function onFeeCollection(FeeInvoice $invoice, bool $postJournal = true, bool $creditInstituteWallet = true): void
     {
         $sessionId = $invoice->academic_session_id;
         $instituteId = $invoice->institute_id;
@@ -452,7 +463,7 @@ class WalletService
         $discAmount = (float) ($invoice->discount ?? 0);
         $student = $invoice->student;
 
-        DB::transaction(function () use ($invoice, $sessionId, $instituteId, $cashAmount, $discAmount, $student) {
+        DB::transaction(function () use ($invoice, $sessionId, $instituteId, $cashAmount, $discAmount, $student, $creditInstituteWallet) {
             $studentWallet = StudentWallet::firstOrCreate(
                 ['student_id' => $student->id, 'academic_session_id' => $sessionId],
                 ['institute_id' => $instituteId, 'main_b' => 0.00]
@@ -509,36 +520,38 @@ class WalletService
                 $studentWallet->save();
             }
 
-            $instWallet = InstituteWallet::firstOrCreate(
-                ['institute_id' => $instituteId, 'academic_session_id' => $sessionId],
-                ['main_b' => 0.00]
-            );
-            // This row is shared across every fee collection for the institute+session,
-            // so it sees far more concurrent writers than a per-student wallet — lock it.
-            $instWallet = InstituteWallet::where('id', $instWallet->id)->lockForUpdate()->first();
+            if ($creditInstituteWallet) {
+                $instWallet = InstituteWallet::firstOrCreate(
+                    ['institute_id' => $instituteId, 'academic_session_id' => $sessionId],
+                    ['main_b' => 0.00]
+                );
+                // This row is shared across every fee collection for the institute+session,
+                // so it sees far more concurrent writers than a per-student wallet — lock it.
+                $instWallet = InstituteWallet::where('id', $instWallet->id)->lockForUpdate()->first();
 
-            if ($cashAmount > 0) {
-                $iOpBal = (float) $instWallet->main_b;
-                $iClBal = $iOpBal + $cashAmount;
+                if ($cashAmount > 0) {
+                    $iOpBal = (float) $instWallet->main_b;
+                    $iClBal = $iOpBal + $cashAmount;
 
-                self::createInstituteTransaction([
-                    'institute_id'        => $instituteId,
-                    'academic_session_id' => $sessionId,
-                    'des'                 => 'Fee received: ' . $student->name . ' - ' . $invoice->invoice_no,
-                    'credit'              => $cashAmount,
-                    'debit'               => 0.00,
-                    'type'                => InstituteTransaction::CREDIT,
-                    'date'                => $invoice->payment_date,
-                    'op_bal'              => $iOpBal,
-                    'cl_bal'              => $iClBal,
-                    'fee_invoice_id'      => $invoice->id,
-                    'source_type'         => 'fee_invoice',
-                    'source_id'           => $invoice->id,
-                    'by_user_id'          => self::resolveActorId(),
-                ]);
+                    self::createInstituteTransaction([
+                        'institute_id'        => $instituteId,
+                        'academic_session_id' => $sessionId,
+                        'des'                 => 'Fee received: ' . $student->name . ' - ' . $invoice->invoice_no,
+                        'credit'              => $cashAmount,
+                        'debit'               => 0.00,
+                        'type'                => InstituteTransaction::CREDIT,
+                        'date'                => $invoice->payment_date,
+                        'op_bal'              => $iOpBal,
+                        'cl_bal'              => $iClBal,
+                        'fee_invoice_id'      => $invoice->id,
+                        'source_type'         => 'fee_invoice',
+                        'source_id'           => $invoice->id,
+                        'by_user_id'          => self::resolveActorId(),
+                    ]);
 
-                $instWallet->main_b = $iClBal;
-                $instWallet->save();
+                    $instWallet->main_b = $iClBal;
+                    $instWallet->save();
+                }
             }
 
             // Auto-create cheque tracking record inside transaction so it rolls back with wallet

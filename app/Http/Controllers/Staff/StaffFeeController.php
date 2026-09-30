@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Institute\Fee\FeeCollectionController as InstituteFeeController;
 use App\Http\Controllers\Institute\Fee\WalletController as InstituteWalletController;
+use App\Http\Controllers\Institute\Fee\PreviousDueCollectionController as InstitutePreviousDueController;
 use App\Models\FeeInvoice;
 use App\Models\AcademicSession;
 use App\Models\Student;
@@ -46,6 +47,13 @@ class StaffFeeController extends Controller
         }
     }
 
+    private function ensurePreviousDuesPermission(): void
+    {
+        if (!$this->staff()->canCollectPreviousDues()) {
+            abort(403, 'Previous-due collection permission required.');
+        }
+    }
+
     public function create(Request $request)
     {
         $this->ensureFeeCollectionPermission();
@@ -71,6 +79,27 @@ class StaffFeeController extends Controller
         $this->ensureFeeViewPermission();
 
         return app(InstituteFeeController::class)->receipt($student, $invoice);
+    }
+
+    public function previousDuesIndex(Request $request)
+    {
+        $this->ensurePreviousDuesPermission();
+
+        return app(InstitutePreviousDueController::class)->index($request);
+    }
+
+    public function previousDuesShow(Student $student)
+    {
+        $this->ensurePreviousDuesPermission();
+
+        return app(InstitutePreviousDueController::class)->show($student);
+    }
+
+    public function previousDuesStore(Request $request, Student $student)
+    {
+        $this->ensurePreviousDuesPermission();
+
+        return app(InstitutePreviousDueController::class)->store($request, $student);
     }
 
     public function index(Request $request)

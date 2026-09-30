@@ -40,6 +40,7 @@ use App\Http\Controllers\Institute\Fee\FeeApprovalController;
 use App\Http\Controllers\Institute\Fee\PracticalFeeTokenController;
 use App\Http\Controllers\Institute\Fee\WalletController;
 use App\Http\Controllers\Institute\Fee\FeeWalletController;
+use App\Http\Controllers\Institute\Fee\PreviousDueCollectionController;
 use App\Http\Controllers\Institute\Reports\ReportController;
 use App\Http\Controllers\Institute\Reports\FeeLedgerReportController;
 use App\Http\Controllers\Institute\StatementController;
@@ -449,6 +450,13 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/{student}/wallet',            [WalletController::class, 'studentWallet'])->name('wallet.student');
         Route::get('/{student}/wallet/print',       [WalletController::class, 'walletPrint'])->name('wallet.student-print');
         Route::post('/{student}/invoice/{invoice}/cancel', [FeeCollectionController::class, 'cancel'])->name('cancel');
+        // Collect a leftover due from a Passed Out/Detained/Transferred/Cancelled student —
+        // separate from the regular Collect Fee flow above (see PreviousDueCollectionController).
+        Route::prefix('previous-dues')->name('previous-dues.')->group(function () {
+            Route::get('/',                [PreviousDueCollectionController::class, 'index'])->name('index');
+            Route::get('/{student}',       [PreviousDueCollectionController::class, 'show'])->name('show');
+            Route::post('/{student}',      [PreviousDueCollectionController::class, 'store'])->name('store');
+        });
         Route::get('/practical-tokens', [PracticalFeeTokenController::class, 'index'])->name('practical-tokens.index');
         Route::get('/practical-tokens/create', [PracticalFeeTokenController::class, 'create'])->name('practical-tokens.create');
         Route::post('/practical-tokens', [PracticalFeeTokenController::class, 'store'])->name('practical-tokens.store');
@@ -1297,6 +1305,10 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('fee/{student}/wallet',            [StaffFeeController::class, 'studentWallet'])->name('fee.wallet.student');
         Route::get('fee/{student}/wallet/print',       [StaffFeeController::class, 'walletPrint'])->name('fee.wallet.student-print');
         Route::post('fee/{student}/invoice/{invoice}/cancel', [StaffFeeController::class, 'cancel'])->name('fee.cancel');
+        // Previous-due collection (permission: fee_collect_previous_dues)
+        Route::get('fee/previous-dues',                [StaffFeeController::class, 'previousDuesIndex'])->name('fee.previous-dues.index');
+        Route::get('fee/previous-dues/{student}',       [StaffFeeController::class, 'previousDuesShow'])->name('fee.previous-dues.show');
+        Route::post('fee/previous-dues/{student}',      [StaffFeeController::class, 'previousDuesStore'])->name('fee.previous-dues.store');
         Route::get('fee/approvals',                    [FeeApprovalController::class, 'index'])->name('fee.approvals.index');
         Route::post('fee/approvals/{invoice}/approve',  [FeeApprovalController::class, 'approve'])->name('fee.approvals.approve');
         Route::post('fee/approvals/{invoice}/reject',   [FeeApprovalController::class, 'reject'])->name('fee.approvals.reject');

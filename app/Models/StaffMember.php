@@ -158,6 +158,16 @@ class StaffMember extends Authenticatable
         return $this->hasPermission('fee_collect');
     }
 
+    // Deliberately a SEPARATE permission from canCollectFee() — collecting a leftover
+    // due from a non-active (passed out/detained/transferred/cancelled) student is
+    // older, more sensitive data than day-to-day fee collection, so an institute can
+    // grant it to a narrower set of trusted staff without also having to hand out
+    // full fee-collection rights, or vice versa.
+    public function canCollectPreviousDues(): bool
+    {
+        return $this->hasPermission('fee_collect_previous_dues');
+    }
+
     public function canViewFeeHistory(): bool
     {
         return $this->canCollectFee()

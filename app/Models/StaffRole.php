@@ -23,6 +23,7 @@ class StaffRole extends Model
         ],
         'Fee' => [
             'fee_collect' => 'Collect Fee',
+            'fee_collect_previous_dues' => 'Collect Previous Dues (Non-Active Students)',
             'fee_view' => 'View Fee',
             'fee_cancel' => 'Cancel Fee Receipt',
             'fee_approve' => 'Approve Pending Fee Collections',

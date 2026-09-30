@@ -770,6 +770,10 @@
                            href="{{ route('fee.create') }}">
                         <i class="bi bi-plus-circle"></i> Collect Fee
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('fee.previous-dues.*') ? 'active' : '' }}"
+                           href="{{ route('fee.previous-dues.index') }}">
+                        <i class="bi bi-clock-history"></i> Collect Previous Dues
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('students.index') ? 'active' : '' }}"
                            href="{{ route('students.index') }}">
                         <i class="bi bi-people"></i> All Students
