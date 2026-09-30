@@ -1529,8 +1529,20 @@ class FeeCollectionController extends Controller
             'actual_balance' => (float) ($pendingByFee[$item->fee_name] ?? -1), // -1 = not found
         ])->toArray();
 
-        // Use buildPendingRows sum for accurate remaining due (not stale main_b from DB)
-        $remainingDue = (float) $pendingRows->sum('pending');
+        // Use buildPendingRows sum for accurate remaining due (not stale main_b from DB) —
+        // except for a Bulk Import historical invoice (see
+        // BulkImportApprovalController::createHistoricalInvoice()), where this live
+        // computation can't be trusted: buildPendingRows() resolves "what semester's fee
+        // rules apply" via the student's current position or a PromotionLog trail, and a
+        // bulk-imported student has neither for a PAST academic session — it silently
+        // recomputes fee items for whatever semester it falls back to (not necessarily this
+        // invoice's own semester) instead of the actual historical figures recorded at
+        // approval time. FeeInvoice.remaining_due already holds that exact, authoritative
+        // figure for this specific invoice, set once and never meant to drift — use it
+        // directly instead.
+        $remainingDue = str_starts_with((string) $invoice->remarks, 'Imported via Bulk Excel')
+            ? (float) ($invoice->remaining_due ?? 0)
+            : (float) $pendingRows->sum('pending');
 
         // Subjects for this student in the invoice session
         $studentSubjects = \App\Models\StudentSubject::with('subject')

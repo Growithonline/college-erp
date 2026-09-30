@@ -366,7 +366,17 @@ class BulkImportApprovalController extends Controller
     // reviewer overrides Total Fee away from the FeeCalculatorService-suggested amount
     // (e.g. they know the real historical fee was different). Falls back to a single
     // catch-all item if there is nothing to scale (no items, or they summed to zero),
-    // so an overridden amount is never silently dropped instead of invoiced. ──────
+    // so an overridden amount is never silently dropped instead of invoiced.
+    //
+    // Every item's label gets this period tagged onto it (e.g. "Registration Fee
+    // (Semester 1 — Bulk Import)", not bare "Registration Fee") — WalletService's
+    // pending-fee computation matches "already paid" back to "charged" purely by this
+    // label string, session-scoped; a bare generic label could otherwise collide with
+    // the student's CURRENT semester's own same-named fee item when the historical
+    // invoice's session is queried (that session has no reliable promotion trail to
+    // resolve the RIGHT historical semester for FeeCalculatorService, since a
+    // bulk-imported student has no PromotionLog history), silently netting one
+    // semester's payment against a completely different semester's charge. ─────────
     private function scaleItemsToTotal(array $items, float $targetTotal, string $periodLabel): array
     {
         $items = array_values(array_filter($items, fn($i) => (float) ($i['amount'] ?? 0) > 0));
@@ -386,8 +396,9 @@ class BulkImportApprovalController extends Controller
         }
 
         $ratio = $targetTotal / $sum;
-        return array_map(function ($item) use ($ratio) {
+        return array_map(function ($item) use ($ratio, $periodLabel) {
             $item['amount'] = round(((float) $item['amount']) * $ratio, 2);
+            $item['label'] = ($item['label'] ?? 'Fee') . " ({$periodLabel} — Bulk Import)";
             return $item;
         }, $items);
     }
@@ -526,8 +537,17 @@ class BulkImportApprovalController extends Controller
                 }
 
                 if (($result['due'] ?? 0) > 0) {
-                    WalletService::chargeBulkImportPreviousDue($student, $n, (float) $result['due']);
-                    $totalDueRecorded += (float) $result['due'];
+                    $due = (float) $result['due'];
+
+                    // Charged into the student's CURRENT session (not the semester's own
+                    // historical one) so it is actually collectible today — the Fee Collection
+                    // page only ever looks at the student's current academic_session_id, never
+                    // a past one. The historical invoice's own "Remaining Due" is shown
+                    // correctly on its receipt from the FeeInvoice.remaining_due value set
+                    // below, not by also duplicating this debit into the old session (which
+                    // would make the same due appear to exist twice across two session tabs).
+                    WalletService::chargeBulkImportPreviousDue($student, $n, $due);
+                    $totalDueRecorded += $due;
                 }
             }
 

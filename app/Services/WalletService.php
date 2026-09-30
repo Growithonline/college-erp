@@ -369,12 +369,11 @@ class WalletService
 
     /**
      * Records a pre-existing due for ONE semester the student had already completed
-     * before entering this system — call once per past semester (e.g. a student bulk-
-     * imported directly into Semester 4 gets three separate calls, one each for
-     * Semesters 1, 2 and 3 — see the 'semester_dues' loop in
-     * StudentBulkImportController::importRow()). Debits the wallet directly and labels
-     * the transaction "Previous Due (Semester N)" so it is picked up by the same
-     * 'Previous Due (%' lookup buildPromotionAwareFeeState() already uses for
+     * before entering this system — called once per past semester from
+     * BulkImportApprovalController::finalizeApproval() (e.g. a student reviewed with
+     * Semesters 1-3 outstanding gets three separate calls). Debits the wallet directly
+     * and labels the transaction "Previous Due (Semester N)" so it is picked up by the
+     * same 'Previous Due (%' lookup buildPromotionAwareFeeState() already uses for
      * promotion-carried dues — no separate display logic needed on the Fee Collection
      * page, Wallet ledger, or any report that reads StudentTransaction.
      *
@@ -384,14 +383,27 @@ class WalletService
      * past semester before joining this system was never collected through this ERP, so
      * it is intentionally never fabricated as an in-app receipt here; only the net
      * outstanding balance matters for future collection.
+     *
+     * Deliberately charged into the student's CURRENT session (the default when
+     * $sessionId is omitted), not the semester's own historical one — this is what
+     * makes it actually collectible today, since the Fee Collection page only ever
+     * looks at the student's current academic_session_id. The semester's own
+     * historical receipt (see BulkImportApprovalController::createHistoricalInvoice())
+     * shows its own "Remaining Due" correctly from FeeInvoice.remaining_due directly
+     * (see FeeCollectionController::receipt()) rather than by also duplicating this
+     * debit into the old session, which would make the same due appear to exist twice
+     * across two session tabs on the Wallet page.
+     *
+     * @param  ?int  $sessionId  Override target session — not used by the caller above,
+     *   kept for flexibility; defaults to the student's own current session.
      */
-    public static function chargeBulkImportPreviousDue(Student $student, int $semesterNumber, float $amount): void
+    public static function chargeBulkImportPreviousDue(Student $student, int $semesterNumber, float $amount, ?int $sessionId = null): void
     {
         if ($amount <= 0) {
             return;
         }
 
-        $sessionId = (int) $student->academic_session_id;
+        $sessionId = $sessionId ?? (int) $student->academic_session_id;
 
         DB::transaction(function () use ($student, $sessionId, $semesterNumber, $amount) {
             $wallet = StudentWallet::firstOrCreate(
