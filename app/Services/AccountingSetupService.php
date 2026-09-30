@@ -106,6 +106,12 @@ class AccountingSetupService
             ['code' => '4002', 'name' => 'PF Payable', 'type' => 'liability', 'normal_side' => 'credit'],
             ['code' => '4003', 'name' => 'ESI Payable', 'type' => 'liability', 'normal_side' => 'credit'],
             ['code' => '4004', 'name' => 'Professional Tax Payable', 'type' => 'liability', 'normal_side' => 'credit'],
+            // Opening-balance account for historical data migrated in through Bulk Student
+            // Import — a past semester's fee is recognized as a receivable against THIS
+            // equity account instead of a current Fee Income account, so migrating old
+            // records never inflates the current period's Profit & Loss (which only sums
+            // 'income'/'expense' type accounts — see FinanceReportController::profitAndLoss()).
+            ['code' => '5000', 'name' => 'Opening Balance — Migrated Fees', 'type' => 'equity', 'normal_side' => 'credit'],
         ];
     }
 }

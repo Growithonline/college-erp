@@ -32,6 +32,7 @@ use App\Http\Controllers\Institute\Master\CourseDocumentFeeController;
 use App\Http\Controllers\Institute\Admission\AdmissionController;
 use App\Http\Controllers\Institute\Admission\EnquiryController;
 use App\Http\Controllers\Institute\Admission\StudentBulkImportController;
+use App\Http\Controllers\Institute\Admission\BulkImportApprovalController;
 use App\Http\Controllers\Institute\Admission\StudentPromoteController;
 use App\Http\Controllers\Institute\Admission\PromotionController;
 use App\Http\Controllers\Institute\Fee\FeeCollectionController;
@@ -800,6 +801,15 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/template',  [StudentBulkImportController::class, 'downloadTemplate'])->name('template');
         Route::post('/preview',  [StudentBulkImportController::class, 'preview'])->name('preview');
         Route::post('/import',   [StudentBulkImportController::class, 'import'])->name('import');
+    });
+
+    // Bulk Import Pending Review — fee-history approval for students created by Bulk
+    // Student Import, kept separate from AdmissionController's own Approvals flow.
+    Route::prefix('admissions/bulk-import/pending')->name('admissions.bulk-import.pending.')->middleware('throttle:30,1')->group(function () {
+        Route::get('/',              [BulkImportApprovalController::class, 'index'])->name('index');
+        Route::get('/{student}',     [BulkImportApprovalController::class, 'show'])->name('show');
+        Route::post('/{student}/approve', [BulkImportApprovalController::class, 'approve'])->name('approve');
+        Route::post('/{student}/reject',  [BulkImportApprovalController::class, 'reject'])->name('reject');
     });
 
     // Resource LAST

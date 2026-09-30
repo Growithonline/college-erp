@@ -656,7 +656,12 @@ class AdmissionController extends Controller
             'session',
             'admittedBy',
             'approvedByStaff',
-        ])->where('institute_id', $instituteId);
+        ])
+            ->where('institute_id', $instituteId)
+            // Students created by Bulk Excel Import have their own, separate
+            // "Bulk Import Pending Review" page/flow (BulkImportApprovalController) —
+            // they never appear in this Admissions Approvals list.
+            ->where('is_bulk_import', false);
 
         if ($staff = $this->currentStaff()) {
             $staff->scopeOperationalStudents($query);

@@ -137,6 +137,8 @@
                 </div>
                 <small class="text-muted">
                     Rows with mandatory-field errors ({{ count($invalidRows) }}) will always be skipped.
+                    Imported students are created as <strong>Pending</strong> — each one needs its fee history
+                    reviewed and approved on the Bulk Import Pending Review page before it becomes Active.
                     This action cannot be undone.
                 </small>
             </div>
@@ -190,7 +192,7 @@
                         <th>Gender</th>
                         <th>Category</th>
                         <th>Source</th>
-                        <th>Prev. Due</th>
+                        <th>Fee History</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -241,15 +243,11 @@
                             @endif
                         </td>
                         <td class="text-muted small">{{ ucfirst($row['admission_source']) }}</td>
-                        <td class="text-muted small">
-                            @if(!empty($row['semester_dues']))
-                                @php $totalDue = array_sum($row['semester_dues']); @endphp
-                                <span class="text-danger fw-semibold">₹{{ number_format($totalDue, 0) }}</span>
-                                <span class="text-muted" style="font-size:10px;">
-                                    (Sem {{ implode(', ', array_keys($row['semester_dues'])) }})
-                                </span>
+                        <td class="small">
+                            @if($row['current_semester'] > 1)
+                                <span class="badge bg-info bg-opacity-10 text-info fw-normal" style="font-size:10px;">Review after import</span>
                             @else
-                                —
+                                <span class="text-muted">No past semesters</span>
                             @endif
                         </td>
                     </tr>
@@ -418,7 +416,8 @@
                 @endif
                 <p class="text-muted small mb-0">
                     <i class="bi bi-info-circle me-1"></i>
-                    This action <strong>cannot be undone</strong>. Students will be added to the system immediately.
+                    This action <strong>cannot be undone</strong>. Students are created as Pending — you will
+                    review and approve each one's fee history afterward, before it becomes Active.
                 </p>
             </div>
             <div class="modal-footer border-0 pt-0">

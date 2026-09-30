@@ -548,9 +548,13 @@
                            href="{{ route('enquiries.index') }}">
                         <i class="bi bi-chat-left-text text-primary"></i> Online Enquiries
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('admissions.bulk-import.*') ? 'active' : '' }}"
+                    <li><a class="nav-link {{ request()->routeIs('admissions.bulk-import.index') || request()->routeIs('admissions.bulk-import.template') || request()->routeIs('admissions.bulk-import.preview') ? 'active' : '' }}"
                            href="{{ route('admissions.bulk-import.index') }}">
                         <i class="bi bi-file-earmark-arrow-up text-success"></i> Bulk Import (Excel)
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.bulk-import.pending.*') ? 'active' : '' }}"
+                           href="{{ route('admissions.bulk-import.pending.index') }}">
+                        <i class="bi bi-hourglass-split text-warning"></i> Bulk Import Pending Review
                     </a></li>
                 </ul>
             </div>

@@ -186,10 +186,8 @@ class StudentBulkImportController extends Controller
             'BG' => 'Scholarship Ref No',
             'BH' => 'Scholarship Applied Date',
             'BI' => 'Student Status',
-            'BJ' => 'Due Semesters (comma-separated)',
-            'BK' => 'Due Amounts (comma-separated)',
-            'BL' => 'Major Subject',
-            'BM' => 'Minor Subjects (comma-separated)',
+            'BJ' => 'Major Subject',
+            'BK' => 'Minor Subjects (comma-separated)',
         ];
 
         foreach ($headers as $col => $label) {
@@ -279,8 +277,6 @@ class StudentBulkImportController extends Controller
             'BI' => 'Active',
             'BJ' => '',
             'BK' => '',
-            'BL' => '',
-            'BM' => '',
         ];
 
         foreach ($example as $col => $val) {
@@ -376,10 +372,8 @@ class StudentBulkImportController extends Controller
             ['Scholarship Type',            'Govt Central / Govt State / University / Institute / Private / Other'],
             ['Scholarship Amount',          'Numeric value only. Example: 5000'],
             ['Scholarship Applied Date',    'Format: DD/MM/YYYY'],
-            ['Student Status',              'Active / Passed Out / Detained / Transferred / Cancelled (default: Active). Passed Out/Detained/Transferred/Cancelled students do NOT get a fresh current-semester fee charge — use this for migrating existing/previous-year or already-graduated students.'],
+            ['Student Status',              'Active / Passed Out / Detained / Transferred / Cancelled (default: Active). This is the status the student ends up with AFTER the fee-history review below is approved — see "Fee History Review" note.'],
             ['Semester * (for non-Active)', 'For Passed Out/Detained/Transferred/Cancelled students, enter their LAST/final semester here — not a currently-ongoing one.'],
-            ['Due Semesters',               'Optional. Comma-separated list of semester numbers that still have a pending balance from before joining this system. Example: 2,3'],
-            ['Due Amounts',                 'Optional. Comma-separated amounts matching Due Semesters 1-to-1, same order. Example: 4000,2500 means Semester 2 owes 4000 and Semester 3 owes 2500. For Active students, only semesters BEFORE the Semester * value can carry a due (the current semester\'s fee is auto-calculated by the system). For Passed Out/Detained/etc., dues up to and including the Semester * value are allowed. Shows up as "Previous Due (Semester N)" on the student\'s fee ledger.'],
             ['Major Subject',               'Optional. Must match a subject name available for that Course/Stream/Semester. Unmatched names are skipped, not blocked.'],
             ['Minor Subjects',              'Optional. Comma-separated. Same matching rule as Major Subject. Compulsory subjects for that stream are auto-enrolled regardless of this column.'],
             ['',                            ''],
@@ -393,6 +387,11 @@ class StudentBulkImportController extends Controller
             ['',                            '7. Duplicate Student UID / Roll No / Enrollment No / UIN / Exam Form No are flagged as minor issues — you choose at preview time whether to still import that row.'],
             ['',                            '8. If Student UID is left blank (or is a duplicate), the system generates one automatically.'],
             ['',                            '9. Re-uploading a file that still has already-imported rows in it: if the same Name + Mobile already exists, it is flagged as a "possible duplicate" minor issue — remove those rows or leave "Import Anyway" unchecked to skip them.'],
+            ['',                            ''],
+            ['FEE HISTORY REVIEW',           ''],
+            ['',                            'This sheet does NOT ask for past-semester fee dues. Every imported student is created with status "Pending" and held back (no login, no fee collection, hidden from student lists) until a staff member reviews and approves their fee history on the "Bulk Import Pending Review" page (Admissions menu).'],
+            ['',                            'On that page, for each semester the student has already completed before joining this system, the system shows a reference fee amount and asks how much of it was actually paid. Any shortfall is recorded as a due, tagged so it is clearly identified as coming from this bulk import. Only after that review is approved does the student become Active (or whatever Student Status this file specified) and start appearing everywhere normally.'],
+            ['',                            'A student imported directly into Semester 1 has no past semesters to review, so approval for them is a single click.'],
         ];
         foreach ($rows as $i => $row) {
             $instrSheet->setCellValue('A' . ($i + 1), $row[0]);
@@ -552,10 +551,10 @@ class StudentBulkImportController extends Controller
         foreach ($dataRows as $rowIdx => $rawCols) {
             $rowNum = $rowIdx + 2; // true Excel row number (header=1, data starts at 2)
 
-            // Pad to 65 columns, convert all to trimmed, formula-defanged strings
+            // Pad to 63 columns, convert all to trimmed, formula-defanged strings
             $c = array_map(
                 fn($v) => $this->sanitizeCell((string)($v ?? '')),
-                array_pad(array_values($rawCols), 65, '')
+                array_pad(array_values($rawCols), 63, '')
             );
 
             // Map columns by index (matches template header order)
@@ -571,9 +570,9 @@ class StudentBulkImportController extends Controller
              $commSame, $commAddr, $commCity, $commPost, $commThana, $commDist, $commState, $commPin,
              $hasScholar, $scholarName, $scholarType, $scholarAuth,
              $scholarAmt, $scholarRef, $scholarDate,
-             $studentStatusRaw, $dueSemestersRaw, $dueAmountsRaw,
+             $studentStatusRaw,
              $majorSubjectsRaw, $minorSubjectsRaw]
-                = array_pad($c, 65, '');
+                = array_pad($c, 63, '');
 
             // Hard errors block the row entirely (mandatory fields: Name, Mobile,
             // Course, Stream, Semester). Soft errors are optional-field problems —
@@ -671,55 +670,10 @@ class StudentBulkImportController extends Controller
                 $softErrors[] = "Student Status \"{$studentStatusRaw}\" not recognized — treated as Active";
                 $statusNorm = 'active';
             }
-            $isTerminalStatus = $statusNorm !== 'active';
-
-            // ── Semester-wise Previous Due ────────────────────────────
-            // Two comma-separated columns instead of one fixed column per semester —
-            // works the same for a 2-semester course or a 15-term one, without the
-            // template needing to guess the longest course up front.
-            // Active students get their current semester auto-charged fresh by
-            // WalletService::onAdmission(), so a due here can only be for a semester
-            // strictly BEFORE that one. Terminal-status students (passed out/detained/
-            // transferred/cancelled) never get that auto-charge, so their own last
-            // semester's due is also collectible — up to and including Semester *.
-            $maxDueSemester = $isTerminalStatus ? $sem : $sem - 1;
-            $semesterDues = [];
-            $dueSemList = array_values(array_filter(array_map('trim', explode(',', $dueSemestersRaw)), fn($v) => $v !== ''));
-            $dueAmtList = array_values(array_filter(array_map('trim', explode(',', $dueAmountsRaw)), fn($v) => $v !== ''));
-
-            if (count($dueSemList) !== count($dueAmtList)) {
-                $softErrors[] = 'Due Semesters and Due Amounts have a different number of values — dues for this row skipped';
-            } else {
-                foreach ($dueSemList as $i => $rawSemNum) {
-                    $rawAmt = $dueAmtList[$i];
-                    if (!ctype_digit($rawSemNum)) {
-                        $softErrors[] = "Due Semesters value \"{$rawSemNum}\" is not a valid semester number — skipped";
-                        continue;
-                    }
-                    if (!is_numeric($rawAmt)) {
-                        $softErrors[] = "Due Amounts value \"{$rawAmt}\" is not a valid number — skipped";
-                        continue;
-                    }
-                    $semNum = (int) $rawSemNum;
-                    $dueAmount = (float) $rawAmt;
-                    if ($dueAmount < 0) {
-                        $softErrors[] = "Due amount for Semester {$semNum} cannot be negative — skipped";
-                        continue;
-                    }
-                    if ($semNum < 1 || $semNum > $maxDueSemester) {
-                        $softErrors[] = "Due for Semester {$semNum} not allowed — current Semester is {$sem}"
-                            . ($isTerminalStatus ? '' : ' (only semesters before it can carry a due)') . ' — skipped';
-                        continue;
-                    }
-                    if (isset($semesterDues[$semNum])) {
-                        $softErrors[] = "Semester {$semNum} appears more than once in Due Semesters — later value skipped";
-                        continue;
-                    }
-                    if ($dueAmount > 0) {
-                        $semesterDues[$semNum] = $dueAmount;
-                    }
-                }
-            }
+            // Past-semester fee history (how much of each earlier semester was paid) is
+            // no longer collected here — every imported student is held at status
+            // "Pending" and reviewed on the separate "Bulk Import Pending Review" page
+            // before becoming $statusNorm (see importRow() and BulkImportApprovalController).
 
             // ── Duplicate checks (only truly unique fields) — soft, since a
             // duplicate here just means that specific identifier gets dropped
@@ -1069,7 +1023,6 @@ class StudentBulkImportController extends Controller
                 'scholarship_ref_no'       => $scholarRef ?: null,
                 'scholarship_applied_date' => $parsedScholarDate,
                 'student_status'           => $statusNorm,
-                'semester_dues'            => $semesterDues,
                 'soft_errors'              => $softErrors,
                 'errors'                   => array_merge($hardErrors, $softErrors),
             ];
@@ -1131,6 +1084,13 @@ class StudentBulkImportController extends Controller
             $rows = array_merge($rows, $softRows);
         }
 
+        // Consume the token now, BEFORE processing any row — not after the loop below.
+        // A double-submit (double-clicked "Confirm Import", a slow request retried by
+        // the browser, etc.) would otherwise find the token still valid on its second
+        // pass and re-import the exact same rows a second time, duplicating students,
+        // wallet charges and everything else this triggers.
+        session()->forget(['bulk_import_token', 'bulk_import_rows', 'bulk_import_soft_rows', 'bulk_import_session_id', 'bulk_import_expires_at']);
+
         // Verify session still belongs to institute
         $academicSession = AcademicSession::where('id', $sessionId)
             ->where('institute_id', $instituteId)
@@ -1179,8 +1139,6 @@ class StudentBulkImportController extends Controller
             }
         }
 
-        session()->forget(['bulk_import_token', 'bulk_import_rows', 'bulk_import_soft_rows', 'bulk_import_session_id', 'bulk_import_expires_at']);
-
         if ($imported === 0) {
             $errMsg = $lastError
                 ? "Import failed. No students were saved. Error: {$lastError}"
@@ -1188,9 +1146,10 @@ class StudentBulkImportController extends Controller
             return redirect()->route('admissions.bulk-import.index')->withErrors(['import' => $errMsg]);
         }
 
-        $msg = "{$imported} student(s) imported successfully.";
+        $msg = "{$imported} student(s) imported and are now Pending review.";
         if ($softIncludedCount > 0) $msg .= " ({$softIncludedCount} of them had minor data issues you chose to import anyway.)";
         if ($failed > 0) $msg .= " {$failed} row(s) failed to save — check Laravel logs.";
+        $msg .= " Go to Bulk Import Pending Review to confirm each student's fee history before they become Active.";
 
         AuditLogService::log(
             $instituteId,
@@ -1201,7 +1160,7 @@ class StudentBulkImportController extends Controller
             ['session_id' => $sessionId, 'imported' => $imported, 'failed' => $failed, 'soft_issue_rows_included' => $softIncludedCount]
         );
 
-        return redirect()->route('admissions.index')->with('success', $msg);
+        return redirect()->route('admissions.bulk-import.pending.index')->with('success', $msg);
     }
 
     // ── Create one student (+ fee charge, dues, subjects, identity) from a
@@ -1295,21 +1254,30 @@ class StudentBulkImportController extends Controller
             'scholarship_amount'       => $rowData['scholarship_amount'],
             'scholarship_ref_no'       => $rowData['scholarship_ref_no'],
             'scholarship_applied_date' => $rowData['scholarship_applied_date'],
-            'status'                   => $rowData['student_status'] ?? 'active',
+            // Every bulk-imported student is held at "Pending" — same as an online
+            // admission awaiting approval: no login, hidden from active student lists,
+            // fee collection blocked — until its fee-history review is approved on the
+            // "Bulk Import Pending Review" page. The status the row should switch to
+            // once approved (Active, or whatever Student Status the file specified for
+            // a Passed Out/Detained/Transferred/Cancelled row) is remembered separately
+            // so it isn't lost while the student sits pending.
+            'status'                     => 'pending',
+            'is_bulk_import'             => true,
+            'bulk_import_target_status'  => $rowData['student_status'] ?? 'active',
             'is_quick_admission'       => false,
             'admitted_by_staff_id'     => Auth::guard('staff')->check() ? Auth::guard('staff')->id() : null,
             'admitted_by_type'         => Auth::guard('staff')->check() ? 'staff' : 'admin',
         ]);
 
-        // Only auto-charge the current-semester fee for students who are
-        // actually still studying — a Passed Out/Detained/Transferred/
-        // Cancelled row is a historical record, not a fresh enrollment.
+        // Only auto-charge the current-semester fee for students who are actually
+        // still studying — a Passed Out/Detained/Transferred/Cancelled row is a
+        // historical record, not a fresh enrollment. This still happens immediately
+        // (while the student is "Pending"), matching how online admissions already
+        // charge their fee as soon as the application is submitted, before staff
+        // approval — see AdmissionApplicationController::store(). Only the PAST
+        // semesters' fee history is deferred to the approval review.
         if (($rowData['student_status'] ?? 'active') === 'active') {
             WalletService::onAdmission($student);
-        }
-
-        foreach ($rowData['semester_dues'] ?? [] as $semNum => $dueAmount) {
-            WalletService::chargeBulkImportPreviousDue($student, $semNum, $dueAmount);
         }
 
         $subjectIds = [];

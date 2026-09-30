@@ -215,8 +215,10 @@ class WalletService
      *
      * Expects $invoice->total_amount/discount/paid_amount/invoice_no to already be set to
      * their final values by the caller.
+     *
+     * @param  bool  $postJournal  Forwarded to onFeeCollection() — see its own doc comment.
      */
-    public static function settleApprovedInvoice(FeeInvoice $invoice, iterable $validItems): void
+    public static function settleApprovedInvoice(FeeInvoice $invoice, iterable $validItems, bool $postJournal = true): void
     {
         foreach ($validItems as $item) {
             $feeType = !empty($item['fee_type_id'])
@@ -246,7 +248,7 @@ class WalletService
 
         self::chargeCustomFeeItems($invoice, $validItems);
         self::chargeFineItems($invoice, $validItems);
-        self::onFeeCollection($invoice);
+        self::onFeeCollection($invoice, $postJournal);
 
         // Settle transport allocations collected via this invoice
         foreach ($validItems as $tItem) {
@@ -356,14 +358,32 @@ class WalletService
         JournalService::safePostAdmissionFeeAssigned($student, $feeData);
     }
 
+    // Suffix appended to every bulk-import previous-due transaction's description, so
+    // staff can tell at a glance (on the Wallet ledger, Fee Collection page, receipts —
+    // anywhere StudentTransaction.des is rendered) that this line came from a bulk
+    // Excel import, not a manual fee adjustment. Kept as a SUFFIX, never a prefix change:
+    // buildPromotionAwareFeeState() and the Fee Collection page both find these rows via
+    // `des LIKE 'Previous Due (%'`, so the "Previous Due (Semester N)" prefix must stay
+    // byte-for-byte identical to what a semester/session promotion writes.
+    private const BULK_IMPORT_DUE_REMARK = ' — Fee details updated via Excel Import';
+
     /**
-     * Records a pre-existing due for a semester the student had already completed
-     * before entering this system — used by bulk import when migrating previous-year
-     * or passed-out students who still owe money from before. Debits the wallet
-     * directly and labels the transaction "Previous Due (Semester N)" so it is picked
-     * up by the same 'Previous Due (%' lookup buildPromotionAwareFeeState() already
-     * uses for promotion-carried dues (see WalletService::buildPromotionAwareFeeState()) —
-     * no separate display logic needed on the Fee Collection page.
+     * Records a pre-existing due for ONE semester the student had already completed
+     * before entering this system — call once per past semester (e.g. a student bulk-
+     * imported directly into Semester 4 gets three separate calls, one each for
+     * Semesters 1, 2 and 3 — see the 'semester_dues' loop in
+     * StudentBulkImportController::importRow()). Debits the wallet directly and labels
+     * the transaction "Previous Due (Semester N)" so it is picked up by the same
+     * 'Previous Due (%' lookup buildPromotionAwareFeeState() already uses for
+     * promotion-carried dues — no separate display logic needed on the Fee Collection
+     * page, Wallet ledger, or any report that reads StudentTransaction.
+     *
+     * Only the still-OWED amount is recorded (not the full original fee for that
+     * semester) — this is an opening-balance migration, not a reconstruction of that
+     * semester's fee structure/payment history. Whatever the student already paid for a
+     * past semester before joining this system was never collected through this ERP, so
+     * it is intentionally never fabricated as an in-app receipt here; only the net
+     * outstanding balance matters for future collection.
      */
     public static function chargeBulkImportPreviousDue(Student $student, int $semesterNumber, float $amount): void
     {
@@ -387,7 +407,7 @@ class WalletService
                 'student_id'          => $student->id,
                 'institute_id'        => $student->institute_id,
                 'academic_session_id' => $sessionId,
-                'des'                 => 'Previous Due (Semester ' . $semesterNumber . ')',
+                'des'                 => 'Previous Due (Semester ' . $semesterNumber . ')' . self::BULK_IMPORT_DUE_REMARK,
                 'credit'              => 0.00,
                 'debit'               => $amount,
                 'type'                => StudentTransaction::DEBIT,
@@ -402,7 +422,17 @@ class WalletService
         });
     }
 
-    public static function onFeeCollection(FeeInvoice $invoice): void
+    /**
+     * @param  bool  $postJournal  Set to false only for a backdated invoice that records
+     *   money already collected BEFORE it ever entered this system (e.g. a Bulk Import
+     *   fee-history entry) — the journal entry this normally posts (Debit Cash/Bank,
+     *   Credit Fees Receivable) assumes the Fees Receivable side was already debited by
+     *   an earlier "fee assigned" posting, which never happened for that kind of invoice.
+     *   Posting it anyway would credit Fees Receivable with no matching debit, silently
+     *   understating what the institute is really owed. Every normal caller keeps the
+     *   default (true) and is unaffected.
+     */
+    public static function onFeeCollection(FeeInvoice $invoice, bool $postJournal = true): void
     {
         $sessionId = $invoice->academic_session_id;
         $instituteId = $invoice->institute_id;
@@ -517,7 +547,9 @@ class WalletService
             }
         });
 
-        JournalService::safePostFeeCollection($invoice);
+        if ($postJournal) {
+            JournalService::safePostFeeCollection($invoice);
+        }
     }
 
     /**

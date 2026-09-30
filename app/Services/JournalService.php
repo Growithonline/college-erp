@@ -18,6 +18,7 @@ use InvalidArgumentException;
 class JournalService
 {
     private const ENTRY_KEY_ADMISSION_FEE = 'fee-assigned:admission:student:%d:session:%d';
+    private const ENTRY_KEY_BULK_IMPORT_OPENING = 'fee-assigned:bulk-import-opening:student:%d:semester:%d';
     private const ENTRY_KEY_CUSTOM_FEE = 'fee-assigned:custom:invoice:%d';
     private const ENTRY_KEY_FINE_FEE = 'fee-assigned:fine:invoice:%d';
     private const ENTRY_KEY_FEE_COLLECTION = 'fee-collected:invoice:%d';
@@ -173,6 +174,80 @@ class JournalService
                     'source' => 'wallet_on_admission',
                 ],
             ], $lines);
+        });
+    }
+
+    /**
+     * Recognizes ONE past semester's full fee (paid + due combined) as a receivable —
+     * used only by Bulk Student Import's fee-history review (see
+     * BulkImportApprovalController::finalizeApproval()) for a semester the student had
+     * already completed BEFORE joining this system.
+     *
+     * Unlike safePostAdmissionFeeAssigned() (Debit Receivable / Credit a current Fee
+     * Income account), this credits the "Opening Balance — Migrated Fees" EQUITY
+     * account instead — so migrating old records never inflates the CURRENT period's
+     * Profit & Loss, which only sums 'income'/'expense' type accounts (an 'equity'
+     * account is excluded automatically, see FinanceReportController::profitAndLoss()).
+     * It still correctly shows up in Trial Balance / Balance Sheet reports.
+     *
+     * Posted once per period regardless of how much was actually paid — this is what
+     * lets whatever's still due show up as a genuine open balance on the Fees
+     * Receivable account, and lets the paid portion's own "Debit Cash / Credit
+     * Receivable" collection entry (see WalletService::onFeeCollection()) post
+     * correctly against a receivable that was actually recognized here first.
+     *
+     * @param  int  $academicSessionId  The ACTUAL historical session this semester
+     *   belonged to (reviewer-confirmed on the review page), not the student's current
+     *   session — this is what lets that session's own Trial Balance reflect it.
+     */
+    public static function safePostBulkImportOpeningBalance(
+        Student $student,
+        int $semesterNumber,
+        string $periodLabel,
+        float $totalFee,
+        int $academicSessionId
+    ): ?JournalEntry {
+        if ($totalFee <= 0) {
+            return null;
+        }
+
+        return self::safely(function () use ($student, $semesterNumber, $periodLabel, $totalFee, $academicSessionId) {
+            $instituteId = (int) $student->institute_id;
+            $receivable = self::accountOrFail(self::settings($instituteId)?->fees_receivable_account_id);
+            $openingBalance = self::accountByCodeOrFail($instituteId, '5000');
+
+            $amount = round($totalFee, 2);
+
+            return self::post([
+                'institute_id' => $instituteId,
+                'academic_session_id' => $academicSessionId,
+                'date' => now()->toDateString(),
+                'entry_key' => sprintf(self::ENTRY_KEY_BULK_IMPORT_OPENING, (int) $student->id, $semesterNumber),
+                'reference_type' => 'student_bulk_import_opening_balance',
+                'reference_id' => (int) $student->id,
+                'narration' => "Opening balance recognized for {$student->name} — {$periodLabel} (Bulk Excel Import)",
+                'created_by' => self::resolveActorId(),
+                'created_by_role' => self::resolveActorRole(),
+                'meta' => [
+                    'student_id' => (int) $student->id,
+                    'student_uid' => $student->student_uid,
+                    'semester' => $semesterNumber,
+                    'source' => 'bulk_import_fee_history',
+                ],
+            ], [
+                [
+                    'account_id' => (int) $receivable->id,
+                    'entry_type' => 'debit',
+                    'amount' => $amount,
+                    'narration' => 'Fee receivable recognized — ' . $periodLabel,
+                ],
+                [
+                    'account_id' => (int) $openingBalance->id,
+                    'entry_type' => 'credit',
+                    'amount' => $amount,
+                    'narration' => 'Migrated from Bulk Excel Import — ' . $periodLabel,
+                ],
+            ]);
         });
     }
 

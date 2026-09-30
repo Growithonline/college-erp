@@ -33,6 +33,7 @@ class Student extends Authenticatable
         'scholarship_authority', 'scholarship_applied_date',
         'scholarship_amount', 'scholarship_ref_no',
         'is_quick_admission',
+        'is_bulk_import', 'bulk_import_target_status',
         'admitted_by_staff_id', 'admitted_by_type',
         'approved_by_staff_id', 'approved_by_name', 'approved_at', 'approval_notes',
         'status_reason',
@@ -43,6 +44,7 @@ class Student extends Authenticatable
     protected $casts = [
         'gap_year'            => 'boolean',
         'is_quick_admission'  => 'boolean',
+        'is_bulk_import'      => 'boolean',
         'comm_same_as_perm'   => 'boolean',
         'admission_date'    => 'date',
         'submitted_date'    => 'date',
