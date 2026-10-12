@@ -1386,7 +1386,13 @@ class FeeCollectionController extends Controller
                 FeeInvoice::where('id', $invoiceId)->update(['remaining_due' => max(0, (float) $remainingDueSnapshot)]);
             }
         } catch (\Throwable $e) {
-            // Non-critical — invoice is already saved, just snapshot failed
+            // Non-critical — invoice is already saved, just snapshot failed. Logged because a
+            // missing snapshot makes reprints fall back to the live due instead of the due on the day.
+            \Illuminate\Support\Facades\Log::warning('Fee invoice remaining_due snapshot failed', [
+                'invoice_id' => $invoiceId,
+                'student_id' => $student->id,
+                'error'      => $e->getMessage(),
+            ]);
         }
 
         // Fee transaction alert — opt-in, only fires if the institute has configured
