@@ -4124,6 +4124,59 @@ class AdmissionController extends Controller
             ])->withInput();
         }
 
+        // FeePlan installment enforcement — same rule as FeeCollectionController::store(): at
+        // admission nothing is paid yet, so the cash collected may not exceed the installments
+        // that are already due. An unsaved Student carries the only fields isDue() reads.
+        if ($request->filled('fee_plan_id')) {
+            $plan = \App\Models\FeePlan::with('installments')
+                ->where('institute_id', $instituteId)
+                ->find((int) $request->fee_plan_id);
+
+            if ($plan && $plan->installments->isNotEmpty()) {
+                $planStudent = new Student([
+                    'current_semester' => 1,
+                    'admission_date'   => $request->admission_date ?? now()->toDateString(),
+                ]);
+                $totalFeeForPlan = (float) $validItems
+                    ->reject(fn($item) => !empty($item['is_custom']))
+                    ->sum(fn($item) => max(0, (float) ($item['pending_before'] ?? 0)));
+
+                if ($totalFeeForPlan > 0) {
+                    $installmentAmounts = $plan->installmentAmounts($totalFeeForPlan);
+                    $totalTriggered = 0.0;
+                    foreach ($plan->installments as $inst) {
+                        if ($inst->isDue($planStudent)) {
+                            $totalTriggered += (float) ($installmentAmounts[$inst->installment_number] ?? 0);
+                        }
+                    }
+
+                    if ($totalAmount > $totalTriggered + 0.5) {
+                        return back()->withErrors([
+                            'fee_items' => sprintf(
+                                'Installment plan limit: triggered installments total ₹%s — maximum collectible now is ₹%s.',
+                                number_format($totalTriggered, 2),
+                                number_format($totalTriggered, 2)
+                            ),
+                        ])->withInput();
+                    }
+                }
+            }
+        }
+
+        // Custom fee amount limit (staff only) — the collect page parks such a payment for
+        // admin approval, but an admission can't be half-created pending approval, so here
+        // an over-limit custom amount is simply refused.
+        if (auth()->guard('staff')->check()) {
+            $customLimit = auth()->guard('staff')->user()->max_custom_fee_amount;
+            $customTotal = (float) $validItems->filter(fn($item) => !empty($item['is_custom']))->sum('amount');
+            if ($customTotal > 0 && $customLimit !== null && $customTotal > (float) $customLimit + 0.01) {
+                return back()->withErrors([
+                    'fee_items' => 'Custom fee above your limit of ₹' . number_format((float) $customLimit, 2)
+                        . ' needs admin approval — remove it here and collect it later from the Fee Collection page.',
+                ])->withInput();
+            }
+        }
+
         $totalDiscount = (float) $validItems->sum('discount');
 
         if (auth()->guard('staff')->check() && $totalDiscount > 0) {
@@ -4293,6 +4346,22 @@ class AdmissionController extends Controller
             $subjectsFullySkipped
         );
         $selectedSubjectIds = $subjectSelection['subject_ids'];
+
+        // Double-click / retry guard, same as the collect page: one identical submission per
+        // 10s. Placed after every validation above so a corrected resubmit isn't blocked.
+        $quickLockKey = 'quick_admission_lock:' . md5(implode('|', [
+            $instituteId,
+            $request->name,
+            $request->mobile,
+            $request->course_stream_id,
+            $totalAmount,
+            auth()->guard('staff')->id() ?? auth()->guard('center')->id() ?? auth()->guard('partner')->id() ?? auth()->id(),
+        ]));
+        if (!\Illuminate\Support\Facades\Cache::add($quickLockKey, true, 10)) {
+            return back()->withErrors([
+                'fee_items' => 'This admission was already submitted — please check the admissions list before retrying.',
+            ])->withInput();
+        }
 
         $studentId = null;
         $invoiceNo  = null;
