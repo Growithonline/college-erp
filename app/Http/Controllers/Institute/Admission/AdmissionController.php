@@ -2743,8 +2743,11 @@ class AdmissionController extends Controller
                 'total_fee'      => (float) ($i->total_fee > 0 ? $i->total_fee : $i->amount),
                 'actual_balance' => (float) ($pendingByFee[$i->fee_name] ?? -1),
             ])->toArray();
-            // Use buildPendingRows sum for accurate remaining due (not stale main_b)
-            $remainingDue = (float) $pendingRows->sum('pending');
+            // Prefer the due snapshot taken when this invoice was collected; the live
+            // buildPendingRows sum is only a fallback for invoices without one.
+            $remainingDue = $invoice->remaining_due !== null
+                ? (float) $invoice->remaining_due
+                : (float) $pendingRows->sum('pending');
         }
 
         $subjects = $student->studentSubjects()

@@ -1540,9 +1540,15 @@ class FeeCollectionController extends Controller
         // approval time. FeeInvoice.remaining_due already holds that exact, authoritative
         // figure for this specific invoice, set once and never meant to drift — use it
         // directly instead.
-        $remainingDue = str_starts_with((string) $invoice->remarks, 'Imported via Bulk Excel')
-            ? (float) ($invoice->remaining_due ?? 0)
-            : (float) $pendingRows->sum('pending');
+        //
+        // For every other invoice, also prefer the remaining_due snapshot taken at collection
+        // time: a reprint must show the due as it stood on that payment's day, not today's
+        // live figure. The live sum is only a fallback for invoices with no snapshot.
+        $remainingDue = match (true) {
+            $invoice->remaining_due !== null => (float) $invoice->remaining_due,
+            str_starts_with((string) $invoice->remarks, 'Imported via Bulk Excel') => 0.0,
+            default => (float) $pendingRows->sum('pending'),
+        };
 
         // Subjects for this student in the invoice session
         $studentSubjects = \App\Models\StudentSubject::with('subject')

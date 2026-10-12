@@ -386,7 +386,9 @@ body.hide-institute .inst-name {
                     $grandDisc     += $n['discount'];
                     $grandFine     += $n['fine'];
                 }
-                $grandBalance = (float) $remainingDue > 0
+                // $remainingDue is authoritative (even when 0); the item-based sum is only a
+                // fallback when no due was passed in.
+                $grandBalance = isset($remainingDue)
                     ? (float) $remainingDue
                     : max(0, $grandTotalFee + $grandFine - $grandDisc - $grandPaid);
             @endphp

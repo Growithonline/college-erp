@@ -694,7 +694,8 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
     $grandFine     = collect($feeItems)->sum(fn($item) => $normalizeFeeItem($item)['fine']);
     $grandDisc     = collect($feeItems)->sum(fn($item) => $normalizeFeeItem($item)['discount']);
     $grandPaid     = collect($feeItems)->sum(fn($item) => $normalizeFeeItem($item)['paid']);
-    $grandBalance  = (float) $remainingDue > 0
+    // $remainingDue is authoritative (even when 0); the item-based sum is only a fallback.
+    $grandBalance  = isset($remainingDue)
         ? (float) $remainingDue
         : max(0, $grandTotalFee + $grandFine - $grandDisc - $grandPaid);
 @endphp
