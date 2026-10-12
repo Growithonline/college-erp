@@ -338,7 +338,9 @@ class PracticalFeeTokenController extends Controller
             ->first();
         $year = StudentIdService::getYearFromSession($batch->session?->name ?? now()->format('Y'));
 
-        DB::transaction(function () use ($entries, $students, $batch, $instituteId, $feeType, $year, $studentPracticalFees) {
+        $postedInvoiceIds = [];
+
+        DB::transaction(function () use ($entries, $students, $batch, $instituteId, $feeType, $year, $studentPracticalFees, &$postedInvoiceIds) {
             foreach ($entries as $studentId => $entry) {
                 $student = $students[$studentId] ?? null;
                 if (!$student) {
@@ -420,8 +422,14 @@ class PracticalFeeTokenController extends Controller
                     'entered_by_id' => $this->actorId(),
                     'posted_at' => now(),
                 ]);
+
+                $postedInvoiceIds[] = $invoice->id;
             }
         });
+
+        foreach ($postedInvoiceIds as $postedInvoiceId) {
+            WalletService::saveRemainingDueSnapshot($postedInvoiceId);
+        }
 
         return redirect()->route($this->routePrefix() . '.show', $batch)->with('success', 'Practical fee amounts posted to student wallets.');
     }

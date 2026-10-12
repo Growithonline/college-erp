@@ -382,6 +382,8 @@ class PreviousDueCollectionController extends Controller
             return back()->withErrors(['items' => $e->getMessage()])->withInput();
         }
 
+        WalletService::saveRemainingDueSnapshot($invoice->id);
+
         AuditLogService::log(
             $instituteId,
             'fee',

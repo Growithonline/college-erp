@@ -100,6 +100,7 @@ class PaymentClaimController extends Controller
         ]);
 
         WalletService::settleApprovedInvoice($invoice, $this->buildDistributedInvoiceItems($student, $sessionId, $amount));
+        WalletService::saveRemainingDueSnapshot($invoice->id);
 
         $claim->update([
             'fee_invoice_id' => $invoice->id,

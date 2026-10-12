@@ -1393,6 +1393,28 @@ class WalletService
         return $fineByFee;
     }
 
+    /**
+     * Save FeeInvoice.remaining_due: the student's due in the invoice's session right after
+     * this payment. Receipts and fee history read it so a reprint shows the due on the day of
+     * payment, not today's live figure. Call AFTER the collecting transaction has committed.
+     * Never throws — a missing snapshot only makes readers fall back to the live due.
+     */
+    public static function saveRemainingDueSnapshot(int $invoiceId): void
+    {
+        try {
+            $invoice = FeeInvoice::find($invoiceId);
+            $student = $invoice ? Student::find($invoice->student_id) : null;
+            if (!$invoice || !$student) {
+                return;
+            }
+
+            $due = self::buildPendingRows($student, (int) $invoice->academic_session_id)->sum('pending');
+            FeeInvoice::where('id', $invoice->id)->update(['remaining_due' => max(0, (float) $due)]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     public static function buildPendingRows(Student $student, int $sessionId): Collection
     {
         $feeState = self::buildPromotionAwareFeeState($student, $sessionId);
