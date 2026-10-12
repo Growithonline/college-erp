@@ -4542,6 +4542,18 @@ class AdmissionController extends Controller
             ])->withInput();
         }
 
+        // Snapshot the due as it stands right after this payment (same as FeeCollectionController::store),
+        // so a later reprint of this receipt shows the due on the day instead of today's live figure.
+        try {
+            $freshStudent = Student::find($student->id);
+            if ($freshStudent && $invoiceId) {
+                $remainingDueSnapshot = WalletService::buildPendingRows($freshStudent, (int) $freshStudent->academic_session_id)->sum('pending');
+                \App\Models\FeeInvoice::where('id', $invoiceId)->update(['remaining_due' => max(0, (float) $remainingDueSnapshot)]);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         AuditLogService::log($instituteId, 'admission', 'admission_confirmed_with_fee', 'Admission completed with fee collection.', $student, [
             'student_id' => $student->id,
             'invoice_id' => $invoiceId,
