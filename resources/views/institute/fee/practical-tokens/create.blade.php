@@ -53,18 +53,18 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label small fw-semibold">Subject</label>
-                <select name="subject_id" id="subjectSelect" class="form-select" required>
-                    <option value="">Select course first</option>
-                </select>
-            </div>
-            <div class="col-md-3">
                 <label class="form-label small fw-semibold">Semester</label>
                 <select name="course_part_id" id="partSelect" class="form-select" required>
-                    <option value="">Select course first</option>
+                    <option value="">Select</option>
                 </select>
                 <input type="hidden" name="year_number" id="yearNumber" value="{{ old('year_number', 1) }}">
                 <input type="hidden" name="semester" id="semesterNumber" value="{{ old('semester', 1) }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Subject</label>
+                <select name="subject_id" id="subjectSelect" class="form-select" required>
+                    <option value="">Select</option>
+                </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Token Amount</label>
