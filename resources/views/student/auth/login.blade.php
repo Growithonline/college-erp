@@ -148,7 +148,6 @@
             </a>
             @endif
         </div>
-        <p class="powered-by">Powered by <strong>Gaurangi Technologies</strong></p>
     </div>
 </div>
 
