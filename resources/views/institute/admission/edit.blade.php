@@ -788,21 +788,21 @@
                        value="{{ old('perm_post', $student->perm_post) }}">
             </div>
             @endif
-            @if($formConfig['perm_district']['enabled'] ?? false)
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">District</label>
-                <select name="perm_district" id="editPermDist" class="form-select form-select-sm"
-                        data-saved="{{ old('perm_district', $student->perm_district) }}">
-                    <option value="">— Select District —</option>
-                </select>
-            </div>
-            @endif
             @if($formConfig['perm_state']['enabled'] ?? false)
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">State</label>
                 <select name="perm_state" id="editPermState" class="form-select form-select-sm"
                         data-saved="{{ old('perm_state', $student->perm_state) }}">
                     <option value="">— Select State —</option>
+                </select>
+            </div>
+            @endif
+            @if($formConfig['perm_district']['enabled'] ?? false)
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">District</label>
+                <select name="perm_district" id="editPermDist" class="form-select form-select-sm"
+                        data-saved="{{ old('perm_district', $student->perm_district) }}">
+                    <option value="">— Select District —</option>
                 </select>
             </div>
             @endif
@@ -861,21 +861,21 @@
                        value="{{ old('comm_post', $student->comm_post) }}">
             </div>
             @endif
-            @if($formConfig['perm_district']['enabled'] ?? false)
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">District</label>
-                <select name="comm_district" id="editCommDist" class="form-select form-select-sm"
-                        data-saved="{{ old('comm_district', $student->comm_district) }}">
-                    <option value="">— Select District —</option>
-                </select>
-            </div>
-            @endif
             @if($formConfig['perm_state']['enabled'] ?? false)
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">State</label>
                 <select name="comm_state" id="editCommState" class="form-select form-select-sm"
                         data-saved="{{ old('comm_state', $student->comm_state) }}">
                     <option value="">— Select State —</option>
+                </select>
+            </div>
+            @endif
+            @if($formConfig['perm_district']['enabled'] ?? false)
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">District</label>
+                <select name="comm_district" id="editCommDist" class="form-select form-select-sm"
+                        data-saved="{{ old('comm_district', $student->comm_district) }}">
+                    <option value="">— Select District —</option>
                 </select>
             </div>
             @endif

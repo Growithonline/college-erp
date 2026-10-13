@@ -569,6 +569,74 @@
             </div>
         </li>
 
+        {{-- Fee Collection --}}
+        <li class="nav-item">
+            @php $feeMenuActive = request()->routeIs('fee.*') || request()->routeIs('reports.fee-ledger.*') || request()->routeIs('reports.fee-collection.*'); @endphp
+            <a class="nav-link {{ $feeMenuActive ? 'active' : '' }} d-flex"
+               data-bs-toggle="collapse" href="#menuFeeCollection" role="button"
+               aria-expanded="{{ $feeMenuActive ? 'true' : 'false' }}">
+                <i class="bi bi-cash-stack"></i> Fee Collection
+                <i class="bi bi-chevron-down collapse-arrow"></i>
+            </a>
+            <div class="collapse {{ $feeMenuActive ? 'show' : '' }}" id="menuFeeCollection">
+                <ul class="nav flex-column sub-menu">
+                    <li><a class="nav-link {{ request()->routeIs('fee.create') ? 'active' : '' }}"
+                           href="{{ route('fee.create') }}">
+                        <i class="bi bi-plus-circle"></i> Collect Fee
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('fee.previous-dues.*') ? 'active' : '' }}"
+                           href="{{ route('fee.previous-dues.index') }}">
+                        <i class="bi bi-clock-history"></i> Collect Previous Dues
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('students.index') ? 'active' : '' }}"
+                           href="{{ route('students.index') }}">
+                        <i class="bi bi-people"></i> All Students
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('fee.index') ? 'active' : '' }}"
+                           href="{{ route('fee.index') }}">
+                        <i class="bi bi-list-ul"></i> All Collections
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('fee.practical-tokens.*') ? 'active' : '' }}"
+                           href="{{ route('fee.practical-tokens.index') }}">
+                        <i class="bi bi-ticket-perforated"></i> Practical Tokens
+                    </a></li>
+                    <li>
+                        @php
+                            $walletPending = \App\Models\WalletExtensionRequest::where('institute_id', auth()->user()?->institute_id ?? 0)->where('status','pending')->count();
+                        @endphp
+                        <a class="nav-link {{ request()->routeIs('fee-wallets.*') ? 'active' : '' }} d-flex justify-content-between align-items-center"
+                           href="{{ route('fee-wallets.centers') }}">
+                            <span><i class="bi bi-wallet2"></i> Fee Wallets</span>
+                            @if($walletPending > 0)
+                                <span class="badge bg-danger rounded-pill" style="font-size:10px;">{{ $walletPending }}</span>
+                            @endif
+                        </a>
+                    </li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.fee-ledger.*') ? 'active' : '' }}"
+                           href="{{ route('reports.fee-ledger.index') }}">
+                        <i class="bi bi-journal-text"></i> Fee Ledger (Bulk)
+                    </a></li>
+                    <li><hr class="my-1"></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.staff') ? 'active' : '' }}"
+                           href="{{ route('reports.fee-collection.staff') }}">
+                        <i class="bi bi-person-badge"></i> Staff Collections
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.centre') ? 'active' : '' }}"
+                           href="{{ route('reports.fee-collection.centre') }}">
+                        <i class="bi bi-building"></i> Centre Collections
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.channel-partner') ? 'active' : '' }}"
+                           href="{{ route('reports.fee-collection.channel-partner') }}">
+                        <i class="bi bi-people"></i> Channel Partner Collection
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.practical-token') ? 'active' : '' }}"
+                           href="{{ route('reports.fee-collection.practical-token') }}">
+                        <i class="bi bi-ticket-perforated"></i> Practical Token Collection
+                    </a></li>
+                </ul>
+            </div>
+        </li>
+
         {{-- Student Promotions (separate) --}}
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('admissions.promote.*') ? 'active' : '' }} d-flex"
@@ -759,74 +827,6 @@
                     <li><a class="nav-link {{ request()->routeIs('library.reports.*') ? 'active' : '' }}"
                            href="{{ route('library.reports.index') }}">
                         <i class="bi bi-bar-chart-line"></i> Reports
-                    </a></li>
-                </ul>
-            </div>
-        </li>
-
-        {{-- Fee Collection --}}
-        <li class="nav-item">
-            @php $feeMenuActive = request()->routeIs('fee.*') || request()->routeIs('reports.fee-ledger.*') || request()->routeIs('reports.fee-collection.*'); @endphp
-            <a class="nav-link {{ $feeMenuActive ? 'active' : '' }} d-flex"
-               data-bs-toggle="collapse" href="#menuFeeCollection" role="button"
-               aria-expanded="{{ $feeMenuActive ? 'true' : 'false' }}">
-                <i class="bi bi-cash-stack"></i> Fee Collection
-                <i class="bi bi-chevron-down collapse-arrow"></i>
-            </a>
-            <div class="collapse {{ $feeMenuActive ? 'show' : '' }}" id="menuFeeCollection">
-                <ul class="nav flex-column sub-menu">
-                    <li><a class="nav-link {{ request()->routeIs('fee.create') ? 'active' : '' }}"
-                           href="{{ route('fee.create') }}">
-                        <i class="bi bi-plus-circle"></i> Collect Fee
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('fee.previous-dues.*') ? 'active' : '' }}"
-                           href="{{ route('fee.previous-dues.index') }}">
-                        <i class="bi bi-clock-history"></i> Collect Previous Dues
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('students.index') ? 'active' : '' }}"
-                           href="{{ route('students.index') }}">
-                        <i class="bi bi-people"></i> All Students
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('fee.index') ? 'active' : '' }}"
-                           href="{{ route('fee.index') }}">
-                        <i class="bi bi-list-ul"></i> All Collections
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('fee.practical-tokens.*') ? 'active' : '' }}"
-                           href="{{ route('fee.practical-tokens.index') }}">
-                        <i class="bi bi-ticket-perforated"></i> Practical Tokens
-                    </a></li>
-                    <li>
-                        @php
-                            $walletPending = \App\Models\WalletExtensionRequest::where('institute_id', auth()->user()?->institute_id ?? 0)->where('status','pending')->count();
-                        @endphp
-                        <a class="nav-link {{ request()->routeIs('fee-wallets.*') ? 'active' : '' }} d-flex justify-content-between align-items-center"
-                           href="{{ route('fee-wallets.centers') }}">
-                            <span><i class="bi bi-wallet2"></i> Fee Wallets</span>
-                            @if($walletPending > 0)
-                                <span class="badge bg-danger rounded-pill" style="font-size:10px;">{{ $walletPending }}</span>
-                            @endif
-                        </a>
-                    </li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.fee-ledger.*') ? 'active' : '' }}"
-                           href="{{ route('reports.fee-ledger.index') }}">
-                        <i class="bi bi-journal-text"></i> Fee Ledger (Bulk)
-                    </a></li>
-                    <li><hr class="my-1"></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.staff') ? 'active' : '' }}"
-                           href="{{ route('reports.fee-collection.staff') }}">
-                        <i class="bi bi-person-badge"></i> Staff Collections
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.centre') ? 'active' : '' }}"
-                           href="{{ route('reports.fee-collection.centre') }}">
-                        <i class="bi bi-building"></i> Centre Collections
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.channel-partner') ? 'active' : '' }}"
-                           href="{{ route('reports.fee-collection.channel-partner') }}">
-                        <i class="bi bi-people"></i> Channel Partner Collection
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection.practical-token') ? 'active' : '' }}"
-                           href="{{ route('reports.fee-collection.practical-token') }}">
-                        <i class="bi bi-ticket-perforated"></i> Practical Token Collection
                     </a></li>
                 </ul>
             </div>
