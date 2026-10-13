@@ -79,7 +79,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 }
 .receipt {
     padding: 7mm 6mm 6mm;
-    border-right: 2px dashed #94a3b8;
+    border-right: 1px dashed #000;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -93,30 +93,30 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
     padding:2px 7px; border-radius:20px; text-transform:uppercase;
     letter-spacing:.6px; margin-bottom:5px; align-self:flex-end;
 }
-.copy-student   { background:#dbeafe; color:#000; border:1px solid #bfdbfe; }
-.copy-institute { background:#dcfce7; color:#000; border:1px solid #bbf7d0; }
+.copy-student   { background:#fff; color:#000; border:1px solid #000; }
+.copy-institute { background:#fff; color:#000; border:1px solid #000; }
 
 /* Header */
 .r-header {
     text-align:center; padding-bottom:5px; margin-bottom:6px;
-    border-bottom:2.5px solid #0f766e; position:relative;
+    border-bottom:2px solid #000; position:relative;
 }
 .r-header::before {
-    content:''; display:block; height:3px;
-    background:linear-gradient(90deg,#0f766e,#0891b2);
+    content:''; display:block; height:2px;
+    background:#000;
     border-radius:2px; margin-bottom:5px;
 }
 .r-header .inst  { font-size:15px; font-weight:800; color:#000; letter-spacing:.2px; }
 .r-header .title { font-size:10px; font-weight:700; color:#000; text-transform:uppercase;
                    letter-spacing:1.5px; margin-top:2px; }
 .r-header .session-tag { font-size:9.5px; color:#000; font-weight:700;
-                          background:#f0fdfa; border:1px solid #99f6e4;
+                          background:#fff; border:1px solid #000;
                           border-radius:10px; padding:1px 7px; display:inline-block; margin-top:3px; }
 
 /* Invoice meta bar */
 .r-meta-bar {
     display:flex; justify-content:space-between; align-items:center;
-    background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px;
+    background:#fff; border:1px solid #000; border-radius:5px;
     padding:4px 7px; margin-bottom:6px; font-size:10px; font-weight:700;
 }
 .r-meta-bar .inv-no  { font-weight:700; color:#000; font-size:10.5px; }
@@ -133,12 +133,12 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .r-row-full .val { font-weight:700; color:#000; }
 
 /* Section divider */
-.r-divider { border:none; border-top:1px dashed #e2e8f0; margin:5px 0; }
+.r-divider { border:none; border-top:1px solid #000; margin:5px 0; }
 
 /* Payment summary table */
 .pay-table { width:100%; border-collapse:collapse; margin:5px 0; border:1px solid #000; font-size:10px; }
 .pay-table th { text-align:left; font-size:10px; font-weight:700; padding:3px 8px; border-bottom:1px solid #000; letter-spacing:.3px; }
-.pay-table td { padding:3px 8px; font-weight:700; color:#000; border-bottom:1px solid #cbd5e1; }
+.pay-table td { padding:3px 8px; font-weight:700; color:#000; border-bottom:1px solid #000; }
 .pay-table tr:last-child td { border-bottom:none; }
 .pay-table td.pay-val { text-align:right; }
 .pay-table tr.pay-total td { border-top:1px solid #000; }
@@ -149,7 +149,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 /* Footer */
 .r-note { font-size:9px; font-weight:700; color:#000; font-style:italic; margin-top:3px; }
 .r-footer { display:flex; justify-content:space-between; margin-top:auto;
-            padding-top:5px; border-top:1px dashed #e2e8f0; }
+            padding-top:5px; border-top:1px solid #000; }
 .r-sign { border-top:1px solid #000; width:65px; text-align:center;
           font-size:9px; font-weight:700; padding-top:3px; color:#000; }
 
@@ -157,8 +157,8 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .watermark { position:absolute; top:-30%; left:-30%; width:160%; height:160%;
              transform:rotate(-25deg); display:flex; flex-direction:column; justify-content:space-around;
              pointer-events:none; overflow:hidden; }
-.watermark span { display:block; white-space:nowrap; font-size:7.5px; font-weight:800; line-height:1;
-                  letter-spacing:.5px; color:rgba(15,118,110,0.17); }
+.watermark span { display:block; white-space:nowrap; font-size:8px; font-weight:900; line-height:1;
+                  letter-spacing:.5px; color:rgba(0,0,0,0.3); }
 .watermark span:nth-child(even) { margin-left:-30px; }
 .watermark, .watermark span { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .watermark-cancelled { position:absolute; top:50%; left:50%;
