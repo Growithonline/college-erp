@@ -157,7 +157,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .watermark { position:absolute; top:-30%; left:-30%; width:160%; height:160%;
              transform:rotate(-25deg); display:flex; flex-direction:column; justify-content:space-around;
              pointer-events:none; overflow:hidden; }
-.watermark span { display:block; white-space:nowrap; font-size:9px; font-weight:700; line-height:1;
+.watermark span { display:block; white-space:nowrap; font-size:8px; font-weight:700; line-height:1;
                   letter-spacing:.5px; color:rgba(0,0,0,0.11); }
 .watermark span:nth-child(even) { margin-left:-30px; }
 .watermark, .watermark span { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -387,7 +387,7 @@ body.hide-institute .inst-name {
                 <div class="a4-sheet">
                 @foreach($slots as $slot)
                 <div class="receipt">
-                    <div class="watermark">@for($wmRow = 0; $wmRow < 38; $wmRow++)<span>{{ str_repeat(strtoupper(($inst->name ?? 'Institute')) . ' • ', 12) }}</span>@endfor</div>
+                    <div class="watermark">@for($wmRow = 0; $wmRow < 80; $wmRow++)<span>{{ str_repeat(strtoupper(($inst->name ?? 'Institute')) . ' • ', 16) }}</span>@endfor</div>
                     @if($receipt->is_cancelled)
                         <div class="watermark-cancelled">CANCELLED</div>
                     @endif
