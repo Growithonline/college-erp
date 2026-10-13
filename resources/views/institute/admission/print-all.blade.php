@@ -190,24 +190,15 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 .r-row-full .lbl { color:#64748b; min-width:62px; flex-shrink:0; font-size:8px; }
 .r-row-full .val { font-weight:600; color:#1e293b; }
 .r-divider { border:none; border-top:1px dashed #e2e8f0; margin:5px 0; }
-.pay-box { background:linear-gradient(135deg,#f0fdf4,#f0fdfa);
-           border:1.5px solid #6ee7b7; border-radius:6px; overflow:hidden; margin:5px 0; }
-.pay-box-head { background:linear-gradient(90deg,#0f766e,#0891b2);
-                color:white; font-size:8.5px; font-weight:700;
-                padding:3px 8px; letter-spacing:.3px; }
-.pay-box-body { padding:5px 8px; }
-.pay-row { display:flex; justify-content:space-between; align-items:center;
-           font-size:8.5px; padding:2px 0; }
-.pay-row .pay-lbl { color:#475569; }
-.pay-row .pay-val { font-weight:700; color:#0f172a; }
-.pay-divider { border:none; border-top:1px solid #d1fae5; margin:3px 0; }
-.amount-big { font-size:14px; font-weight:800; color:#15803d; }
+.pay-table { width:100%; border-collapse:collapse; margin:5px 0; border:1px solid #000; font-size:8.5px; }
+.pay-table th { text-align:left; font-size:8.5px; font-weight:700; padding:3px 8px; border-bottom:1px solid #000; letter-spacing:.3px; }
+.pay-table td { padding:3px 8px; font-weight:700; color:#000; border-bottom:1px solid #cbd5e1; }
+.pay-table tr:last-child td { border-bottom:none; }
+.pay-table td.pay-val { text-align:right; }
+.pay-table tr.pay-total td { border-top:1px solid #000; }
+.amount-big { font-size:13px; font-weight:800; }
 .amount-due { font-size:12px; font-weight:700; }
-.due-zero   { color:#15803d; }
-.due-pos    { color:#dc2626; }
-.mode-chip  { display:inline-block; font-size:7.5px; font-weight:700;
-              padding:2px 8px; border-radius:20px; text-transform:uppercase;
-              letter-spacing:.5px; background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; }
+.mode-chip  { font-size:7.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
 .r-note   { font-size:7.5px; color:#94a3b8; font-style:italic; margin-top:3px; }
 .r-footer { display:flex; justify-content:space-between; margin-top:auto;
             padding-top:5px; border-top:1px dashed #e2e8f0; }
@@ -804,37 +795,20 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
             </div>
         </div>
 
-        <div class="pay-box">
-            <div class="pay-box-head">Payment Summary</div>
-            <div class="pay-box-body">
-                <div class="pay-row">
-                    <span class="pay-lbl">Payment Mode</span>
-                    <span class="mode-chip">{{ strtoupper($payMode) }}</span>
-                </div>
-                <hr class="pay-divider">
-                <div class="pay-row">
-                    <span class="pay-lbl">Amount Paid</span>
-                    <span class="pay-val amount-big">&#8377; {{ number_format($grandPaid, 2) }}</span>
-                </div>
+        <table class="pay-table">
+            <thead><tr><th colspan="2">Payment Summary</th></tr></thead>
+            <tbody>
+                <tr><td>Payment Mode</td><td class="pay-val mode-chip">{{ strtoupper($payMode) }}</td></tr>
+                <tr><td>Amount Paid</td><td class="pay-val amount-big">&#8377; {{ number_format($grandPaid, 2) }}</td></tr>
                 @if($grandFine > 0)
-                <div class="pay-row">
-                    <span class="pay-lbl">Fine Charged</span>
-                    <span class="pay-val" style="color:#dc2626;">+ &#8377; {{ number_format($grandFine, 2) }}</span>
-                </div>
+                <tr><td>Fine Charged</td><td class="pay-val">+ &#8377; {{ number_format($grandFine, 2) }}</td></tr>
                 @endif
                 @if($grandDisc > 0)
-                <div class="pay-row">
-                    <span class="pay-lbl">Discount</span>
-                    <span class="pay-val" style="color:#d97706;">- &#8377; {{ number_format($grandDisc, 2) }}</span>
-                </div>
+                <tr><td>Discount</td><td class="pay-val">- &#8377; {{ number_format($grandDisc, 2) }}</td></tr>
                 @endif
-                <hr class="pay-divider">
-                <div class="pay-row">
-                    <span class="pay-lbl">Remaining Due</span>
-                    <span class="pay-val amount-due {{ $grandBalance > 0 ? 'due-pos' : 'due-zero' }}">&#8377; {{ number_format($grandBalance, 2) }}</span>
-                </div>
-            </div>
-        </div>
+                <tr class="pay-total"><td>Remaining Due</td><td class="pay-val amount-due">&#8377; {{ number_format($grandBalance, 2) }}</td></tr>
+            </tbody>
+        </table>
 
         @if($invoice->transaction_ref)
         <div class="r-row-full" style="margin-top:3px;"><span class="lbl">Ref No:</span><span class="val">{{ $invoice->transaction_ref }}</span></div>
