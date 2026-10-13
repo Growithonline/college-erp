@@ -204,10 +204,13 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
             padding-top:5px; border-top:1px dashed #e2e8f0; }
 .r-sign   { border-top:1px solid #94a3b8; width:65px; text-align:center;
             font-size:7.5px; padding-top:3px; color:#64748b; }
-.watermark { position:absolute; top:50%; left:50%;
-             transform:translate(-50%,-50%) rotate(-25deg);
-             font-size:48px; font-weight:900;
-             color:rgba(15,118,110,0.04); pointer-events:none; white-space:nowrap; }
+.watermark { position:absolute; top:-30%; left:-30%; width:160%; height:160%;
+             transform:rotate(-25deg); display:flex; flex-direction:column; justify-content:space-around;
+             pointer-events:none; overflow:hidden; }
+.watermark span { display:block; white-space:nowrap; font-size:11px; font-weight:800; line-height:1;
+                  letter-spacing:1px; color:rgba(15,118,110,0.17); }
+.watermark span:nth-child(even) { margin-left:-60px; }
+.watermark, .watermark span { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .slip-sheet { width:210mm; min-height:297mm; background:white; margin:0 auto; border:1px solid #ddd;
               padding:12mm 14mm; }
 .slip-banner { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 10px;
@@ -713,7 +716,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
 <div class="a4-sheet">
     @foreach([ ['Student Copy','copy-student'], ['Office Copy','copy-institute'] ] as [$copyName,$copyClass])
     <div class="receipt">
-        <div class="watermark">{{ $institute->short_name ?? 'PAID' }}</div>
+        <div class="watermark">@for($wmRow = 0; $wmRow < 22; $wmRow++)<span>{{ str_repeat(strtoupper(($institute->name ?? 'Institute')) . '   •   ', 8) }}</span>@endfor</div>
 
         <span class="copy-badge {{ $copyClass }}">{{ $copyName }}</span>
 

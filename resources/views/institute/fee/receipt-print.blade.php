@@ -154,10 +154,13 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
           font-size:9px; font-weight:700; padding-top:3px; color:#000; }
 
 /* Watermarks */
-.watermark { position:absolute; top:50%; left:50%;
-             transform:translate(-50%,-50%) rotate(-25deg);
-             font-size:48px; font-weight:900;
-             color:rgba(15,118,110,0.04); pointer-events:none; white-space:nowrap; }
+.watermark { position:absolute; top:-30%; left:-30%; width:160%; height:160%;
+             transform:rotate(-25deg); display:flex; flex-direction:column; justify-content:space-around;
+             pointer-events:none; overflow:hidden; }
+.watermark span { display:block; white-space:nowrap; font-size:11px; font-weight:800; line-height:1;
+                  letter-spacing:1px; color:rgba(15,118,110,0.17); }
+.watermark span:nth-child(even) { margin-left:-60px; }
+.watermark, .watermark span { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .watermark-cancelled { position:absolute; top:50%; left:50%;
              transform:translate(-50%,-50%) rotate(-25deg);
              font-size:52px; font-weight:900;
@@ -384,10 +387,9 @@ body.hide-institute .inst-name {
                 <div class="a4-sheet">
                 @foreach($slots as $slot)
                 <div class="receipt">
+                    <div class="watermark">@for($wmRow = 0; $wmRow < 22; $wmRow++)<span>{{ str_repeat(strtoupper(($inst->name ?? 'Institute')) . '   •   ', 8) }}</span>@endfor</div>
                     @if($receipt->is_cancelled)
                         <div class="watermark-cancelled">CANCELLED</div>
-                    @else
-                        <div class="watermark">{{ $inst->short_name ?? 'PAID' }}</div>
                     @endif
 
                     <span class="copy-badge {{ $slot['class'] }}">{{ $slot['label'] }}</span>
