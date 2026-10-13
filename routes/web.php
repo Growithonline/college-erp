@@ -189,6 +189,27 @@ Route::post('/otp-verify', [LoginController::class, 'verifyOtp'])->name('otp.ver
 Route::post('/otp-resend', [LoginController::class, 'resendOtp'])->name('otp.resend')->middleware('throttle:3,1');
 Route::post('/logout',     [LoginController::class, 'logout'])->name('logout');
 
+// ── Institute-scoped login pages: GET /{portal}/login/{slug} ──────────
+// Stores the scope in the server-side session, then renders the portal's normal login view.
+foreach (\App\Support\LoginScope::portals() as $portalKey => $portalCfg) {
+    Route::get("{$portalKey}/login/{slug}", [\App\Http\Controllers\Auth\ScopedLoginController::class, 'show'])
+        ->defaults('portal', $portalKey)
+        ->name("login.scoped.{$portalKey}")
+        ->middleware(["guest:{$portalCfg['guard']}", 'throttle:30,1', 'frame:same']);
+}
+
+// ── Iframe launcher: the ONLY framable login-related page ─────────────
+// No form, no credentials, no session/CSRF/cookies — it just links to the real scoped login in a new tab.
+Route::get('/embed/login/{slug}/{portal}', [\App\Http\Controllers\Auth\ScopedLoginController::class, 'launcher'])
+    ->whereIn('portal', array_keys(\App\Support\LoginScope::portals()))
+    ->middleware(['throttle:60,1', 'frame:allow'])
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    ])
+    ->name('embed.login');
+
 // ── Institute policy consent (T&C / Privacy / Data Security) ──────────
 // Sits outside 'policy.accepted' so a not-yet-consented admin can reach
 // it — everything else in the institute panel is gated behind consent.
@@ -200,6 +221,7 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'policy.accepted'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('institute.dashboard');
+    Route::get('/embed-codes', [\App\Http\Controllers\Institute\EmbedCodesController::class, 'index'])->name('institute.embed-codes');
 
     // MASTER
     Route::prefix('master')->name('master.')->group(function () {

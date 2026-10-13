@@ -10,6 +10,7 @@ use App\Models\Notice;
 use App\Models\NoticeRead;
 use App\Models\PlatformSmsSetting;
 use App\Models\Student;
+use App\Support\LoginScope;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -75,6 +76,7 @@ class StudentAuthController extends Controller
         if ($this->guard()->check()) {
             return redirect()->route('student.dashboard');
         }
+        LoginScope::clear();
         return view('student.auth.login');
     }
 
@@ -88,7 +90,7 @@ class StudentAuthController extends Controller
 
         $student = Student::where('student_uid', $request->student_uid)->first();
 
-        if (!$student || !Hash::check($request->password, $student->password)) {
+        if (!$student || !Hash::check($request->password, $student->password) || !LoginScope::allows('student', $student)) {
             return back()
                 ->withInput($request->only('student_uid'))
                 ->withErrors(['student_uid' => 'Invalid Student ID or password.']);
@@ -102,6 +104,8 @@ class StudentAuthController extends Controller
             return back()->withErrors(['student_uid' => 'Your ID is blocked. Contact admin.']);
         }
 
+        LoginScope::markPending('student');
+
         $emailChannel = !$student->email_otp_bypass && $student->email;
         $smsChannel   = !$student->sms_otp_bypass && ($student->mobile ?? $student->father_mobile);
 
@@ -109,6 +113,7 @@ class StudentAuthController extends Controller
         if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($student, $request->boolean('remember'));
+            LoginScope::completed('student');
             return $this->afterLogin($student);
         }
 
@@ -147,6 +152,13 @@ class StudentAuthController extends Controller
             return redirect()->route('student.login');
         }
 
+        if (!LoginScope::allowsPending('student', $student)) {
+            session()->forget(self::OTP_SESSION_KEY);
+
+            return redirect(LoginScope::currentLoginUrl('student'))
+                ->withErrors(['student_uid' => 'Invalid Student ID or password.']);
+        }
+
         $payload = Cache::get($this->otpCacheKey($student->id));
         if (!$payload) {
             return back()->withErrors(['otp' => 'OTP expired. Please login again.']);
@@ -162,6 +174,7 @@ class StudentAuthController extends Controller
         $request->session()->regenerate();
         $this->guard()->login($student, (bool) ($payload['remember'] ?? false));
         session()->forget(self::OTP_SESSION_KEY);
+        LoginScope::completed('student');
 
         return $this->afterLogin($student);
     }
@@ -388,6 +401,8 @@ class StudentAuthController extends Controller
     // ── Logout ───────────────────────────────────────────────────────
     public function logout(Request $request)
     {
+        $origin = LoginScope::originUrl('student');
+
         $studentId = $this->guard()->id();
         $this->guard()->logout();
 
@@ -400,7 +415,7 @@ class StudentAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('student.login');
+        return $origin ? redirect($origin) : redirect()->route('student.login');
     }
 
     // ── Dashboard ────────────────────────────────────────────────────

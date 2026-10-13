@@ -74,7 +74,11 @@
     <div class="p-4 p-md-5">
 
         <div class="text-center mb-4">
-            <div class="brand-icon"><i class="bi bi-shield-lock"></i></div>
+            @if(!empty($scopedInstitute))
+                @if($scopedLogoUrl)<img src="{{ $scopedLogoUrl }}" alt="{{ $scopedInstitute->name }}" style="height:56px;width:auto;max-width:100%;object-fit:contain;margin-bottom:10px;">@endif
+            @else
+                <div class="brand-icon"><i class="bi bi-shield-lock"></i></div>
+            @endif
             <h5 class="fw-bold mb-1" style="color:#0c4a6e;">Verify OTP</h5>
             <p class="text-muted mb-0" style="font-size:13px;">
                 We sent a 6-digit OTP to
@@ -120,7 +124,7 @@
         </div>
 
         <div class="text-center mt-3">
-            <a href="{{ route('library_staff.login') }}" class="text-muted text-decoration-none" style="font-size:12px;">
+            <a href="{{ $scopedLoginUrl ?? route('library_staff.login') }}" class="text-muted text-decoration-none" style="font-size:12px;">
                 <i class="bi bi-arrow-left me-1"></i>Back to Login
             </a>
         </div>

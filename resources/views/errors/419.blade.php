@@ -8,6 +8,15 @@
     elseif (str_starts_with($path, 'student/'))   $loginUrl = route('student.login');
     elseif (str_starts_with($path, 'library-staff/')) $loginUrl = route('library_staff.login');
     else                                          $loginUrl = route('login');
+
+    // Institute-scoped portals return to the institute's own login page (validated cookie/session).
+    $scopeKey = null;
+    foreach (['center' => 'center/', 'staff' => 'staff/', 'partner' => 'partner/', 'student' => 'student/', 'library-staff' => 'library-staff/'] as $key => $prefix) {
+        if (str_starts_with($path, $prefix)) { $scopeKey = $key; break; }
+    }
+    if (!str_starts_with($path, 'super-admin/')) {
+        $loginUrl = \App\Support\LoginScope::loginUrlOrGlobal($scopeKey ?? 'institute');
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="en">

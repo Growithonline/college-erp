@@ -10,6 +10,7 @@ use App\Models\Student;
 use App\Models\FeeInvoice;
 use App\Models\PlatformSmsSetting;
 use App\Models\StaffMember;
+use App\Support\LoginScope;
 use App\Mail\StaffOtpMail;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
@@ -94,6 +95,7 @@ class StaffAuthController extends Controller
         if ($this->guard()->check()) {
             return redirect()->route('staff.dashboard');
         }
+        LoginScope::clear();
         return view('staff.auth.login');
     }
 
@@ -114,7 +116,7 @@ class StaffAuthController extends Controller
 
         $staff = StaffMember::with('role', 'institute')->where('staff_uid', $request->staff_uid)->first();
 
-        if (!$staff || !Hash::check($request->password, $staff->password)) {
+        if (!$staff || !Hash::check($request->password, $staff->password) || !LoginScope::allows('staff', $staff)) {
             RateLimiter::hit($throttleKey, 900);
             return back()
                 ->withInput($request->only('staff_uid'))
@@ -131,12 +133,15 @@ class StaffAuthController extends Controller
 
         RateLimiter::clear($throttleKey);
 
+        LoginScope::markPending('staff');
+
         $emailChannel = !$staff->email_otp_bypass && $staff->email;
         $smsChannel   = !$staff->sms_otp_bypass && $staff->mobile;
 
         if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($staff, $request->boolean('remember'));
+            LoginScope::completed('staff');
             return redirect()->intended(route('staff.dashboard'));
         }
 
@@ -178,6 +183,13 @@ class StaffAuthController extends Controller
             return redirect()->route('staff.login');
         }
 
+        if (!LoginScope::allowsPending('staff', $staff)) {
+            session()->forget(self::OTP_SESSION_KEY);
+
+            return redirect(LoginScope::currentLoginUrl('staff'))
+                ->withErrors(['staff_uid' => 'These credentials do not match our records.']);
+        }
+
         $attemptsKey = $this->otpAttemptsKey($staff->id);
         if (RateLimiter::tooManyAttempts($attemptsKey, 5)) {
             Cache::forget($this->otpCacheKey($staff->id));
@@ -203,6 +215,7 @@ class StaffAuthController extends Controller
         $request->session()->regenerate();
         $this->guard()->login($staff, (bool) ($otpPayload['remember'] ?? false));
         session()->forget(self::OTP_SESSION_KEY);
+        LoginScope::completed('staff');
 
         return redirect()->intended(route('staff.dashboard'));
     }
@@ -235,6 +248,8 @@ class StaffAuthController extends Controller
 
     public function logout(Request $request)
     {
+        $origin = LoginScope::originUrl('staff');
+
         $this->guard()->logout();
         if ($staffId = session(self::OTP_SESSION_KEY)) {
             Cache::forget($this->otpCacheKey((int) $staffId));
@@ -243,7 +258,7 @@ class StaffAuthController extends Controller
         session()->forget(self::OTP_SESSION_KEY);
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('staff.login');
+        return $origin ? redirect($origin) : redirect()->route('staff.login');
     }
 
     public function dashboard()

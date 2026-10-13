@@ -179,6 +179,15 @@
             </a>
         </li>
 
+        @if(auth()->guard('web')->check())
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('institute.embed-codes') ? 'active' : '' }}"
+               href="{{ route('institute.embed-codes') }}">
+                <i class="bi bi-code-slash"></i> Login Links &amp; Embed
+            </a>
+        </li>
+        @endif
+
         {{-- ═══════ MASTER (Collapsible Group) ═══════ --}}
         @php
             // SMS and Settings (Email/Branding/Backup) are their own separate top-level sidebar

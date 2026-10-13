@@ -8,7 +8,9 @@ use App\Models\Student;
 use App\Models\TransportDriver;
 use App\Models\TransportHelper;
 use App\Services\LibraryManagementService;
+use App\Support\LoginScope;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +29,20 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        // Institute-scoped login/OTP pages: hand the scoped institute (if any) to the existing views.
+        // Global pages get nulls and render exactly as before.
+        foreach (LoginScope::portals() as $portalKey => $cfg) {
+            View::composer([$cfg['view'], $cfg['otp']], function ($view) use ($portalKey) {
+                $institute = LoginScope::institute($portalKey);
+
+                $view->with([
+                    'scopedInstitute' => $institute,
+                    'scopedLogoUrl'   => $institute ? LoginScope::logoUrl($institute) : null,
+                    'scopedLoginUrl'  => $institute ? LoginScope::loginUrl($portalKey, $institute) : null,
+                ]);
+            });
+        }
 
         Student::saved(function (Student $student) {
             LibraryManagementService::syncStudentMember($student);

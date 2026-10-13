@@ -427,6 +427,11 @@
         </div>
     </div>
 
+    {{-- Login links & iframe embed codes (shared partial) --}}
+    <div class="col-12">
+        @include('partials.institute-embed-codes', ['institute' => $institute])
+    </div>
+
     {{-- Group / Trust --}}
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">

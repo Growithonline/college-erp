@@ -59,7 +59,12 @@
 
         <div class="card-head">
             <div style="text-align:center;margin-bottom:10px;position:relative;z-index:2;">
-                <img src="{{ asset('images/logog.png') }}" alt="Gaurangi Technologies" style="height:38px;width:auto;filter:brightness(0) invert(1);opacity:.88;">
+                @if(!empty($scopedInstitute))
+                    @if($scopedLogoUrl)<img src="{{ $scopedLogoUrl }}" alt="{{ $scopedInstitute->name }}" style="height:38px;width:auto;max-width:100%;object-fit:contain;">@endif
+                    <div style="color:#fff;font-weight:700;font-size:15px;margin-top:6px;position:relative;z-index:2;">{{ $scopedInstitute->name }}</div>
+                @else
+                    <img src="{{ asset('images/logog.png') }}" alt="Gaurangi Technologies" style="height:38px;width:auto;filter:brightness(0) invert(1);opacity:.88;">
+                @endif
             </div>
             <hr style="border:none;border-top:1px solid rgba(255,255,255,.15);margin:0 0 14px;position:relative;z-index:2;">
             <div class="portal-icon"><i class="bi bi-envelope-open-fill"></i></div>
@@ -105,7 +110,7 @@
         </div>
 
         <div class="card-foot">
-            <a href="{{ route('staff.login') }}" class="back-link">
+            <a href="{{ $scopedLoginUrl ?? route('staff.login') }}" class="back-link">
                 <i class="bi bi-arrow-left"></i> Back to login
             </a>
             <form method="POST" action="{{ route('staff.otp.resend') }}" class="mb-0">

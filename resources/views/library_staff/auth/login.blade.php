@@ -95,8 +95,15 @@
     <div class="p-4 p-md-5">
 
         <div class="text-center mb-4">
-            <div class="brand-icon"><i class="bi bi-journals"></i></div>
+            @if(!empty($scopedInstitute))
+                @if($scopedLogoUrl)<img src="{{ $scopedLogoUrl }}" alt="{{ $scopedInstitute->name }}" style="height:56px;width:auto;max-width:100%;object-fit:contain;margin-bottom:10px;">@endif
+            @else
+                <div class="brand-icon"><i class="bi bi-journals"></i></div>
+            @endif
             <h5 class="fw-bold mb-1" style="color:#0c4a6e;">Library Staff Portal</h5>
+            @if(!empty($scopedInstitute))
+                <p class="fw-semibold mb-1" style="font-size:14px;">{{ $scopedInstitute->name }}</p>
+            @endif
             <p class="text-muted mb-0" style="font-size:13px;">
                 Enter your Employee ID and password to receive a login OTP.
             </p>
@@ -142,11 +149,13 @@
             </button>
         </form>
 
+        @if(empty($scopedInstitute))
         <div class="text-center mt-4">
             <a href="{{ route('login') }}" class="text-muted text-decoration-none" style="font-size:12px;">
                 <i class="bi bi-arrow-left me-1"></i>Back to Institute Login
             </a>
         </div>
+        @endif
 
     </div>
 </div>

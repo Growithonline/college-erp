@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesInstitute;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class LibraryStaff extends Authenticatable
 {
-    use HasFactory;
+    use HasFactory, ResolvesInstitute;
 
     protected $table = 'library_staff';
 

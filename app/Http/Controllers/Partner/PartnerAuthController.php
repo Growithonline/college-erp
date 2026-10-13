@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\PartnerOtpMail;
 use App\Models\AcademicSession;
 use App\Models\ChannelPartner;
+use App\Support\LoginScope;
 use App\Models\FeeInvoice;
 use App\Models\Notice;
 use App\Models\PlatformSmsSetting;
@@ -76,6 +77,7 @@ class PartnerAuthController extends Controller
         if ($this->guard()->check()) {
             return redirect()->route('partner.dashboard');
         }
+        LoginScope::clear();
         return view('partner.auth.login');
     }
 
@@ -89,7 +91,7 @@ class PartnerAuthController extends Controller
 
         $partner = ChannelPartner::where('partner_uid', $request->partner_uid)->first();
 
-        if (!$partner || !Hash::check($request->password, $partner->password)) {
+        if (!$partner || !Hash::check($request->password, $partner->password) || !LoginScope::allows('partner', $partner)) {
             return back()
                 ->withInput($request->only('partner_uid'))
                 ->withErrors(['partner_uid' => 'These credentials do not match our records.']);
@@ -103,12 +105,15 @@ class PartnerAuthController extends Controller
             return back()->withErrors(['partner_uid' => 'Your ID is blocked. Contact admin.']);
         }
 
+        LoginScope::markPending('partner');
+
         $emailChannel = !$partner->email_otp_bypass && $partner->email;
         $smsChannel   = !$partner->sms_otp_bypass && $partner->mobile;
 
         if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($partner, $request->boolean('remember'));
+            LoginScope::completed('partner');
             return redirect()->intended(route('partner.dashboard'));
         }
 
@@ -149,6 +154,13 @@ class PartnerAuthController extends Controller
             return redirect()->route('partner.login');
         }
 
+        if (!LoginScope::allowsPending('partner', $partner)) {
+            session()->forget(self::OTP_SESSION_KEY);
+
+            return redirect(LoginScope::currentLoginUrl('partner'))
+                ->withErrors(['partner_uid' => 'These credentials do not match our records.']);
+        }
+
         $otpPayload = Cache::get($this->otpCacheKey($partner->id));
 
         if (!$otpPayload) {
@@ -165,6 +177,7 @@ class PartnerAuthController extends Controller
         $request->session()->regenerate();
         $this->guard()->login($partner, (bool) ($otpPayload['remember'] ?? false));
         session()->forget(self::OTP_SESSION_KEY);
+        LoginScope::completed('partner');
 
         return redirect()->intended(route('partner.dashboard'));
     }
@@ -198,6 +211,8 @@ class PartnerAuthController extends Controller
     // ── Logout ────────────────────────────────────────────────────────
     public function logout(Request $request)
     {
+        $origin = LoginScope::originUrl('partner');
+
         $this->guard()->logout();
 
         if ($partnerId = session(self::OTP_SESSION_KEY)) {
@@ -209,7 +224,7 @@ class PartnerAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('partner.login');
+        return $origin ? redirect($origin) : redirect()->route('partner.login');
     }
 
     // ── Dashboard ─────────────────────────────────────────────────────

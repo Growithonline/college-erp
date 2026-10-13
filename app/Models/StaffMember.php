@@ -1,5 +1,7 @@
 <?php
 namespace App\Models;
+
+use App\Models\Concerns\ResolvesInstitute;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
@@ -7,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 
 class StaffMember extends Authenticatable
 {
-    use SoftDeletes;
+    use SoftDeletes, ResolvesInstitute;
     protected $fillable = [
         'institute_id', 'staff_uid', 'staff_role_id', 'name', 'mobile', 'email',
         'password', 'photo', 'address', 'joining_date', 'salary', 'status',

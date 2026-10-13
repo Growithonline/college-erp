@@ -23,7 +23,9 @@
     $portal = $portals[$g];
     $cfg    = $reasons[$r];
 
-    $loginUrl   = route($portal['route']);
+    // Institute-scoped portals return to the institute's own login page (validated cookie/session), else the global one.
+    $scopeKey   = \App\Support\LoginScope::portalForGuard($g);
+    $loginUrl   = $scopeKey ? \App\Support\LoginScope::loginUrlOrGlobal($scopeKey) : route($portal['route']);
     $portalName = $portal['name'];
     $homeUrl    = url('/');
     $countdownSec = 10;

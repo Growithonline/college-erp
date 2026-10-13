@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\LoginOtp;
 use App\Services\AuditLogService;
 use App\Services\SmsService;
+use App\Support\LoginScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +21,8 @@ class LoginController extends Controller
 {
     public function showLoginForm()
     {
+        LoginScope::clear();
+
         return view('institute.auth.login');
     }
 
@@ -34,16 +37,21 @@ class LoginController extends Controller
         $institute = Institute::where('institute_uid', $request->institute_id)->first();
 
         if (!$institute) {
-            return back()->withErrors(['institute_id' => 'Invalid Institute ID']);
+            // Scoped mode: never reveal whether an institute ID exists.
+            return back()->withErrors(LoginScope::active('institute')
+                ? ['email' => 'Invalid credentials']
+                : ['institute_id' => 'Invalid Institute ID']);
         }
 
         $user = User::where('institute_id', $institute->id)
             ->where('email', $request->email)
             ->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password) || !LoginScope::allows('institute', $user)) {
             return back()->withErrors(['email' => 'Invalid credentials']);
         }
+
+        LoginScope::markPending('institute');
 
         $otp      = (string) random_int(100000, 999999);
         $platform = PlatformSmsSetting::current();
@@ -98,6 +106,12 @@ class LoginController extends Controller
 
         $user = User::find($userId);
 
+        if (!$user || !LoginScope::allowsPending('institute', $user)) {
+            session()->forget('otp_user_id');
+
+            return redirect(LoginScope::currentLoginUrl('institute'))->withErrors(['email' => 'Invalid credentials']);
+        }
+
         $masterOtp = $user
             ? InstituteMasterOtp::where('institute_id', $user->institute_id)->first()
             : null;
@@ -107,6 +121,7 @@ class LoginController extends Controller
 
             Auth::login($user);
             session()->forget('otp_user_id');
+            LoginScope::completed('institute');
 
             return redirect()->route('institute.dashboard');
         }
@@ -138,6 +153,7 @@ class LoginController extends Controller
         Auth::login($user);
 
         session()->forget('otp_user_id');
+        LoginScope::completed('institute');
 
         return redirect()->route('institute.dashboard');
     }
@@ -183,10 +199,12 @@ class LoginController extends Controller
 
     public function logout()
     {
+        $origin = LoginScope::originUrl('institute');
+
         auth()->logout();
         request()->session()->invalidate();
         request()->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return $origin ? redirect($origin) : redirect()->route('login');
     }
 }

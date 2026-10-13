@@ -9,6 +9,7 @@ use App\Models\LibraryLoginLog;
 use App\Models\LibraryStaff;
 use App\Models\LibraryStaffActivityLog;
 use App\Models\PlatformSmsSetting;
+use App\Support\LoginScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -54,6 +55,7 @@ class LibraryStaffAuthController extends Controller
         if ($this->guard()->check()) {
             return redirect()->route('library_staff.dashboard');
         }
+        LoginScope::clear();
         return view('library_staff.auth.login');
     }
 
@@ -81,7 +83,7 @@ class LibraryStaffAuthController extends Controller
         $hashToCheck = ($staff && $staff->password) ? $staff->password : $dummyHash;
         $passwordOk  = password_verify($request->password, $hashToCheck);
 
-        if (!$staff || !$staff->password || !$passwordOk) {
+        if (!$staff || !$staff->password || !$passwordOk || !LoginScope::allows('library-staff', $staff)) {
             // Increment per-account failure counter (keyed by employee_id hash, not staff ID)
             Cache::put($pwFailKey, $pwFailCount + 1, now()->addMinutes(self::PW_LOCK_MINUTES));
             return back()->withInput($request->only('employee_id'))
@@ -110,6 +112,8 @@ class LibraryStaffAuthController extends Controller
         if (Cache::has($this->otpThrottleKey($staff->id))) {
             return back()->withErrors(['employee_id' => 'Please wait a moment before requesting another OTP.']);
         }
+
+        LoginScope::markPending('library-staff');
 
         try {
             $this->sendOtp($staff);
@@ -142,6 +146,13 @@ class LibraryStaffAuthController extends Controller
 
         $staff = $this->pendingStaff();
         if (!$staff) return redirect()->route('library_staff.login');
+
+        if (!LoginScope::allowsPending('library-staff', $staff)) {
+            session()->forget(self::OTP_SESSION_KEY);
+
+            return redirect(LoginScope::currentLoginUrl('library-staff'))
+                ->withErrors(['employee_id' => 'Invalid Employee ID or password.']);
+        }
 
         if ($staff->isLocked()) {
             session()->forget(self::OTP_SESSION_KEY);
@@ -203,6 +214,7 @@ class LibraryStaffAuthController extends Controller
         $request->session()->regenerate();
         $this->guard()->login($staff);
         session()->forget(self::OTP_SESSION_KEY);
+        LoginScope::completed('library-staff');
 
         // Store security session data
         session([
@@ -260,6 +272,8 @@ class LibraryStaffAuthController extends Controller
 
     public function logout(Request $request)
     {
+        $origin = LoginScope::originUrl('library-staff');
+
         $staff = $this->guard()->user();
 
         if ($staff) {
@@ -278,7 +292,7 @@ class LibraryStaffAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('library_staff.login');
+        return $origin ? redirect($origin) : redirect()->route('library_staff.login');
     }
 
     // ── Dashboard ───────────────────────────────────────────────────

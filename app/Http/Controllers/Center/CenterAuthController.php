@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\CenterOtpMail;
 use App\Models\AcademicSession;
 use App\Models\Center;
+use App\Support\LoginScope;
 use App\Models\PlatformSmsSetting;
 use App\Services\SmsService;
 use App\Models\FeeInvoice;
@@ -76,6 +77,7 @@ class CenterAuthController extends Controller
         if ($this->guard()->check()) {
             return redirect()->route('center.dashboard');
         }
+        LoginScope::clear();
         return view('center.auth.login');
     }
 
@@ -89,7 +91,7 @@ class CenterAuthController extends Controller
 
         $center = Center::where('center_uid', $request->center_uid)->first();
 
-        if (!$center || !Hash::check($request->password, $center->password)) {
+        if (!$center || !Hash::check($request->password, $center->password) || !LoginScope::allows('center', $center)) {
             return back()
                 ->withInput($request->only('center_uid'))
                 ->withErrors(['center_uid' => 'These credentials do not match our records.']);
@@ -103,12 +105,15 @@ class CenterAuthController extends Controller
             return back()->withErrors(['center_uid' => 'Your ID is blocked. Contact admin.']);
         }
 
+        LoginScope::markPending('center');
+
         $emailChannel = !$center->email_otp_bypass && $center->email;
         $smsChannel   = !$center->sms_otp_bypass && $center->mobile;
 
         if (!$emailChannel && !$smsChannel) {
             $request->session()->regenerate();
             $this->guard()->login($center, $request->boolean('remember'));
+            LoginScope::completed('center');
             return redirect()->intended(route('center.dashboard'));
         }
 
@@ -149,6 +154,13 @@ class CenterAuthController extends Controller
             return redirect()->route('center.login');
         }
 
+        if (!LoginScope::allowsPending('center', $center)) {
+            session()->forget(self::OTP_SESSION_KEY);
+
+            return redirect(LoginScope::currentLoginUrl('center'))
+                ->withErrors(['center_uid' => 'These credentials do not match our records.']);
+        }
+
         $otpPayload = Cache::get($this->otpCacheKey($center->id));
 
         if (!$otpPayload) {
@@ -165,6 +177,7 @@ class CenterAuthController extends Controller
         $request->session()->regenerate();
         $this->guard()->login($center, (bool) ($otpPayload['remember'] ?? false));
         session()->forget(self::OTP_SESSION_KEY);
+        LoginScope::completed('center');
 
         return redirect()->intended(route('center.dashboard'));
     }
@@ -198,6 +211,8 @@ class CenterAuthController extends Controller
     // ── Logout ────────────────────────────────────────────────────────
     public function logout(Request $request)
     {
+        $origin = LoginScope::originUrl('center');
+
         $this->guard()->logout();
 
         if ($centerId = session(self::OTP_SESSION_KEY)) {
@@ -209,7 +224,7 @@ class CenterAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('center.login');
+        return $origin ? redirect($origin) : redirect()->route('center.login');
     }
 
     // ── Dashboard ─────────────────────────────────────────────────────

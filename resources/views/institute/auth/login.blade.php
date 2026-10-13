@@ -265,11 +265,18 @@
 <div class="login-card">
 
     <div class="brand-logo">
-        <img src="{{ asset('images/logog.png') }}" alt="Gaurangi Technologies" style="height: 64px; width: auto; object-fit: contain;">
+        @if(!empty($scopedInstitute))
+            @if($scopedLogoUrl)<img src="{{ $scopedLogoUrl }}" alt="{{ $scopedInstitute->name }}" style="height: 64px; width: auto; max-width: 100%; object-fit: contain;">@endif
+        @else
+            <img src="{{ asset('images/logog.png') }}" alt="Gaurangi Technologies" style="height: 64px; width: auto; object-fit: contain;">
+        @endif
     </div>
 
     <hr class="divider">
 
+    @if(!empty($scopedInstitute))
+        <p class="portal-title" style="font-size:18px;margin-bottom:10px;">{{ $scopedInstitute->name }}</p>
+    @endif
     <p class="portal-label">Secure access portal</p>
     <h1 class="portal-title">Institute Sign In</h1>
     <p class="portal-subtitle">Enter your Institute ID, email and password to access the management portal.</p>

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesInstitute;
+
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class Student extends Authenticatable
 {
-    use Notifiable;
+    use Notifiable, ResolvesInstitute;
 
     protected $fillable = [
         'institute_id', 'academic_session_id', 'student_uid', 'institute_form_no',
