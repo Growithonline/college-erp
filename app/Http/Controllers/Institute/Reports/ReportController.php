@@ -3606,7 +3606,7 @@ class ReportController extends Controller
         $courses      = Course::where('institute_id', $instituteId)->where('status', true)->with('type')->orderBy('name')->get();
         $subjects     = \App\Models\Subject::where('institute_id', $instituteId)->orderBy('name')->get();
 
-        $query = PracticalFeeTokenBatch::with(['course.type', 'subject', 'session', 'entries.student'])
+        $query = PracticalFeeTokenBatch::with(['course.type', 'subject', 'session', 'entries' => fn ($q) => $q->active()->with('student')])
             ->where('institute_id', $instituteId)
             ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId))
             ->when($request->course_type_id, fn($q) => $q->whereHas('course', fn($cq) => $cq->where('course_type_id', $request->course_type_id)))

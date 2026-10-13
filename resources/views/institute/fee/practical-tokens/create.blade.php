@@ -22,7 +22,7 @@
             @csrf
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Session</label>
-                <select name="academic_session_id" class="form-select" required>
+                <select name="academic_session_id" id="sessionSelect" class="form-select" required>
                     @foreach($sessions as $session)
                         <option value="{{ $session->id }}" {{ old('academic_session_id', $activeSession?->id) == $session->id ? 'selected' : '' }}>{{ $session->name }}</option>
                     @endforeach
@@ -102,12 +102,43 @@
 
 @push('scripts')
 <script>
+const sessionSelect = document.getElementById('sessionSelect');
 const courseTypeSelect = document.getElementById('courseTypeSelect');
 const courseSelect = document.getElementById('courseSelect');
 const subjectSelect = document.getElementById('subjectSelect');
 const partSelect = document.getElementById('partSelect');
 const yearInput = document.getElementById('yearNumber');
 const semesterInput = document.getElementById('semesterNumber');
+
+// Rules as [session, course, subject, year, semester, fee]; semester 0 applies to every semester.
+const practicalFeeRules = @json($practicalFeeRules);
+
+function practicalFeeLabel(subjectId) {
+    const opt = partSelect.options[partSelect.selectedIndex];
+    if (!opt || !opt.dataset.year) {
+        return '';
+    }
+    const [sessionId, courseId, year, semester] = [
+        Number(sessionSelect.value), Number(courseSelect.value), Number(opt.dataset.year), Number(opt.dataset.semester),
+    ];
+    const matches = practicalFeeRules.filter(r =>
+        r[0] === sessionId && r[1] === courseId && r[2] === Number(subjectId) && r[3] === year && (r[4] === semester || r[4] === 0));
+    if (!matches.length) {
+        return ' — Fee not set';
+    }
+    const exact = matches.filter(r => r[4] === semester);
+    const fees = [...new Set((exact.length ? exact : matches).map(r => r[5]))].sort((a, b) => a - b);
+    const fmt = n => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    return ' — ' + (fees.length > 1 ? fmt(fees[0]) + ' to ' + fmt(fees[fees.length - 1]) : fmt(fees[0]));
+}
+
+function refreshSubjectLabels() {
+    [...subjectSelect.options].forEach(option => {
+        if (option.value) {
+            option.textContent = option.dataset.name + practicalFeeLabel(option.value);
+        }
+    });
+}
 
 const oldSubjectId = '{{ old('subject_id') }}';
 const oldCoursePartId = '{{ old('course_part_id') }}';
@@ -142,6 +173,7 @@ function fillSubjectsAndParts() {
         const option = document.createElement('option');
         option.value = subject.id;
         option.textContent = subject.name;
+        option.dataset.name = subject.name;
         subjectSelect.appendChild(option);
     });
 
@@ -168,11 +200,13 @@ function syncPartHiddenFields() {
     const opt = partSelect.options[partSelect.selectedIndex];
     yearInput.value = opt && opt.dataset.year ? opt.dataset.year : 1;
     semesterInput.value = opt && opt.dataset.semester ? opt.dataset.semester : 1;
+    refreshSubjectLabels();
 }
 
 courseTypeSelect.addEventListener('change', filterCoursesByType);
 courseSelect.addEventListener('change', fillSubjectsAndParts);
 partSelect.addEventListener('change', syncPartHiddenFields);
+sessionSelect.addEventListener('change', refreshSubjectLabels);
 
 // Init on load: preselect the course type matching an old course_id (validation re-render), then cascade.
 if (courseSelect.value) {

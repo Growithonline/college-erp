@@ -26,6 +26,15 @@ class PracticalFeeTokenEntry extends Model
         'posted_at' => 'datetime',
     ];
 
+    // Entries whose invoice was cancelled no longer count towards the batch.
+    public function scopeActive($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('fee_invoice_id')
+                ->orWhereHas('invoice', fn ($i) => $i->where('is_cancelled', false));
+        });
+    }
+
     public function batch()
     {
         return $this->belongsTo(PracticalFeeTokenBatch::class, 'batch_id');

@@ -18,8 +18,10 @@ use App\Models\Subject;
 use App\Models\SubjectFeeRule;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PracticalFeeTokenController extends Controller
 {
@@ -71,7 +73,7 @@ class PracticalFeeTokenController extends Controller
         $instituteId = $this->instituteId();
         $activeSession = AcademicSession::viewSession($instituteId);
         $query = PracticalFeeTokenBatch::with(['session', 'course', 'subject', 'coursePart'])
-            ->withSum('entries as posted_amount', 'amount')
+            ->withSum(['entries as posted_amount' => fn ($q) => $q->active()], 'amount')
             ->where('institute_id', $instituteId);
 
         if ($request->session_id) {
@@ -98,7 +100,7 @@ class PracticalFeeTokenController extends Controller
 
         $courses = Course::with([
                 'parts' => fn ($q) => $q->orderBy('part_number'),
-                'streams.subjects' => fn ($q) => $q->where('subjects.status', true)->orderBy('subjects.name'),
+                'streams.subjects' => fn ($q) => $q->where('subjects.status', true)->where('subjects.has_practical', true)->orderBy('subjects.name'),
             ])
             ->where('institute_id', $instituteId)
             ->where('status', true)
@@ -132,7 +134,22 @@ class PracticalFeeTokenController extends Controller
             $course->part_options = $partOptions;
         }
 
+        // Practical fee rules, so the form can show each subject's fee for the chosen session/year/semester.
+        $practicalFeeRules = SubjectFeeRule::where('institute_id', $instituteId)
+            ->where('practical_fee', '>', 0)
+            ->get(['academic_session_id', 'course_id', 'subject_id', 'course_part', 'semester', 'practical_fee'])
+            ->map(fn ($rule) => [
+                (int) $rule->academic_session_id,
+                (int) $rule->course_id,
+                (int) $rule->subject_id,
+                (int) $rule->course_part,
+                (int) $rule->semester,
+                (float) $rule->practical_fee,
+            ])
+            ->values();
+
         return view('institute.fee.practical-tokens.create', [
+            'practicalFeeRules' => $practicalFeeRules,
             'sessions' => AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get(),
             'courseTypes' => CourseType::forInstitute($instituteId)->active()->orderBy('sort_order')->orderBy('name')->get(),
             'courses' => $courses,
@@ -166,6 +183,21 @@ class PracticalFeeTokenController extends Controller
             abort_if(!CoursePart::where('id', $data['course_part_id'])->where('course_id', $data['course_id'])->exists(), 422);
         }
 
+        abort_if(!Subject::where('id', $data['subject_id'])->where('has_practical', true)->exists(), 422, 'Selected subject has no practical.');
+
+        $hasPracticalFee = SubjectFeeRule::where('institute_id', $instituteId)
+            ->where('academic_session_id', $data['academic_session_id'])
+            ->where('course_id', $data['course_id'])
+            ->where('subject_id', $data['subject_id'])
+            ->where('course_part', $data['year_number'])
+            ->whereIn('semester', [$data['semester'], 0])
+            ->where('practical_fee', '>', 0)
+            ->exists();
+
+        if (!$hasPracticalFee) {
+            return back()->withErrors(['subject_id' => 'Practical fee is not set for this subject, year and semester. Set it in subject fee rules first.'])->withInput();
+        }
+
         $batch = PracticalFeeTokenBatch::create($data + [
             'institute_id' => $instituteId,
             'status' => 'open',
@@ -186,37 +218,11 @@ class PracticalFeeTokenController extends Controller
             ->orderBy('name')
             ->get();
 
-        $entries = PracticalFeeTokenEntry::where('batch_id', $batch->id)->with('invoice')->get()->keyBy('student_id');
+        $entries = PracticalFeeTokenEntry::active()->where('batch_id', $batch->id)->with('invoice')->get()->keyBy('student_id');
         $postedAmount = (float) $entries->sum('amount');
         $remainingAmount = max(0, (float) $batch->token_amount - $postedAmount);
 
-        $studentYearNumbers = $students->map(fn($student) => $student->coursePart?->year_number ?? $batch->year_number)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        if (empty($studentYearNumbers)) {
-            $studentYearNumbers = [$batch->year_number];
-        }
-
-        $subjectRules = SubjectFeeRule::where('institute_id', $instituteId)
-            ->where('academic_session_id', $batch->academic_session_id)
-            ->where('course_id', $batch->course_id)
-            ->where('subject_id', $batch->subject_id)
-            ->whereIn('course_part', $studentYearNumbers)
-            ->where(function ($query) use ($batch) {
-                $query->where('semester', $batch->semester)
-                    ->orWhere('semester', 0);
-            })
-            ->orderByRaw('case when semester = ? then 0 else 1 end', [$batch->semester])
-            ->get()
-            ->groupBy('course_part')
-            ->map(fn($rules) => $rules->first());
-
-        $studentPracticalFees = $students->mapWithKeys(fn($student) => [
-            $student->id => (float) ($subjectRules[$student->coursePart?->year_number ?? $batch->year_number]?->practical_fee ?? 0),
-        ])->all();
+        $studentPracticalFees = $this->studentPracticalFeeAmounts($batch, $students);
 
         $alreadyPaidStudentIds = $this->resolveAlreadyPaidPracticalStudents($batch, $students->pluck('id')->all());
 
@@ -275,18 +281,13 @@ class PracticalFeeTokenController extends Controller
         ]);
 
         $allowedStudentIds = $this->batchStudentQuery($batch)->pluck('students.id')->map(fn($id) => (int) $id)->all();
-        $existingEntries = PracticalFeeTokenEntry::where('batch_id', $batch->id)->pluck('student_id')->map(fn($id) => (int) $id)->all();
-        $alreadyPaidStudentIds = $this->resolveAlreadyPaidPracticalStudents($batch, $allowedStudentIds);
 
-        $amounts = collect($data['amounts'] ?? [])->mapWithKeys(fn($amount, $studentId) => [
+        $round = fn($values) => collect($values)->mapWithKeys(fn($amount, $studentId) => [
             (int) $studentId => round((float) $amount, 2),
         ]);
-        $fines = collect($data['fines'] ?? [])->mapWithKeys(fn($amount, $studentId) => [
-            (int) $studentId => round((float) $amount, 2),
-        ]);
-        $discounts = collect($data['discounts'] ?? [])->mapWithKeys(fn($amount, $studentId) => [
-            (int) $studentId => round((float) $amount, 2),
-        ]);
+        $amounts = $round($data['amounts'] ?? []);
+        $fines = $round($data['fines'] ?? []);
+        $discounts = $round($data['discounts'] ?? []);
 
         $entries = $amounts->mapWithKeys(fn($amount, $studentId) => [
             $studentId => [
@@ -296,41 +297,28 @@ class PracticalFeeTokenController extends Controller
             ],
         ])->filter(fn($entry, $studentId) =>
             in_array((int) $studentId, $allowedStudentIds, true)
-            && !in_array((int) $studentId, $existingEntries, true)
-            && !in_array((int) $studentId, $alreadyPaidStudentIds, true)
             && ($entry['collect'] > 0 || $entry['fine'] > 0 || $entry['discount'] > 0)
         );
 
         if ($entries->isEmpty()) {
-            return back()->withErrors(['amounts' => 'Kisi new student ke liye amount, fine ya discount enter karo.'])->withInput();
+            return back()->withErrors(['amounts' => 'Enter an amount, fine or discount for at least one new student.'])->withInput();
         }
 
-        $invalidNetAmount = $entries->filter(fn($entry) => ($entry['collect'] + $entry['fine'] - $entry['discount']) <= 0);
-        if ($invalidNetAmount->isNotEmpty()) {
-            return back()->withErrors(['amounts' => 'Practical amount, fine aur discount ka net total 0 se zyada hona chahiye.'])->withInput();
+        if ($entries->contains(fn($entry) => ($entry['collect'] + $entry['fine'] - $entry['discount']) <= 0)) {
+            return back()->withErrors(['amounts' => 'Net total of practical amount, fine and discount must be greater than 0.'])->withInput();
         }
 
-        $studentPracticalFees = $this->studentPracticalFeeAmounts(
-            $batch,
-            Student::whereIn('id', $entries->keys())->get()
-        );
+        $students = Student::with('coursePart')->whereIn('id', $entries->keys())->get()->keyBy('id');
+        $studentPracticalFees = $this->studentPracticalFeeAmounts($batch, $students);
 
-        $invalidCollect = $entries->filter(fn($entry, $studentId) => $entry['collect'] > ($studentPracticalFees[$studentId] ?? 0));
-        if ($invalidCollect->isNotEmpty()) {
+        if ($entries->contains(fn($entry, $studentId) => $entry['collect'] > ($studentPracticalFees[$studentId] ?? 0))) {
             return back()->withErrors(['amounts' => 'Collect amount cannot exceed the charged practical fee.'])->withInput();
         }
 
-        $invalidDiscount = $entries->filter(fn($entry, $studentId) => $entry['discount'] > ($studentPracticalFees[$studentId] ?? 0));
-        if ($invalidDiscount->isNotEmpty()) {
+        if ($entries->contains(fn($entry, $studentId) => $entry['discount'] > ($studentPracticalFees[$studentId] ?? 0))) {
             return back()->withErrors(['amounts' => 'Discount cannot exceed the charged practical fee.'])->withInput();
         }
 
-        $alreadyPosted = (float) PracticalFeeTokenEntry::where('batch_id', $batch->id)->sum('amount');
-        if ($alreadyPosted + (float) $entries->sum(fn($entry) => $entry['collect']) > (float) $batch->token_amount) {
-            return back()->withErrors(['amounts' => 'Entered total practical collection amount se zyada ho raha hai.'])->withInput();
-        }
-
-        $students = Student::whereIn('id', $entries->keys())->get()->keyBy('id');
         $feeType = FeeType::where(function ($query) use ($instituteId) {
                 $query->where('institute_id', $instituteId)->orWhere('is_system', true);
             })
@@ -340,92 +328,104 @@ class PracticalFeeTokenController extends Controller
 
         $postedInvoiceIds = [];
 
-        DB::transaction(function () use ($entries, $students, $batch, $instituteId, $feeType, $year, $studentPracticalFees, &$postedInvoiceIds) {
-            foreach ($entries as $studentId => $entry) {
-                $student = $students[$studentId] ?? null;
-                if (!$student) {
-                    continue;
+        try {
+            DB::transaction(function () use (&$entries, $students, $batch, $instituteId, $feeType, $year, $studentPracticalFees, &$postedInvoiceIds) {
+                // Serialise concurrent postings on this batch so the duplicate and cap checks below are race-free.
+                $lockedBatch = PracticalFeeTokenBatch::where('id', $batch->id)->lockForUpdate()->first();
+
+                // Entries with a cancelled invoice are inactive, so those students can be collected again.
+                $existingEntries = PracticalFeeTokenEntry::active()->where('batch_id', $batch->id)
+                    ->pluck('student_id')->map(fn($id) => (int) $id)->all();
+                $alreadyPaidStudentIds = $this->resolveAlreadyPaidPracticalStudents($batch, $entries->keys()->all());
+
+                $entries = $entries->reject(fn($entry, $studentId) =>
+                    in_array((int) $studentId, $existingEntries, true)
+                    || in_array((int) $studentId, $alreadyPaidStudentIds, true)
+                );
+
+                if ($entries->isEmpty()) {
+                    throw ValidationException::withMessages(['amounts' => 'Selected students are already collected for this practical.']);
                 }
 
-                $collectAmount = $entry['collect'];
-                $fine = $entry['fine'];
-                $discount = $entry['discount'];
-                $invoiceAmount = $collectAmount + $fine - $discount;
-
-                if ($invoiceAmount <= 0) {
-                    continue;
+                $alreadyPosted = (float) PracticalFeeTokenEntry::active()->where('batch_id', $batch->id)->sum('amount');
+                if ($alreadyPosted + (float) $entries->sum(fn($entry) => $entry['collect']) > (float) $lockedBatch->token_amount) {
+                    throw ValidationException::withMessages(['amounts' => 'Total practical collection exceeds the batch token amount.']);
                 }
 
-                $invoiceNo = StudentIdService::generateInvoiceId($instituteId, $year);
-                $feeName = ($batch->subject?->name ?? 'Subject') . ' — Practical Fee';
-                $practicalDate = optional($batch->collection_date)->format('d-m-Y') ?? $batch->collection_date;
-                $title = trim((string) ($batch->title ?? ''));
-                $batchRemarks = trim((string) ($batch->remarks ?? ''));
-                $invoiceRemarks = 'Practical Date: ' . $practicalDate;
-                $invoiceRemarks .= ' | Title: ' . ($title !== '' ? $title : 'N/A');
-                $invoiceRemarks .= ' | Remarks: ' . ($batchRemarks !== '' ? $batchRemarks : 'N/A');
+                foreach ($entries as $studentId => $entry) {
+                    $student = $students[$studentId] ?? null;
+                    if (!$student) {
+                        continue;
+                    }
 
-                $invoice = FeeInvoice::create([
-                    'institute_id' => $instituteId,
-                    'student_id' => $student->id,
-                    'academic_session_id' => $batch->academic_session_id,
-                    'semester' => $batch->semester,
-                    'invoice_no' => $invoiceNo,
-                    'total_amount' => $invoiceAmount,
-                    'discount' => $discount,
-                    'paid_amount' => $collectAmount,
-                    'payment_mode' => $batch->payment_mode,
-                    'payment_date' => now()->toDateString(),
-                    'remarks' => $invoiceRemarks,
-                    'collected_by' => $this->actorName(),
-                    'collected_by_staff_id' => auth()->guard('staff')->id(),
-                ]);
+                    $collectAmount = $entry['collect'];
+                    $fine = $entry['fine'];
+                    $discount = $entry['discount'];
+                    $invoiceAmount = $collectAmount + $fine - $discount;
 
-                $invoice->load('student');
-                FeeInvoiceItem::create([
-                    'fee_invoice_id' => $invoice->id,
-                    'fee_type_id' => $feeType?->id,
-                    'subject_id' => $batch->subject_id,
-                    'item_type' => 'practical',
-                    'fee_name' => $feeName,
-                    'amount' => $collectAmount,
-                    'discount' => $discount,
-                    'fine' => $fine,
-                    'total_fee' => (float) ($studentPracticalFees[$studentId] ?? 0),
-                ]);
+                    $invoiceNo = StudentIdService::generateInvoiceId($instituteId, $year);
+                    $feeName = ($batch->subject?->name ?? 'Subject') . ' — Practical Fee';
+                    $practicalDate = optional($batch->collection_date)->format('d-m-Y') ?? $batch->collection_date;
+                    $title = trim((string) ($batch->title ?? ''));
+                    $batchRemarks = trim((string) ($batch->remarks ?? ''));
+                    $invoiceRemarks = 'Practical Date: ' . $practicalDate;
+                    $invoiceRemarks .= ' | Title: ' . ($title !== '' ? $title : 'N/A');
+                    $invoiceRemarks .= ' | Remarks: ' . ($batchRemarks !== '' ? $batchRemarks : 'N/A');
 
-                $items = collect([[
-                    'checked' => 1,
-                    'fee_type_id' => $feeType?->id,
-                    'subject_id' => $batch->subject_id,
-                    'item_type' => 'practical',
-                    'fee_name' => $feeName,
-                    'amount' => $collectAmount,
-                    'discount' => $discount,
-                    'fine' => $fine,
-                    'total_fee' => (float) ($studentPracticalFees[$studentId] ?? 0),
-                    'is_custom' => 0,
-                ]]);
+                    $invoice = FeeInvoice::create([
+                        'institute_id' => $instituteId,
+                        'student_id' => $student->id,
+                        'academic_session_id' => $batch->academic_session_id,
+                        'semester' => $batch->semester,
+                        'invoice_no' => $invoiceNo,
+                        'total_amount' => $invoiceAmount,
+                        'discount' => $discount,
+                        'paid_amount' => $collectAmount,
+                        'payment_mode' => $batch->payment_mode,
+                        'payment_date' => now()->toDateString(),
+                        'remarks' => $invoiceRemarks,
+                        'collected_by' => $this->actorName(),
+                        'collected_by_staff_id' => auth()->guard('staff')->id(),
+                    ]);
 
-                WalletService::chargeFineItems($invoice, $items);
-                WalletService::onFeeCollection($invoice);
+                    $invoice->load('student');
+                    $item = [
+                        'fee_type_id' => $feeType?->id,
+                        'subject_id' => $batch->subject_id,
+                        'item_type' => 'practical',
+                        'fee_name' => $feeName,
+                        'amount' => $collectAmount,
+                        'discount' => $discount,
+                        'fine' => $fine,
+                        'total_fee' => (float) ($studentPracticalFees[$studentId] ?? 0),
+                    ];
+                    FeeInvoiceItem::create(['fee_invoice_id' => $invoice->id] + $item);
 
-                PracticalFeeTokenEntry::create([
-                    'batch_id' => $batch->id,
-                    'student_id' => $student->id,
-                    'fee_invoice_id' => $invoice->id,
-                    'amount' => $collectAmount,
-                    'fine' => $fine,
-                    'discount' => $discount,
-                    'status' => 'posted',
-                    'entered_by_type' => $this->actorType(),
-                    'entered_by_id' => $this->actorId(),
-                    'posted_at' => now(),
-                ]);
+                    WalletService::chargeFineItems($invoice, collect([$item + ['checked' => 1, 'is_custom' => 0]]));
+                    WalletService::onFeeCollection($invoice);
 
-                $postedInvoiceIds[] = $invoice->id;
-            }
-        });
+                    // updateOrCreate re-points a stale entry (cancelled invoice) at the new invoice; nothing is deleted.
+                    PracticalFeeTokenEntry::updateOrCreate(
+                        ['batch_id' => $batch->id, 'student_id' => $student->id],
+                        [
+                            'fee_invoice_id' => $invoice->id,
+                            'amount' => $collectAmount,
+                            'fine' => $fine,
+                            'discount' => $discount,
+                            'status' => 'posted',
+                            'entered_by_type' => $this->actorType(),
+                            'entered_by_id' => $this->actorId(),
+                            'posted_at' => now(),
+                        ]
+                    );
+
+                    $postedInvoiceIds[] = $invoice->id;
+                }
+            });
+        } catch (QueryException $e) {
+            report($e);
+            return back()->withErrors(['amounts' => 'Another collection was posted at the same time. Reload and try again.'])->withInput();
+        }
 
         foreach ($postedInvoiceIds as $postedInvoiceId) {
             WalletService::saveRemainingDueSnapshot($postedInvoiceId);

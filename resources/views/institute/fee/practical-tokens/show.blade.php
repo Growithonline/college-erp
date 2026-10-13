@@ -43,6 +43,19 @@
     </div>
 </div>
 
+@php
+    $noFeeCount = $students->filter(fn ($st) => (float) ($studentPracticalFees[$st->id] ?? 0) <= 0
+        && !isset($entries[$st->id])
+        && !in_array($st->id, $alreadyPaidStudentIds ?? [], true))->count();
+@endphp
+@if($noFeeCount > 0)
+    <div class="alert alert-warning small">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Practical fee is not configured (0.00) for {{ $noFeeCount }} {{ \Illuminate\Support\Str::plural('student', $noFeeCount) }}.
+        Set the subject practical fee for this session, year and semester to collect from them.
+    </div>
+@endif
+
 <form method="POST" action="{{ route($routePrefix . '.entries.store', $batch) }}">
     @csrf
     <div class="card border-0 shadow-sm">
@@ -70,7 +83,8 @@
                         @php
                             $entry = $entries[$student->id] ?? null;
                             $alreadyPaid = in_array($student->id, $alreadyPaidStudentIds ?? [], true);
-                            $inputDisabled = $entry || $alreadyPaid;
+                            $noFee = !$entry && !$alreadyPaid && (float) ($studentPracticalFees[$student->id] ?? 0) <= 0;
+                            $inputDisabled = $entry || $alreadyPaid || $noFee;
                             $collectValue = old('amounts.' . $student->id, $entry?->amount ?? ($alreadyPaid ? ($studentPracticalFees[$student->id] ?? 0) : 0));
                             $fineValue = old('fines.' . $student->id, $entry?->fine ?? ($alreadyPaid ? 0 : 0));
                             $discountValue = old('discounts.' . $student->id, $entry?->discount ?? ($alreadyPaid ? 0 : 0));
@@ -125,6 +139,8 @@
                                     <small class="d-block text-muted">Invoice #{{ $entry->invoice?->invoice_no }}</small>
                                 @elseif($alreadyPaid)
                                     <span class="badge bg-warning text-dark">Already Paid</span>
+                                @elseif($noFee)
+                                    <span class="badge bg-light text-dark border">Fee not set</span>
                                 @else
                                     <span class="badge bg-secondary">Pending</span>
                                 @endif
