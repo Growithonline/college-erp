@@ -158,7 +158,7 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
              transform:rotate(-25deg); display:flex; flex-direction:column; justify-content:space-around;
              pointer-events:none; overflow:hidden; }
 .watermark span { display:block; white-space:nowrap; font-size:8px; font-weight:700; line-height:1;
-                  letter-spacing:.5px; color:rgba(0,0,0,0.11); }
+                  letter-spacing:.5px; color:rgba(0,0,0,0.22); }
 .watermark span:nth-child(even) { margin-left:-30px; }
 .watermark, .watermark span { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .watermark-cancelled { position:absolute; top:50%; left:50%;
