@@ -45,6 +45,7 @@
                         <option
                             value="{{ $course->id }}"
                             data-type="{{ $course->course_type_id }}"
+                            data-code="{{ $course->code }}"
                             data-subjects='@json($course->subject_options)'
                             data-parts='@json($course->part_options)'
                             {{ old('course_id') == $course->id ? 'selected' : '' }}
@@ -84,7 +85,7 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Title</label>
-                <input type="text" name="title" value="{{ old('title') }}" class="form-control" placeholder="BA Geography Practical">
+                <input type="text" name="title" id="titleInput" value="{{ old('title') }}" class="form-control" placeholder="BA Geography Practical">
             </div>
             <div class="col-12">
                 <label class="form-label small fw-semibold">Remarks</label>
@@ -140,6 +141,35 @@ function refreshSubjectLabels() {
     });
 }
 
+const titleInput = document.getElementById('titleInput');
+const dateInput = document.querySelector('input[name="collection_date"]');
+// Auto-suggest the title until the user types their own; a title restored after a validation error counts as typed.
+let titleEditedByUser = titleInput.value.trim() !== '';
+
+function suggestTitle() {
+    if (titleEditedByUser) {
+        return;
+    }
+    const courseOpt = courseSelect.options[courseSelect.selectedIndex];
+    const subjectOpt = subjectSelect.options[subjectSelect.selectedIndex];
+    const partOpt = partSelect.options[partSelect.selectedIndex];
+    const parts = [];
+    if (courseOpt && courseOpt.value) {
+        parts.push((courseOpt.dataset.code || courseOpt.textContent).trim());
+    }
+    if (subjectOpt && subjectOpt.value) {
+        parts.push(subjectOpt.dataset.name + ' Practical');
+    }
+    if (partOpt && partOpt.value) {
+        parts.push(partOpt.textContent.trim());
+    }
+    if (dateInput.value) {
+        const d = new Date(dateInput.value + 'T00:00:00');
+        parts.push(d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
+    }
+    titleInput.value = parts.join(' - ');
+}
+
 const oldSubjectId = '{{ old('subject_id') }}';
 const oldCoursePartId = '{{ old('course_part_id') }}';
 
@@ -190,6 +220,7 @@ function fillSubjectsAndParts() {
     if (oldSubjectId && [...subjectSelect.options].some(o => o.value === oldSubjectId)) {
         subjectSelect.value = oldSubjectId;
     }
+    suggestTitle();
     if (oldCoursePartId && [...partSelect.options].some(o => o.value === oldCoursePartId)) {
         partSelect.value = oldCoursePartId;
     }
@@ -201,12 +232,16 @@ function syncPartHiddenFields() {
     yearInput.value = opt && opt.dataset.year ? opt.dataset.year : 1;
     semesterInput.value = opt && opt.dataset.semester ? opt.dataset.semester : 1;
     refreshSubjectLabels();
+    suggestTitle();
 }
 
 courseTypeSelect.addEventListener('change', filterCoursesByType);
 courseSelect.addEventListener('change', fillSubjectsAndParts);
 partSelect.addEventListener('change', syncPartHiddenFields);
 sessionSelect.addEventListener('change', refreshSubjectLabels);
+subjectSelect.addEventListener('change', suggestTitle);
+dateInput.addEventListener('change', suggestTitle);
+titleInput.addEventListener('input', () => { titleEditedByUser = titleInput.value.trim() !== ''; });
 
 // Init on load: preselect the course type matching an old course_id (validation re-render), then cascade.
 if (courseSelect.value) {
