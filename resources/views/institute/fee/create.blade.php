@@ -2176,6 +2176,7 @@ function runStudentSearch() {
                         <thead class="table-light">
                             <tr>
                                 <th style="width:40px;">#</th>
+                                <th>Session</th>
                                 <th>Student ID</th>
                                 <th>Student Name</th>
                                 <th>Father Name</th>
@@ -2183,12 +2184,14 @@ function runStudentSearch() {
                                 <th>Mobile</th>
                                 <th>Course</th>
                                 <th>Stream</th>
+                                <th>Year / Sem</th>
                                 <th class="text-end" style="width:90px;">Action</th>
                             </tr>
                         </thead>
                         <tbody>${data.map((s, i) => `
                             <tr style="cursor:pointer;" onclick="window.location='${@json($feeCreateUrl)}?student_id=${encodeURIComponent(s.id)}${sidParam}'">
                                 <td class="text-muted">${i + 1}</td>
+                                <td>${dash(s.session)}</td>
                                 <td><span class="badge bg-primary-subtle text-primary-emphasis fw-semibold">${dash(s.student_uid)}</span></td>
                                 <td class="fw-semibold">${dash(s.name)}</td>
                                 <td>${dash(s.father_name)}</td>
@@ -2196,6 +2199,7 @@ function runStudentSearch() {
                                 <td>${dash(s.mobile)}</td>
                                 <td>${dash(s.course)}</td>
                                 <td>${dash(s.stream)}</td>
+                                <td style="white-space:nowrap;">${dash(s.year)}${s.semester ? ` <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">S${esc(s.semester)}</span>` : ''}</td>
                                 <td class="text-end"><a href="${@json($feeCreateUrl)}?student_id=${encodeURIComponent(s.id)}${sidParam}" class="btn btn-sm btn-success py-0 px-2" onclick="event.stopPropagation()">Collect</a></td>
                             </tr>`).join('')}
                         </tbody>

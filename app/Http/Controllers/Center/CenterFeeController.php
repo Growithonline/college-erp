@@ -436,7 +436,7 @@ class CenterFeeController extends Controller
                     ->orWhere('mobile', 'like', "%{$query}%")
                     ->orWhere('student_uid', 'like', "%{$query}%");
             })
-            ->with('stream.course')
+            ->with(['stream.course', 'session', 'coursePart'])
             ->limit(10)
             ->get();
 
@@ -447,6 +447,11 @@ class CenterFeeController extends Controller
             'mobile'      => $s->mobile,
             'course'      => $s->stream->course->name ?? '',
             'stream'      => $s->stream->name ?? '',
+            'father_name' => $s->father_name ?? '',
+            'mother_name' => $s->mother_name ?? '',
+            'session'     => $s->session->name ?? '',
+            'year'        => $s->coursePart->year_label ?? '',
+            'semester'    => $s->current_semester,
         ]));
     }
 

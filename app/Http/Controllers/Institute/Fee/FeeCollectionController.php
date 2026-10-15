@@ -1820,7 +1820,7 @@ class FeeCollectionController extends Controller
                     ->orWhere('father_name', 'like', "%{$safeQuery}%")
                     ->orWhere('mother_name', 'like', "%{$safeQuery}%");
             })
-            ->with('stream.course')
+            ->with(['stream.course', 'session', 'coursePart'])
             ->limit(10);
         if ($staff = $this->currentStaff()) {
             $staff->scopeOperationalStudents($students);
@@ -1836,6 +1836,9 @@ class FeeCollectionController extends Controller
             'stream'      => $student->stream->name ?? '',
             'father_name' => $student->father_name ?? '',
             'mother_name' => $student->mother_name ?? '',
+            'session'     => $student->session->name ?? '',
+            'year'        => $student->coursePart->year_label ?? '',
+            'semester'    => $student->current_semester,
         ]));
     }
 }
