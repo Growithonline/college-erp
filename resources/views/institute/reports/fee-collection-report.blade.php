@@ -16,6 +16,21 @@
         <small class="text-muted">{{ $sessionId ? ($sessionObj?->name ?? 'Session') : 'All Sessions' }} — Date-wise, mode-wise collection</small>
     </div>
     <div class="d-flex gap-2">
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" title="Show / hide columns">
+                <i class="bi bi-layout-three-columns"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end p-2" style="min-width:200px;max-height:70vh;overflow-y:auto;">
+                @foreach(['rc-sn'=>'#','rc-invoice'=>'Invoice No','rc-date'=>'Date & Time','rc-sem'=>'Year / Sem','rc-student'=>'Student','rc-father'=>'Father Name','rc-mother'=>'Mother Name','rc-roll'=>'Roll No','rc-uin'=>'UIN','rc-course'=>'Course','rc-items'=>'Fee Items','rc-mode'=>'Mode','rc-ref'=>'Bank / Ref','rc-by'=>'Collected By','rc-coll'=>'Collection','rc-fine'=>'Fine','rc-disc'=>'Discount','rc-total'=>'Total Amt','rc-due'=>'Due'] as $col => $label)
+                <li>
+                    <label class="dropdown-item d-flex align-items-center gap-2 small py-1" style="cursor:pointer;">
+                        <input type="checkbox" class="rc-toggle" data-col="{{ $col }}" checked onchange="toggleReportCol('{{ $col }}', this.checked)">
+                        {{ $label }}
+                    </label>
+                </li>
+                @endforeach
+            </ul>
+        </div>
         <button onclick="printReport()" class="btn btn-outline-danger btn-sm">
             <i class="bi bi-file-earmark-pdf me-1"></i> PDF
         </button>
@@ -508,27 +523,44 @@
             </div>
         @else
         <div class="table-responsive">
+            <style>
+                #reportTable td.cw-12 { width:14ch; min-width:14ch; max-width:14ch; white-space:normal; overflow-wrap:anywhere; }
+                #reportTable td.cw-16 { min-width:14ch; max-width:18ch; white-space:normal; overflow-wrap:anywhere; }
+                #reportTable .cw-name { max-width:14ch; white-space:normal; overflow-wrap:anywhere; }
+                #reportTable td .badge { white-space:normal; text-align:left; }
+                /* Grey / muted text -> black. Money colours (green, red, purple) and the invoice link stay as they are. */
+                #reportTable tbody td.text-muted,
+                #reportTable tbody td .text-muted,
+                #reportTable tbody td .text-info,
+                #reportTable tbody td .badge.text-secondary,
+                #reportTable tbody td.cw-12,
+                #reportTable tbody td.cw-16,
+                #reportTable tbody td.rc-student,
+                #reportTable tbody td.rc-date,
+                #reportTable tbody td.rc-sem span:not(.badge) { color:#000 !important; }
+            </style>
             <table class="table table-hover align-middle mb-0" style="font-size:12px;">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">#</th>
-                        <th>Invoice No</th>
-                        <th>Date</th>
-                        <th class="text-center">Sem</th>
-                        <th>Student</th>
-                        <th>Father / Mother</th>
-                        <th>Roll No</th>
-                        <th>UIN</th>
-                        <th>Course</th>
-                        <th>Fee Items</th>
-                        <th class="text-center">Mode</th>
-                        <th>Bank / Ref</th>
-                        <th>Collected By</th>
-                        <th class="text-end" style="white-space:nowrap;">Collection</th>
-                        <th class="text-end text-danger" style="white-space:nowrap;">Fine</th>
-                        <th class="text-end" style="color:#7c3aed;white-space:nowrap;">Discount</th>
-                        <th class="text-end text-success pe-2" style="white-space:nowrap;">Total Amt</th>
-                        <th class="text-end text-danger pe-3" style="white-space:nowrap;">Due</th>
+                        <th class="ps-3 rc-sn">#</th>
+                        <th class="rc-invoice">Invoice No</th>
+                        <th class="rc-date">Date</th>
+                        <th class="text-center rc-sem">Sem</th>
+                        <th class="rc-student">Student</th>
+                        <th class="rc-father">Father Name</th>
+                        <th class="rc-mother">Mother Name</th>
+                        <th class="rc-roll">Roll No</th>
+                        <th class="rc-uin">UIN</th>
+                        <th class="rc-course">Course</th>
+                        <th class="rc-items">Fee Items</th>
+                        <th class="text-center rc-mode">Mode</th>
+                        <th class="rc-ref">Bank / Ref</th>
+                        <th class="rc-by">Collected By</th>
+                        <th class="text-end rc-coll" style="white-space:nowrap;">Collection</th>
+                        <th class="text-end text-danger rc-fine" style="white-space:nowrap;">Fine</th>
+                        <th class="text-end rc-disc" style="color:#7c3aed;white-space:nowrap;">Discount</th>
+                        <th class="text-end text-success pe-2 rc-total" style="white-space:nowrap;">Total Amt</th>
+                        <th class="text-end text-danger pe-3 rc-due" style="white-space:nowrap;">Due</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -538,18 +570,18 @@
                         $bankLabel = $inv->bankAccount?->display_label ?: ($inv->bank_name ?: null);
                     @endphp
                     <tr>
-                        <td class="ps-3 text-muted">{{ $invoices->firstItem() + $i }}</td>
-                        <td>
+                        <td class="ps-3 text-muted rc-sn">{{ $invoices->firstItem() + $i }}</td>
+                        <td class="rc-invoice">
                             <a href="{{ route($receiptRoute, ['student' => $inv->student_id, 'invoice' => $inv->id]) }}"
                                target="_blank" class="fw-semibold text-primary text-decoration-none">
                                 {{ $inv->invoice_no }}
                             </a>
                         </td>
-                        <td class="text-muted" style="white-space:nowrap;">
+                        <td class="text-muted rc-date" style="white-space:nowrap;">
                             {{ $inv->payment_date?->format('d M Y') }}
                             <span class="text-muted" style="font-size:10px;display:block;">{{ $inv->created_at?->setTimezone('Asia/Kolkata')->format('h:i A') }}</span>
                         </td>
-                        <td class="text-center" style="white-space:nowrap;">
+                        <td class="text-center rc-sem" style="white-space:nowrap;">
                             @if($inv->semester)
                                 <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">S{{ $inv->semester }}</span>
                             @endif
@@ -560,20 +592,18 @@
                                 <span class="text-muted">—</span>
                             @endif
                         </td>
-                        <td>
-                            <div class="fw-semibold">{{ $inv->student->name ?? '—' }}</div>
+                        <td class="rc-student">
+                            <div class="fw-semibold cw-name">{{ $inv->student->name ?? '—' }}</div>
                             <div class="text-muted" style="font-size:10px;">{{ $inv->student->student_uid ?? '' }}</div>
                         </td>
-                        <td style="max-width:110px;">
-                            <div class="text-muted" style="font-size:10px;">F: {{ $inv->student->father_name ?: '—' }}</div>
-                            <div class="text-muted" style="font-size:10px;">M: {{ $inv->student->mother_name ?: '—' }}</div>
-                        </td>
-                        <td style="font-size:11px;">{{ $inv->student->roll_no ?: '—' }}</td>
-                        <td style="font-size:11px;">{{ $inv->student->uin_no ?: '—' }}</td>
-                        <td class="text-muted" style="font-size:11px;">
+                        <td class="cw-12 text-muted rc-father" style="font-size:11px;">{{ $inv->student->father_name ?: '—' }}</td>
+                        <td class="cw-12 text-muted rc-mother" style="font-size:11px;">{{ $inv->student->mother_name ?: '—' }}</td>
+                        <td class="cw-12 rc-roll" style="font-size:11px;">{{ $inv->student->roll_no ?: '—' }}</td>
+                        <td class="cw-12 rc-uin" style="font-size:11px;">{{ $inv->student->uin_no ?: '—' }}</td>
+                        <td class="cw-16 text-muted rc-course" style="font-size:11px;">
                             {{ $inv->student?->stream?->course?->name ?? '—' }}
                         </td>
-                        <td>
+                        <td class="rc-items">
                             <div class="d-flex flex-wrap gap-1">
                                 @foreach($inv->items->take(3) as $item)
                                     <span class="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style="font-size:10px;">
@@ -587,7 +617,7 @@
                                 @endif
                             </div>
                         </td>
-                        <td class="text-center">
+                        <td class="text-center rc-mode">
                             <span class="badge
                                 {{ $inv->payment_mode=='cash' ? 'bg-success' : '' }}
                                 {{ $inv->payment_mode=='upi' ? 'bg-primary' : '' }}
@@ -600,27 +630,27 @@
                                 {{ strtoupper($inv->payment_mode) }}
                             </span>
                         </td>
-                        <td style="max-width:130px;">
+                        <td class="cw-16 rc-ref">
                             @if($bankLabel)
                                 <div style="font-size:10px;" class="fw-semibold text-info">{{ $bankLabel }}</div>
                             @endif
                             @if($invRef)
                                 <div class="text-muted" style="font-size:10px;" title="{{ $invRef }}">
-                                    {{ strlen($invRef) > 18 ? substr($invRef, 0, 18).'…' : $invRef }}
+                                    {{ $invRef }}
                                 </div>
                             @endif
                             @if(!$bankLabel && !$invRef)
                                 <span class="text-muted">—</span>
                             @endif
                         </td>
-                        <td style="font-size:11px;">{{ $inv->collected_by ?: '—' }}</td>
+                        <td class="cw-16 rc-by" style="font-size:11px;">{{ $inv->collected_by ?: '—' }}</td>
                         {{-- Collection (cash paid) --}}
-                        <td class="text-end fw-bold text-success">
+                        <td class="text-end fw-bold text-success rc-coll">
                             ₹ {{ number_format($inv->paid_amount) }}
                         </td>
                         {{-- Fine --}}
                         @php $invFine = $inv->items->sum('fine'); @endphp
-                        <td class="text-end">
+                        <td class="text-end rc-fine">
                             @if($invFine > 0)
                                 <span class="fw-semibold small text-danger">₹{{ number_format($invFine) }}</span>
                             @else
@@ -628,7 +658,7 @@
                             @endif
                         </td>
                         {{-- Discount --}}
-                        <td class="text-end">
+                        <td class="text-end rc-disc">
                             @if(($inv->discount ?? 0) > 0)
                                 <span class="fw-semibold small" style="color:#7c3aed;">-₹{{ number_format($inv->discount) }}</span>
                             @else
@@ -636,12 +666,12 @@
                             @endif
                         </td>
                         {{-- Total Amount (cash + discount) --}}
-                        <td class="text-end fw-bold pe-2">
+                        <td class="text-end fw-bold pe-2 rc-total">
                             ₹ {{ number_format($inv->paid_amount + ($inv->discount ?? 0)) }}
                         </td>
                         {{-- Due --}}
                         @php $invTotalCharged = $inv->items->sum(fn($item) => $item->total_fee ?? $item->amount); $invDue = max(0, $invTotalCharged - $inv->paid_amount - ($inv->discount ?? 0)); @endphp
-                        <td class="text-end pe-3">
+                        <td class="text-end pe-3 rc-due">
                             @if($invDue > 0)
                                 <span class="fw-semibold small text-danger">₹{{ number_format($invDue) }}</span>
                             @else
@@ -657,12 +687,12 @@
                         $pageDueTotal  = $invoices->sum(fn($inv) => max(0, $inv->items->sum(fn($item) => $item->total_fee ?? $item->amount) - $inv->paid_amount - ($inv->discount ?? 0)));
                     @endphp
                     <tr>
-                        <td colspan="13" class="ps-3 text-muted small">This page total ({{ $invoices->count() }} invoices)</td>
-                        <td class="text-end text-success" style="white-space:nowrap;">₹ {{ number_format($invoices->sum('paid_amount')) }}</td>
-                        <td class="text-end text-danger" style="white-space:nowrap;">{{ $pageFineTotal > 0 ? '₹ '.number_format($pageFineTotal) : '—' }}</td>
-                        <td class="text-end" style="color:#7c3aed;white-space:nowrap;">{{ $invoices->sum('discount') > 0 ? '-₹ '.number_format($invoices->sum('discount')) : '—' }}</td>
-                        <td class="text-end text-success pe-2 fw-bold" style="white-space:nowrap;">₹ {{ number_format($invoices->sum('paid_amount') + $invoices->sum('discount')) }}</td>
-                        <td class="text-end pe-3 {{ $pageDueTotal > 0 ? 'text-danger fw-bold' : 'text-muted' }}" style="white-space:nowrap;">{{ $pageDueTotal > 0 ? '₹ '.number_format($pageDueTotal) : '—' }}</td>
+                        <td colspan="14" id="rcFootLabel" class="ps-3 text-muted small">This page total ({{ $invoices->count() }} invoices)</td>
+                        <td class="text-end text-success rc-coll" style="white-space:nowrap;">₹ {{ number_format($invoices->sum('paid_amount')) }}</td>
+                        <td class="text-end text-danger rc-fine" style="white-space:nowrap;">{{ $pageFineTotal > 0 ? '₹ '.number_format($pageFineTotal) : '—' }}</td>
+                        <td class="text-end rc-disc" style="color:#7c3aed;white-space:nowrap;">{{ $invoices->sum('discount') > 0 ? '-₹ '.number_format($invoices->sum('discount')) : '—' }}</td>
+                        <td class="text-end text-success pe-2 fw-bold rc-total" style="white-space:nowrap;">₹ {{ number_format($invoices->sum('paid_amount') + $invoices->sum('discount')) }}</td>
+                        <td class="text-end pe-3 rc-due {{ $pageDueTotal > 0 ? 'text-danger fw-bold' : 'text-muted' }}" style="white-space:nowrap;">{{ $pageDueTotal > 0 ? '₹ '.number_format($pageDueTotal) : '—' }}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -675,6 +705,37 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+function updateReportFootSpan() {
+    const label = document.getElementById('rcFootLabel');
+    if (!label) return;
+    const heads = Array.from(document.querySelectorAll('#reportTable thead th')).slice(0, 14);
+    label.colSpan = Math.max(1, heads.filter(th => th.style.display !== 'none').length);
+}
+function toggleReportCol(col, visible, save = true) {
+    document.querySelectorAll('#reportTable .' + col).forEach(el => { el.style.display = visible ? '' : 'none'; });
+    updateReportFootSpan();
+    if (save) {
+        try {
+            const saved = JSON.parse(localStorage.getItem('feeReportColPrefs') || '{}');
+            saved[col] = visible;
+            localStorage.setItem('feeReportColPrefs', JSON.stringify(saved));
+        } catch (e) {}
+    }
+}
+document.addEventListener('DOMContentLoaded', function () {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('feeReportColPrefs') || '{}'); } catch (e) {}
+    document.querySelectorAll('.rc-toggle').forEach(cb => {
+        const col = cb.dataset.col;
+        if (saved[col] === false) { cb.checked = false; toggleReportCol(col, false, false); }
+    });
+});
+</script>
+@endpush
+
 
 @push('scripts')
 <script>
@@ -927,6 +988,7 @@ tfoot td.r { text-align: right; }
     <th class="c" style="width:36px;">Year / Sem</th>
     <th style="width:65px;">Student</th>
     <th style="width:48px;">Father</th>
+    <th style="width:48px;">Mother</th>
     <th style="width:36px;">Roll No</th>
     <th style="width:38px;">UIN</th>
     <th style="width:44px;">Course</th>
@@ -967,6 +1029,7 @@ rows.forEach((r, i) => {
         <td class="c">\${r.year ? '<span style="font-size:7.5px;color:#000;font-weight:600;">'+r.year+'</span><br>' : ''}<span style="background:#eff6ff;color:#1d4ed8;padding:1px 3px;border-radius:2px;font-weight:600;">\${r.sem}</span></td>
         <td><span style="font-weight:600;">\${r.student}</span></td>
         <td class="t-muted">\${r.father}</td>
+        <td class="t-muted">\${r.mother}</td>
         <td class="t-muted">\${r.rollno}</td>
         <td class="t-muted">\${r.uin}</td>
         <td class="t-muted">\${r.course}</td>
@@ -984,7 +1047,7 @@ rows.forEach((r, i) => {
 
 const fmt = n => n.toLocaleString('en-IN', {maximumFractionDigits:0});
 tfoot.innerHTML = \`<tr>
-    <td colspan="13">Page Total (\${rows.length} invoices)</td>
+    <td colspan="14">Page Total (\${rows.length} invoices)</td>
     <td class="r t-success">₹\${fmt(totColl)}</td>
     <td class="r t-danger">\${totFine > 0 ? '₹'+fmt(totFine) : '—'}</td>
     <td class="r t-purple">\${totDisc > 0 ? '-₹'+fmt(totDisc) : '—'}</td>
@@ -1004,18 +1067,18 @@ function getTableData() {
     const rows = [];
     document.querySelectorAll('#reportTable tbody tr').forEach(tr => {
         const tds = tr.querySelectorAll('td');
-        if (tds.length < 16) return;
+        if (tds.length < 17) return;
 
         const getT = (el) => el ? el.innerText.trim() : '';
         const getN = (s) => parseFloat(s.replace(/[^0-9.]/g,'')) || 0;
 
         // Extract badge text for mode (col 10 after adding Roll No + UIN cols)
-        const modeBadge = tds[10].querySelector('.badge');
-        const mode = modeBadge ? modeBadge.innerText.trim().toLowerCase() : getT(tds[10]).toLowerCase();
+        const modeBadge = tds[11].querySelector('.badge');
+        const mode = modeBadge ? modeBadge.innerText.trim().toLowerCase() : getT(tds[11]).toLowerCase();
 
         // Bank cell (col 11)
-        const bankDivs = tds[11].querySelectorAll('div,span');
-        const bank = bankDivs[0] ? bankDivs[0].innerText.trim() : getT(tds[11]);
+        const bankDivs = tds[12].querySelectorAll('div,span');
+        const bank = bankDivs[0] ? bankDivs[0].innerText.trim() : getT(tds[12]);
         const ref  = bankDivs[1] ? bankDivs[1].innerText.trim() : '';
 
         // Date & time from date cell
@@ -1034,29 +1097,30 @@ function getTableData() {
         const student = studentDivs[0] ? studentDivs[0].innerText.trim() : getT(tds[4]);
 
         // Fee items — join badge texts (col 9)
-        const feeBadges = tds[9].querySelectorAll('.badge');
+        const feeBadges = tds[10].querySelectorAll('.badge');
         const feeItems = feeBadges.length
             ? Array.from(feeBadges).map(b => b.innerText.trim()).filter(t => !t.startsWith('+')).join(', ')
-            : getT(tds[9]);
+            : getT(tds[10]);
 
         rows.push({
             invoice:  tds[1].querySelector('a,span') ? (tds[1].querySelector('a,span').innerText.trim()) : getT(tds[1]),
             date, time, year, sem,
             student,
-            father:   getT(tds[5]).replace(/^F:\s*/,'').replace(/\nM:.*$/s,'').trim() || '—',
-            rollno:   getT(tds[6]),
-            uin:      getT(tds[7]),
-            course:   getT(tds[8]),
+            father:   getT(tds[5]) || '—',
+            mother:   getT(tds[6]) || '—',
+            rollno:   getT(tds[7]),
+            uin:      getT(tds[8]),
+            course:   getT(tds[9]),
             feeItems,
             mode,
             bank:  bank === '—' ? '' : bank,
             ref:   ref  === '—' ? '' : ref,
-            collBy: getT(tds[12]),
-            coll:  getN(getT(tds[13])),
-            fine:  getN(getT(tds[14])),
-            disc:  getN(getT(tds[15])),
-            amt:   getN(getT(tds[16])),
-            due:   getN(getT(tds[17])),
+            collBy: getT(tds[13]),
+            coll:  getN(getT(tds[14])),
+            fine:  getN(getT(tds[15])),
+            disc:  getN(getT(tds[16])),
+            amt:   getN(getT(tds[17])),
+            due:   getN(getT(tds[18])),
         });
     });
     return rows;
