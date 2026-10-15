@@ -244,6 +244,7 @@ class BulkImportApprovalController extends Controller
             'periods'                => ['required', 'array'],
             'periods.*.total_fee'    => ['nullable', 'numeric', 'min:0'],
             'periods.*.due_amount'   => ['required', 'numeric', 'min:0'],
+            'periods.*.due_date'     => ['nullable', 'date', 'before_or_equal:today'],
             'periods.*.session_id'   => ['nullable', 'integer'],
         ], [
             'periods.required'                 => 'No fee-history data was submitted. Please fill in the form and try again.',
@@ -252,6 +253,8 @@ class BulkImportApprovalController extends Controller
             'periods.*.due_amount.required'    => 'Please enter the Previous Due Amount for every semester listed below (enter 0 if nothing is due).',
             'periods.*.due_amount.numeric'     => 'Previous Due Amount must be a valid number.',
             'periods.*.due_amount.min'         => 'Previous Due Amount cannot be negative.',
+            'periods.*.due_date.date'          => 'Date must be a valid date.',
+            'periods.*.due_date.before_or_equal' => 'Date cannot be in the future.',
         ]);
 
         $instituteSessionIds = $this->sessionsForInstitute((int) $student->institute_id)->pluck('id')->flip();
@@ -289,6 +292,7 @@ class BulkImportApprovalController extends Controller
                 'label'      => $period['label'],
                 'total_fee'  => $totalFee,
                 'due'        => $dueAmount,
+                'due_date'   => $row['due_date'] ?: null,
                 'session_id' => $sessionId,
             ];
         }
@@ -387,18 +391,19 @@ class BulkImportApprovalController extends Controller
                 }
 
                 $sessionId = (int) ($result['session_id'] ?? $student->academic_session_id);
+                $dueDate = $result['due_date'] ?? null;
 
                 // Recognize the due as a receivable against the "Opening Balance —
                 // Migrated Fees" equity account — this is what keeps the current
                 // period's Profit & Loss unaffected by historical data while still
                 // showing up correctly in Trial Balance / Balance Sheet.
-                JournalService::safePostBulkImportOpeningBalance($student, $n, $result['label'], $due, $sessionId);
+                JournalService::safePostBulkImportOpeningBalance($student, $n, $result['label'], $due, $sessionId, $dueDate);
 
                 // Charged into the student's CURRENT session (not the semester's own
                 // historical one) so it is actually collectible today — the Fee
                 // Collection page only ever looks at the student's current
                 // academic_session_id, never a past one.
-                WalletService::chargeBulkImportPreviousDue($student, $n, $due);
+                WalletService::chargeBulkImportPreviousDue($student, $n, $due, null, $dueDate);
                 $totalDueRecorded += $due;
             }
 

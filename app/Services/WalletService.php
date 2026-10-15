@@ -397,16 +397,19 @@ class WalletService
      *
      * @param  ?int  $sessionId  Override target session — not used by the caller above,
      *   kept for flexibility; defaults to the student's own current session.
+     * @param  ?string  $date  The due's own date (reviewer-entered on the review page) —
+     *   defaults to today when not given.
      */
-    public static function chargeBulkImportPreviousDue(Student $student, int $semesterNumber, float $amount, ?int $sessionId = null): void
+    public static function chargeBulkImportPreviousDue(Student $student, int $semesterNumber, float $amount, ?int $sessionId = null, ?string $date = null): void
     {
         if ($amount <= 0) {
             return;
         }
 
         $sessionId = $sessionId ?? (int) $student->academic_session_id;
+        $date = $date ?: now()->toDateString();
 
-        DB::transaction(function () use ($student, $sessionId, $semesterNumber, $amount) {
+        DB::transaction(function () use ($student, $sessionId, $semesterNumber, $amount, $date) {
             $wallet = StudentWallet::firstOrCreate(
                 ['student_id' => $student->id, 'academic_session_id' => $sessionId],
                 ['institute_id' => $student->institute_id, 'main_b' => 0.00]
@@ -424,7 +427,7 @@ class WalletService
                 'credit'              => 0.00,
                 'debit'               => $amount,
                 'type'                => StudentTransaction::DEBIT,
-                'date'                => now()->toDateString(),
+                'date'                => $date,
                 'op_bal'              => $opBal,
                 'cl_bal'              => $clBal,
                 'by_user_id'          => self::resolveActorId(),

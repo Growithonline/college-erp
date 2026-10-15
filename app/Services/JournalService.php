@@ -197,19 +197,23 @@ class JournalService
      * @param  int  $academicSessionId  The ACTUAL historical session this semester
      *   belonged to (reviewer-confirmed on the review page), not the student's current
      *   session — this is what lets that session's own Trial Balance reflect it.
+     * @param  ?string  $date  The due's own date (reviewer-entered on the review page) —
+     *   defaults to today when not given. Dates the journal entry itself; created_at
+     *   (the actual posting time) is unaffected.
      */
     public static function safePostBulkImportOpeningBalance(
         Student $student,
         int $semesterNumber,
         string $periodLabel,
         float $dueAmount,
-        int $academicSessionId
+        int $academicSessionId,
+        ?string $date = null
     ): ?JournalEntry {
         if ($dueAmount <= 0) {
             return null;
         }
 
-        return self::safely(function () use ($student, $semesterNumber, $periodLabel, $dueAmount, $academicSessionId) {
+        return self::safely(function () use ($student, $semesterNumber, $periodLabel, $dueAmount, $academicSessionId, $date) {
             $instituteId = (int) $student->institute_id;
             $receivable = self::accountOrFail(self::settings($instituteId)?->fees_receivable_account_id);
             $openingBalance = self::accountByCodeOrFail($instituteId, '5000');
@@ -219,7 +223,7 @@ class JournalService
             return self::post([
                 'institute_id' => $instituteId,
                 'academic_session_id' => $academicSessionId,
-                'date' => now()->toDateString(),
+                'date' => $date ?: now()->toDateString(),
                 'entry_key' => sprintf(self::ENTRY_KEY_BULK_IMPORT_OPENING, (int) $student->id, $semesterNumber),
                 'reference_type' => 'student_bulk_import_opening_balance',
                 'reference_id' => (int) $student->id,

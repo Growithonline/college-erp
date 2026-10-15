@@ -83,7 +83,8 @@
                 Enter only the <strong>Previous Due Amount</strong> — whatever the student still genuinely owes for that
                 semester. Whatever was already paid before joining this system is never reconstructed as a receipt here;
                 only the outstanding amount is carried forward as a due, collectible today exactly like any other fee due.
-                Leave it at 0 if the semester was fully paid.
+                Leave it at 0 if the semester was fully paid. <strong>Date</strong> is when that due is dated from
+                (defaults to today if left blank).
                 <br class="d-none d-md-block">
                 Whenever a semester has any due at all, pick the <strong>Session</strong> it actually belongs to
                 (e.g. Semester 1-2 of a student now in Semester 4 usually belongs to an EARLIER session than their
@@ -110,6 +111,7 @@
                             <th class="text-end">Suggested Total (reference)</th>
                             <th class="text-end" style="width:140px;">Total Fee (reference)</th>
                             <th class="text-end" style="width:150px;">Previous Due Amount</th>
+                            <th style="width:150px;">Date</th>
                             <th style="width:190px;">Session</th>
                         </tr>
                     </thead>
@@ -131,6 +133,13 @@
                                        class="form-control form-control-sm text-end period-due-amount"
                                        data-period="{{ $n }}"
                                        value="{{ old("periods.$n.due_amount", 0) }}">
+                            </td>
+                            <td>
+                                <input type="date" max="{{ now()->toDateString() }}"
+                                       name="periods[{{ $n }}][due_date]"
+                                       class="form-control form-control-sm"
+                                       value="{{ old("periods.$n.due_date") }}"
+                                       title="Leave blank to use today's date">
                             </td>
                             <td>
                                 @if($sessions->isEmpty())
@@ -165,7 +174,7 @@
                         <tr class="table-light">
                             <td class="ps-3 fw-bold" colspan="3">Total Due (all semesters)</td>
                             <td class="text-end fw-bold text-danger" id="totalDueDisplay">₹0.00</td>
-                            <td></td>
+                            <td colspan="2"></td>
                         </tr>
                     </tfoot>
                 </table>
