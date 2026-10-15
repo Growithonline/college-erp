@@ -351,8 +351,8 @@
 
 @if(!$student)
 {{-- No student â€” show search only --}}
-<div class="row justify-content-center">
-    <div class="col-md-6">
+<div class="row">
+    <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-header py-3 d-flex align-items-center justify-content-between gap-2" style="background:#1e293b;color:white;">
                 <h6 class="mb-0 fw-semibold"><i class="bi bi-search me-2"></i>Student Search</h6>
@@ -372,7 +372,7 @@
             <div class="card-body p-3">
                 <input type="text" id="studentSearch" class="form-control mb-3"
                        placeholder="Name, Mobile or Student ID...">
-                <div id="searchResults" class="list-group" style="max-height:400px;overflow-y:auto;"></div>
+                <div id="searchResults" data-table="1" style="max-height:60vh;overflow:auto;"></div>
             </div>
         </div>
     </div>
@@ -2168,6 +2168,40 @@ function runStudentSearch() {
                     return;
                 }
                 const sidParam = sessionId ? `&session_id=${sessionId}` : '';
+                if (box.dataset.table) {
+                    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                    const dash = v => v ? esc(v) : '—';
+                    box.innerHTML = `
+                    <table class="table table-hover table-sm align-middle mb-0" style="font-size:13px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Father Name</th>
+                                <th>Mother Name</th>
+                                <th>Mobile</th>
+                                <th>Course</th>
+                                <th>Stream</th>
+                                <th class="text-end" style="width:90px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>${data.map((s, i) => `
+                            <tr style="cursor:pointer;" onclick="window.location='${@json($feeCreateUrl)}?student_id=${encodeURIComponent(s.id)}${sidParam}'">
+                                <td class="text-muted">${i + 1}</td>
+                                <td><span class="badge bg-primary-subtle text-primary-emphasis fw-semibold">${dash(s.student_uid)}</span></td>
+                                <td class="fw-semibold">${dash(s.name)}</td>
+                                <td>${dash(s.father_name)}</td>
+                                <td>${dash(s.mother_name)}</td>
+                                <td>${dash(s.mobile)}</td>
+                                <td>${dash(s.course)}</td>
+                                <td>${dash(s.stream)}</td>
+                                <td class="text-end"><a href="${@json($feeCreateUrl)}?student_id=${encodeURIComponent(s.id)}${sidParam}" class="btn btn-sm btn-success py-0 px-2" onclick="event.stopPropagation()">Collect</a></td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>`;
+                    return;
+                }
                 box.innerHTML = data.map(s => `
                     <a href="${@json($feeCreateUrl)}?student_id=${s.id}${sidParam}"
                        class="list-group-item list-group-item-action py-2">
