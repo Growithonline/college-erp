@@ -178,10 +178,14 @@ class JournalService
     }
 
     /**
-     * Recognizes ONE past semester's full fee (paid + due combined) as a receivable —
-     * used only by Bulk Student Import's fee-history review (see
+     * Recognizes ONE past semester's still-OWED due (not the full historical fee — only
+     * what the reviewer entered as outstanding) as a receivable — used only by Bulk
+     * Student Import's fee-history review (see
      * BulkImportApprovalController::finalizeApproval()) for a semester the student had
-     * already completed BEFORE joining this system.
+     * already completed BEFORE joining this system. Whatever was already paid before
+     * joining this system is never reconstructed or booked here at all (see
+     * WalletService::chargeBulkImportPreviousDue()) — only the amount that is actually
+     * still collectible today is recognized.
      *
      * Unlike safePostAdmissionFeeAssigned() (Debit Receivable / Credit a current Fee
      * Income account), this credits the "Opening Balance — Migrated Fees" EQUITY
@@ -189,12 +193,6 @@ class JournalService
      * Profit & Loss, which only sums 'income'/'expense' type accounts (an 'equity'
      * account is excluded automatically, see FinanceReportController::profitAndLoss()).
      * It still correctly shows up in Trial Balance / Balance Sheet reports.
-     *
-     * Posted once per period regardless of how much was actually paid — this is what
-     * lets whatever's still due show up as a genuine open balance on the Fees
-     * Receivable account, and lets the paid portion's own "Debit Cash / Credit
-     * Receivable" collection entry (see WalletService::onFeeCollection()) post
-     * correctly against a receivable that was actually recognized here first.
      *
      * @param  int  $academicSessionId  The ACTUAL historical session this semester
      *   belonged to (reviewer-confirmed on the review page), not the student's current
@@ -204,19 +202,19 @@ class JournalService
         Student $student,
         int $semesterNumber,
         string $periodLabel,
-        float $totalFee,
+        float $dueAmount,
         int $academicSessionId
     ): ?JournalEntry {
-        if ($totalFee <= 0) {
+        if ($dueAmount <= 0) {
             return null;
         }
 
-        return self::safely(function () use ($student, $semesterNumber, $periodLabel, $totalFee, $academicSessionId) {
+        return self::safely(function () use ($student, $semesterNumber, $periodLabel, $dueAmount, $academicSessionId) {
             $instituteId = (int) $student->institute_id;
             $receivable = self::accountOrFail(self::settings($instituteId)?->fees_receivable_account_id);
             $openingBalance = self::accountByCodeOrFail($instituteId, '5000');
 
-            $amount = round($totalFee, 2);
+            $amount = round($dueAmount, 2);
 
             return self::post([
                 'institute_id' => $instituteId,

@@ -76,20 +76,19 @@
             <i class="bi bi-info-circle-fill fs-5 mt-1 flex-shrink-0"></i>
             <div>
                 <strong>Suggested Total</strong> is a reference only, calculated from your institute's CURRENT fee rules —
-                the actual fee structure at the time may have been different. Adjust <strong>Total Fee</strong> if you know
-                the real amount, then adjust <strong>Amount Paid</strong> if the student did not pay it in full. Every field
-                starts as "fully paid" (no due) by default — you only need to change the ones that actually had a due.
-                Suggested totals also do not include subject-specific fees for past semesters, since this file does not
-                capture which subjects the student took back then.
+                the actual fee structure at the time may have been different, and this does not include subject-specific
+                fees for past semesters (this file does not capture which subjects the student took back then). You may
+                adjust <strong>Total Fee</strong> for your own reference, but it is not used in any calculation below.
                 <br class="d-none d-md-block">
-                Any <strong>Amount Paid</strong> greater than zero generates a real, printable receipt (dated by
-                <strong>Paid Date</strong>, defaulting to today if left blank). Any shortfall is recorded as an
-                outstanding due on the student's wallet.
+                Enter only the <strong>Previous Due Amount</strong> — whatever the student still genuinely owes for that
+                semester. Whatever was already paid before joining this system is never reconstructed as a receipt here;
+                only the outstanding amount is carried forward as a due, collectible today exactly like any other fee due.
+                Leave it at 0 if the semester was fully paid.
                 <br class="d-none d-md-block">
-                Whenever a semester has any Total Fee at all, pick the <strong>Session</strong> it actually belongs to
+                Whenever a semester has any due at all, pick the <strong>Session</strong> it actually belongs to
                 (e.g. Semester 1-2 of a student now in Semester 4 usually belongs to an EARLIER session than their
                 current one) — the system has guessed one where it could, always double-check it. This is what that
-                session's own books/wallet reflect this amount against, instead of the student's current session.
+                session's own books reflect this amount against, instead of the student's current session.
             </div>
         </div>
 
@@ -109,11 +108,9 @@
                         <tr>
                             <th class="ps-3">Period</th>
                             <th class="text-end">Suggested Total (reference)</th>
-                            <th class="text-end" style="width:140px;">Total Fee</th>
-                            <th class="text-end" style="width:140px;">Amount Paid</th>
-                            <th style="width:150px;">Paid Date</th>
+                            <th class="text-end" style="width:140px;">Total Fee (reference)</th>
+                            <th class="text-end" style="width:150px;">Previous Due Amount</th>
                             <th style="width:190px;">Session</th>
-                            <th class="text-end pe-3" style="width:120px;">Due</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -125,23 +122,15 @@
                             <td class="text-end">
                                 <input type="number" step="0.01" min="0"
                                        name="periods[{{ $n }}][total_fee]"
-                                       class="form-control form-control-sm text-end period-total-fee"
-                                       data-period="{{ $n }}"
+                                       class="form-control form-control-sm text-end"
                                        value="{{ old("periods.$n.total_fee", $period['suggested_total']) }}">
                             </td>
                             <td class="text-end">
                                 <input type="number" step="0.01" min="0"
-                                       name="periods[{{ $n }}][paid_amount]"
-                                       class="form-control form-control-sm text-end period-paid-amount"
+                                       name="periods[{{ $n }}][due_amount]"
+                                       class="form-control form-control-sm text-end period-due-amount"
                                        data-period="{{ $n }}"
-                                       value="{{ old("periods.$n.paid_amount", $period['suggested_total']) }}">
-                            </td>
-                            <td>
-                                <input type="date" max="{{ now()->toDateString() }}"
-                                       name="periods[{{ $n }}][paid_date]"
-                                       class="form-control form-control-sm"
-                                       value="{{ old("periods.$n.paid_date") }}"
-                                       title="Leave blank to use today's date">
+                                       value="{{ old("periods.$n.due_amount", 0) }}">
                             </td>
                             <td>
                                 @if($sessions->isEmpty())
@@ -169,16 +158,14 @@
                                     @endif
                                 @endif
                             </td>
-                            <td class="text-end pe-3 fw-semibold">
-                                <span class="period-due" data-period="{{ $n }}">₹0.00</span>
-                            </td>
                         </tr>
                         @endforeach
                     </tbody>
                     <tfoot>
                         <tr class="table-light">
-                            <td class="ps-3 fw-bold" colspan="6">Total Due (all semesters)</td>
-                            <td class="text-end pe-3 fw-bold text-danger" id="totalDueDisplay">₹0.00</td>
+                            <td class="ps-3 fw-bold" colspan="3">Total Due (all semesters)</td>
+                            <td class="text-end fw-bold text-danger" id="totalDueDisplay">₹0.00</td>
+                            <td></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -242,67 +229,27 @@ function fmt(n) {
     return '₹' + (isNaN(n) ? 0 : n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function recalcRow(period) {
-    const totalEl = document.querySelector(`.period-total-fee[data-period="${period}"]`);
-    const paidEl  = document.querySelector(`.period-paid-amount[data-period="${period}"]`);
-    const dueEl   = document.querySelector(`.period-due[data-period="${period}"]`);
-    if (!totalEl || !paidEl || !dueEl) return;
-
-    const total = parseFloat(totalEl.value) || 0;
-    let paid = parseFloat(paidEl.value) || 0;
-
-    // Amount Paid can never exceed Total Fee — cap it client-side for a clear,
-    // immediate signal; the server re-checks this itself before saving anything.
-    if (paid > total) {
-        paid = total;
-        paidEl.value = total;
-    }
-
-    const due = Math.max(0, total - paid);
-    dueEl.textContent = fmt(due);
-    dueEl.classList.toggle('text-danger', due > 0);
-    dueEl.classList.toggle('text-success', due <= 0);
-
-    recalcTotal();
-}
-
 function recalcTotal() {
     let sum = 0;
-    document.querySelectorAll('.period-due').forEach((el) => {
-        sum += parseFloat(el.textContent.replace(/[₹,]/g, '')) || 0;
+    document.querySelectorAll('.period-due-amount').forEach((el) => {
+        sum += parseFloat(el.value) || 0;
     });
     const totalEl = document.getElementById('totalDueDisplay');
     if (totalEl) totalEl.textContent = fmt(sum);
 }
 
-document.querySelectorAll('.period-total-fee').forEach((input) => {
-    input.addEventListener('input', function () {
-        // Editing Total Fee resets Amount Paid to match it — i.e. "assume still
-        // fully paid" — since that is the default state for every row. If the
-        // student truly had a due, the reviewer types it into Amount Paid next.
-        const period = this.dataset.period;
-        const paidEl = document.querySelector(`.period-paid-amount[data-period="${period}"]`);
-        if (paidEl) paidEl.value = this.value;
-        recalcRow(period);
-    });
-});
-
-document.querySelectorAll('.period-paid-amount').forEach((input) => {
-    input.addEventListener('input', function () {
-        recalcRow(this.dataset.period);
-    });
+document.querySelectorAll('.period-due-amount').forEach((input) => {
+    input.addEventListener('input', recalcTotal);
 });
 
 document.getElementById('markAllNoDueBtn')?.addEventListener('click', function () {
-    document.querySelectorAll('.period-total-fee').forEach((totalEl) => {
-        const period = totalEl.dataset.period;
-        const paidEl = document.querySelector(`.period-paid-amount[data-period="${period}"]`);
-        if (paidEl) paidEl.value = totalEl.value;
-        recalcRow(period);
+    document.querySelectorAll('.period-due-amount').forEach((input) => {
+        input.value = 0;
     });
+    recalcTotal();
 });
 
-document.querySelectorAll('.period-total-fee').forEach((el) => recalcRow(el.dataset.period));
+recalcTotal();
 
 document.getElementById('approveForm')?.addEventListener('submit', function () {
     const btn = document.getElementById('approveBtn');
