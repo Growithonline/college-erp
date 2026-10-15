@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\FeeInvoice;
+use App\Models\FeeInvoiceItem;
 use App\Models\Student;
 use App\Models\StudentTransaction;
 use App\Services\WalletService;
@@ -22,7 +23,7 @@ use Illuminate\Console\Command;
 // "due appears reduced by an unrelated payment" symptom being investigated.
 class AuditBulkImportDues extends Command
 {
-    protected $signature = 'bulk-import:audit-dues {--institute=} {--student=}';
+    protected $signature = 'bulk-import:audit-dues {--institute=} {--student=} {--detail}';
 
     protected $description = 'Read-only report comparing each bulk-imported student\'s recorded historical due against what the Wallet currently shows as outstanding';
 
@@ -63,13 +64,15 @@ class AuditBulkImportDues extends Command
             $carriedForwardSum = round((float) $previousDueDebits->sum('amount'), 2);
             $offSessionDebits = $previousDueDebits->where('academic_session_id', '!=', $currentSessionId);
 
+            // Only the BULK-IMPORT-tagged "Previous Due (...)" rows — a normal semester/session
+            // promotion ALSO writes a "Previous Due (...)" label (without the Excel Import
+            // suffix), and that is a completely unrelated due that must not be counted here.
             $liveRows = WalletService::buildPendingRows($student, $currentSessionId);
-            $liveBulkImportDuePending = round(
-                (float) $liveRows
-                    ->filter(fn($r) => str_starts_with((string) ($r['name'] ?? ''), 'Previous Due ('))
-                    ->sum('pending'),
-                2
-            );
+            $liveBulkImportRows = $liveRows->filter(function ($r) {
+                $name = (string) ($r['name'] ?? '');
+                return str_starts_with($name, 'Previous Due (') && str_contains($name, 'Fee details updated via Excel Import');
+            });
+            $liveBulkImportDuePending = round((float) $liveBulkImportRows->sum('pending'), 2);
 
             $recordedVsCarried = round($recordedDueSum - $carriedForwardSum, 2);
             $carriedVsLive = round($carriedForwardSum - $liveBulkImportDuePending, 2);
@@ -88,6 +91,41 @@ class AuditBulkImportDues extends Command
             $isMismatch = !empty($flags);
             if ($isMismatch) {
                 $mismatches++;
+
+                if ($this->option('detail')) {
+                    $this->line("\n--- Detail for #{$student->id} {$student->student_uid} {$student->name} ---");
+                    $this->line('Current session id: ' . $currentSessionId);
+
+                    $this->line('StudentTransaction rows matching \'Previous Due (%Excel Import%\' (any session):');
+                    $allDebits = StudentTransaction::where('student_id', $student->id)
+                        ->where('type', StudentTransaction::DEBIT)
+                        ->where('des', 'like', 'Previous Due (%')
+                        ->where('des', 'like', '%Fee details updated via Excel Import%')
+                        ->orderBy('created_at')
+                        ->get(['id', 'academic_session_id', 'des', 'debit', 'created_at']);
+                    foreach ($allDebits as $t) {
+                        $this->line("  txn#{$t->id} session={$t->academic_session_id} debit={$t->debit} des=\"{$t->des}\" at={$t->created_at}");
+                    }
+
+                    $this->line('FeeInvoiceItem rows whose fee_name matches one of those labels (i.e. already collected against it):');
+                    $labels = $allDebits->pluck('des')->unique()->values();
+                    $matchingItems = FeeInvoiceItem::whereIn('fee_name', $labels)
+                        ->whereHas('invoice', fn($q) => $q->where('student_id', $student->id))
+                        ->with('invoice:id,invoice_no,academic_session_id,payment_date,is_cancelled')
+                        ->get(['id', 'fee_invoice_id', 'fee_name', 'amount', 'discount', 'fine']);
+                    if ($matchingItems->isEmpty()) {
+                        $this->line('  (none)');
+                    }
+                    foreach ($matchingItems as $item) {
+                        $inv = $item->invoice;
+                        $this->line("  item#{$item->id} invoice={$inv?->invoice_no} (session={$inv?->academic_session_id}, cancelled=" . ($inv?->is_cancelled ? 'yes' : 'no') . ") fee_name=\"{$item->fee_name}\" amount={$item->amount} discount={$item->discount} fine={$item->fine}");
+                    }
+
+                    $this->line('Live buildPendingRows() rows matching the bulk-import label (what is netted today):');
+                    foreach ($liveBulkImportRows as $r) {
+                        $this->line('  ' . json_encode($r));
+                    }
+                }
             }
 
             $rows[] = [
