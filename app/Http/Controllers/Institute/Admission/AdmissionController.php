@@ -1921,6 +1921,7 @@ class AdmissionController extends Controller
         $this->appendFieldRule($rules, $formConfig, 'exam_form_no', ['string', 'max:50']);
         $this->appendFieldRule($rules, $formConfig, 'uin_no', ['string', 'max:50']);
         $this->appendFieldRule($rules, $formConfig, 'reference_no', ['string', 'max:50']);
+        $this->appendFieldRule($rules, $formConfig, 'reference_by', ['string', 'max:100']);
         $this->appendFieldRule($rules, $formConfig, 'admission_type', [Rule::in(['new', 'lateral', 'transfer', 're_admission'])]);
         $this->appendFieldRule($rules, $formConfig, 'admission_source', [Rule::in(['direct', 'center', 'channel_partner'])]);
         $this->appendFieldRule($rules, $formConfig, 'gap_year', ['boolean']);
@@ -2525,6 +2526,7 @@ class AdmissionController extends Controller
                 'exam_form_no'        => $formData['exam_form_no']        ?? null,
                 'uin_no'              => $formData['uin_no']              ?? null,
                 'reference_no'        => $formData['reference_no']        ?? null,
+                'reference_by'        => $formData['reference_by']        ?? null,
                 'admission_type'      => $formData['admission_type']      ?? 'new',
                 'admission_source'    => $formData['admission_source']    ?? 'direct',
                 'admission_source_id' => $formData['admission_source_id'] ?? null,
@@ -3649,6 +3651,7 @@ class AdmissionController extends Controller
             'institute_form_no' => 'nullable|string|max:50',
             'uin_no' => 'nullable|string|max:50',
             'reference_no' => 'nullable|string|max:50',
+            'reference_by' => 'nullable|string|max:100',
             'gap_year' => 'nullable|boolean',
             'perm_village' => 'nullable|string|max:100',
             'perm_thana' => 'nullable|string|max:100',
@@ -3780,6 +3783,7 @@ class AdmissionController extends Controller
                 'institute_form_no'   => $request->input('institute_form_no', $student->institute_form_no),
                 'uin_no'              => $request->input('uin_no', $student->uin_no),
                 'reference_no'        => $request->input('reference_no', $student->reference_no),
+                'reference_by'        => $request->input('reference_by', $student->reference_by),
                 'gap_year'            => (bool) ($validated['gap_year'] ?? $student->gap_year),
                 'perm_village'        => $request->input('perm_village', $student->perm_village),
                 'perm_thana'          => $request->input('perm_thana', $student->perm_thana),
@@ -4429,6 +4433,7 @@ class AdmissionController extends Controller
                 'exam_form_no'        => $request->exam_form_no ?? null,
                 'uin_no'              => $request->uin_no ?? null,
                 'reference_no'        => $request->reference_no ?? null,
+                'reference_by'        => $request->reference_by ?? null,
                 'gap_year'            => (bool) ($request->gap_year ?? false),
                 'admission_type'      => $request->admission_type ?? 'new',
                 'admission_source'    => $request->admission_source ?? 'direct',
@@ -4720,6 +4725,7 @@ class AdmissionController extends Controller
                 'exam_form_no'        => $this->normalizeUppercaseString($formData['exam_form_no'] ?? null),
                 'uin_no'              => $this->normalizeUppercaseString($formData['uin_no'] ?? null),
                 'reference_no'        => $this->normalizeUppercaseString($formData['reference_no'] ?? null),
+                'reference_by'        => $this->normalizeUppercaseString($formData['reference_by'] ?? null),
                 'category'            => $formData['category']          ?? null,
                 'special_category'    => $this->normalizeSpecialCategoryValue($formData['special_category'] ?? null),
                 'nationality'         => $this->normalizeUppercaseString($this->normalizeNationalityValue($formData['nationality'] ?? null)),

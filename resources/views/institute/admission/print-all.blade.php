@@ -476,6 +476,8 @@ html, body { height:100%; font-family:Arial,sans-serif; background:#f1f5f9; font
                 $topIds[] = ['UIN No.', $student->uin_no ?? ''];
             if (($formConfig['reference_no']['enabled'] ?? false) && ($formConfig['reference_no']['section_enabled'] ?? true))
                 $topIds[] = ['Reference No.', $student->reference_no ?? ''];
+            if (($formConfig['reference_by']['enabled'] ?? false) && ($formConfig['reference_by']['section_enabled'] ?? true))
+                $topIds[] = ['Reference By', $student->reference_by ?? ''];
             $topIdRows = array_chunk($topIds, 3);
         @endphp
         @foreach($topIdRows as $row)

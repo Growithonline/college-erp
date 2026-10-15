@@ -219,7 +219,8 @@
 </div>
 --}}
 
-<form method="POST" action="{{ isset($storeRoute) ? $storeRoute : route('admissions.quick-store') }}" enctype="multipart/form-data" id="quickForm">
+<form method="POST" action="{{ isset($storeRoute) ? $storeRoute : route('admissions.quick-store') }}" enctype="multipart/form-data" id="quickForm" class="adm-form">
+@include('partials.admission-form-layout')
 @csrf
 
 {{-- ══ Session Selection ═══════════════════════════════════════════════ --}}
@@ -372,7 +373,7 @@
 {{-- STEP 3: OFFICE DETAILS (admission source, type etc)              --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
 @php
-    $officeFields = ['form_no', 'institute_form_no', 'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no', 'reference_no',
+    $officeFields = ['form_no', 'institute_form_no', 'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no', 'reference_no', 'reference_by',
                      'admission_type', 'admission_source', 'gap_year', 'admission_date', 'submitted_date', 'academic_session'];
     $officeSectionEnabled = collect($officeFields)->contains(fn($k) => $formConfig[$k]['section_enabled'] ?? false);
     $showOffice = $officeSectionEnabled && collect($officeFields)->contains(fn($k) => $fieldEnabled($k));
@@ -399,7 +400,7 @@
             </div>
             @endif
 
-            @foreach(['sr_no' => 'SR No.', 'enrollment_no' => 'Enrollment No.', 'roll_no' => 'Roll No.', 'exam_form_no' => 'Exam Form No.', 'uin_no' => 'UIN No.', 'reference_no' => 'Reference No.'] as $key => $label)
+            @foreach(['sr_no' => 'SR No.', 'enrollment_no' => 'Enrollment No.', 'roll_no' => 'Roll No.', 'exam_form_no' => 'Exam Form No.', 'uin_no' => 'UIN No.', 'reference_no' => 'Reference No.', 'reference_by' => 'Reference By'] as $key => $label)
                 @if($fieldEnabled($key))
                 <div class="col-md-{{ $isCompact ? 2 : 3 }}">
                     <label class="form-label small fw-semibold mb-1">{{ $label }} @if($fieldRequired($key))<span class="text-danger">*</span>@endif</label>

@@ -94,6 +94,7 @@
         'exam_form_no'     => ['label' => 'Exam Form No.',    'default' => false],
         'uin_no'           => ['label' => 'UIN No.',          'default' => false],
         'reference_no'     => ['label' => 'Reference No.',    'default' => false],
+        'reference_by'     => ['label' => 'Reference By',     'default' => false],
         'admission_type'   => ['label' => 'Admission Type',   'default' => true],
         'admission_source' => ['label' => 'Admission Source', 'default' => true],
         'gap_year'         => ['label' => 'Gap Year',         'default' => true],

@@ -101,6 +101,7 @@
                     <div class="col-md-4"><span class="text-muted">Exam Form No:</span> <span class="fw-semibold">{{ $student->exam_form_no ?? '-' }}</span></div>
                     <div class="col-md-4"><span class="text-muted">UIN No:</span> <span class="fw-semibold">{{ $student->uin_no ?? '-' }}</span></div>
                     <div class="col-md-4"><span class="text-muted">Reference No:</span> <span class="fw-semibold">{{ $student->reference_no ?? '-' }}</span></div>
+                    <div class="col-md-4"><span class="text-muted">Reference By:</span> <span class="fw-semibold">{{ $student->reference_by ?? '-' }}</span></div>
                     <div class="col-md-4"><span class="text-muted">Admitted By:</span>
                         <span class="fw-semibold">
                             @php $admittedByType = $student->admitted_by_type ?? 'admin'; @endphp

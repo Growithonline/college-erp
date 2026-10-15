@@ -302,6 +302,7 @@
                     'Exam Form No.'    => $student->exam_form_no ?? '—',
                     'UIN No.'          => $student->uin_no ?? '—',
                     'Reference No.'    => $student->reference_no ?? '—',
+                    'Reference By'     => $student->reference_by ?? '—',
                     'Submitted Date'   => $student->submitted_date?->format('d-m-Y') ?? '—',
                     'Admission Type'   => ucfirst($student->admission_type ?? 'new'),
                     'Admission Source' => $admissionSourceDisplay,

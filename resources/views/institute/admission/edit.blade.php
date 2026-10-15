@@ -38,7 +38,7 @@
         ? $student->educationDetails->keyBy(fn($row) => strtolower(trim((string) $row->exam_name)))
         : collect();
     $showOffice = collect([
-        'form_no', 'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no', 'reference_no',
+        'form_no', 'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no', 'reference_no', 'reference_by',
         'admission_type', 'admission_source', 'gap_year', 'admission_date', 'submitted_date', 'academic_session',
     ])->contains(fn($key) => $fieldEnabled($key));
     $formNoValue = old('form_no',
@@ -144,6 +144,7 @@
                 'exam_form_no' => 'Exam Form No.',
                 'uin_no' => 'UIN No.',
                 'reference_no' => 'Reference No.',
+                'reference_by' => 'Reference By',
             ] as $key => $label)
                 @if($fieldEnabled($key))
                 <div class="col-md-3">

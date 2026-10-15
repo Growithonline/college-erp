@@ -20,7 +20,7 @@ class StudentAcademicIdentity extends Model
         'roll_no_snapshot', 'admission_source_snapshot',
         'student_uid_snapshot', 'institute_form_no_snapshot',
         'exam_form_no_snapshot', 'uin_no_snapshot',
-        'reference_no_snapshot', 'admission_source_id_snapshot',
+        'reference_no_snapshot', 'reference_by_snapshot', 'admission_source_id_snapshot',
         'submitted_date_snapshot', 'admission_date_snapshot',
         'student_status_snapshot',
         'profile_snapshot',

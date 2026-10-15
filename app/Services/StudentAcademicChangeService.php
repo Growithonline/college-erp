@@ -515,6 +515,7 @@ class StudentAcademicChangeService
             'exam_form_no_snapshot'        => $student->exam_form_no,
             'uin_no_snapshot'              => $student->uin_no,
             'reference_no_snapshot'        => $student->reference_no,
+            'reference_by_snapshot'       => $student->reference_by,
             'admission_source_id_snapshot' => $student->admission_source_id,
             'submitted_date_snapshot'      => $student->submitted_date,
             'admission_date_snapshot'      => $student->admission_date,

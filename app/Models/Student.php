@@ -13,7 +13,7 @@ class Student extends Authenticatable
 
     protected $fillable = [
         'institute_id', 'academic_session_id', 'student_uid', 'institute_form_no',
-        'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no', 'reference_no',
+        'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no', 'reference_no', 'reference_by',
         'admission_type', 'admission_source', 'admission_source_id',
         'gap_year', 'admission_date', 'submitted_date',
         'name', 'mobile', 'email', 'dob', 'gender',

@@ -77,6 +77,7 @@
     $examFormNo   = $isCurrentSession ? ($student->exam_form_no ?? '—') : ($selectedIdentity?->exam_form_no_snapshot ?? '—');
     $uinNo        = $isCurrentSession ? ($student->uin_no ?? '—') : ($selectedIdentity?->uin_no_snapshot ?? '—');
     $referenceNo  = $isCurrentSession ? ($student->reference_no ?? '—') : ($selectedIdentity?->reference_no_snapshot ?? '—');
+    $referenceBy  = $isCurrentSession ? ($student->reference_by ?? '—') : ($selectedIdentity?->reference_by_snapshot ?? '—');
     $submittedDate = $isCurrentSession
         ? ($student->submitted_date?->format('d-m-Y') ?? '—')
         : ($selectedIdentity?->submitted_date_snapshot?->format('d-m-Y') ?? '—');
@@ -439,6 +440,7 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
         'Exam Form No.'    => $examFormNo,
         'UIN No.'          => $uinNo,
         'Reference No.'    => $referenceNo,
+        'Reference By'     => $referenceBy,
         'Submitted Date'   => $submittedDate,
         'Admission Type'   => ucfirst($selectedIdentity?->admission_type ?? $student->admission_type ?? 'new'),
         'Admission Source' => $admSrcDisplay,

@@ -187,6 +187,12 @@ body { font-family: Arial, sans-serif; font-size: 11px; background:#f5f5f5; }
                     <span class="field-value">{{ $student->reference_no }}</span>
                 </div>
                 @endif
+                @if($formConfig['reference_by']['enabled'] ?? false)
+                <div class="field-item">
+                    <span class="field-label">Reference By</span>
+                    <span class="field-value">{{ $student->reference_by }}</span>
+                </div>
+                @endif
             </div>
             <div class="field-row">
                 @if($formConfig['admission_type']['enabled'] ?? true)
