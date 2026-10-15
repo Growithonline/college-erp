@@ -36,8 +36,16 @@ class AllowPublicAdmissionEmbed
         // session sharing this browser. If our dedicated guest cookie wasn't present,
         // this is this browser's first hit on a public page: start clean rather than
         // continue with borrowed session data.
+        //
+        // flush() + regenerate(false), NOT invalidate(): invalidate() regenerates with
+        // destroy=true, which deletes the borrowed session row from the DB — that row is
+        // the admin's real login session, so merely opening a public page (admission
+        // form / fee balance) in the same browser used to log the admin out everywhere.
+        // regenerate(false) just moves this request to a new id and leaves the old row intact.
         if (!$request->cookies->has($guestCookieName)) {
-            $request->session()->invalidate();
+            $session = $request->session();
+            $session->flush();
+            $session->regenerate(false);
         }
 
         return $next($request);
