@@ -42,9 +42,21 @@ class AllowPublicAdmissionEmbed
         // the admin's real login session, so merely opening a public page (admission
         // form / fee balance) in the same browser used to log the admin out everywhere.
         // regenerate(false) just moves this request to a new id and leaves the old row intact.
-        if (!$request->cookies->has($guestCookieName)) {
-            $session = $request->session();
-            $session->flush();
+        //
+        // The Store was built with the normal cookie name before the config override above,
+        // so StartSession would still READ the admin's id and WRITE the response cookie under
+        // the normal name — overwriting the admin's cookie with this guest session's id (the
+        // real cause of the "Session Expired" logout). Rename the store to the guest cookie,
+        // and load the guest session by its own id.
+        $session = $request->session();
+        $session->setName($guestCookieName);
+        $session->flush();
+
+        $guestId = $request->cookies->get($guestCookieName);
+        if ($session->isValidId($guestId)) {
+            $session->setId($guestId);
+            $session->start();
+        } else {
             $session->regenerate(false);
         }
 
