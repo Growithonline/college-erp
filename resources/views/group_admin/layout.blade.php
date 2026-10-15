@@ -43,6 +43,7 @@
         .ga-main { margin-left: 0; }
     }
 </style>
+    @include('partials.excel-table-style')
 </head>
 <body>
 

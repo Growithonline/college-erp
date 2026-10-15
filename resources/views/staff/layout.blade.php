@@ -64,6 +64,7 @@
         .permission-disabled { opacity: 0.4; pointer-events: none; }
     </style>
     @stack('styles')
+    @include('partials.excel-table-style')
 </head>
 <body>
 

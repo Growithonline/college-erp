@@ -94,6 +94,7 @@
         .bg-purple { background-color: #6f42c1 !important; }
         .text-purple { color: #6f42c1 !important; }
     </style>
+    @include('partials.excel-table-style')
 </head>
 <body>
 

@@ -62,6 +62,7 @@
             body { background:#fff !important; }
         }
     </style>
+    @include('partials.excel-table-style')
 </head>
 <body>
 
