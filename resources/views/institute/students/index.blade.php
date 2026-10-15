@@ -204,13 +204,19 @@
 {{-- Table --}}
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover table-sm align-middle mb-0" style="font-size:12px;">
+        <style>
+            .excel-table, .excel-table th, .excel-table td { border: 1px solid #9ca3af !important; }
+            .excel-table thead th { border-color: #4b6584 !important; }
+            .excel-table { border-collapse: collapse; }
+        </style>
+        <table class="table table-bordered table-hover table-sm align-middle mb-0 excel-table" style="font-size:12px;">
             <thead style="background:#1e3a5f; color:#fff;">
                 <tr>
                     <th class="ps-2" style="width:30px; white-space:nowrap;">#</th>
                     <th style="min-width:60px; white-space:nowrap;">Session</th>
                     <th style="min-width:110px; white-space:nowrap;">Student ID</th>
                     <th style="min-width:145px; white-space:nowrap;">Student Name</th>
+                    <th style="min-width:95px; white-space:nowrap;">Mobile No</th>
                     <th style="min-width:100px; white-space:nowrap;">Father Name</th>
                     <th style="min-width:100px; white-space:nowrap;">Mother Name</th>
                     <th style="min-width:65px; white-space:nowrap;">Roll No</th>
@@ -312,8 +318,9 @@
                     {{-- Student Name --}}
                     <td>
                         <div class="fw-semibold" style="font-size:12px; line-height:1.3;">{{ $student->name }}</div>
-                        <div class="text-muted" style="font-size:10.5px;">{{ $student->mobile }}</div>
                     </td>
+
+                    <td class="fw-semibold" style="white-space:nowrap;">{{ $student->mobile ?: '—' }}</td>
 
                     <td class="fw-semibold" style="white-space:nowrap;">{{ $student->father_name ?: '—' }}</td>
                     <td class="fw-semibold" style="white-space:nowrap;">{{ $student->mother_name ?: '—' }}</td>
@@ -396,7 +403,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="17" class="text-center text-muted py-5">
+                    <td colspan="18" class="text-center text-muted py-5">
                         <i class="bi bi-people fs-2 d-block mb-2"></i>
                         No students found matching your filters.
                     </td>

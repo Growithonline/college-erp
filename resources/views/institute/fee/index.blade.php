@@ -221,12 +221,12 @@
                             <i class="bi bi-layout-three-columns"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end p-2" style="min-width:200px;" onclick="event.stopPropagation()">
-                            @foreach(['col_invoice'=>'Invoice No & Time','col_student'=>'Student','col_uid'=>'Student ID / UIN','col_father'=>'Father / Mother','col_course'=>'Course / Year','col_session'=>'Session','col_utr'=>'UTR / Ref No.','col_discount'=>'Discount','col_remarks'=>'Remarks','col_by'=>'Collected By','col_centre'=>'Centre','col_mode'=>'Payment Mode','col_amount'=>'Amount','col_fine'=>'Fine','col_due'=>'Due'] as $col=>$label)
+                            @foreach(['col_invoice'=>'Invoice No & Time','col_student'=>'Student','col_uid'=>'Student ID / UIN','col_father'=>'Father Name','col_mother'=>'Mother Name','col_course'=>'Course / Year','col_session'=>'Session','col_utr'=>'UTR / Ref No.','col_discount'=>'Discount','col_remarks'=>'Remarks','col_by'=>'Collected By','col_centre'=>'Centre','col_mode'=>'Payment Mode','col_amount'=>'Amount','col_fine'=>'Fine','col_due'=>'Due'] as $col=>$label)
                             <li>
                                 <label class="dropdown-item d-flex align-items-center gap-2 small py-1" style="cursor:pointer;">
                                     <input type="checkbox" class="col-toggle" data-col="{{ $col }}"
                                            onchange="toggleCol('{{ $col }}', this.checked)"
-                                           {{ in_array($col, ['col_invoice','col_student','col_uid','col_father','col_course','col_mode','col_amount','col_fine','col_due']) ? 'checked' : '' }}>
+                                           {{ in_array($col, ['col_invoice','col_student','col_uid','col_father','col_mother','col_course','col_mode','col_amount','col_fine','col_due']) ? 'checked' : '' }}>
                                     {{ $label }}
                                 </label>
                             </li>
@@ -249,7 +249,8 @@
                         <th class="ps-3 col_invoice">Invoice No <span class="text-muted fw-normal">(Time)</span></th>
                         <th class="col_student">Student</th>
                         <th class="col_uid">Student ID</th>
-                        <th class="col_father">Father / Mother</th>
+                        <th class="col_father">Father Name</th>
+                        <th class="col_mother">Mother Name</th>
                         <th class="col_course">Course / Year</th>
                         <th class="col_session" style="display:none;">Session</th>
                         <th class="col_utr" style="display:none;">UTR / Ref</th>
@@ -313,9 +314,8 @@
                             <div class="text-muted" style="font-size:10px;">Roll: {{ $student->roll_no }}</div>
                             @endif
                         </td>
-                        <td class="col_father">
-                            <div class="small">{{ $student->father_name ?? '—' }}</div>
-                            <div class="text-muted" style="font-size:11px;">{{ $student->mother_name ?? '' }}</div>
+                        <td class="col_father small">{{ $student->father_name ?? '—' }}</td>
+                        <td class="col_mother small">{{ $student->mother_name ?? '—' }}</td>
                         </td>
                         <td class="col_course">
                             <div class="small fw-semibold">{{ $student->stream->course->name ?? '—' }}</div>
@@ -378,7 +378,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="16" class="text-center py-5 text-muted">
+                        <td colspan="17" class="text-center py-5 text-muted">
                             <i class="bi bi-receipt fs-2 d-block mb-2"></i>No fee collections found
                         </td>
                     </tr>
