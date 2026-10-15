@@ -47,11 +47,28 @@
         }
     }
 
+    /* Quick form payment section: 4 summary cards in one row, payment fields 3 per row */
+    form.adm-form #quickPaymentSection .quick-summary-row > * { grid-column: span 6; }
+    form.adm-form #quickPaymentSection .quick-summary-row .rounded-4 { padding: 12px 16px !important; }
+    form.adm-form #quickPaymentSection .quick-pay-row > .col-md-4,
+    form.adm-form #quickPaymentSection .quick-pay-row > .col-md-6 { grid-column: span 6; }
+    form.adm-form #quickPaymentSection .quick-pay-row > .col-12 { grid-column: span 12; }
+    form.adm-form #quickPaymentSection .table td,
+    form.adm-form #quickPaymentSection .table th { padding: 6px 10px; }
+    form.adm-form #quickPaymentSection .table td .form-control { text-align: right; min-width: 90px; }
+    @media (min-width: 1200px) {
+        form.adm-form #quickPaymentSection .quick-summary-row > * { grid-column: span 3; }
+    }
+    @media (min-width: 1400px) {
+        form.adm-form #quickPaymentSection .quick-pay-row > .col-md-4,
+        form.adm-form #quickPaymentSection .quick-pay-row > .col-md-6 { grid-column: span 4; }
+    }
+
     /* Label on the left, control (plus hint / error text) on the right */
     @media (min-width: 768px) {
         form.adm-form .card-body .row:not(#subjectContent .row) > [class*="col-"]:not(.text-center):has(> label.form-label) {
             display: grid;
-            grid-template-columns: minmax(110px, 38%) minmax(0, 1fr);
+            grid-template-columns: 150px minmax(0, 1fr);
             column-gap: 10px;
             align-items: center;
         }

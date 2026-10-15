@@ -1025,7 +1025,7 @@
                 </table>
             </div>
 
-            <div class="row g-3 mb-3">
+            <div class="row g-3 mb-3 quick-summary-row">
                 <div class="col-md-3 col-6">
                     <div class="rounded-4 border-0 h-100 p-3 text-center" style="background:#eff6ff;">
                         <div style="font-size:10px;color:#64748b;">Total Collected</div>
@@ -1052,7 +1052,7 @@
                 </div>
             </div>
 
-            <div class="row g-3">
+            <div class="row g-3 quick-pay-row">
                 <input type="hidden" name="semester" id="semesterRadioContainer" value="1">
 
                 <div class="col-md-4">
