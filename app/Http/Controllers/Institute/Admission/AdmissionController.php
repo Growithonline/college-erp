@@ -4863,11 +4863,8 @@ class AdmissionController extends Controller
             'student_uid' => $studentId,
         ]);
 
-        // collect_fee flag from form builder config
-        $quickFormConfig = AdmissionFormController::getFormConfig($instituteId, 'quick');
-        $collectFee = $quickFormConfig['collect_fee'] ?? true;
-
-        $goToFeePayment    = $collectFee && $this->canCollectFee();
+        // Quick registration always proceeds to fee payment for users who can collect fee
+        $goToFeePayment    = $this->canCollectFee();
         $afterDocNextRoute = $goToFeePayment
             ? $this->admissionRoute('fee-payment')
             : $this->admissionRoute('quick-success');

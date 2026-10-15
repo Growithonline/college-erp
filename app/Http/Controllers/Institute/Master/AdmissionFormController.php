@@ -326,11 +326,7 @@ class AdmissionFormController extends Controller
             }
         }
 
-        // form_config: collect_fee checkbox — absent means false
         $formConfigData = $request->input('form_config', []);
-        if ($type === 'quick') {
-            $formConfigData['collect_fee'] = $request->has('form_config.collect_fee') ? true : false;
-        }
 
         AdmissionFormSetting::updateOrCreate(
             ['institute_id' => auth()->user()->institute_id, 'form_type' => $type],

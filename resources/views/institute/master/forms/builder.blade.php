@@ -114,32 +114,6 @@
         </div>
         @endforeach
 
-        {{-- Quick Form: Collect Fee option --}}
-        @if($type === 'quick')
-        <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #f59e0b !important;">
-            <div class="card-header py-2 d-flex align-items-center gap-2"
-                 style="background:#fffbeb;">
-                <i class="bi bi-cash-coin text-warning"></i>
-                <span class="fw-bold small">Quick Registration Settings</span>
-            </div>
-            <div class="card-body py-2 px-3">
-                <div class="d-flex align-items-center justify-content-between py-1">
-                    <div>
-                        <span class="small fw-semibold">Fee Collection</span>
-                        <div class="text-muted" style="font-size:11px;">Collect fee after quick registration?</div>
-                    </div>
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox"
-                               name="form_config[collect_fee]"
-                               value="1"
-                               id="collectFeeToggle"
-                               {{ ($currentFormConfig['collect_fee'] ?? true) ? 'checked' : '' }}>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
-
         {{-- Online Form: Document Upload Setting --}}
         @if($type === 'online')
         @php
