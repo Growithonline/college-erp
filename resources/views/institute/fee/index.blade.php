@@ -242,8 +242,12 @@
 {{-- Table --}}
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
+        <style>
+            .excel-table, .excel-table th, .excel-table td { border: 1px solid #9ca3af !important; }
+            .excel-table { border-collapse: collapse; }
+        </style>
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle" style="font-size:13px;">
+            <table class="table table-bordered table-hover mb-0 align-middle excel-table" style="font-size:13px;">
                 <thead class="table-light">
                     <tr>
                         <th class="ps-3 col_invoice">Invoice No <span class="text-muted fw-normal">(Time)</span></th>
@@ -404,7 +408,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle" style="font-size:13px;">
+            <table class="table table-bordered table-hover mb-0 align-middle excel-table" style="font-size:13px;">
                 <thead class="table-light">
                     <tr>
                         <th class="ps-3">Receipt No</th>
