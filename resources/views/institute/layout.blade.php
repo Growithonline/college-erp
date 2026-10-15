@@ -638,43 +638,56 @@
             </div>
         </li>
 
-        {{-- Student Promotions (separate) --}}
+        {{-- Reports --}}
+        @php $reportsMenuActive = request()->routeIs('reports.*') && !request()->routeIs('reports.admission*') && !request()->routeIs('reports.fee-collection.*') && !request()->routeIs('reports.fee-ledger.*'); @endphp
         <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('admissions.promote.*') ? 'active' : '' }} d-flex"
-               data-bs-toggle="collapse" href="#promotionMenu" role="button"
-               aria-expanded="{{ request()->routeIs('admissions.promote.*') ? 'true' : 'false' }}">
-                <i class="bi bi-arrow-up-circle"></i> Student Promotions
+            <a class="nav-link {{ $reportsMenuActive ? 'active' : '' }} d-flex"
+               data-bs-toggle="collapse" href="#menuReports" role="button"
+               aria-expanded="{{ $reportsMenuActive ? 'true' : 'false' }}">
+                <i class="bi bi-bar-chart-line"></i> Reports
                 <i class="bi bi-chevron-down collapse-arrow"></i>
             </a>
-            <div class="collapse {{ request()->routeIs('admissions.promote.*') ? 'show' : '' }}" id="promotionMenu">
+            <div class="collapse {{ $reportsMenuActive ? 'show' : '' }}" id="menuReports">
                 <ul class="nav flex-column sub-menu">
-                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.semester*') ? 'active' : '' }}"
-                           href="{{ route('admissions.promote.semester') }}">
-                        <i class="bi bi-arrow-up-circle text-info"></i> Semester Promotion
+                    <li><a class="nav-link {{ request()->routeIs('reports.fee-due-list') ? 'active' : '' }}"
+                           href="{{ route('reports.fee-due-list') }}">
+                        <i class="bi bi-exclamation-circle"></i> Fee Due List
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.session*') ? 'active' : '' }}"
-                           href="{{ route('admissions.promote.session') }}">
-                        <i class="bi bi-calendar-arrow-up text-warning"></i> Session Promotion
+                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection') ? 'active' : '' }}"
+                           href="{{ route('reports.fee-collection') }}">
+                        <i class="bi bi-cash-stack"></i> Fee Collection
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.single*') ? 'active' : '' }}"
-                           href="{{ route('admissions.promote.single') }}">
-                        <i class="bi bi-person-check text-primary"></i> Single Student Promotion
+                    <li><a class="nav-link {{ request()->routeIs('reports.cancelled-fee') ? 'active' : '' }}"
+                           href="{{ route('reports.cancelled-fee') }}">
+                        <i class="bi bi-x-octagon"></i> Cancelled Fee
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.report') ? 'active' : '' }}"
-                           href="{{ route('admissions.promote.report') }}">
-                        <i class="bi bi-file-earmark-text text-success"></i> Promotion Report
+                    <li><a class="nav-link {{ request()->routeIs('reports.daily-collection') ? 'active' : '' }}"
+                           href="{{ route('reports.daily-collection') }}">
+                        <i class="bi bi-calendar3"></i> Daily / Monthly
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.promoted-students') ? 'active' : '' }}"
-                           href="{{ route('admissions.promote.promoted-students') }}">
-                        <i class="bi bi-arrow-up-circle text-info"></i> Promoted Students
+                    <li><a class="nav-link {{ request()->routeIs('reports.semester-wise') ? 'active' : '' }}"
+                           href="{{ route('reports.semester-wise') }}">
+                        <i class="bi bi-layers"></i> Semester Wise
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.passed-out-students') ? 'active' : '' }}"
-                           href="{{ route('admissions.promote.passed-out-students') }}">
-                        <i class="bi bi-patch-check text-success"></i> Passed Out Students
+                    <li><a class="nav-link {{ request()->routeIs('reports.admission') ? 'active' : '' }}"
+                           href="{{ route('reports.admission') }}">
+                        <i class="bi bi-person-plus"></i> Admission Report
                     </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.identity*') ? 'active' : '' }}"
-                           href="{{ route('admissions.promote.identity') }}">
-                        <i class="bi bi-person-badge text-primary"></i> Roll / Form No
+                    <li><a class="nav-link {{ request()->routeIs('reports.admission-analytics') ? 'active' : '' }}"
+                           href="{{ route('reports.admission-analytics') }}">
+                        <i class="bi bi-graph-up-arrow"></i> Admission Analytics
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.lateral-entry-analytics') ? 'active' : '' }}"
+                           href="{{ route('reports.lateral-entry-analytics') }}">
+                        <i class="bi bi-arrow-repeat"></i> Lateral Entry Analytics
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.custom-student') ? 'active' : '' }}"
+                           href="{{ route('reports.custom-student') }}">
+                        <i class="bi bi-table"></i> Custom Report
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.subject-wise-student') ? 'active' : '' }}"
+                           href="{{ route('reports.subject-wise-student') }}">
+                        <i class="bi bi-journal-bookmark"></i> Subject Wise Student
                     </a></li>
                 </ul>
             </div>
@@ -743,6 +756,48 @@
                     <li><a class="nav-link {{ request()->routeIs('reports.admission.blocked') ? 'active' : '' }}"
                            href="{{ route('reports.admission.blocked') }}">
                         <i class="bi bi-slash-circle text-danger"></i> Blocked Students
+                    </a></li>
+                </ul>
+            </div>
+        </li>
+
+        {{-- Student Promotions (separate) --}}
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('admissions.promote.*') ? 'active' : '' }} d-flex"
+               data-bs-toggle="collapse" href="#promotionMenu" role="button"
+               aria-expanded="{{ request()->routeIs('admissions.promote.*') ? 'true' : 'false' }}">
+                <i class="bi bi-arrow-up-circle"></i> Student Promotions
+                <i class="bi bi-chevron-down collapse-arrow"></i>
+            </a>
+            <div class="collapse {{ request()->routeIs('admissions.promote.*') ? 'show' : '' }}" id="promotionMenu">
+                <ul class="nav flex-column sub-menu">
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.semester*') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.semester') }}">
+                        <i class="bi bi-arrow-up-circle text-info"></i> Semester Promotion
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.session*') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.session') }}">
+                        <i class="bi bi-calendar-arrow-up text-warning"></i> Session Promotion
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.single*') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.single') }}">
+                        <i class="bi bi-person-check text-primary"></i> Single Student Promotion
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.report') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.report') }}">
+                        <i class="bi bi-file-earmark-text text-success"></i> Promotion Report
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.promoted-students') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.promoted-students') }}">
+                        <i class="bi bi-arrow-up-circle text-info"></i> Promoted Students
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.passed-out-students') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.passed-out-students') }}">
+                        <i class="bi bi-patch-check text-success"></i> Passed Out Students
+                    </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('admissions.promote.identity*') ? 'active' : '' }}"
+                           href="{{ route('admissions.promote.identity') }}">
+                        <i class="bi bi-person-badge text-primary"></i> Roll / Form No
                     </a></li>
                 </ul>
             </div>
@@ -1134,60 +1189,6 @@
             </div>
         </li>
 
-        {{-- Reports --}}
-        @php $reportsMenuActive = request()->routeIs('reports.*') && !request()->routeIs('reports.admission*') && !request()->routeIs('reports.fee-collection.*') && !request()->routeIs('reports.fee-ledger.*'); @endphp
-        <li class="nav-item">
-            <a class="nav-link {{ $reportsMenuActive ? 'active' : '' }} d-flex"
-               data-bs-toggle="collapse" href="#menuReports" role="button"
-               aria-expanded="{{ $reportsMenuActive ? 'true' : 'false' }}">
-                <i class="bi bi-bar-chart-line"></i> Reports
-                <i class="bi bi-chevron-down collapse-arrow"></i>
-            </a>
-            <div class="collapse {{ $reportsMenuActive ? 'show' : '' }}" id="menuReports">
-                <ul class="nav flex-column sub-menu">
-                    <li><a class="nav-link {{ request()->routeIs('reports.fee-due-list') ? 'active' : '' }}"
-                           href="{{ route('reports.fee-due-list') }}">
-                        <i class="bi bi-exclamation-circle"></i> Fee Due List
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.fee-collection') ? 'active' : '' }}"
-                           href="{{ route('reports.fee-collection') }}">
-                        <i class="bi bi-cash-stack"></i> Fee Collection
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.cancelled-fee') ? 'active' : '' }}"
-                           href="{{ route('reports.cancelled-fee') }}">
-                        <i class="bi bi-x-octagon"></i> Cancelled Fee
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.daily-collection') ? 'active' : '' }}"
-                           href="{{ route('reports.daily-collection') }}">
-                        <i class="bi bi-calendar3"></i> Daily / Monthly
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.semester-wise') ? 'active' : '' }}"
-                           href="{{ route('reports.semester-wise') }}">
-                        <i class="bi bi-layers"></i> Semester Wise
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.admission') ? 'active' : '' }}"
-                           href="{{ route('reports.admission') }}">
-                        <i class="bi bi-person-plus"></i> Admission Report
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.admission-analytics') ? 'active' : '' }}"
-                           href="{{ route('reports.admission-analytics') }}">
-                        <i class="bi bi-graph-up-arrow"></i> Admission Analytics
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.lateral-entry-analytics') ? 'active' : '' }}"
-                           href="{{ route('reports.lateral-entry-analytics') }}">
-                        <i class="bi bi-arrow-repeat"></i> Lateral Entry Analytics
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.custom-student') ? 'active' : '' }}"
-                           href="{{ route('reports.custom-student') }}">
-                        <i class="bi bi-table"></i> Custom Report
-                    </a></li>
-                    <li><a class="nav-link {{ request()->routeIs('reports.subject-wise-student') ? 'active' : '' }}"
-                           href="{{ route('reports.subject-wise-student') }}">
-                        <i class="bi bi-journal-bookmark"></i> Subject Wise Student
-                    </a></li>
-                </ul>
-            </div>
-        </li>
 
         {{-- SMS Settings --}}
         <li class="nav-item">
