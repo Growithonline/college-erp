@@ -859,6 +859,34 @@
                 <label class="form-label small fw-semibold mb-1">Communication Address @if($fieldRequired('comm_address'))<span class="text-danger">*</span>@endif</label>
                 <textarea name="comm_address" id="quickCommAddress" rows="2" class="{{ $fc }}" {{ $fieldRequired('comm_address') ? 'required' : '' }}>{{ $qv('comm_address') }}</textarea>
             </div>
+            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
+                <label class="form-label small fw-semibold mb-1">Village/City</label>
+                <input type="text" name="comm_city" id="quickCommCity" class="{{ $fc }}" value="{{ $qv('comm_city') }}">
+            </div>
+            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
+                <label class="form-label small fw-semibold mb-1">Post</label>
+                <input type="text" name="comm_post" id="quickCommPost" class="{{ $fc }}" value="{{ $qv('comm_post') }}">
+            </div>
+            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
+                <label class="form-label small fw-semibold mb-1">Thana</label>
+                <input type="text" name="comm_thana" id="quickCommThana" class="{{ $fc }}" value="{{ $qv('comm_thana') }}">
+            </div>
+            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
+                <label class="form-label small fw-semibold mb-1">State</label>
+                <select name="comm_state" id="quickCommState" class="{{ $fc }}" data-saved="{{ $qv('comm_state') }}">
+                    <option value="">— Select State —</option>
+                </select>
+            </div>
+            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
+                <label class="form-label small fw-semibold mb-1">District</label>
+                <select name="comm_district" id="quickCommDistrict" class="{{ $fc }}" data-saved="{{ $qv('comm_district') }}">
+                    <option value="">— Select District —</option>
+                </select>
+            </div>
+            <div class="col-md-{{ $isCompact ? 2 : 4 }}">
+                <label class="form-label small fw-semibold mb-1">Pin Code</label>
+                <input type="text" name="comm_pincode" id="quickCommPincode" class="{{ $fc }}" value="{{ $qv('comm_pincode') }}" maxlength="6">
+            </div>
             @endif
         </div>
     </div>
@@ -2234,6 +2262,22 @@ function buildQuickPermanentAddress() {
     return parts.join(', ');
 }
 
+const QUICK_COMM_TEXT_MAP = [
+    ['quickCommCity', 'quickPermVillage'],
+    ['quickCommPost', 'quickPermPost'],
+    ['quickCommThana', 'quickPermThana'],
+    ['quickCommPincode', 'quickPermPincode'],
+];
+
+function setQuickCommLocked(locked) {
+    ['quickCommAddress', 'quickCommCity', 'quickCommPost', 'quickCommThana', 'quickCommPincode'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.readOnly = locked;
+        el.classList.toggle('bg-light', locked);
+    });
+}
+
 function syncQuickCommunicationAddress() {
     const sameAsCheckbox = document.getElementById('quickCommSameAsPerm');
     const commAddress = document.getElementById('quickCommAddress');
@@ -2243,6 +2287,23 @@ function syncQuickCommunicationAddress() {
     }
 
     commAddress.value = buildQuickPermanentAddress();
+
+    QUICK_COMM_TEXT_MAP.forEach(([commId, permId]) => {
+        const comm = document.getElementById(commId);
+        if (comm) comm.value = document.getElementById(permId)?.value || '';
+    });
+
+    const commState = document.getElementById('quickCommState');
+    const commDistrict = document.getElementById('quickCommDistrict');
+    const permState = document.getElementById('quickPermState');
+    const permDistrict = document.getElementById('quickPermDistrict');
+    if (commState && commDistrict) {
+        if (commState.value !== (permState?.value || '')) {
+            commState.value = permState?.value || '';
+            commState.dispatchEvent(new Event('change'));
+        }
+        commDistrict.value = permDistrict?.value || '';
+    }
 }
 
 function bindQuickAddressSync() {
@@ -2258,9 +2319,11 @@ function bindQuickAddressSync() {
             const input = document.getElementById(id);
             if (!input) return;
             input.addEventListener('input', syncQuickCommunicationAddress);
+            input.addEventListener('change', syncQuickCommunicationAddress);
         });
 
     sameAsCheckbox.addEventListener('change', function () {
+        setQuickCommLocked(sameAsCheckbox.checked);
         if (sameAsCheckbox.checked) {
             syncQuickCommunicationAddress();
             return;
@@ -2269,8 +2332,11 @@ function bindQuickAddressSync() {
         commAddress.focus();
     });
 
-    if (sameAsCheckbox.checked && !commAddress.value.trim()) {
-        syncQuickCommunicationAddress();
+    if (sameAsCheckbox.checked) {
+        setQuickCommLocked(true);
+        if (!commAddress.value.trim()) {
+            syncQuickCommunicationAddress();
+        }
     }
 }
 

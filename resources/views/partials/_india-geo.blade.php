@@ -120,6 +120,20 @@ window.INDIA_GEO = {
         });
     }
 
+    // Quick form — communication address
+    var qCommState = document.getElementById('quickCommState');
+    var qCommDist  = document.getElementById('quickCommDistrict');
+    if (qCommState && qCommDist) {
+        var savedQCommState    = qCommState.dataset.saved || '';
+        var savedQCommDistrict = qCommDist.dataset.saved  || '';
+        populateStateSelect(qCommState, savedQCommState);
+        if (savedQCommState) populateDistrictSelect(qCommDist, savedQCommState, savedQCommDistrict);
+
+        qCommState.addEventListener('change', function () {
+            populateDistrictSelect(qCommDist, this.value, '');
+        });
+    }
+
     // Standalone state-only selects (Center, Channel Partner forms)
     ['centerStateSelect', 'partnerStateSelect'].forEach(function (id) {
         var sel = document.getElementById(id);
