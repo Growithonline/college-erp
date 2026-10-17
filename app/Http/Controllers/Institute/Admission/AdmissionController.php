@@ -3651,6 +3651,16 @@ class AdmissionController extends Controller
                 'fee_plan_id'      => $student->fee_plan_id,
             ]);
             $request->request->remove('course_id');
+
+            // Office details and the fee-driving fields (student type / category / source) are
+            // admin-only too. Dropping them makes the update below fall back to the stored values.
+            foreach ([
+                'institute_form_no', 'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no',
+                'reference_no', 'reference_by', 'admission_type', 'admission_source', 'admission_source_id',
+                'gap_year', 'admission_date', 'student_type', 'category',
+            ] as $adminOnlyField) {
+                $request->request->remove($adminOnlyField);
+            }
         }
 
         $this->ensureStaffCanAccessCourseSelection(
@@ -3771,7 +3781,7 @@ class AdmissionController extends Controller
 
         $oldSnapshot = StudentAcademicChangeService::buildSnapshot($student);
 
-        // Name, Father Name & Mother Name are admin-only — staff can view but not change them.
+        // Name & Father Name are admin-only — staff can view but not change them (Mother Name is editable).
 
         DB::transaction(function () use ($request, $validated, $student, $stream, $selectedPart, $subjectSelection, $oldSnapshot, $isStaffRequest) {
             $sessionId = (int) $student->academic_session_id;
@@ -3806,7 +3816,7 @@ class AdmissionController extends Controller
                 'father_name'         => $isStaffRequest ? $student->father_name : $request->input('father_name', $student->father_name),
                 'father_mobile'       => $request->input('father_mobile', $student->father_mobile),
                 'father_occupation'   => $request->input('father_occupation', $student->father_occupation),
-                'mother_name'         => $isStaffRequest ? $student->mother_name : $request->input('mother_name', $student->mother_name),
+                'mother_name'         => $request->input('mother_name', $student->mother_name),
                 'mother_mobile'       => $request->input('mother_mobile', $student->mother_mobile),
                 'mother_occupation'   => $request->input('mother_occupation', $student->mother_occupation),
                 'guardian_name'       => $request->input('guardian_name', $student->guardian_name),

@@ -121,6 +121,13 @@
         <span class="fw-semibold small"><i class="bi bi-briefcase me-2 text-secondary"></i>Office Details</span>
     </div>
     <div class="card-body p-3">
+        @if($isStaff)
+        <div class="alert alert-warning small py-2 mb-3">
+            <i class="bi bi-lock-fill me-1"></i> Office details can only be changed by the institute admin.
+        </div>
+        @endif
+        {{-- Disabled fieldset: nothing inside is submitted for staff (the server ignores these fields for staff anyway). --}}
+        <fieldset @if($isStaff) disabled @endif class="border-0 p-0 m-0" style="min-width:0;">
         <div class="row g-3">
             @if($fieldEnabled('form_no'))
             <div class="col-md-2">
@@ -255,6 +262,7 @@
             </div>
             @endif
         </div>
+        </fieldset>
     </div>
 </div>
 @endif
@@ -567,11 +575,9 @@
             <div class="col-md-6">
                 <label class="form-label small fw-semibold">
                     Mother Name
-                    @if($isStaff)<i class="bi bi-lock-fill text-muted ms-1" title="Only admin can edit this field" style="font-size:11px;"></i>@endif
                 </label>
                 <input type="text" name="mother_name" class="form-control form-control-sm"
-                       value="{{ old('mother_name', $student->mother_name) }}"
-                       @if($isStaff) readonly style="background:#f1f3f5;cursor:not-allowed;" @endif>
+                       value="{{ old('mother_name', $student->mother_name) }}">
             </div>
             @endif
 
@@ -628,7 +634,7 @@
             @if($formConfig['category']['enabled'] ?? false)
             <div class="col-md-4">
                 <label class="form-label small fw-semibold">Category</label>
-                <select name="category" class="form-select form-select-sm">
+                <select name="category" class="form-select form-select-sm" @if($isStaff) disabled title="Only admin can change this field" @endif>
                     <option value="">Select</option>
                     @foreach(['gen'=>'GEN','obc'=>'OBC','sc'=>'SC','st'=>'ST','ews'=>'EWS'] as $v=>$l)
                         <option value="{{ $v }}" {{ old('category',$student->category)==$v ? 'selected':'' }}>{{ $l }}</option>
@@ -682,7 +688,7 @@
             @if($formConfig['student_type']['enabled'] ?? false)
             <div class="col-md-4">
                 <label class="form-label small fw-semibold">Student Type</label>
-                <select name="student_type" class="form-select form-select-sm">
+                <select name="student_type" class="form-select form-select-sm" @if($isStaff) disabled title="Only admin can change this field" @endif>
                     @foreach($studentTypes as $st)
                         <option value="{{ $st->slug }}" {{ old('student_type', $student->student_type) == $st->slug ? 'selected' : '' }}>{{ $st->name }}</option>
                     @endforeach
