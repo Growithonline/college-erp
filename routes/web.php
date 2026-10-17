@@ -1138,7 +1138,7 @@ Route::prefix('center')->name('center.')->group(function () {
         Route::get('dashboard',        [CenterAuthController::class, 'dashboard'])->name('dashboard');
         Route::get('profile',          [CenterAuthController::class, 'profile'])->name('profile');
         Route::get('change-password',  [CenterAuthController::class, 'changePasswordForm'])->name('change-password');
-        Route::post('change-password', [CenterAuthController::class, 'changePassword'])->name('change-password.update');
+        Route::post('change-password', [CenterAuthController::class, 'changePassword'])->name('change-password.update')->middleware('throttle:5,1');
 
         // Students (only if can_view_students)
         Route::get('students/search',   [CenterStudentController::class, 'globalSearch'])->name('students.search');
@@ -1218,7 +1218,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('dashboard',        [StaffAuthController::class, 'dashboard'])->name('dashboard');
         Route::get('profile',          [StaffAuthController::class, 'profile'])->name('profile');
         Route::get('change-password',  [StaffAuthController::class, 'changePasswordForm'])->name('change-password');
-        Route::post('change-password', [StaffAuthController::class, 'changePassword'])->name('change-password.update');
+        Route::post('change-password', [StaffAuthController::class, 'changePassword'])->name('change-password.update')->middleware('throttle:5,1');
 
         // Admissions (permission: admission_add)
         Route::get('students/search', [StaffAdmissionController::class, 'globalSearch'])->name('students.search');
@@ -1524,7 +1524,7 @@ Route::prefix('partner')->name('partner.')->group(function () {
         Route::get('dashboard',        [PartnerAuthController::class, 'dashboard'])->name('dashboard');
         Route::get('profile',          [PartnerAuthController::class, 'profile'])->name('profile');
         Route::get('change-password',  [PartnerAuthController::class, 'changePasswordForm'])->name('change-password');
-        Route::post('change-password', [PartnerAuthController::class, 'changePassword'])->name('change-password.update');
+        Route::post('change-password', [PartnerAuthController::class, 'changePassword'])->name('change-password.update')->middleware('throttle:5,1');
 
         // Students (only if can_view_students)
         Route::get('students',           [PartnerStudentController::class, 'index'])->name('students.index');
@@ -1636,7 +1636,7 @@ Route::prefix('student')->name('student.')->group(function () {
         Route::post('logout',              [StudentAuthController::class, 'logout'])->name('logout');
         Route::get('dashboard',            [StudentAuthController::class, 'dashboard'])->name('dashboard');
         Route::get('change-password',      [StudentAuthController::class, 'changePasswordForm'])->name('change-password');
-        Route::post('change-password',     [StudentAuthController::class, 'changePassword'])->name('change-password.update');
+        Route::post('change-password',     [StudentAuthController::class, 'changePassword'])->name('change-password.update')->middleware('throttle:5,1');
         Route::post('notices/{id}/read',   [StudentAuthController::class, 'markNoticeRead'])->name('notices.read');
     });
 });

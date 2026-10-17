@@ -34,6 +34,12 @@ class RoleAuth
             return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'blocked']);
         }
 
+        // A student whose portal access is switched off loses the session immediately, not just at next login
+        if ($guard === 'student' && isset($user->portal_enabled) && !$user->portal_enabled) {
+            Auth::guard($guard)->logout();
+            return redirect()->route('session.expired', ['guard' => $guard, 'reason' => 'disabled']);
+        }
+
         // Deactivating the parent Group must immediately cut off access for all its Group Admins too
         if ($guard === 'group_admin' && !$user->group?->status) {
             Auth::guard($guard)->logout();

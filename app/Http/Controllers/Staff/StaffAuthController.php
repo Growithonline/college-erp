@@ -87,7 +87,6 @@ class StaffAuthController extends Controller
         ], now()->addMinutes($expiryMinutes));
 
         Cache::put($this->otpThrottleKey($staff->id), true, now()->addSeconds($cooldownSeconds));
-        RateLimiter::clear($this->otpAttemptsKey($staff->id));
     }
 
     public function loginForm()
@@ -106,9 +105,11 @@ class StaffAuthController extends Controller
             'password'  => 'required|string',
         ]);
 
-        $throttleKey = $this->loginThrottleKey($request->staff_uid);
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $minutes = (int) ceil(RateLimiter::availableIn($throttleKey) / 60);
+        // Per account + IP (5 / 15 min) and per account overall (30 / 15 min, catches rotating IPs).
+        $uidKey      = $this->loginThrottleKey($request->staff_uid);
+        $throttleKey = $uidKey . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, 5) || RateLimiter::tooManyAttempts($uidKey, 30)) {
+            $minutes = max(1, (int) ceil(max(RateLimiter::availableIn($throttleKey), RateLimiter::availableIn($uidKey)) / 60));
             return back()
                 ->withInput($request->only('staff_uid'))
                 ->withErrors(['staff_uid' => "Too many failed attempts. Please try again in {$minutes} minute(s)."]);
@@ -118,6 +119,7 @@ class StaffAuthController extends Controller
 
         if (!$staff || !Hash::check($request->password, $staff->password) || !LoginScope::allows('staff', $staff)) {
             RateLimiter::hit($throttleKey, 900);
+            RateLimiter::hit($uidKey, 900);
             return back()
                 ->withInput($request->only('staff_uid'))
                 ->withErrors(['staff_uid' => 'These credentials do not match our records.']);
@@ -192,9 +194,8 @@ class StaffAuthController extends Controller
 
         $attemptsKey = $this->otpAttemptsKey($staff->id);
         if (RateLimiter::tooManyAttempts($attemptsKey, 5)) {
-            Cache::forget($this->otpCacheKey($staff->id));
-            RateLimiter::clear($attemptsKey);
-            return back()->withErrors(['otp' => 'Too many incorrect attempts. Please request a new OTP.']);
+            $minutes = max(1, (int) ceil(RateLimiter::availableIn($attemptsKey) / 60));
+            return back()->withErrors(['otp' => "Too many incorrect attempts. Try again in {$minutes} minute(s)."]);
         }
 
         $otpPayload = Cache::get($this->otpCacheKey($staff->id));

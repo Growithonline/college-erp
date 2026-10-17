@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Services\InstituteMailer;
 use Throwable;
 
@@ -36,6 +37,16 @@ class StudentAuthController extends Controller
     private function otpThrottleKey(int $id): string
     {
         return "student_login_otp_throttle:{$id}";
+    }
+
+    private function otpAttemptsKey(int $id): string
+    {
+        return "student_login_otp_attempts:{$id}";
+    }
+
+    private function loginThrottleKey(string $uid): string
+    {
+        return 'student_login_attempts:' . strtolower($uid);
     }
 
     private function pendingStudent(): ?Student
@@ -88,9 +99,21 @@ class StudentAuthController extends Controller
             'password'    => 'required|string',
         ]);
 
+        // Per account + IP (5 / 15 min) and per account overall (30 / 15 min, catches rotating IPs).
+        $uidKey = $this->loginThrottleKey((string) $request->student_uid);
+        $ipKey  = $uidKey . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 5) || RateLimiter::tooManyAttempts($uidKey, 30)) {
+            $minutes = max(1, (int) ceil(max(RateLimiter::availableIn($ipKey), RateLimiter::availableIn($uidKey)) / 60));
+            return back()
+                ->withInput($request->only('student_uid'))
+                ->withErrors(['student_uid' => "Too many failed attempts. Please try again in {$minutes} minute(s)."]);
+        }
+
         $student = Student::where('student_uid', $request->student_uid)->first();
 
         if (!$student || !Hash::check($request->password, $student->password) || !LoginScope::allows('student', $student)) {
+            RateLimiter::hit($ipKey, 900);
+            RateLimiter::hit($uidKey, 900);
             return back()
                 ->withInput($request->only('student_uid'))
                 ->withErrors(['student_uid' => 'Invalid Student ID or password.']);
@@ -103,6 +126,8 @@ class StudentAuthController extends Controller
         if ($student->isLoginBlocked()) {
             return back()->withErrors(['student_uid' => 'Your ID is blocked. Contact admin.']);
         }
+
+        RateLimiter::clear($ipKey);
 
         LoginScope::markPending('student');
 
@@ -159,15 +184,23 @@ class StudentAuthController extends Controller
                 ->withErrors(['student_uid' => 'Invalid Student ID or password.']);
         }
 
+        $attemptsKey = $this->otpAttemptsKey($student->id);
+        if (RateLimiter::tooManyAttempts($attemptsKey, 5)) {
+            $minutes = max(1, (int) ceil(RateLimiter::availableIn($attemptsKey) / 60));
+            return back()->withErrors(['otp' => "Too many incorrect attempts. Try again in {$minutes} minute(s)."]);
+        }
+
         $payload = Cache::get($this->otpCacheKey($student->id));
         if (!$payload) {
             return back()->withErrors(['otp' => 'OTP expired. Please login again.']);
         }
 
         if (!Hash::check($request->otp, $payload['hash'] ?? '')) {
+            RateLimiter::hit($attemptsKey, 300);
             return back()->withErrors(['otp' => 'Incorrect OTP.']);
         }
 
+        RateLimiter::clear($attemptsKey);
         Cache::forget($this->otpCacheKey($student->id));
         Cache::forget($this->otpThrottleKey($student->id));
 
@@ -470,6 +503,12 @@ class StudentAuthController extends Controller
     public function markNoticeRead(Request $request, int $noticeId)
     {
         $student = $this->guard()->user();
+
+        // Only notices this student can actually see (own institute, students audience).
+        abort_unless(
+            Notice::forRole($student->institute_id, 'students', $student)->whereKey($noticeId)->exists(),
+            404
+        );
 
         NoticeRead::firstOrCreate([
             'notice_id'   => $noticeId,

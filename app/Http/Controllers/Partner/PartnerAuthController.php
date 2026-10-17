@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Services\InstituteMailer;
 use App\Services\SmsService;
 use Throwable;
@@ -36,6 +37,16 @@ class PartnerAuthController extends Controller
     private function otpThrottleKey(int $partnerId): string
     {
         return "partner_login_otp_throttle:{$partnerId}";
+    }
+
+    private function otpAttemptsKey(int $id): string
+    {
+        return "partner_login_otp_attempts:{$id}";
+    }
+
+    private function loginThrottleKey(string $uid): string
+    {
+        return 'partner_login_attempts:' . strtolower($uid);
     }
 
     private function pendingPartner(): ?ChannelPartner
@@ -89,9 +100,21 @@ class PartnerAuthController extends Controller
             'password'    => 'required|string',
         ]);
 
+        // Per account + IP (5 / 15 min) and per account overall (30 / 15 min, catches rotating IPs).
+        $uidKey = $this->loginThrottleKey((string) $request->partner_uid);
+        $ipKey  = $uidKey . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 5) || RateLimiter::tooManyAttempts($uidKey, 30)) {
+            $minutes = max(1, (int) ceil(max(RateLimiter::availableIn($ipKey), RateLimiter::availableIn($uidKey)) / 60));
+            return back()
+                ->withInput($request->only('partner_uid'))
+                ->withErrors(['partner_uid' => "Too many failed attempts. Please try again in {$minutes} minute(s)."]);
+        }
+
         $partner = ChannelPartner::where('partner_uid', $request->partner_uid)->first();
 
         if (!$partner || !Hash::check($request->password, $partner->password) || !LoginScope::allows('partner', $partner)) {
+            RateLimiter::hit($ipKey, 900);
+            RateLimiter::hit($uidKey, 900);
             return back()
                 ->withInput($request->only('partner_uid'))
                 ->withErrors(['partner_uid' => 'These credentials do not match our records.']);
@@ -104,6 +127,8 @@ class PartnerAuthController extends Controller
         if ($partner->login_blocked) {
             return back()->withErrors(['partner_uid' => 'Your ID is blocked. Contact admin.']);
         }
+
+        RateLimiter::clear($ipKey);
 
         LoginScope::markPending('partner');
 
@@ -161,6 +186,12 @@ class PartnerAuthController extends Controller
                 ->withErrors(['partner_uid' => 'These credentials do not match our records.']);
         }
 
+        $attemptsKey = $this->otpAttemptsKey($partner->id);
+        if (RateLimiter::tooManyAttempts($attemptsKey, 5)) {
+            $minutes = max(1, (int) ceil(RateLimiter::availableIn($attemptsKey) / 60));
+            return back()->withErrors(['otp' => "Too many incorrect attempts. Try again in {$minutes} minute(s)."]);
+        }
+
         $otpPayload = Cache::get($this->otpCacheKey($partner->id));
 
         if (!$otpPayload) {
@@ -168,9 +199,11 @@ class PartnerAuthController extends Controller
         }
 
         if (!Hash::check($request->otp, $otpPayload['hash'] ?? '')) {
+            RateLimiter::hit($attemptsKey, 300);
             return back()->withErrors(['otp' => 'Incorrect OTP.']);
         }
 
+        RateLimiter::clear($attemptsKey);
         Cache::forget($this->otpCacheKey($partner->id));
         Cache::forget($this->otpThrottleKey($partner->id));
 

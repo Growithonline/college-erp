@@ -2677,8 +2677,19 @@ class AdmissionController extends Controller
             );
         });
         } catch (\Throwable $e) {
+            // Only the deliberate "Seats Full" guard is safe to show; anything else (SQL, etc.) is logged.
+            $showMessage = $e instanceof \RuntimeException
+                && !($e instanceof \Illuminate\Database\QueryException)
+                && str_starts_with($e->getMessage(), 'Seats Full');
+
+            if (!$showMessage) {
+                report($e);
+            }
+
             return redirect()->route($this->admissionRoute('create'))
-                ->with('error', 'Admission could not be saved: ' . $e->getMessage());
+                ->with('error', $showMessage
+                    ? 'Admission could not be saved: ' . $e->getMessage()
+                    : 'Admission could not be saved. Please try again or contact support.');
         }
 
         session()->forget(['admission_preview', 'previewData']);

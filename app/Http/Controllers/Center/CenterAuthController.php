@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Services\InstituteMailer;
 use Throwable;
 
@@ -36,6 +37,16 @@ class CenterAuthController extends Controller
     private function otpThrottleKey(int $centerId): string
     {
         return "center_login_otp_throttle:{$centerId}";
+    }
+
+    private function otpAttemptsKey(int $id): string
+    {
+        return "center_login_otp_attempts:{$id}";
+    }
+
+    private function loginThrottleKey(string $uid): string
+    {
+        return 'center_login_attempts:' . strtolower($uid);
     }
 
     private function pendingCenter(): ?Center
@@ -89,9 +100,21 @@ class CenterAuthController extends Controller
             'password'   => 'required|string',
         ]);
 
+        // Per account + IP (5 / 15 min) and per account overall (30 / 15 min, catches rotating IPs).
+        $uidKey = $this->loginThrottleKey((string) $request->center_uid);
+        $ipKey  = $uidKey . '|' . $request->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 5) || RateLimiter::tooManyAttempts($uidKey, 30)) {
+            $minutes = max(1, (int) ceil(max(RateLimiter::availableIn($ipKey), RateLimiter::availableIn($uidKey)) / 60));
+            return back()
+                ->withInput($request->only('center_uid'))
+                ->withErrors(['center_uid' => "Too many failed attempts. Please try again in {$minutes} minute(s)."]);
+        }
+
         $center = Center::where('center_uid', $request->center_uid)->first();
 
         if (!$center || !Hash::check($request->password, $center->password) || !LoginScope::allows('center', $center)) {
+            RateLimiter::hit($ipKey, 900);
+            RateLimiter::hit($uidKey, 900);
             return back()
                 ->withInput($request->only('center_uid'))
                 ->withErrors(['center_uid' => 'These credentials do not match our records.']);
@@ -104,6 +127,8 @@ class CenterAuthController extends Controller
         if ($center->login_blocked) {
             return back()->withErrors(['center_uid' => 'Your ID is blocked. Contact admin.']);
         }
+
+        RateLimiter::clear($ipKey);
 
         LoginScope::markPending('center');
 
@@ -161,6 +186,12 @@ class CenterAuthController extends Controller
                 ->withErrors(['center_uid' => 'These credentials do not match our records.']);
         }
 
+        $attemptsKey = $this->otpAttemptsKey($center->id);
+        if (RateLimiter::tooManyAttempts($attemptsKey, 5)) {
+            $minutes = max(1, (int) ceil(RateLimiter::availableIn($attemptsKey) / 60));
+            return back()->withErrors(['otp' => "Too many incorrect attempts. Try again in {$minutes} minute(s)."]);
+        }
+
         $otpPayload = Cache::get($this->otpCacheKey($center->id));
 
         if (!$otpPayload) {
@@ -168,9 +199,11 @@ class CenterAuthController extends Controller
         }
 
         if (!Hash::check($request->otp, $otpPayload['hash'] ?? '')) {
+            RateLimiter::hit($attemptsKey, 300);
             return back()->withErrors(['otp' => 'Incorrect OTP.']);
         }
 
+        RateLimiter::clear($attemptsKey);
         Cache::forget($this->otpCacheKey($center->id));
         Cache::forget($this->otpThrottleKey($center->id));
 
