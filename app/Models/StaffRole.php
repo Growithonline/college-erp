@@ -45,10 +45,9 @@ class StaffRole extends Model
             'library_no_due' => 'Generate No Dues',
         ],
         'Finance' => [
-            'finance_view' => 'View Finance Reports',
+            'finance_view' => 'View Finance Books & Reports (Ledger, Day Book, Trial Balance, P&L)',
             'finance_manage' => 'Manage Finance Entries',
             'expense_create' => 'Create Expenses',
-            'expense_approve' => 'Approve Expenses',
             'salary_manage' => 'Manage Salary Book',
             'finance_reports' => 'Advanced Finance Reports',
             'ledger_view' => 'View Ledger / Books',

@@ -238,7 +238,7 @@
             @if(isset($feePlans) && $feePlans->isNotEmpty())
             <div class="col-md-4">
                 <label class="form-label small fw-semibold">Fee Plan</label>
-                <select name="fee_plan_id" class="form-select form-select-sm">
+                <select name="fee_plan_id" class="form-select form-select-sm" @if($isStaff) disabled title="Only admin can change the fee plan" @endif>
                     <option value="">— No Plan (Full Payment) —</option>
                     @foreach($feePlans as $fp)
                     <option value="{{ $fp->id }}"
@@ -285,6 +285,13 @@
     </div>
     <div class="card-body p-3">
         @php $selectedCourseTypeId = old('course_type_id', $student->course_type_id ?? $student->stream?->course?->course_type_id); @endphp
+        @if($isStaff)
+        <div class="alert alert-warning small py-2 mb-3">
+            <i class="bi bi-lock-fill me-1"></i> Course, year/part, subjects and fee plan can only be changed by the institute admin.
+        </div>
+        @endif
+        {{-- Disabled fieldset: nothing inside is submitted for staff (the server ignores these fields for staff anyway). --}}
+        <fieldset @if($isStaff) disabled @endif class="border-0 p-0 m-0" style="min-width:0;">
         <div class="row g-3">
             <div class="col-md-3">
                 <label class="form-label small fw-semibold">Course Type <span class="text-danger">*</span></label>
@@ -446,6 +453,7 @@
                 Fee differences will be auto-adjusted based on academic fee rules. Paid amounts will be retained; extra amount will become due and excess will move to wallet advance.
             </div>
         </div>
+        </fieldset>
     </div>
 </div>
 

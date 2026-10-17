@@ -443,12 +443,19 @@ class ReportController extends Controller
         $this->authorizeReportAccess('fee');
 
         $request->validate([
-            'student_ids'   => 'required|array|min:1',
+            'student_ids'   => 'required|array|min:1|max:200',
             'student_ids.*' => 'integer',
             'session_id'    => 'nullable|integer',
         ]);
 
         $instituteId = $this->instituteId();
+
+        // Every reminder costs the institute an SMS — cap bulk sends per user.
+        $limiterKey = 'due-sms:' . $instituteId . ':' . ($this->authenticatedUser()?->id ?? 0) . ':' . $this->panelPrefix();
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limiterKey, 10)) {
+            return response()->json(['success' => false, 'error' => 'Too many reminder batches. Please try again later.'], 429);
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($limiterKey, 3600);
 
         if (! SmsService::isInstituteConfigured($instituteId)) {
             return response()->json(['success' => false, 'error' => 'SMS provider is not configured for this institute.'], 422);
@@ -484,6 +491,12 @@ class ReportController extends Controller
                 ->value('payment_date');
 
             $dueDate = $earliestDue ? \Carbon\Carbon::parse($earliestDue) : now();
+
+            // Never remind the same student twice within 6 hours.
+            if (!\Illuminate\Support\Facades\Cache::add('due-sms-sent:' . $instituteId . ':' . $student->id, 1, now()->addHours(6))) {
+                $skipped++;
+                continue;
+            }
 
             $result = SmsDueReminderSetting::sendReminder($student, $due, $dueDate);
             $result ? $sent++ : $failed++;

@@ -216,7 +216,17 @@ class StaffFinanceController extends Controller
             ->where('staff_role_id', $staff->staff_role_id)
             ->value('max_auto_approve_amount') ?? 0);
 
-        $needsApproval = $amount > $autoApproveLimit;
+        // The limit applies to the day's running total too, so one big expense cannot be split
+        // into several small auto-approved ones. (created_by can also match an admin user id;
+        // that only over-counts, which errs on the safe side — it sends the expense to approval.)
+        $autoApprovedToday = (float) Expense::where('institute_id', $instituteId)
+            ->where('created_by', $staff->id)
+            ->where('approval_status', Expense::STATUS_AUTO_APPROVED)
+            ->whereDate('created_at', today())
+            ->sum('amount');
+
+        $needsApproval = $amount > $autoApproveLimit
+            || ($autoApprovedToday + $amount) > $autoApproveLimit;
 
         // Wallet session
         $walletSessionId = $sessionId

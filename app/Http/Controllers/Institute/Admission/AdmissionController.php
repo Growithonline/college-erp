@@ -1840,6 +1840,27 @@ class AdmissionController extends Controller
         return $educationRows;
     }
 
+    // admission_source_id must point at a real center / channel partner of THIS institute
+    // (an arbitrary id would attribute the student, fees and commission to someone else).
+    private function admissionSourceIdRules(?string $source, bool $required = false): array
+    {
+        $table = match ($source) {
+            'center'          => 'centers',
+            'channel_partner' => 'channel_partners',
+            default           => null,
+        };
+
+        if (!$table) {
+            return ['nullable', 'integer'];
+        }
+
+        return [
+            $required ? 'required' : 'nullable',
+            'integer',
+            Rule::exists($table, 'id')->where('institute_id', $this->instituteId()),
+        ];
+    }
+
     private function admissionValidationRules(array $formConfig, bool $withPayment = false): array
     {
         $rules = [
@@ -1965,9 +1986,9 @@ class AdmissionController extends Controller
             $this->fieldEnabled($formConfig, 'admission_source')
             && in_array(request('admission_source'), ['center', 'channel_partner'], true)
         ) {
-            $rules['admission_source_id'] = ['required', 'integer'];
+            $rules['admission_source_id'] = $this->admissionSourceIdRules(request('admission_source'), true);
         } else {
-            $rules['admission_source_id'] = ['nullable', 'integer'];
+            $rules['admission_source_id'] = $this->admissionSourceIdRules(request('admission_source'));
         }
 
         $rules['transport_use'] = ['nullable', 'boolean'];
@@ -3350,7 +3371,13 @@ class AdmissionController extends Controller
 
         // Refresh snapshot with final verified data at approval time
         $student->load('educationDetails');
-        StudentAcademicChangeService::syncCurrentIdentity($student);
+        StudentAcademicChangeService::syncCurrentIdentity(
+            $student,
+            $student->studentSubjects()
+                ->where('academic_session_id', $student->academic_session_id)
+                ->pluck('subject_id')
+                ->all()
+        );
 
         // Online self-service applicants get no portal credentials until a human actually approves them
         if ($student->admitted_by_type === 'online' && !$student->password) {
@@ -3611,6 +3638,21 @@ class AdmissionController extends Controller
     {
         if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);
         $this->ensureStaffCanAccessStudent($student);
+
+        // Course / year-part / subjects / fee plan are admin-only changes: they re-price the
+        // student's fees. Whatever a staff request submits for them is discarded and the
+        // student's current values are kept (the edit form also locks these fields for staff).
+        $isStaffRequest = auth()->guard('staff')->check();
+        if ($isStaffRequest) {
+            $request->merge([
+                'course_type_id'   => $student->course_type_id ?? $student->stream?->course?->course_type_id,
+                'course_stream_id' => $student->course_stream_id,
+                'course_part_id'   => $student->course_part_id,
+                'fee_plan_id'      => $student->fee_plan_id,
+            ]);
+            $request->request->remove('course_id');
+        }
+
         $this->ensureStaffCanAccessCourseSelection(
             $request->filled('course_id') ? (int) $request->course_id : null,
             $request->filled('course_stream_id') ? (int) $request->course_stream_id : null
@@ -3641,7 +3683,7 @@ class AdmissionController extends Controller
             'guardian_relation' => 'nullable|string|max:50',
             'admission_type' => ['nullable', Rule::in(['new', 'lateral', 'transfer', 're_admission'])],
             'admission_source' => ['nullable', Rule::in(['direct', 'center', 'channel_partner'])],
-            'admission_source_id' => 'nullable|integer',
+            'admission_source_id' => $this->admissionSourceIdRules($request->input('admission_source', $student->admission_source)),
             'admission_date' => 'nullable|date|before_or_equal:today',
             'submitted_date' => 'nullable|date|before_or_equal:today',
             'sr_no' => 'nullable|string|max:50',
@@ -3719,7 +3761,7 @@ class AdmissionController extends Controller
             ]);
         }
 
-        $subjectSelection = $this->normalizeSubjectSelection(
+        $subjectSelection = $isStaffRequest ? null : $this->normalizeSubjectSelection(
             (int) $stream->id,
             (int) $selectedPart->year_number,
             $validated['selected_major_subjects'] ?? [],
@@ -3730,7 +3772,6 @@ class AdmissionController extends Controller
         $oldSnapshot = StudentAcademicChangeService::buildSnapshot($student);
 
         // Name, Father Name & Mother Name are admin-only — staff can view but not change them.
-        $isStaffRequest = auth()->guard('staff')->check();
 
         DB::transaction(function () use ($request, $validated, $student, $stream, $selectedPart, $subjectSelection, $oldSnapshot, $isStaffRequest) {
             $sessionId = (int) $student->academic_session_id;
@@ -3808,6 +3849,13 @@ class AdmissionController extends Controller
                     : $student->fee_plan_id,
             ];
 
+            if ($isStaffRequest) {
+                $updateData['course_type_id']   = $student->course_type_id;
+                $updateData['course_stream_id'] = $student->course_stream_id;
+                $updateData['course_part_id']   = $student->course_part_id;
+                $updateData['fee_plan_id']      = $student->fee_plan_id;
+            }
+
             if ($request->hasFile('photo')) {
                 if ($student->photo) {
                     Storage::disk('public')->delete($student->photo);
@@ -3855,6 +3903,20 @@ class AdmissionController extends Controller
             }
 
             $student->load(['stream.course', 'coursePart', 'educationDetails']);
+
+            if ($isStaffRequest) {
+                // Profile-only edit: no subject sync, no fee adjustment. Just refresh the
+                // identity snapshot with the current subjects.
+                StudentAcademicChangeService::syncCurrentIdentity(
+                    $student,
+                    $student->studentSubjects()
+                        ->where('academic_session_id', $student->academic_session_id)
+                        ->pluck('subject_id')
+                        ->all()
+                );
+
+                return;
+            }
 
             $yearNumber = (int) $selectedPart->year_number;
 

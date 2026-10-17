@@ -197,6 +197,12 @@ class AdmissionDocumentController extends Controller
 
         if ($existing) {
             abort_unless($this->canUpload(), 403);
+            // Replacing a document that is already on file is a separate permission from the first upload.
+            abort_if(
+                $this->actorGuard() === 'staff' && !auth()->guard('staff')->user()->hasPermission('document_edit'),
+                403,
+                'You do not have permission to replace an existing document.'
+            );
             // Only allow replacement if pending or rejected — not if approved
             if ($existing->isApproved() && $this->actorGuard() !== 'web') {
                 return back()->withErrors([$fileKey => 'This document is already approved. Please contact the admin to replace it.']);
