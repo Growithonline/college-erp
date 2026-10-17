@@ -1291,7 +1291,6 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::post('admissions/{student}/toggle-status', [StaffAdmissionController::class, 'toggleStatus'])->name('admissions.toggle-status');
         Route::delete('admissions/{student}', [StaffAdmissionController::class, 'destroy'])->name('admissions.destroy');
         Route::get('admissions/{student}', [StaffAdmissionController::class, 'show'])->name('admissions.show');
-        Route::post('admissions/{student}/resend-credentials', [AdmissionController::class, 'resendCredentials'])->name('admissions.resend-credentials');
         Route::post('admissions/{student}/status', [StaffAdmissionController::class, 'updateStudentStatus'])->name('admissions.status.update');
 
         // Admission Documents (permission checked inside controller)

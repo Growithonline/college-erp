@@ -139,6 +139,21 @@ class StaffAdmissionController extends Controller
     public function updateStudentStatus(Request $request, Student $student)
     {
         $this->ensureStudentEditPermission();
+        $this->ensureAccessibleStudent($student);
+
+        // Pending / waitlisted students must go through the approval flow, which checks
+        // payment verification, seat availability and the bulk-import fee review.
+        abort_if(
+            in_array($student->status, ['pending', 'waitlisted'], true),
+            422,
+            'This admission is awaiting approval — use Admission Approvals to change its status.'
+        );
+
+        // Re-activating a student is an approval-level action, not a plain edit.
+        if ($request->input('status') === 'active') {
+            $this->ensureApprovalPermission();
+        }
+
         return app(InstituteAdmissionController::class)->updateStudentStatus($request, $student);
     }
 
@@ -555,6 +570,12 @@ class StaffAdmissionController extends Controller
         $this->permCheck('admission_approve');
         abort_if($student->institute_id !== $this->staff()->institute_id, 403);
         abort_if(!$this->staff()->canAccessStudentForAdmissions($student), 403, 'This student is outside your access scope.');
+
+        // Pending / waitlisted admissions can only be activated through Admission Approvals
+        // (payment verification, seat check and bulk-import fee review live there).
+        if (in_array($student->status, ['pending', 'waitlisted'], true)) {
+            return back()->with('error', 'This admission is awaiting approval — use Admission Approvals instead.');
+        }
 
         $allowed = ['pending', 'active', 'inactive', 'detained', 'cancelled'];
         $newStatus = $request->input('status');
