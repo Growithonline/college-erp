@@ -155,7 +155,9 @@ class PartnerFeeController extends Controller
     public function create(Request $request)
     {
         $partner = $this->partner();
-        $fromAdmission = session()->has('from_admission_fee_payment');
+        // Only valid for the one student whose admission just started this fee flow.
+        $fromAdmission = $request->filled('student_id')
+            && (int) session('from_admission_fee_payment') === (int) $request->student_id;
         abort_unless($partner->canCollectFee() || $fromAdmission, 403, 'Fee collection not permitted for this partner.');
 
         // Wallet check — flash status so fee create blade can show popup
@@ -165,11 +167,11 @@ class PartnerFeeController extends Controller
         }
 
         if ($request->filled('student_id')) {
-            $student = Student::find((int) $request->student_id);
+            $student = Student::where('institute_id', $partner->institute_id)->find((int) $request->student_id);
             if ($student) {
                 abort_unless(
-                    $partner->canCollectFeeInSession((int) $student->academic_session_id),
-                    403, 'Fee collection is not permitted for this session.'
+                    $partner->canAccessStudentFees($student) || ($fromAdmission && $partner->ownsStudent($student)),
+                    403, 'Fee collection is not permitted for this student.'
                 );
             }
         }
@@ -180,7 +182,9 @@ class PartnerFeeController extends Controller
     public function store(Request $request)
     {
         $partner = $this->partner();
-        $fromAdmission = session()->has('from_admission_fee_payment');
+        // Only valid for the one student whose admission just started this fee flow.
+        $fromAdmission = $request->filled('student_id')
+            && (int) session('from_admission_fee_payment') === (int) $request->student_id;
         abort_unless($partner->canCollectFee() || $fromAdmission, 403, 'Fee collection not permitted for this partner.');
 
         // Wallet check before processing fee
@@ -199,11 +203,11 @@ class PartnerFeeController extends Controller
         }
 
         if ($request->filled('student_id')) {
-            $student = Student::find((int) $request->student_id);
+            $student = Student::where('institute_id', $partner->institute_id)->find((int) $request->student_id);
             if ($student) {
                 abort_unless(
-                    $partner->canCollectFeeInSession((int) $student->academic_session_id),
-                    403, 'Fee collection is not permitted for this session.'
+                    $partner->canAccessStudentFees($student) || ($fromAdmission && $partner->ownsStudent($student)),
+                    403, 'Fee collection is not permitted for this student.'
                 );
             }
         }
@@ -320,7 +324,7 @@ class PartnerFeeController extends Controller
     {
         $partner = $this->partner();
         abort_unless($partner->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $partner->institute_id, 403, 'Student not found.');
+        abort_unless($partner->canAccessStudentFees($student), 403, 'Student not found.');
 
         $student->load(['stream.course', 'session']);
 
@@ -345,7 +349,7 @@ class PartnerFeeController extends Controller
     {
         $partner = $this->partner();
         abort_unless($partner->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $partner->institute_id, 403, 'Student not found.');
+        abort_unless($partner->canAccessStudentFees($student), 403, 'Student not found.');
 
         $student->load(['stream.course', 'session']);
 
@@ -370,7 +374,7 @@ class PartnerFeeController extends Controller
     {
         $partner = $this->partner();
         abort_unless($partner->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $partner->institute_id, 403, 'Student not found.');
+        abort_unless($partner->canAccessStudentFees($student), 403, 'Student not found.');
 
         if ($student->status === 'pending') {
             return redirect()->back()->with('error', 'This student\'s admission is pending approval.');
@@ -451,7 +455,7 @@ class PartnerFeeController extends Controller
     {
         $partner = $this->partner();
         abort_unless($partner->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $partner->institute_id, 403, 'Student not found.');
+        abort_unless($partner->canAccessStudentFees($student), 403, 'Student not found.');
 
         return app(InstituteWalletController::class)->walletPrint($student, $request);
     }

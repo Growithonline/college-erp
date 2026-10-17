@@ -106,6 +106,30 @@ class ChannelPartner extends Authenticatable
     public function canCollectFee(): bool        { return $this->hasPermission('fee_collect'); }
     public function canDownloadReports(): bool   { return (bool) $this->can_download_reports; }
 
+    /** True only for students this partner itself admitted (same institute). */
+    public function ownsStudent(Student $student): bool
+    {
+        return (int) $student->institute_id === (int) $this->institute_id
+            && $student->admission_source === 'channel_partner'
+            && (int) $student->admission_source_id === (int) $this->id;
+    }
+
+    /** Fee-side access to one student: session fee permission + per-session own/all scope. */
+    public function canAccessStudentFees(Student $student): bool
+    {
+        if ((int) $student->institute_id !== (int) $this->institute_id) {
+            return false;
+        }
+
+        $sessionId = (int) $student->academic_session_id;
+
+        if (!$this->canCollectFeeInSession($sessionId)) {
+            return false;
+        }
+
+        return $this->feeScopeForSession($sessionId) !== 'own' || $this->ownsStudent($student);
+    }
+
     // ── Admission form type ───────────────────────────────────────────────
 
     public function canUseFullAdmissionForm(): bool

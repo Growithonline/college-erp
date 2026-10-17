@@ -32,6 +32,13 @@ class CenterStudentController extends Controller
         abort_unless($this->center()->hasPermission($permission), 403, 'You do not have permission to perform this action.');
     }
 
+    // Admission follow-up screens (fee payment, success page, print) only make sense for
+    // students this center admitted itself — never for other students of the institute.
+    private function ensureOwnStudent(Student $student): void
+    {
+        abort_unless($this->center()->ownsStudent($student), 403, 'This student does not belong to your account.');
+    }
+
     // ── Student List ───────────────────────────────────────────────────────
 
     public function index(Request $request)
@@ -505,12 +512,14 @@ class CenterStudentController extends Controller
     public function feePayment(Student $student)
     {
         $this->permissionCheck('admission_add');
+        $this->ensureOwnStudent($student);
         return app(InstituteAdmissionController::class)->feePayment($student);
     }
 
     public function skipFeePayment(Student $student)
     {
         $this->permissionCheck('admission_add');
+        $this->ensureOwnStudent($student);
         return app(InstituteAdmissionController::class)->skipFeePayment($student);
     }
 
@@ -535,12 +544,14 @@ class CenterStudentController extends Controller
     public function quickSuccess(Student $student)
     {
         $this->permissionCheck('admission_add');
+        $this->ensureOwnStudent($student);
         return app(InstituteAdmissionController::class)->quickSuccess($student);
     }
 
     public function printAll(Student $student, \App\Models\FeeInvoice $invoice = null)
     {
         $this->permissionCheck('admission_add');
+        $this->ensureOwnStudent($student);
         return app(InstituteAdmissionController::class)->printAll($student, $invoice);
     }
 

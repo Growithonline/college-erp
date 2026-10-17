@@ -74,6 +74,27 @@ class AdmissionDocumentController extends Controller
         return $guard === 'web';
     }
 
+    // Institute-wide access is not enough: staff are limited to their session/course scope and
+    // centers/partners to the students they admitted themselves.
+    private function ensureStudentAccess(?Student $student): void
+    {
+        if (!$student) {
+            // Orphaned document (student removed): only the institute admin may still manage it.
+            abort_unless($this->actorGuard() === 'web', 404);
+            return;
+        }
+
+        abort_if($student->institute_id !== $this->instituteId(), 403);
+
+        $user = $this->actorUser();
+
+        match ($this->actorGuard()) {
+            'staff' => abort_unless($user->canAccessStudentForOperations($student), 403, 'This student is outside your access scope.'),
+            'center', 'partner' => abort_unless($user->ownsStudent($student), 403, 'This student does not belong to your account.'),
+            default => null,
+        };
+    }
+
     // ─── Required documents helper ─────────────────────────────────────────────
 
     public static function getRequiredDocumentTypes(int $courseId, string $userType, int $instituteId, string $admissionType = 'all'): array
@@ -115,7 +136,7 @@ class AdmissionDocumentController extends Controller
     public function upload(Request $request, Student $student)
     {
         abort_unless($this->canUpload(), 403, 'You do not have permission to upload documents.');
-        abort_if($student->institute_id !== $this->instituteId(), 403);
+        $this->ensureStudentAccess($student);
 
         $request->validate([
             'document_type_id' => 'required|exists:document_types,id',
@@ -217,6 +238,7 @@ class AdmissionDocumentController extends Controller
     {
         abort_unless($this->canVerify(), 403, 'You do not have permission to verify documents.');
         abort_if($document->institute_id !== $this->instituteId(), 403);
+        $this->ensureStudentAccess($document->student);
 
         $document->update([
             'verification_status' => 'approved',
@@ -241,6 +263,7 @@ class AdmissionDocumentController extends Controller
     {
         abort_unless($this->canVerify(), 403, 'You do not have permission to verify documents.');
         abort_if($document->institute_id !== $this->instituteId(), 403);
+        $this->ensureStudentAccess($document->student);
 
         $request->validate([
             'rejection_reason' => 'required|string|max:500',
@@ -286,6 +309,7 @@ class AdmissionDocumentController extends Controller
     {
         abort_unless($this->canDelete(), 403);
         abort_if($document->institute_id !== $this->instituteId(), 403);
+        $this->ensureStudentAccess($document->student);
 
         Storage::disk('public')->delete($document->file_path);
 
@@ -306,7 +330,7 @@ class AdmissionDocumentController extends Controller
 
     public function uploadPage(Request $request, Student $student)
     {
-        abort_if($student->institute_id !== $this->instituteId(), 403);
+        $this->ensureStudentAccess($student);
 
         $student->load(['stream.course', 'session']);
         $courseId  = $student->stream?->course_id;
@@ -346,6 +370,7 @@ class AdmissionDocumentController extends Controller
     public function show(AdmissionDocument $document)
     {
         abort_if($document->institute_id !== $this->instituteId(), 403);
+        $this->ensureStudentAccess($document->student);
 
         // Check view permission
         $guard = $this->actorGuard();

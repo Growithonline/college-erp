@@ -168,7 +168,9 @@ class CenterFeeController extends Controller
     public function create(Request $request)
     {
         $center = $this->center();
-        $fromAdmission = session()->has('from_admission_fee_payment');
+        // Only valid for the one student whose admission just started this fee flow.
+        $fromAdmission = $request->filled('student_id')
+            && (int) session('from_admission_fee_payment') === (int) $request->student_id;
         abort_unless($center->canCollectFee() || $fromAdmission, 403, 'Fee collection not permitted for this center.');
 
         // Wallet check — flash status so fee create blade can show popup
@@ -178,14 +180,11 @@ class CenterFeeController extends Controller
         }
 
         if ($request->filled('student_id')) {
-            $student = Student::find((int) $request->student_id);
+            $student = Student::where('institute_id', $center->institute_id)->find((int) $request->student_id);
             if ($student) {
-                if ($center->isFeesScopeOwn()) {
-                    $this->assertOwnStudent($student->id, $center);
-                }
                 abort_unless(
-                    $center->canCollectFeeInSession((int) $student->academic_session_id),
-                    403, 'Fee collection is not permitted for this session.'
+                    $center->canAccessStudentFees($student) || ($fromAdmission && $center->ownsStudent($student)),
+                    403, 'Fee collection is not permitted for this student.'
                 );
             }
         }
@@ -196,7 +195,9 @@ class CenterFeeController extends Controller
     public function store(Request $request)
     {
         $center = $this->center();
-        $fromAdmission = session()->has('from_admission_fee_payment');
+        // Only valid for the one student whose admission just started this fee flow.
+        $fromAdmission = $request->filled('student_id')
+            && (int) session('from_admission_fee_payment') === (int) $request->student_id;
         abort_unless($center->canCollectFee() || $fromAdmission, 403, 'Fee collection not permitted for this center.');
 
         // Wallet check before processing fee
@@ -215,14 +216,11 @@ class CenterFeeController extends Controller
         }
 
         if ($request->filled('student_id')) {
-            $student = Student::find((int) $request->student_id);
+            $student = Student::where('institute_id', $center->institute_id)->find((int) $request->student_id);
             if ($student) {
-                if ($center->isFeesScopeOwn()) {
-                    $this->assertOwnStudent($student->id, $center);
-                }
                 abort_unless(
-                    $fromAdmission || $center->canCollectFeeInSession((int) $student->academic_session_id),
-                    403, 'Fee collection is not permitted for this session.'
+                    $center->canAccessStudentFees($student) || ($fromAdmission && $center->ownsStudent($student)),
+                    403, 'Fee collection is not permitted for this student.'
                 );
             }
         }
@@ -401,19 +399,6 @@ class CenterFeeController extends Controller
         ]);
     }
 
-    private function assertOwnStudent(int $studentId, $center): void
-    {
-        $student = Student::find($studentId);
-        abort_unless(
-            $student
-            && (int) $student->institute_id === (int) $center->institute_id
-            && $student->admission_source === 'center'
-            && (int) $student->admission_source_id === (int) $center->id,
-            403,
-            'You can only collect fees for your own students.'
-        );
-    }
-
     private function searchOwnStudents(Request $request, $center, int $sessionId = 0)
     {
         $query = $request->q ?? '';
@@ -459,7 +444,7 @@ class CenterFeeController extends Controller
     {
         $center = $this->center();
         abort_unless($center->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $center->institute_id, 403, 'Student not found.');
+        abort_unless($center->canAccessStudentFees($student), 403, 'Student not found.');
 
         $student->load(['stream.course', 'session']);
 
@@ -484,7 +469,7 @@ class CenterFeeController extends Controller
     {
         $center = $this->center();
         abort_unless($center->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $center->institute_id, 403, 'Student not found.');
+        abort_unless($center->canAccessStudentFees($student), 403, 'Student not found.');
 
         $student->load(['stream.course', 'session']);
 
@@ -509,7 +494,7 @@ class CenterFeeController extends Controller
     {
         $center = $this->center();
         abort_unless($center->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $center->institute_id, 403, 'Student not found.');
+        abort_unless($center->canAccessStudentFees($student), 403, 'Student not found.');
 
         if ($student->status === 'pending') {
             return redirect()->back()->with('error', 'This student\'s admission is pending approval.');
@@ -590,7 +575,7 @@ class CenterFeeController extends Controller
     {
         $center = $this->center();
         abort_unless($center->canCollectFee(), 403);
-        abort_if((int) $student->institute_id !== (int) $center->institute_id, 403, 'Student not found.');
+        abort_unless($center->canAccessStudentFees($student), 403, 'Student not found.');
 
         return app(InstituteWalletController::class)->walletPrint($student, $request);
     }
