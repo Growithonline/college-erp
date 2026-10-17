@@ -455,11 +455,12 @@ class ReportController extends Controller
         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($limiterKey, 10)) {
             return response()->json(['success' => false, 'error' => 'Too many reminder batches. Please try again later.'], 429);
         }
-        \Illuminate\Support\Facades\RateLimiter::hit($limiterKey, 3600);
 
         if (! SmsService::isInstituteConfigured($instituteId)) {
             return response()->json(['success' => false, 'error' => 'SMS provider is not configured for this institute.'], 422);
         }
+
+        \Illuminate\Support\Facades\RateLimiter::hit($limiterKey, 3600);
 
         $sessionId = (int) $request->session_id;
 
@@ -493,13 +494,20 @@ class ReportController extends Controller
             $dueDate = $earliestDue ? \Carbon\Carbon::parse($earliestDue) : now();
 
             // Never remind the same student twice within 6 hours.
-            if (!\Illuminate\Support\Facades\Cache::add('due-sms-sent:' . $instituteId . ':' . $student->id, 1, now()->addHours(6))) {
+            $dedupeKey = 'due-sms-sent:' . $instituteId . ':' . $student->id;
+            if (!\Illuminate\Support\Facades\Cache::add($dedupeKey, 1, now()->addHours(6))) {
                 $skipped++;
                 continue;
             }
 
             $result = SmsDueReminderSetting::sendReminder($student, $due, $dueDate);
-            $result ? $sent++ : $failed++;
+            if ($result) {
+                $sent++;
+            } else {
+                // A failed send must stay retryable.
+                \Illuminate\Support\Facades\Cache::forget($dedupeKey);
+                $failed++;
+            }
         }
 
         return response()->json([
