@@ -1840,6 +1840,16 @@ class AdmissionController extends Controller
         return $educationRows;
     }
 
+    // photo_temp comes back from the browser; only accept a path the temp-upload step could have produced.
+    private function safeTempPhotoPath(mixed $path): ?string
+    {
+        $path = is_string($path) ? trim($path) : '';
+
+        return preg_match('#^students/photos/temp/[A-Za-z0-9._-]+$#', $path) && !str_contains($path, '..')
+            ? $path
+            : null;
+    }
+
     // admission_source_id must point at a real center / channel partner of THIS institute
     // (an arbitrary id would attribute the student, fees and commission to someone else).
     private function admissionSourceIdRules(?string $source, bool $required = false): array
@@ -2356,7 +2366,8 @@ class AdmissionController extends Controller
         );
 
         // Save photo to temp BEFORE validation so old('photo_temp') survives a failed redirect
-        $photoPath = $request->input('photo_temp');
+        $photoPath = $this->safeTempPhotoPath($request->input('photo_temp'));
+        $request->merge(['photo_temp' => $photoPath]);
         if ($request->hasFile('photo')) {
             $photoPath = $request->file('photo')->store('students/photos/temp', 'public');
             $request->merge(['photo_temp' => $photoPath]);
@@ -2454,6 +2465,20 @@ class AdmissionController extends Controller
 
     // ─── Step 2→3: Preview confirm → DB save ──────────────────────────
     public function confirmStore(Request $request)
+    {
+        $lock = \Illuminate\Support\Facades\Cache::lock('admission_confirm:' . session()->getId(), 30);
+        if (!$lock->get()) {
+            return back()->with('error', 'Your admission is already being saved — please wait a moment.');
+        }
+
+        try {
+            return $this->confirmStoreLocked($request);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function confirmStoreLocked(Request $request)
     {
         $instituteId = $this->instituteId();
         $formData    = session('admission_preview');
@@ -2609,7 +2634,7 @@ class AdmissionController extends Controller
             ]);
 
             // Photo: temp se permanent
-            if (!empty($formData['photo_temp'])) {
+            if (!empty($formData['photo_temp']) && $this->safeTempPhotoPath($formData['photo_temp'])) {
                 $tempPath  = $formData['photo_temp'];
                 $finalPath = str_replace('/temp/', '/', $tempPath);
                 \Illuminate\Support\Facades\Storage::disk('public')->move($tempPath, $finalPath);
@@ -3420,8 +3445,19 @@ class AdmissionController extends Controller
             return back()->with('error', 'No seat is available yet for this stream — still full.');
         }
 
-        $student->update(['status' => 'pending']);
-        WalletService::onAdmission($student);
+        $promoted = DB::transaction(function () use ($student) {
+            $fresh = Student::where('id', $student->id)->lockForUpdate()->first();
+            if (!$fresh || $fresh->status !== 'waitlisted') {
+                return false;
+            }
+
+            $fresh->update(['status' => 'pending']);
+            WalletService::onAdmission($fresh);
+
+            return true;
+        });
+        abort_unless($promoted, 422, 'This student is not on the waitlist.');
+        $student->refresh();
 
         AuditLogService::log($this->instituteId(), 'admission', 'waitlist_promoted',
             "{$student->name} promoted from waitlist to pending review.", $student, [
@@ -4066,6 +4102,7 @@ class AdmissionController extends Controller
         );
 
         // Save photo to temp BEFORE validation so old('photo_temp') survives any back()->withInput() redirect
+        $request->merge(['photo_temp' => $this->safeTempPhotoPath($request->input('photo_temp'))]);
         if ($request->hasFile('photo') && !$request->filled('photo_temp')) {
             $tempPath = $request->file('photo')->store('students/photos/temp', 'public');
             $request->merge(['photo_temp' => $tempPath]);
@@ -4764,6 +4801,20 @@ class AdmissionController extends Controller
     // ── Step 2: Quick Preview confirm → DB save → Fee Payment ───────────
     public function quickConfirm(Request $request)
     {
+        $lock = \Illuminate\Support\Facades\Cache::lock('admission_confirm:' . session()->getId(), 30);
+        if (!$lock->get()) {
+            return back()->with('error', 'Your admission is already being saved — please wait a moment.');
+        }
+
+        try {
+            return $this->quickConfirmLocked($request);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function quickConfirmLocked(Request $request)
+    {
         $instituteId = $this->instituteId();
         $formData    = session('quick_admission_preview');
 
@@ -4876,7 +4927,7 @@ class AdmissionController extends Controller
             ]);
 
             // Photo move karo temp se permanent
-            if (!empty($formData['photo_temp'])) {
+            if (!empty($formData['photo_temp']) && $this->safeTempPhotoPath($formData['photo_temp'])) {
                 $finalPath = str_replace('/temp/', '/', $formData['photo_temp']);
                 \Illuminate\Support\Facades\Storage::disk('public')->move($formData['photo_temp'], $finalPath);
                 $student->update(['photo' => $finalPath]);

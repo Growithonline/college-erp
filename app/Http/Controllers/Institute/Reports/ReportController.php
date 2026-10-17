@@ -2341,6 +2341,7 @@ class ReportController extends Controller
         }
 
         $streams = CourseStream::where('course_id', $request->course_id)
+            ->whereHas('course', fn($q) => $q->where('institute_id', $this->instituteId()))
             ->where('status', true)
             ->orderBy('name')
             ->get(['id', 'name']);

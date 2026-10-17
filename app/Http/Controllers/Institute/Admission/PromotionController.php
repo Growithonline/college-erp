@@ -117,8 +117,7 @@ class PromotionController extends Controller
 
     private function instituteId(): int
     {
-        return session('institute_id')
-            ?? $this->authenticatedUser()?->institute_id
+        return $this->authenticatedUser()?->institute_id
             ?? abort(403);
     }
 

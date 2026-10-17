@@ -20,7 +20,7 @@ class StatementController extends Controller
     // ── Institute ID — multi-guard support ──────────────────────────
     private function instituteId(): int
     {
-        foreach (['web', 'staff'] as $guard) {
+        foreach (['staff', 'web'] as $guard) {
             $user = auth()->guard($guard)->user();
             if ($user && $user->institute_id) {
                 return (int) $user->institute_id;

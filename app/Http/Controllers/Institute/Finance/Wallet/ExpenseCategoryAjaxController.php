@@ -20,8 +20,18 @@ class ExpenseCategoryAjaxController extends Controller
         return (int) auth()->user()->institute_id;
     }
 
+    // Vendor / work-order data is finance information: staff need a finance permission to read it.
+    private function ensureAccess(): void
+    {
+        if (Auth::guard('staff')->check()) {
+            $staff = Auth::guard('staff')->user();
+            abort_unless($staff->canCreateExpense() || $staff->canViewFinance(), 403, 'Permission denied.');
+        }
+    }
+
     public function subCategories(Request $request): JsonResponse
     {
+        $this->ensureAccess();
         $l1Id = (int) $request->input('l1_id');
 
         $subs = ExpenseCategoryL2::where('institute_id', $this->instituteId())
@@ -35,6 +45,7 @@ class ExpenseCategoryAjaxController extends Controller
 
     public function vendors(Request $request): JsonResponse
     {
+        $this->ensureAccess();
         $l2Id = (int) $request->input('l2_id');
 
         $vendors = ExpenseVendor::where('institute_id', $this->instituteId())
@@ -48,6 +59,7 @@ class ExpenseCategoryAjaxController extends Controller
 
     public function workOrders(Request $request): JsonResponse
     {
+        $this->ensureAccess();
         $vendorId = (int) $request->input('vendor_id');
 
         $workOrders = ExpenseVendorWorkOrder::where('institute_id', $this->instituteId())

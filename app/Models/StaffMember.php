@@ -302,9 +302,17 @@ class StaffMember extends Authenticatable
         return in_array($sessionId, $allowed, true);
     }
 
+    // Schema::hasTable() is a real query; cache the answer for the whole request/process.
+    private static function tableExists(string $table): bool
+    {
+        static $cache = [];
+
+        return $cache[$table] ??= Schema::hasTable($table);
+    }
+
     public function activePermissionOverrides()
     {
-        if (!Schema::hasTable('staff_permission_overrides')) {
+        if (!self::tableExists('staff_permission_overrides')) {
             return collect();
         }
 
@@ -352,7 +360,7 @@ class StaffMember extends Authenticatable
 
     public function allowedCourseIds(): array
     {
-        if (!Schema::hasTable('staff_course_permissions')) {
+        if (!self::tableExists('staff_course_permissions')) {
             return [];
         }
 
@@ -366,7 +374,7 @@ class StaffMember extends Authenticatable
 
     public function allowedFeeCollectionTypeIds(): array
     {
-        if (!Schema::hasTable('staff_fee_collection_permissions')) {
+        if (!self::tableExists('staff_fee_collection_permissions')) {
             return [];
         }
 
