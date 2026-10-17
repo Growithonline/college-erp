@@ -8,6 +8,7 @@ use App\Models\FeeInvoice;
 use App\Models\InstituteBankAccount;
 use App\Models\InstituteIncomeCategory;
 use App\Models\InstituteManualIncome;
+use App\Models\PaymentModePermission;
 use App\Models\Student;
 use App\Services\AuditLogService;
 use App\Services\InstituteWalletService;
@@ -46,7 +47,7 @@ class PreviousDueCollectionController extends Controller
     // ── Resolve institute_id for any guard ──────────────────────────────
     private function instituteId(): int
     {
-        foreach (['web', 'staff'] as $guard) {
+        foreach (['staff', 'web'] as $guard) {
             if (auth()->guard($guard)->check()) {
                 $id = auth()->guard($guard)->user()?->institute_id;
                 if ($id) return (int) $id;
@@ -240,6 +241,30 @@ class PreviousDueCollectionController extends Controller
             return back()->withErrors(['transaction_ref' => 'Transaction Ref / UTR / Cheque No. is required for non-cash payments.'])->withInput();
         }
 
+        // Same payment-mode / bank restrictions as the regular Collect Fee page.
+        $staff = $this->currentStaff();
+        if ($staff) {
+            $modePermission = PaymentModePermission::where('institute_id', $this->instituteId())
+                ->where('user_type', 'staff')
+                ->where('user_id', $staff->id)
+                ->first();
+
+            if ($modePermission) {
+                if (!in_array($validated['payment_mode'], $modePermission->allowed_modes ?? [], true)) {
+                    return back()->withErrors(['payment_mode' => 'Selected payment mode is not allowed for this user.'])->withInput();
+                }
+
+                $allowedBankIds = array_map('intval', $modePermission->allowed_bank_ids ?? []);
+                if ($validated['payment_mode'] !== 'cash' && !empty($validated['bank_account_id'])
+                    && !in_array((int) $validated['bank_account_id'], $allowedBankIds, true)) {
+                    return back()->withErrors(['bank_account_id' => 'Selected bank account is not allowed for this user.'])->withInput();
+                }
+            }
+
+            $discountLimit     = (float) ($staff->max_discount_percent ?? 100);
+            $hasDiscountConfig = $staff->feeDiscountPermissions()->exists();
+        }
+
         $validItems = [];
         $totalCollect = 0.0;
         $totalFine = 0.0;
@@ -259,6 +284,28 @@ class PreviousDueCollectionController extends Controller
             $discount = round((float) ($row['discount'] ?? 0), 2);
             if ($collect <= 0 && $fine <= 0 && $discount <= 0) {
                 continue;
+            }
+
+            if ($staff && $discount > 0) {
+                // Dues here are not tied to a fee type, so a staff member limited to specific
+                // discountable fee types cannot discount them at all.
+                if ($hasDiscountConfig) {
+                    return back()->withErrors([
+                        'items' => "Discount is not allowed on \"{$name}\" for your account.",
+                    ])->withInput();
+                }
+
+                if ($discountLimit < 100) {
+                    $base = (float) $pendingRow['charged'];
+                    if ($base <= 0) {
+                        $base = $discount + $collect;
+                    }
+                    if ($discount > ($discountLimit / 100) * $base + 0.01) {
+                        return back()->withErrors([
+                            'items' => "Discount on \"{$name}\" exceeds your allowed limit of {$discountLimit}%.",
+                        ])->withInput();
+                    }
+                }
             }
 
             $payableCap = round((float) $pendingRow['pending'] + $fine, 2);
@@ -290,7 +337,8 @@ class PreviousDueCollectionController extends Controller
         $paidAmount = round($totalCollect + $totalFine, 2);
         $totalAmount = round($paidAmount + $totalDiscount, 2);
         $actorName = $this->actorName();
-        $paymentDate = $validated['payment_date'];
+        // Staff collections are always dated today, exactly like the regular Collect Fee page.
+        $paymentDate = $staff ? now()->toDateString() : $validated['payment_date'];
 
         $bankAccount = null;
         if ($validated['payment_mode'] !== 'cash' && !empty($validated['bank_account_id'])) {

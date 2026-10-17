@@ -4172,7 +4172,17 @@ class AdmissionController extends Controller
         // an over-limit custom amount is simply refused.
         if (auth()->guard('staff')->check()) {
             $customLimit = auth()->guard('staff')->user()->max_custom_fee_amount;
-            $customTotal = (float) $validItems->filter(fn($item) => !empty($item['is_custom']))->sum('amount');
+            // Cap the amount the custom item actually CHARGES the student (total_fee, as booked by
+            // WalletService::chargeCustomFeeItems), not just the cash collected now — otherwise a
+            // tiny `amount` with a huge `total_fee` would dodge the limit.
+            $customTotal = (float) $validItems
+                ->filter(fn($item) => !empty($item['is_custom']))
+                ->sum(fn($item) => max(
+                    (float) ($item['amount'] ?? 0),
+                    (float) ($item['total_fee'] ?? 0) > 0
+                        ? (float) $item['total_fee']
+                        : (float) ($item['amount'] ?? 0) + (float) ($item['discount'] ?? 0)
+                ));
             if ($customTotal > 0 && $customLimit !== null && $customTotal > (float) $customLimit + 0.01) {
                 return back()->withErrors([
                     'fee_items' => 'Custom fee above your limit of ₹' . number_format((float) $customLimit, 2)

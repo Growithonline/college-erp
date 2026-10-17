@@ -14,7 +14,8 @@ class FeeApprovalController extends Controller
 {
     private function instituteId(): int
     {
-        $user = auth()->user();
+        // Staff routes run on the staff guard; the default (web) guard is only the institute owner.
+        $user = auth()->guard('staff')->user() ?? auth()->user();
         abort_if(!$user || !$user->institute_id, 403, 'Institute context missing.');
 
         return (int) $user->institute_id;
@@ -25,6 +26,37 @@ class FeeApprovalController extends Controller
         return auth()->guard('staff')->user();
     }
 
+    // Approvers see/act only on invoices inside their own session/course scope.
+    private function ensureInvoiceInScope(FeeInvoice $invoice): void
+    {
+        $staff = $this->currentStaff();
+        if (!$staff) {
+            return;
+        }
+
+        abort_if(
+            !$staff->canAccessAcademicSession((int) $invoice->academic_session_id)
+            || !$invoice->student
+            || !$staff->canAccessStudentForOperations($invoice->student),
+            403,
+            'This invoice is outside your access scope.'
+        );
+    }
+
+    private function scopePendingForStaff($query)
+    {
+        $staff = $this->currentStaff();
+        if (!$staff) {
+            return $query;
+        }
+
+        if ($staff->hasRestrictedSessionAccess()) {
+            $query->whereIn('academic_session_id', $staff->allowedSessionIds() ?: [-1]);
+        }
+
+        return $query->whereHas('student', fn ($studentQuery) => $staff->scopeOperationalStudents($studentQuery));
+    }
+
     public function index(Request $request)
     {
         $staff = $this->currentStaff();
@@ -32,15 +64,15 @@ class FeeApprovalController extends Controller
 
         $instituteId = $this->instituteId();
 
-        $pending = FeeInvoice::with(['student:id,name,roll_no', 'collectedByStaff:id,name'])
-            ->where('institute_id', $instituteId)
-            ->pendingApproval()
-            ->latest('id')
-            ->paginate(30);
+        $pending = $this->scopePendingForStaff(
+            FeeInvoice::with(['student:id,name,roll_no', 'collectedByStaff:id,name'])
+                ->where('institute_id', $instituteId)
+                ->pendingApproval()
+        )->latest('id')->paginate(30);
 
-        $totalPendingAmount = FeeInvoice::where('institute_id', $instituteId)
-            ->pendingApproval()
-            ->get()
+        $totalPendingAmount = $this->scopePendingForStaff(
+            FeeInvoice::where('institute_id', $instituteId)->pendingApproval()
+        )->get()
             ->sum(fn ($invoice) => (float) ($invoice->pending_settlement_data['paid_amount'] ?? 0));
 
         return view('institute.fee.pending-approvals', compact('pending', 'totalPendingAmount'));
@@ -52,6 +84,14 @@ class FeeApprovalController extends Controller
         abort_if($staff && !$staff->canApproveFee(), 403, 'Fee approval permission required.');
         abort_if($invoice->institute_id !== $this->instituteId(), 403);
         abort_if(!$invoice->isPendingApproval(), 422, 'This invoice is not awaiting approval.');
+        $this->ensureInvoiceInScope($invoice);
+
+        // Maker-checker: whoever collected the fee cannot also approve it.
+        abort_if(
+            $staff && (int) $invoice->collected_by_staff_id === (int) $staff->id,
+            403,
+            'You cannot approve a collection you made yourself — another approver must review it.'
+        );
 
         $instituteId = $this->instituteId();
         $approverId = auth()->guard('staff')->id() ?? auth()->id();
@@ -99,7 +139,7 @@ class FeeApprovalController extends Controller
             });
         } catch (\Throwable $e) {
             report($e);
-            return back()->with('error', 'Could not approve this invoice: ' . $e->getMessage());
+            return back()->with('error', 'Could not approve this invoice. Please try again or contact support.');
         }
 
         $freshStudent = Student::find($invoice->student_id);
@@ -121,6 +161,7 @@ class FeeApprovalController extends Controller
         abort_if($staff && !$staff->canApproveFee(), 403, 'Fee approval permission required.');
         abort_if($invoice->institute_id !== $this->instituteId(), 403);
         abort_if(!$invoice->isPendingApproval(), 422, 'This invoice is not awaiting approval.');
+        $this->ensureInvoiceInScope($invoice);
 
         $data = $request->validate([
             'rejection_reason' => ['required', 'string', 'max:500'],

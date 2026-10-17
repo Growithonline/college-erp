@@ -15,6 +15,8 @@ use App\Services\InstituteMailer;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 
 class PaymentClaimController extends Controller
@@ -40,6 +42,14 @@ class PaymentClaimController extends Controller
             return (bool) $this->actorUser()->canApproveFee();
         }
         return true;
+    }
+
+    // Staff with a restricted session/course scope may only act on students inside it.
+    private function ensureStudentScope(?Student $student): void
+    {
+        if ($this->actorGuard() === 'staff') {
+            abort_if(!$student || !$this->actorUser()->canAccessStudentForOperations($student), 403, 'This student is outside your access scope.');
+        }
     }
 
     private function staffId(): ?int
@@ -154,21 +164,38 @@ class PaymentClaimController extends Controller
         abort_if($claim->institute_id !== $this->instituteId(), 403);
         abort_unless($this->canApprove(), 403, 'Fee approval permission required.');
         abort_unless($claim->isPending(), 422, 'This claim has already been reviewed.');
+        $this->ensureStudentScope($claim->student);
 
-        $validated = $request->validate([
-            'confirmed_amount' => ['nullable', 'numeric', 'min:1'],
-        ]);
+        // A reviewer may confirm LESS than the student claimed (partial / corrected amount) but
+        // never more — a higher figure has no evidence behind it; use "record manually" for that.
+        $amountRules = ['nullable', 'numeric', 'min:1'];
+        if ((float) $claim->amount_claimed > 0) {
+            $amountRules[] = 'max:' . (float) $claim->amount_claimed;
+        }
+        $validated = $request->validate(['confirmed_amount' => $amountRules]);
         $amount = (float) ($validated['confirmed_amount'] ?? $claim->amount_claimed);
         $invoicePaymentMode = $claim->payment_mode === 'pay_at_institute' ? 'cash' : 'upi';
 
-        $this->settle($claim, $amount, $invoicePaymentMode);
+        // Re-check the status under a row lock so two simultaneous clicks cannot settle one claim twice.
+        $settled = DB::transaction(function () use ($claim, $amount, $invoicePaymentMode) {
+            $fresh = PaymentClaim::where('id', $claim->id)->lockForUpdate()->first();
+            if (!$fresh || !$fresh->isPending()) {
+                return false;
+            }
 
-        $claim->update([
-            'amount_claimed'      => $amount,
-            'verification_status' => 'approved',
-            'verified_by'         => $this->staffId(),
-            'verified_at'         => now(),
-        ]);
+            $this->settle($fresh, $amount, $invoicePaymentMode);
+
+            $fresh->update([
+                'amount_claimed'      => $amount,
+                'verification_status' => 'approved',
+                'verified_by'         => $this->staffId(),
+                'verified_at'         => now(),
+            ]);
+
+            return true;
+        });
+
+        abort_unless($settled, 422, 'This claim has already been reviewed.');
 
         AuditLogService::log($this->instituteId(), 'payment_claim', 'verified',
             "Payment claim verified for {$claim->student->name} (₹{$amount})", $claim, [
@@ -186,6 +213,7 @@ class PaymentClaimController extends Controller
         abort_if($claim->institute_id !== $this->instituteId(), 403);
         abort_unless($this->canApprove(), 403, 'Fee approval permission required.');
         abort_unless($claim->isPending(), 422, 'This claim has already been reviewed.');
+        $this->ensureStudentScope($claim->student);
 
         $validated = $request->validate([
             'rejection_reason' => ['required', 'string', 'max:500'],
@@ -212,6 +240,7 @@ class PaymentClaimController extends Controller
     {
         abort_if($student->institute_id !== $this->instituteId(), 403);
         abort_unless($this->canApprove(), 403, 'Fee approval permission required.');
+        $this->ensureStudentScope($student);
 
         $validated = $request->validate([
             'amount'          => ['required', 'numeric', 'min:1'],
@@ -224,6 +253,23 @@ class PaymentClaimController extends Controller
             $belongs = InstituteBankAccount::where('id', $validated['bank_account_id'])
                 ->where('institute_id', $this->instituteId())->exists();
             abort_unless($belongs, 422);
+        }
+
+        // A manual record may not exceed what the student actually owes right now.
+        $outstanding = (float) WalletService::buildPendingRows($student, (int) $student->academic_session_id)->sum('pending');
+        $dueNow      = (float) ($student->feePlan?->dueNowAmount($student) ?? 0);
+        $maxAllowed  = max($outstanding, $dueNow);
+        abort_if($maxAllowed <= 0, 422, 'No payment is due for this student.');
+        if ((float) $validated['amount'] - $maxAllowed > 0.01) {
+            return back()->withErrors([
+                'amount' => 'Amount exceeds the outstanding due of ₹' . number_format($maxAllowed, 2) . '.',
+            ])->withInput();
+        }
+
+        // Double-click / retry guard — same amount for the same student within seconds is one payment.
+        $dupKey = 'claim_manual:' . md5($student->id . '|' . $validated['amount'] . '|' . ($this->staffId() ?? 0));
+        if (!Cache::add($dupKey, true, 15)) {
+            return back()->with('error', 'This payment was just recorded — please check before submitting again.');
         }
 
         $claim = PaymentClaim::create([
@@ -261,6 +307,7 @@ class PaymentClaimController extends Controller
     {
         abort_if($student->institute_id !== $this->instituteId(), 403);
         abort_unless($this->canApprove(), 403, 'Fee approval permission required.');
+        $this->ensureStudentScope($student);
         abort_unless($student->admitted_by_type === 'online', 422);
         abort_unless($student->email, 422, 'This student has no email on file.');
 

@@ -1244,7 +1244,17 @@ class FeeCollectionController extends Controller
         $needsApproval = false;
         if (auth()->guard('staff')->check()) {
             $staffUser = auth()->guard('staff')->user();
-            $customTotal = (float) $validItems->filter(fn($item) => !empty($item['is_custom']))->sum('amount');
+            // Cap the amount the custom item actually CHARGES the student (total_fee, as booked by
+            // WalletService::chargeCustomFeeItems), not just the cash collected now — otherwise a
+            // tiny `amount` with a huge `total_fee` would dodge the limit.
+            $customTotal = (float) $validItems
+                ->filter(fn($item) => !empty($item['is_custom']))
+                ->sum(fn($item) => max(
+                    (float) ($item['amount'] ?? 0),
+                    (float) ($item['total_fee'] ?? 0) > 0
+                        ? (float) $item['total_fee']
+                        : (float) ($item['amount'] ?? 0) + (float) ($item['discount'] ?? 0)
+                ));
             $customLimit = $staffUser->max_custom_fee_amount;
             if ($customTotal > 0 && $customLimit !== null && $customTotal > (float) $customLimit + 0.01) {
                 $needsApproval = true;
