@@ -296,9 +296,43 @@
         overflow-x: auto;
     }
     .fee-collect-table {
-        min-width: 940px;
+        min-width: 1040px;
     }
 }
+/* Collect Fee Now table: larger, bold, black text (badges and input borders keep their own colours) */
+.fee-collect-table,
+.fee-collect-table th,
+.fee-collect-table td,
+.fee-collect-table td .small,
+.fee-collect-table td .text-muted,
+.fee-collect-table td .text-danger,
+.fee-collect-table td .text-success,
+.fee-collect-table td.text-muted,
+.fee-collect-table td.small,
+.fee-collect-table th.text-muted,
+.fee-collect-table th.small,
+.fee-collect-table label {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+}
+.fee-collect-table thead th {
+    font-size: 13px !important;
+    line-height: 1.2;
+}
+.fee-collect-table .form-control,
+.fee-collect-table .input-group-text {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #000 !important;
+}
+.fee-collect-table .badge {
+    font-size: 11px !important;
+}
+.fee-collect-table .badge.bg-success:not(.bg-opacity-10),
+.fee-collect-table .badge.bg-danger:not(.bg-opacity-10) { color: #fff !important; }
+.fee-collect-table .badge.bg-opacity-10 { color: #000 !important; }
+.fee-collect-table .badge.bg-warning { color: #000 !important; }
 </style>
 
 @if(session('success'))
