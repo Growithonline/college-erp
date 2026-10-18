@@ -1,6 +1,10 @@
 @php
     $isStaff = auth()->guard('staff')->check();
     $layout = $isStaff ? 'staff.layout' : 'institute.layout';
+    // Fields this staff member may not change - locked in the form below (and enforced again by the server).
+    $lockedStudentFields = $isStaff ? auth()->guard('staff')->user()->lockedStudentFields() : [];
+    $canEditAnyOfficeField = $isStaff && collect(\App\Models\StaffMember::OFFICE_EDIT_FIELDS)
+        ->contains(fn ($f) => auth()->guard('staff')->user()->canEditOfficeField($f));
     $showRoute = $isStaff ? 'staff.admissions.show' : 'admissions.show';
     $updateRoute = $isStaff ? 'staff.admissions.update' : 'admissions.update';
     $streamSubjectsRoute = $isStaff ? 'staff.admissions.stream-subjects' : 'admissions.stream-subjects';
@@ -123,11 +127,15 @@
     <div class="card-body p-3">
         @if($isStaff)
         <div class="alert alert-warning small py-2 mb-3">
-            <i class="bi bi-lock-fill me-1"></i> Office details can only be changed by the institute admin.
+            <i class="bi bi-lock-fill me-1"></i>
+            @if($canEditAnyOfficeField)
+                Only the office fields enabled for your account can be edited; the rest can only be changed by the institute admin.
+            @else
+                Office details can only be changed by the institute admin.
+            @endif
         </div>
         @endif
-        {{-- Disabled fieldset: nothing inside is submitted for staff (the server ignores these fields for staff anyway). --}}
-        <fieldset @if($isStaff) disabled @endif class="border-0 p-0 m-0" style="min-width:0;">
+        <fieldset class="border-0 p-0 m-0" style="min-width:0;">
         <div class="row g-3">
             @if($fieldEnabled('form_no'))
             <div class="col-md-2">
@@ -1658,6 +1666,15 @@ function filterEditCoursesByType(typeId) {
 }
 
 window.addEventListener('DOMContentLoaded', function() {
+    // Lock the fields this staff member has no permission for (the server ignores them regardless).
+    @json($lockedStudentFields).forEach(function (name) {
+        document.querySelectorAll('[name="' + name + '"], [name^="' + name + '["]').forEach(function (el) {
+            el.disabled = true;
+            el.title = 'You do not have permission to change this field';
+            el.classList.add('bg-light');
+        });
+    });
+
     const editAdmissionForm = document.getElementById('editAdmissionForm');
     if (editAdmissionForm) {
         let isSubmitting = false;

@@ -43,9 +43,19 @@ class StaffAdmissionController extends Controller
         }
     }
 
+    // Opening / saving the edit form: any editable section or office field is enough; the form
+    // itself (and the server) then restrict WHICH fields can change.
     private function ensureStudentEditPermission(): void
     {
-        if (!$this->staff()->hasPermission('student_edit') && !$this->staff()->hasPermission('admission_edit')) {
+        if (!$this->staff()->canEditStudentProfile()) {
+            abort(403, 'Permission denied.');
+        }
+    }
+
+    // Changing a student's status keeps requiring the classic edit permissions.
+    private function ensureStudentStatusPermission(): void
+    {
+        if (!$this->staff()->canChangeStudentStatus()) {
             abort(403, 'Permission denied.');
         }
     }
@@ -138,7 +148,7 @@ class StaffAdmissionController extends Controller
 
     public function updateStudentStatus(Request $request, Student $student)
     {
-        $this->ensureStudentEditPermission();
+        $this->ensureStudentStatusPermission();
         $this->ensureAccessibleStudent($student);
 
         // Pending / waitlisted students must go through the approval flow, which checks

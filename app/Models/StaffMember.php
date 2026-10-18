@@ -137,6 +137,92 @@ class StaffMember extends Authenticatable
         return $this->hasPermission('admission_add');
     }
 
+    // ── Field-wise student edit permissions ───────────────────────────────
+    // student_edit / admission_edit keep working for the everyday sections (personal, parents,
+    // address, education, scholarship). 'contact' (mobile / email, which receive the student's
+    // portal OTP) and 'identity' (DOB / Aadhaar / APAAR) and every office field are NEVER implied
+    // by them - they need their own permission, usually a time-limited per-staff override.
+    public const OFFICE_EDIT_FIELDS = [
+        'institute_form_no', 'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no', 'reference_no', 'reference_by',
+    ];
+
+    public const STUDENT_EDIT_SECTIONS = [
+        'personal'    => ['gender', 'religion', 'special_category', 'nationality', 'marital_status', 'photo'],
+        'identity'    => ['dob', 'aadhar_no', 'apaar_no'],
+        'contact'     => ['mobile', 'email'],
+        'parents'     => ['father_mobile', 'father_occupation', 'mother_name', 'mother_mobile', 'mother_occupation',
+                          'guardian_name', 'guardian_mobile', 'guardian_relation'],
+        'address'     => ['perm_village', 'perm_thana', 'perm_post', 'perm_district', 'perm_state', 'perm_pincode', 'perm_address',
+                          'comm_address', 'comm_thana', 'comm_post', 'comm_city', 'comm_district', 'comm_state', 'comm_pincode',
+                          'comm_same_as_perm'],
+        'education'   => ['education'],
+        'scholarship' => ['has_scholarship', 'scholarship_name', 'scholarship_type', 'scholarship_authority',
+                          'scholarship_applied_date', 'scholarship_amount', 'scholarship_ref_no'],
+    ];
+
+    // Fee-driving / structural fields: admin only, never delegated.
+    public const STUDENT_EDIT_ADMIN_ONLY = [
+        'admission_type', 'admission_source', 'admission_source_id', 'gap_year', 'admission_date', 'student_type', 'category',
+    ];
+
+    public function canEditStudentSection(string $section): bool
+    {
+        $implied = !in_array($section, ['contact', 'identity'], true)
+            && $this->hasAnyPermission(['student_edit', 'admission_edit']);
+
+        return $implied || $this->hasPermission('student_edit_' . $section);
+    }
+
+    public function canEditOfficeField(string $field): bool
+    {
+        return in_array($field, self::OFFICE_EDIT_FIELDS, true)
+            && $this->hasPermission('office_edit_' . $field);
+    }
+
+    /** May open the student edit form at all (at least one editable section or office field). */
+    public function canEditStudentProfile(): bool
+    {
+        foreach (array_keys(self::STUDENT_EDIT_SECTIONS) as $section) {
+            if ($this->canEditStudentSection($section)) {
+                return true;
+            }
+        }
+
+        foreach (self::OFFICE_EDIT_FIELDS as $field) {
+            if ($this->canEditOfficeField($field)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Status changes (drop, detain, ...) stay tied to the classic edit permissions. */
+    public function canChangeStudentStatus(): bool
+    {
+        return $this->hasAnyPermission(['student_edit', 'admission_edit']);
+    }
+
+    /** Form field names this staff member may NOT change on the student edit form. */
+    public function lockedStudentFields(): array
+    {
+        $locked = self::STUDENT_EDIT_ADMIN_ONLY;
+
+        foreach (self::STUDENT_EDIT_SECTIONS as $section => $fields) {
+            if (!$this->canEditStudentSection($section)) {
+                $locked = array_merge($locked, $fields);
+            }
+        }
+
+        foreach (self::OFFICE_EDIT_FIELDS as $field) {
+            if (!$this->canEditOfficeField($field)) {
+                $locked[] = $field;
+            }
+        }
+
+        return array_values(array_unique($locked));
+    }
+
     public function canEditAdmissions(): bool
     {
         return $this->hasAnyPermission(['admission_edit', 'student_edit']);

@@ -1840,6 +1840,86 @@ class AdmissionController extends Controller
         return $educationRows;
     }
 
+    // Every student field a profile edit can touch, as comparable strings (used for the audit trail).
+    private function trackedStudentFieldValues(Student $student): array
+    {
+        $fields = array_merge(
+            collect(\App\Models\StaffMember::STUDENT_EDIT_SECTIONS)->flatten()->all(),
+            \App\Models\StaffMember::OFFICE_EDIT_FIELDS,
+            \App\Models\StaffMember::STUDENT_EDIT_ADMIN_ONLY,
+            ['name', 'father_name', 'course_type_id', 'course_stream_id', 'course_part_id', 'fee_plan_id']
+        );
+
+        $values = [];
+        foreach (array_unique($fields) as $field) {
+            if (in_array($field, ['photo', 'education'], true)) {
+                continue;
+            }
+
+            $value = $student->getAttribute($field);
+            $values[$field] = $value instanceof \DateTimeInterface
+                ? $value->format('Y-m-d')
+                : (is_bool($value) ? (string) (int) $value : trim((string) ($value ?? '')));
+        }
+
+        return $values;
+    }
+
+    private function logStudentProfileChanges(Student $student, array $before, bool $byStaff): void
+    {
+        // Personal identifiers are masked in the log; the field name and the fact of change are what matter.
+        $sensitive = ['aadhar_no', 'apaar_no', 'mobile', 'email', 'father_mobile', 'mother_mobile', 'guardian_mobile'];
+        $mask = fn (string $field, string $value) => in_array($field, $sensitive, true) && strlen($value) > 4
+            ? str_repeat('*', strlen($value) - 4) . substr($value, -4)
+            : $value;
+
+        $changes = [];
+        foreach ($this->trackedStudentFieldValues($student) as $field => $new) {
+            $old = $before[$field] ?? '';
+            if ($old !== $new) {
+                $changes[$field] = ['old' => $mask($field, $old), 'new' => $mask($field, $new)];
+            }
+        }
+
+        if (!$changes) {
+            return;
+        }
+
+        AuditLogService::log($this->instituteId(), 'admission', 'student_profile_updated',
+            'Student profile updated (' . count($changes) . ' field(s)).', $student, [
+                'student_id'   => $student->id,
+                'student_uid'  => $student->student_uid,
+                'changed_by'   => $this->authenticatedUser()?->name ?? 'Institute Admin',
+                'by_staff'     => $byStaff,
+                'changes'      => $changes,
+            ]);
+    }
+
+    // Office numbers are expected to be unique per institute. Not enforced (some institutes reuse
+    // them across sessions), but a changed value that collides is called out on the success banner.
+    private function duplicateOfficeNumberWarnings(Student $student, array $before): string
+    {
+        $warnings = [];
+
+        foreach (['enrollment_no' => 'Enrollment No', 'sr_no' => 'SR No', 'uin_no' => 'UIN No'] as $field => $label) {
+            $new = trim((string) $student->{$field});
+            if ($new === '' || $new === ($before[$field] ?? '')) {
+                continue;
+            }
+
+            $other = Student::where('institute_id', $student->institute_id)
+                ->where($field, $new)
+                ->where('id', '!=', $student->id)
+                ->first(['id', 'name', 'student_uid']);
+
+            if ($other) {
+                $warnings[] = "{$label} {$new} is already used by {$other->name} ({$other->student_uid}).";
+            }
+        }
+
+        return $warnings ? ' Warning: ' . implode(' ', $warnings) : '';
+    }
+
     // photo_temp comes back from the browser; only accept a path the temp-upload step could have produced.
     private function safeTempPhotoPath(mixed $path): ?string
     {
@@ -3690,6 +3770,7 @@ class AdmissionController extends Controller
         // student's fees. Whatever a staff request submits for them is discarded and the
         // student's current values are kept (the edit form also locks these fields for staff).
         $isStaffRequest = auth()->guard('staff')->check();
+        $staffLockedFields = [];
         if ($isStaffRequest) {
             $request->merge([
                 'course_type_id'   => $student->course_type_id ?? $student->stream?->course?->course_type_id,
@@ -3699,14 +3780,15 @@ class AdmissionController extends Controller
             ]);
             $request->request->remove('course_id');
 
-            // Office details and the fee-driving fields (student type / category / source) are
-            // admin-only too. Dropping them makes the update below fall back to the stored values.
-            foreach ([
-                'institute_form_no', 'sr_no', 'enrollment_no', 'roll_no', 'exam_form_no', 'uin_no',
-                'reference_no', 'reference_by', 'admission_type', 'admission_source', 'admission_source_id',
-                'gap_year', 'admission_date', 'student_type', 'category',
-            ] as $adminOnlyField) {
-                $request->request->remove($adminOnlyField);
+            // Field-wise permissions: everything this staff member may not edit (the fee-driving
+            // fields are always in that list) is dropped from the request, so the update below
+            // falls back to the stored values - whatever a tampered form submits.
+            $staffLockedFields = auth()->guard('staff')->user()->lockedStudentFields();
+            foreach ($staffLockedFields as $lockedField) {
+                $request->request->remove($lockedField);
+            }
+            if (in_array('photo', $staffLockedFields, true)) {
+                $request->files->remove('photo');
             }
         }
 
@@ -3717,7 +3799,7 @@ class AdmissionController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name'   => ['required', 'string', 'max:100', ...$this->strictNameRules()],
-            'mobile' => ['required', ...$this->strictMobileRules()],
+            'mobile' => in_array('mobile', $staffLockedFields, true) ? ['nullable'] : ['required', ...$this->strictMobileRules()],
             'email' => 'nullable|email|max:100',
             'dob' => 'nullable|date|before_or_equal:today',
             'gender' => 'nullable|in:male,female,other',
@@ -3828,7 +3910,8 @@ class AdmissionController extends Controller
 
         $oldSnapshot = StudentAcademicChangeService::buildSnapshot($student);
 
-        // Name & Father Name are admin-only — staff can view but not change them (Mother Name is editable).
+        // Name & Father Name are admin-only — staff can view but not change them (Mother Name follows the Parents permission).
+        $trackedBefore = $this->trackedStudentFieldValues($student);
 
         DB::transaction(function () use ($request, $validated, $student, $stream, $selectedPart, $subjectSelection, $oldSnapshot, $isStaffRequest) {
             $sessionId = (int) $student->academic_session_id;
@@ -3911,6 +3994,12 @@ class AdmissionController extends Controller
                 $updateData['course_stream_id'] = $student->course_stream_id;
                 $updateData['course_part_id']   = $student->course_part_id;
                 $updateData['fee_plan_id']      = $student->fee_plan_id;
+
+                foreach ($staffLockedFields as $lockedField) {
+                    if (array_key_exists($lockedField, $updateData)) {
+                        $updateData[$lockedField] = $student->getRawOriginal($lockedField);
+                    }
+                }
             }
 
             if ($request->hasFile('photo')) {
@@ -4034,8 +4123,11 @@ class AdmissionController extends Controller
             );
         });
 
+        $student->refresh();
+        $this->logStudentProfileChanges($student, $trackedBefore, $isStaffRequest);
+
         return redirect()->route($this->admissionRoute('show'), $student->id)
-            ->with('success', 'Student profile updated successfully!');
+            ->with('success', 'Student profile updated successfully!' . $this->duplicateOfficeNumberWarnings($student, $trackedBefore));
     }
 
     // ─── Quick Admission ───────────────────────────────────────────────

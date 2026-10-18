@@ -8,9 +8,8 @@
     $walletRoute = $isStaff ? 'staff.fee.wallet.student' : 'fee.wallet.student';
     $canViewFeeDetails = !$isStaff || auth()->guard('staff')->user()?->canViewFeeHistory();
     $canViewFeeWallet = !$isStaff || auth()->guard('staff')->user()?->canViewFeeWallet();
-    $canEditStudent = !$isStaff
-        || auth()->guard('staff')->user()?->hasPermission('student_edit')
-        || auth()->guard('staff')->user()?->hasPermission('admission_edit');
+    $canEditStudent = !$isStaff || auth()->guard('staff')->user()?->canEditStudentProfile();
+    $canChangeStatus = !$isStaff || auth()->guard('staff')->user()?->canChangeStudentStatus();
     $isTerminalStudent = in_array($student->status, ['passed_out', 'backlog', 'failed', 'dropped']);
     $isPending = $student->status === 'pending';
     // A student created by Bulk Excel Import has its own review flow (fee-history
@@ -196,6 +195,8 @@
         <a href="{{ route($admissionEditRoute, $student ) }}" class="btn btn-warning btn-sm">
             <i class="bi bi-pencil me-1"></i> Edit
         </a>
+        @endif
+        @if($canChangeStatus)
         <button type="button" class="btn btn-outline-dark btn-sm" onclick="document.getElementById('statusChangeModal').style.display='flex'">
             <i class="bi bi-person-gear me-1"></i> Change Status
         </button>
@@ -295,7 +296,7 @@ document.querySelectorAll('#loginAccessModal input[name="mode"]').forEach(functi
 @endif
 
 {{-- Change Status Modal --}}
-@if($canEditStudent)
+@if($canChangeStatus)
 @php $statusChangeRoute = $isStaff ? 'staff.admissions.status.update' : 'admissions.status.update'; @endphp
 <div id="statusChangeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:14px;padding:28px 32px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);">

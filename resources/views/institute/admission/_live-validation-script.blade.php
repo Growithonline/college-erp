@@ -271,13 +271,13 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
             ['comm_pincode', 6, 'Pin code must be 6 digits.'],
         ].forEach(([name, length, message]) => {
             const field = form.querySelector(`[name="${name}"]`);
-            if (field && !validateExactDigits(field, length, message)) {
+            if (field && !field.disabled && !validateExactDigits(field, length, message)) {
                 isValid = false;
             }
         });
 
         const emailField = form.querySelector('[name="email"]');
-        if (emailField && !validateEmail(emailField)) {
+        if (emailField && !emailField.disabled && !validateEmail(emailField)) {
             isValid = false;
         }
 
@@ -288,18 +288,18 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
             ['guardian_name', 'Guardian name'],
         ].forEach(([name, label]) => {
             const field = form.querySelector(`[name="${name}"]`);
-            if (field && !validateNameField(field, label)) {
+            if (field && !field.disabled && !validateNameField(field, label)) {
                 isValid = false;
             }
         });
 
         const dobField = form.querySelector('[name="dob"]');
-        if (dobField && !validateDateNotFuture(dobField, 'Date of birth cannot be in the future.')) {
+        if (dobField && !dobField.disabled && !validateDateNotFuture(dobField, 'Date of birth cannot be in the future.')) {
             isValid = false;
         }
 
         const admissionDateField = form.querySelector('[name="admission_date"]');
-        if (admissionDateField && !validateDateNotFuture(admissionDateField, 'Admission date cannot be in the future.')) {
+        if (admissionDateField && !admissionDateField.disabled && !validateDateNotFuture(admissionDateField, 'Admission date cannot be in the future.')) {
             isValid = false;
         }
 
@@ -308,11 +308,11 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
             isValid = false;
         }
 
-        if (admissionDateField && submittedDateField && !validateDateOrder(submittedDateField, admissionDateField, 'Submitted date cannot be earlier than admission date.')) {
+        if (admissionDateField && !admissionDateField.disabled && submittedDateField && !validateDateOrder(submittedDateField, admissionDateField, 'Submitted date cannot be earlier than admission date.')) {
             isValid = false;
         }
 
-        if (admissionDateField && dobField && !validateDateOrder(admissionDateField, dobField, 'Admission date cannot be earlier than date of birth.')) {
+        if (admissionDateField && !admissionDateField.disabled && dobField && !dobField.disabled && !validateDateOrder(admissionDateField, dobField, 'Admission date cannot be earlier than date of birth.')) {
             isValid = false;
         }
 
@@ -321,7 +321,7 @@ window.admissionLiveValidation = window.admissionLiveValidation || (() => {
         }
 
         form.querySelectorAll('tr').forEach(row => {
-            if (row.querySelector('[name^="education["]') && row.style.display !== 'none' && !validateEducationRow(row)) {
+            if (row.querySelector('[name^="education["]') && !row.querySelector('[name^="education["]').disabled && row.style.display !== 'none' && !validateEducationRow(row)) {
                 isValid = false;
             }
         });

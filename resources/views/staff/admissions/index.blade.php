@@ -7,7 +7,7 @@
     $canCollectFee     = $authUser->canCollectFee();
     $canViewFeeHistory = $authUser->canViewFeeHistory();
     $canViewFeeWallet  = $authUser->canViewFeeWallet();
-    $canEditStudent    = $authUser->hasPermission('student_edit') || $authUser->hasPermission('admission_edit');
+    $canEditStudent    = $authUser->canEditStudentProfile();
 @endphp
 
 <div class="d-flex justify-content-between align-items-center mb-4">
