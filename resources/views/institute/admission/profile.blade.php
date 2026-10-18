@@ -162,9 +162,11 @@
         <small class="text-muted">{{ $sessName }}</small>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        @if($isPending)
         <a href="{{ route($admissionIndexRoute) }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
+        @endif
         <a href="{{ route($printRoute, $sid) }}" target="_blank" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-printer me-1"></i> Print Form
         </a>
@@ -178,11 +180,7 @@
             <i class="bi bi-cash me-1"></i> Collect Fee
         </a>
         @endif
-        @if($canViewFeeWallet)
-        <a href="{{ route($walletRoute, $sid) }}" class="btn btn-outline-info btn-sm">
-            <i class="bi bi-wallet me-1"></i> Wallet
-        </a>
-        @endif
+        @include('institute.fee._student-nav', ['student' => $student, 'current' => 'profile', 'backUrl' => route($admissionIndexRoute), 'canViewWallet' => $canViewFeeWallet, 'canViewHistory' => $canViewFeeDetails])
         @endif
         @if($canViewDocuments)
         <a href="{{ route($docUploadRoute, $student) }}" class="btn btn-outline-secondary btn-sm position-relative">

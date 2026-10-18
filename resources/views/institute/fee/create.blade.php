@@ -332,6 +332,14 @@
 .fee-collect-table .badge.bg-success:not(.bg-opacity-10),
 .fee-collect-table .badge.bg-danger:not(.bg-opacity-10) { color: #fff !important; }
 .fee-collect-table .badge.bg-opacity-10 { color: #000 !important; }
+/* Remaining and Balance in red; header must not break the word */
+.fee-collect-table td.fee-red,
+.fee-collect-table th.fee-red-head,
+.fee-collect-table td[id^="bal-"],
+.fee-collect-table td[id^="bal-"] span { color: #dc2626 !important; }
+.fee-collect-table thead th { word-break: keep-all; overflow-wrap: normal; }
+.fee-collect-table .numeric-col { width: 10%; }
+.fee-collect-table .balance-col { width: 9%; }
 .fee-collect-table .badge.bg-warning { color: #000 !important; }
 </style>
 
@@ -359,27 +367,12 @@
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
         @if(!empty($student))
-            <a href="{{ route($showRoute, $student->id) }}" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-person me-1"></i> Profile
-            </a>
-            <a href="{{ route($walletRoute, $student->id) }}" class="btn btn-outline-info btn-sm">
-                <i class="bi bi-wallet2 me-1"></i> Wallet
-            </a>
-            <a href="{{ route($historyRoute, $student->id) }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-receipt me-1"></i> Fee History
-            </a>
-            @if($stmtPrefix)
-            <a href="{{ route($stmtPrefix . '.balance', ['student_id' => $student->id, 'print' => 'thermal']) }}" target="_blank" class="btn btn-outline-success btn-sm">
-                <i class="bi bi-printer me-1"></i> Print Balance
-            </a>
-            <a href="{{ route($stmtPrefix . '.fee-record', ['student_id' => $student->id, 'print' => 'thermal']) }}" target="_blank" class="btn btn-outline-warning btn-sm">
-                <i class="bi bi-printer me-1"></i> Print Statement
-            </a>
-            @endif
-        @endif
+            @include('institute.fee._student-nav', ['student' => $student, 'current' => 'collect', 'backUrl' => $feeBackUrl])
+        @else
         <a href="{{ $feeBackUrl }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
+        @endif
     </div>
 </div>
 
@@ -1016,11 +1009,11 @@
                         <th class="text-end text-muted small numeric-col">Total</th>
                         <th class="text-end text-muted small numeric-col">Paid</th>
                         <th class="text-end text-muted small numeric-col">Prev<br>Disc</th>
-                        <th class="text-end text-muted small numeric-col">Remaining</th>
+                        <th class="text-end text-muted small numeric-col fee-red-head">Remaining</th>
                         <th class="text-end input-col" style="color:#1d4ed8;">Collect ₹</th>
                         <th class="text-end input-col" style="color:#dc2626;">Fine ₹</th>
                         <th class="text-end input-col" style="color:#d97706;">Disc. ₹</th>
-                        <th class="text-end text-muted small balance-col">Balance</th>
+                        <th class="text-end text-muted small balance-col fee-red-head">Balance</th>
                     </tr>
                 </thead>
                 <tbody id="feeItemsBody">
@@ -1127,7 +1120,7 @@
                                 <span class="text-muted">—</span>
                             @endif
                         </td>
-                        <td class="text-end small fw-semibold {{ $remaining > 0 ? 'text-danger' : 'text-success' }}">
+                        <td class="text-end small fw-semibold fee-red">
                             {{ $remaining > 0 ? number_format($remaining) : '0' }}
                         </td>
                         <td class="text-end">

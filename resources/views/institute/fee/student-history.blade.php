@@ -152,20 +152,10 @@
             <i class="bi bi-plus-circle me-1"></i> Collect Fee
         </a>
         @endif
-        @if($canViewFeeWallet)
-        <a href="{{ route($walletRoute, $student) }}" class="btn btn-outline-info btn-sm">
-            <i class="bi bi-wallet2 me-1"></i> Wallet
-        </a>
-        @endif
-        <a href="{{ route($showRoute, $student) }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-person me-1"></i> Student Profile
-        </a>
         <a href="{{ route($historyPrintRoute, $student) }}" target="_blank" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-printer me-1"></i> Print Fee History
         </a>
-        <a href="{{ route($feeIndexRoute) }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i> Back
-        </a>
+        @include('institute.fee._student-nav', ['student' => $student, 'current' => 'history', 'backUrl' => route($feeIndexRoute), 'canViewWallet' => $canViewFeeWallet])
     </div>
 </div>
 

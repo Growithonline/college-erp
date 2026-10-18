@@ -43,16 +43,11 @@
             <i class="bi bi-plus-circle me-1"></i>Collect Fee
         </a>
         @endif
-        <a href="{{ route($showRoute, $student->id) }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-person me-1"></i>Profile
-        </a>
         <a href="{{ route($walletPrintRoute, ['student' => $student->id, 'session_id' => $selectedSessionId]) }}"
            target="_blank" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-printer me-1"></i>Print
+            <i class="bi bi-printer me-1"></i>Print Wallet
         </a>
-        <a href="{{ route($feeHistoryRoute, $student->id) }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i>Back
-        </a>
+        @include('institute.fee._student-nav', ['student' => $student, 'current' => 'wallet', 'backUrl' => route($feeIndexRoute)])
     </div>
 </div>
 
