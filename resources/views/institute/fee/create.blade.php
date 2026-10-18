@@ -270,6 +270,9 @@
 .fee-summary-card {
     min-height: 82px;
 }
+.fee-summary-card > div:first-child { font-size: 14px !important; }
+.fee-summary-card > div:last-child { font-size: 24px !important; line-height: 1.2; }
+.fee-summary-card { min-height: 96px; }
 .recent-history-list {
     max-height: 420px;
     overflow-y: auto;
