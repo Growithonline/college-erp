@@ -114,7 +114,8 @@
 </div>
 @endif
 
-<form method="POST" action="{{ route($updateRoute, $student->id) }}" enctype="multipart/form-data" id="editAdmissionForm">
+<form method="POST" action="{{ route($updateRoute, $student->id) }}" enctype="multipart/form-data" id="editAdmissionForm" class="adm-form">
+@include('partials.admission-form-layout')
 @csrf
 @method('PATCH')
 
