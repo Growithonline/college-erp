@@ -47,7 +47,7 @@
            target="_blank" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-printer me-1"></i>Print Wallet
         </a>
-        @include('institute.fee._student-nav', ['student' => $student, 'current' => 'wallet', 'backUrl' => route($feeIndexRoute)])
+        @include('institute.fee._student-nav', ['student' => $student, 'current' => 'wallet', 'smartBack' => true, 'backUrl' => route($feeIndexRoute)])
     </div>
 </div>
 

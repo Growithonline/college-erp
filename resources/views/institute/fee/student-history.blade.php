@@ -155,7 +155,7 @@
         <a href="{{ route($historyPrintRoute, $student) }}" target="_blank" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-printer me-1"></i> Print Fee History
         </a>
-        @include('institute.fee._student-nav', ['student' => $student, 'current' => 'history', 'backUrl' => route($feeIndexRoute), 'canViewWallet' => $canViewFeeWallet])
+        @include('institute.fee._student-nav', ['student' => $student, 'current' => 'history', 'smartBack' => true, 'backUrl' => route($feeIndexRoute), 'canViewWallet' => $canViewFeeWallet])
     </div>
 </div>
 

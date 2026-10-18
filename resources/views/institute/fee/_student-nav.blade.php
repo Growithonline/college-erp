@@ -1,7 +1,7 @@
 {{--
     Shared student navigation buttons: Profile / Wallet / Fee History / Print Balance / Print Statement / Back.
     Used on Collect Fee, Student Wallet, Fee History and Student Profile so the same buttons appear everywhere.
-    Props: $student, $current ('collect'|'profile'|'wallet'|'history'), $backUrl, $canViewWallet, canViewHistory (default true)
+    Props: $student, $current ('collect'|'profile'|'wallet'|'history'), $backUrl, $canViewWallet, canViewHistory (default true), smartBack (true = Back returns to the previous page; $backUrl is the fallback)
 --}}
 @php
     $_navStaff   = auth()->guard('staff')->check();
@@ -37,6 +37,7 @@
     <i class="bi bi-printer me-1"></i> Print Statement
 </a>
 @endif
-<a href="{{ $backUrl }}" class="btn btn-outline-secondary btn-sm">
+<a href="{{ $backUrl }}" class="btn btn-outline-secondary btn-sm"
+   @if($smartBack ?? false) onclick="try { if (document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1) { history.back(); return false; } } catch (e) {}" @endif>
     <i class="bi bi-arrow-left me-1"></i> Back
 </a>
