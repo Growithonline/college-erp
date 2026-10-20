@@ -22,42 +22,42 @@
 @endphp
 <style>
     * { box-sizing: border-box; }
-    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #000; margin: 0; background: {{ $pdf ? '#fff' : '#eef1f5' }}; }
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #000; margin: 0; background: {{ $pdf ? '#fff' : '#eef1f5' }}; }
     .toolbar { background: #1e293b; color: #fff; padding: 10px 16px; font-size: 13px; }
     .toolbar a, .toolbar button, .toolbar select { font-size: 12px; padding: 5px 12px; border-radius: 4px; border: 1px solid #94a3b8; background: #fff; color: #1e293b; text-decoration: none; cursor: pointer; margin-right: 6px; }
     .toolbar .primary { background: #16a34a; border-color: #16a34a; color: #fff; }
-    .page { background: #fff; width: 210mm; max-width: 100%; margin: 12px auto; padding: 8mm 9mm; }
+    .page { background: #fff; width: 210mm; max-width: 100%; margin: 12px auto; padding: {{ $pdf ? "0" : "7mm 8mm" }}; }
     table { width: 100%; border-collapse: collapse; }
     td, th { vertical-align: top; }
     .head td { border: 0; padding: 0; }
-    .inst-name { font-size: 17px; font-weight: 700; }
-    .inst-sub { font-size: 10.5px; margin-top: 2px; }
-    .meta td { border: 0; padding: 1px 0; font-size: 10.5px; }
-    .info { margin-top: 6px; }
-    .info td { border: 1px solid #000; padding: 3px 5px; font-size: 10.5px; }
+    .inst-name { font-size: 15px; font-weight: 700; }
+    .inst-sub { font-size: 9.5px; margin-top: 1px; }
+    .meta td { border: 0; padding: 0; font-size: 9.5px; }
+    .info { margin-top: 4px; }
+    .info td { border: 1px solid #000; padding: 1.5px 4px; font-size: 9.5px; }
     .info .k { font-weight: 700; white-space: nowrap; background: #f1f5f9; width: 15%; }
-    .block { margin-top: 8px; page-break-inside: avoid; }
+    .block { margin-top: 5px; page-break-inside: avoid; }
     .block-head { width: 100%; border: 1px solid #000; background: #e2e8f0; }
-    .block-head td { padding: 4px 6px; font-weight: 700; font-size: 11.5px; border: 0; }
+    .block-head td { padding: 2.5px 6px; font-weight: 700; font-size: 10.5px; border: 0; }
     .block-sub td { border: 1px solid #000; border-top: 0; padding: 3px 6px; font-size: 10.5px; }
     .cols { width: 100%; border: 1px solid #000; border-top: 0; }
     .cols > tbody > tr > td { padding: 0; border-right: 1px solid #000; }
     .cols > tbody > tr > td:last-child { border-right: 0; }
-    .inner th { background: #f1f5f9; font-size: 10px; padding: 3px 5px; border-bottom: 1px solid #000; text-align: left; }
-    .inner td { padding: 2.5px 5px; font-size: 10.5px; border-bottom: 1px dotted #94a3b8; }
+    .inner th { background: #f1f5f9; font-size: 9px; padding: 2px 4px; border-bottom: 1px solid #000; text-align: left; }
+    .inner td { padding: 1.5px 4px; font-size: 9px; border-bottom: 1px dotted #94a3b8; }
     .inner .r { text-align: right; white-space: nowrap; }
     .inner .tot td { border-top: 1px solid #000; border-bottom: 0; font-weight: 700; }
     .block-foot { width: 100%; border: 1px solid #000; border-top: 0; }
-    .block-foot td { padding: 4px 6px; font-weight: 700; font-size: 11px; border: 0; }
+    .block-foot td { padding: 2.5px 6px; font-weight: 700; font-size: 10px; border: 0; }
     .muted { color: #475569; }
     .red { color: #b91c1c; }
     .green { color: #15803d; }
-    .summary { margin-top: 10px; page-break-inside: avoid; }
-    .summary th { background: #e2e8f0; border: 1px solid #000; padding: 4px 6px; font-size: 11.5px; text-align: left; }
-    .summary td { border: 1px solid #000; padding: 4px 8px; font-size: 11px; }
+    .summary { margin-top: 6px; page-break-inside: avoid; }
+    .summary th { background: #e2e8f0; border: 1px solid #000; padding: 2.5px 6px; font-size: 10.5px; text-align: left; }
+    .summary td { border: 1px solid #000; padding: 2px 8px; font-size: 10px; }
     .summary td.r { text-align: right; font-weight: 700; width: 28%; }
-    .summary tr.balance td { font-size: 12.5px; font-weight: 700; background: #f8fafc; }
-    .foot { margin-top: 8px; font-size: 9.5px; color: #475569; }
+    .summary tr.balance td { font-size: 11px; font-weight: 700; background: #f8fafc; }
+    .foot { margin-top: 4px; font-size: 8.5px; color: #475569; }
     @media print {
         body { background: #fff; }
         .toolbar { display: none !important; }
@@ -150,15 +150,10 @@
                 <td>{{ $block['title'] ?: 'FEE' }} ({{ $block['session_name'] }})
                     @if($block['year_label']) &nbsp;<span class="muted" style="font-weight:400;">{{ $block['year_label'] }}{{ $block['semester'] ? ' / Sem ' . $block['semester'] : '' }}</span>@endif
                 </td>
+                <td style="text-align:center;font-weight:400;">Admission Place: <strong>{{ $block['admission_place'] }}</strong></td>
                 <td style="text-align:right;">Session Fee: ₹{{ $money($block['session_fee']) }}</td>
             </tr>
         </table>
-        <table class="block-sub" style="width:100%;">
-            <tr>
-                <td><strong>Admission Place:</strong> {{ $block['admission_place'] }}</td>
-            </tr>
-        </table>
-
         <table class="cols">
             <tr>
                 <td style="width:36%;border-right:1px solid #000;">
