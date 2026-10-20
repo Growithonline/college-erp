@@ -1577,6 +1577,10 @@
     };
 
     window.addEventListener('unhandledrejection', function (e) {
+        // A cancelled request (AbortController) is expected, not an error
+        if (e.reason && e.reason.name === 'AbortError') { return; }
+        // Keep the real cause in the console so it can be diagnosed (the toast text is generic)
+        console.error('Unhandled promise rejection:', e.reason);
         window.showToast('An unexpected error occurred. Please refresh the page.', 'danger');
     });
 
