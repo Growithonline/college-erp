@@ -36,8 +36,12 @@ class StudentFeeStatementService
             ->push($currentSessionId)
             ->filter()->unique()->sort()->values();
 
-        $availableSessions = AcademicSession::whereIn('id', $sessionIds)->orderBy('id')->get()->keyBy('id');
-        $sessionIds = $sessionIds->filter(fn($id) => (int) $id <= $asOfSessionId)->values();
+        // Session ids are NOT chronological (a later year can be created first) — order by start date.
+        $sessionKey = fn(AcademicSession $s) => $s->start_date?->timestamp ?? (int) $s->id;
+        $availableSessions = AcademicSession::whereIn('id', $sessionIds)->get()->sortBy($sessionKey)->keyBy('id');
+        $asOfSession = AcademicSession::where('institute_id', $instituteId)->find($asOfSessionId);
+        $asOfKey     = $asOfSession ? $sessionKey($asOfSession) : PHP_INT_MAX;
+        $sessionIds  = $availableSessions->filter(fn(AcademicSession $s) => $sessionKey($s) <= $asOfKey)->keys();
 
         $centerNames  = [];
         $partnerNames = [];
@@ -179,7 +183,7 @@ class StudentFeeStatementService
             'subject_names'  => $subjectNames,
             'blocks'         => $blocks,
             'totals'         => $totals,
-            'as_of_session'  => $availableSessions[$asOfSessionId] ?? $student->session,
+            'as_of_session'  => $asOfSession ?? $student->session,
             'sessions'       => $availableSessions->values(),
             'address'        => self::address($student),
         ];

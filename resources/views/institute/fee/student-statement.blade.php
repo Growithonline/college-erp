@@ -18,51 +18,58 @@
     $identity = $identity ?? null;
     $rollNo   = $identity?->roll_no_snapshot ?: ($identity?->roll_no ?: $student->roll_no);
     $formNo   = $student->institute_form_no ?: $identity?->form_no;
+    // Text size scales with the amount of content so the statement fills one A4 page (like the printed receipt)
+    $rowsEstimate = 12 + 7;
+    foreach ($blocks as $b) {
+        $rowsEstimate += max($b['items']->count() + 3 + ($b['fine'] > 0 ? 1 : 0), $b['transactions']->count() + 3) + 3;
+    }
+    $fs  = $fsOverride ?? max(8.5, min(11.5, round((480 / max($rowsEstimate, 24)), 1)));
+    $pad = round($fs * 0.17, 1);
+    $gap = round($fs * 0.55, 1);
     $classTitle = $blocks->first()['title'] ?? ($student->stream?->course?->name ?? '');
 @endphp
 <style>
+    @page { size: A4 portrait; margin: 8mm; }
     * { box-sizing: border-box; }
-    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #000; margin: 0; background: {{ $pdf ? '#fff' : '#eef1f5' }}; }
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: {{ $fs }}px; color: #000; margin: 0; background: {{ $pdf ? '#fff' : '#eef1f5' }}; }
     .toolbar { background: #1e293b; color: #fff; padding: 10px 16px; font-size: 13px; }
     .toolbar a, .toolbar button, .toolbar select { font-size: 12px; padding: 5px 12px; border-radius: 4px; border: 1px solid #94a3b8; background: #fff; color: #1e293b; text-decoration: none; cursor: pointer; margin-right: 6px; }
     .toolbar .primary { background: #16a34a; border-color: #16a34a; color: #fff; }
-    .page { background: #fff; width: 210mm; max-width: 100%; margin: 12px auto; padding: {{ $pdf ? "0" : "7mm 8mm" }}; }
+    .page { background: #fff; width: 194mm; max-width: 100%; margin: 12px auto; padding: {{ $pdf ? '0' : '8mm' }}; }
     table { width: 100%; border-collapse: collapse; }
     td, th { vertical-align: top; }
     .head td { border: 0; padding: 0; }
-    .inst-name { font-size: 15px; font-weight: 700; }
-    .inst-sub { font-size: 9.5px; margin-top: 1px; }
-    .meta td { border: 0; padding: 0; font-size: 9.5px; }
-    .info { margin-top: 4px; }
-    .info td { border: 1px solid #000; padding: 1.5px 4px; font-size: 9.5px; }
+    .inst-name { font-size: {{ $fs + 6 }}px; font-weight: 700; }
+    .inst-sub { font-size: {{ $fs - 0.5 }}px; margin-top: 1px; }
+    .meta td { border: 0; padding: 0; font-size: {{ $fs - 0.5 }}px; }
+    .info { margin-top: {{ $gap }}px; }
+    .info td { border: 1px solid #000; padding: {{ $pad }}px 4px; font-size: {{ $fs - 0.5 }}px; }
     .info .k { font-weight: 700; white-space: nowrap; background: #f1f5f9; width: 15%; }
-    .block { margin-top: 5px; page-break-inside: avoid; }
+    .block { margin-top: {{ $gap + 1 }}px; page-break-inside: avoid; }
     .block-head { width: 100%; border: 1px solid #000; background: #e2e8f0; }
-    .block-head td { padding: 2.5px 6px; font-weight: 700; font-size: 10.5px; border: 0; }
-    .block-sub td { border: 1px solid #000; border-top: 0; padding: 3px 6px; font-size: 10.5px; }
+    .block-head td { padding: {{ $pad + 1 }}px 6px; font-weight: 700; font-size: {{ $fs + 0.5 }}px; border: 0; }
     .cols { width: 100%; border: 1px solid #000; border-top: 0; }
     .cols > tbody > tr > td { padding: 0; border-right: 1px solid #000; }
     .cols > tbody > tr > td:last-child { border-right: 0; }
-    .inner th { background: #f1f5f9; font-size: 9px; padding: 2px 4px; border-bottom: 1px solid #000; text-align: left; }
-    .inner td { padding: 1.5px 4px; font-size: 9px; border-bottom: 1px dotted #94a3b8; }
+    .inner th { background: #f1f5f9; font-size: {{ $fs - 1 }}px; padding: {{ $pad }}px 4px; border-bottom: 1px solid #000; text-align: left; }
+    .inner td { padding: {{ $pad }}px 4px; font-size: {{ $fs - 1 }}px; border-bottom: 1px dotted #94a3b8; }
     .inner .r { text-align: right; white-space: nowrap; }
     .inner .tot td { border-top: 1px solid #000; border-bottom: 0; font-weight: 700; }
     .block-foot { width: 100%; border: 1px solid #000; border-top: 0; }
-    .block-foot td { padding: 2.5px 6px; font-weight: 700; font-size: 10px; border: 0; }
+    .block-foot td { padding: {{ $pad + 1 }}px 6px; font-weight: 700; font-size: {{ $fs }}px; border: 0; }
     .muted { color: #475569; }
     .red { color: #b91c1c; }
     .green { color: #15803d; }
-    .summary { margin-top: 6px; page-break-inside: avoid; }
-    .summary th { background: #e2e8f0; border: 1px solid #000; padding: 2.5px 6px; font-size: 10.5px; text-align: left; }
-    .summary td { border: 1px solid #000; padding: 2px 8px; font-size: 10px; }
+    .summary { margin-top: {{ $gap + 2 }}px; page-break-inside: avoid; }
+    .summary th { background: #e2e8f0; border: 1px solid #000; padding: {{ $pad + 1 }}px 6px; font-size: {{ $fs + 0.5 }}px; text-align: left; }
+    .summary td { border: 1px solid #000; padding: {{ $pad + 0.5 }}px 8px; font-size: {{ $fs }}px; }
     .summary td.r { text-align: right; font-weight: 700; width: 28%; }
-    .summary tr.balance td { font-size: 11px; font-weight: 700; background: #f8fafc; }
-    .foot { margin-top: 4px; font-size: 8.5px; color: #475569; }
+    .summary tr.balance td { font-size: {{ $fs + 1 }}px; font-weight: 700; background: #f8fafc; }
+    .foot { margin-top: 4px; font-size: {{ max(8, $fs - 2) }}px; color: #475569; }
     @media print {
         body { background: #fff; }
         .toolbar { display: none !important; }
-        .page { margin: 0; width: auto; padding: 0; }
-        @page { size: A4 portrait; margin: 9mm; }
+        .page { margin: 0; width: 194mm; max-width: none; padding: 0; }
     }
 </style>
 </head>
@@ -73,7 +80,7 @@
     <a href="{{ $backUrl ?: 'javascript:history.back()' }}">&larr; Back</a>
     <form method="GET" action="{{ route($selfRoute, $student->id) }}" style="display:inline;">
         <select name="session_id" onchange="this.form.submit()" title="Show years up to this session">
-            @foreach($sessions as $sess)
+            @foreach($sessions->reverse() as $sess)
                 <option value="{{ $sess->id }}" {{ (int) ($as_of_session?->id ?? 0) === (int) $sess->id ? 'selected' : '' }}>
                     Up to {{ $sess->name }}
                 </option>
@@ -236,6 +243,39 @@
     </div>
     @endif
 </div>
+
+@unless($pdf)
+<script>
+// Print: scale the statement so it fills exactly one A4 page (as on the printed receipt) —
+// larger text when there is little data, shrunk to fit when there is a lot.
+(function () {
+    var MM = 96 / 25.4, BASE_W = 194, AVAIL_H = (297 - 16) * MM;
+    function fit() {
+        var page = document.querySelector('.page');
+        if (!page) { return; }
+        page.style.padding = '0';
+        page.style.zoom = '';
+        page.style.width = BASE_W + 'mm';
+        var s = Math.max(0.6, Math.min(1.25, AVAIL_H / page.scrollHeight));
+        for (var i = 0; i < 16; i++) {
+            page.style.width = (BASE_W / s) + 'mm';
+            page.style.zoom = s;
+            if (page.scrollHeight * s <= AVAIL_H || s <= 0.6) { break; }
+            s *= 0.97;
+        }
+    }
+    function reset() {
+        var page = document.querySelector('.page');
+        if (!page) { return; }
+        page.style.zoom = '';
+        page.style.width = '';
+        page.style.padding = '';
+    }
+    window.addEventListener('beforeprint', fit);
+    window.addEventListener('afterprint', reset);
+})();
+</script>
+@endunless
 
 @if(!empty($autoPrint))
 <script>window.addEventListener('load', function () { window.print(); });</script>
