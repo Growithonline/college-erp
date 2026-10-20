@@ -714,6 +714,11 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/admission-analytics', [ReportController::class, 'admissionAnalytics'])->name('admission-analytics');
         Route::get('/lateral-entry-analytics', [ReportController::class, 'lateralEntryAnalytics'])->name('lateral-entry-analytics');
         Route::get('/daily-collection',    [ReportController::class, 'dailyReport'])->name('daily-collection');
+        // Bank-wise collection report (for the CA) — institute admin only
+        Route::get('/bank-wise',        [\App\Http\Controllers\Institute\Reports\BankWiseCollectionReportController::class, 'index'])->name('bank-wise')->middleware('finance.access');
+        Route::get('/bank-wise/print',  [\App\Http\Controllers\Institute\Reports\BankWiseCollectionReportController::class, 'print'])->name('bank-wise.print')->middleware('finance.access');
+        Route::get('/bank-wise/pdf',    [\App\Http\Controllers\Institute\Reports\BankWiseCollectionReportController::class, 'pdf'])->name('bank-wise.pdf')->middleware('finance.access');
+        Route::get('/bank-wise/export', [\App\Http\Controllers\Institute\Reports\BankWiseCollectionReportController::class, 'export'])->name('bank-wise.export')->middleware('finance.access');
         Route::get('/semester-wise',       [ReportController::class, 'semesterReport'])->name('semester-wise');
         Route::get('/custom-student',      [ReportController::class, 'customStudentReport'])->name('custom-student');
         Route::get('/subject-wise-student',[ReportController::class, 'subjectWiseStudentReport'])->name('subject-wise-student');

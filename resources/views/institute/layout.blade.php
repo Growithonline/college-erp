@@ -665,6 +665,10 @@
                            href="{{ route('reports.daily-collection') }}">
                         <i class="bi bi-calendar3"></i> Daily / Monthly
                     </a></li>
+                    <li><a class="nav-link {{ request()->routeIs('reports.bank-wise*') ? 'active' : '' }}"
+                           href="{{ route('reports.bank-wise') }}">
+                        <i class="bi bi-bank"></i> Bank-wise Collection
+                    </a></li>
                     <li><a class="nav-link {{ request()->routeIs('reports.semester-wise') ? 'active' : '' }}"
                            href="{{ route('reports.semester-wise') }}">
                         <i class="bi bi-layers"></i> Semester Wise
