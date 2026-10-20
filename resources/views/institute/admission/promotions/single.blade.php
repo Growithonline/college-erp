@@ -397,10 +397,16 @@
                             <span class="text-muted fw-normal" style="font-size:10px;">(optional for final-year students)</span>
                         </label>
                         <select name="to_session_id" class="form-select form-select-sm">
+                            @php
+                                $stSess   = $student->session ?? $sessions->firstWhere('id', $student->academic_session_id);
+                                $useDates = $sessions->every(fn($x) => $x->start_date !== null);
+                                $sk       = fn($x) => $useDates ? $x->start_date->timestamp : (int) $x->id;
+                                $nextForStudent = $stSess ? $sessions->filter(fn($x) => $sk($x) > $sk($stSess))->sortBy($sk)->first() : null;
+                            @endphp
                             <option value="">— Not Required (last year / terminal) —</option>
-                            @foreach($sessions as $s)
-                                <option value="{{ $s->id }}">{{ $s->name }}</option>
-                            @endforeach
+                            @if($nextForStudent)
+                                <option value="{{ $nextForStudent->id }}">{{ $nextForStudent->name }} (next session)</option>
+                            @endif
                         </select>
                     </div>
                     <div class="col-md-4">

@@ -445,6 +445,17 @@ class PromotionController extends Controller
         return (int) $toSession->id > (int) $fromSession->id;
     }
 
+    /** The session that comes immediately after $from in the same institute (by start date, else by id). */
+    private function nextSessionAfter(AcademicSession $from): ?AcademicSession
+    {
+        $sessions = AcademicSession::where('institute_id', $from->institute_id)->get();
+        $useDates = $sessions->every(fn($s) => $s->start_date !== null);
+        $key = fn($s) => $useDates ? $s->start_date->timestamp : (int) $s->id;
+        $fromKey = $key($from);
+
+        return $sessions->filter(fn($s) => $key($s) > $fromKey)->sortBy($key)->first();
+    }
+
     private function resolveTargetSession(int $toSessionId, Student $student): AcademicSession
     {
         $fromSession = $student->session ?: AcademicSession::findOrFail($student->academic_session_id);
@@ -456,6 +467,20 @@ class PromotionController extends Controller
             !$this->isChronologicallyAfter($fromSession, $toSession),
             422,
             'Target session must be chronologically after the current session.'
+        );
+
+        // A promotion moves a student exactly one session forward — skipping a session would jump
+        // the student over a whole academic year (and its fees / year progression).
+        $expected = $this->nextSessionAfter($fromSession);
+        abort_if(
+            !$expected,
+            422,
+            'The next academic session has not been created yet. Create it before promoting students.'
+        );
+        abort_if(
+            (int) $expected->id !== (int) $toSession->id,
+            422,
+            "Students can only be promoted to the very next session ({$expected->name}). A session cannot be skipped."
         );
 
         $staff = $this->currentStaff();
@@ -1427,6 +1452,7 @@ class PromotionController extends Controller
 
         $fromSessionObj = AcademicSession::find($fromSessionId);
         $toSessionObj   = AcademicSession::find($toSessionId);
+        $nextSession    = $fromSessionObj ? $this->nextSessionAfter($fromSessionObj) : null;
 
         return view('institute.admission.promotions.session', compact(
             'students',
@@ -1434,6 +1460,7 @@ class PromotionController extends Controller
             'courses',
             'fromSessionObj',
             'toSessionObj',
+            'nextSession',
             'fromSessionId',
             'toSessionId',
             'activeSession',

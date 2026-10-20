@@ -90,11 +90,9 @@
                     </label>
                     <select name="to_session_id" class="form-select form-select-sm">
                         <option value="">— Not Required (last year / terminal) —</option>
-                        @foreach($sessions as $s)
-                            <option value="{{ $s->id }}" {{ $toSessionId == $s->id ? 'selected':'' }}>
-                                {{ $s->name }}
-                            </option>
-                        @endforeach
+                        @if($nextSession)
+                            <option value="{{ $nextSession->id }}" {{ $toSessionId == $nextSession->id ? 'selected' : '' }}>{{ $nextSession->name }} (next session)</option>
+                        @endif
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -175,9 +173,9 @@
                 <label class="form-label small fw-semibold mb-1">To Session</label>
                 <select name="to_session_id" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">Select</option>
-                    @foreach($sessions as $s)
-                        <option value="{{ $s->id }}" {{ $toSessionId == $s->id ? 'selected':'' }}>{{ $s->name }}</option>
-                    @endforeach
+                    @if($nextSession)
+                        <option value="{{ $nextSession->id }}" {{ $toSessionId == $nextSession->id ? 'selected':'' }}>{{ $nextSession->name }}</option>
+                    @endif
                 </select>
             </div>
             <div class="col-md-3">
