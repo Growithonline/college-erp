@@ -464,7 +464,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/',                            [FeeCollectionController::class, 'index'])->name('index');
         Route::get('/collect',                     [FeeCollectionController::class, 'create'])->name('create');
         Route::post('/collect',                    [FeeCollectionController::class, 'store'])->name('store');
-        Route::get('/search-student',              [FeeCollectionController::class, 'searchStudent'])->name('search-student');
+        Route::get('/search-student',              [FeeCollectionController::class, 'searchStudent'])->name('search-student')->middleware('throttle:180,1');
         Route::get('/export',                      [FeeCollectionController::class, 'export'])->name('export');
         Route::get('/{student}/history',           [FeeCollectionController::class, 'studentHistory'])->name('student-history');
         Route::get('/{student}/history/print',     [FeeCollectionController::class, 'historyPrint'])->name('history-print');
@@ -669,7 +669,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
 
     // STATEMENT — Get Student Balance + Fee Record
     Route::prefix('statement')->name('statement.')->group(function () {
-        Route::get('/search-student',  [StatementController::class, 'searchStudent'])->name('search-student');
+        Route::get('/search-student',  [StatementController::class, 'searchStudent'])->name('search-student')->middleware('throttle:180,1');
         Route::get('/balance',         [StatementController::class, 'studentBalance'])->name('balance');
         Route::get('/fee-record',      [StatementController::class, 'feeRecord'])->name('fee-record');
         Route::get('/export-csv',      [StatementController::class, 'exportCsv'])->name('export-csv');
@@ -892,7 +892,7 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('issue',                             [CertificateController::class, 'create'])->name('create');
         Route::post('issue',                            [CertificateController::class, 'store'])->name('store');
         Route::post('preview',                          [CertificateController::class, 'preview'])->name('preview');
-        Route::get('search-student',                    [CertificateController::class, 'searchStudent'])->name('search-student');
+        Route::get('search-student',                    [CertificateController::class, 'searchStudent'])->name('search-student')->middleware('throttle:180,1');
         Route::get('{certificate}',                     [CertificateController::class, 'show'])->name('show');
         Route::get('{certificate}/download',            [CertificateController::class, 'download'])->name('download');
         Route::patch('{certificate}/cancel',            [CertificateController::class, 'cancel'])->name('cancel');
@@ -1169,7 +1169,7 @@ Route::prefix('center')->name('center.')->group(function () {
         Route::get('fee',                             [CenterFeeController::class, 'index'])->name('fee.index');
         Route::get('fee/collect',                     [CenterFeeController::class, 'create'])->name('fee.create');
         Route::post('fee/collect',                    [CenterFeeController::class, 'store'])->name('fee.store');
-        Route::get('fee/search-student',              [CenterFeeController::class, 'searchStudent'])->name('fee.search-student');
+        Route::get('fee/search-student',              [CenterFeeController::class, 'searchStudent'])->name('fee.search-student')->middleware('throttle:180,1');
         Route::get('fee/export',                      [CenterFeeController::class, 'export'])->name('fee.export');
         Route::get('fee/{student}/receipt/{invoice}', [CenterFeeController::class, 'receipt'])->name('fee.receipt');
         Route::get('fee/{student}/history',           [CenterFeeController::class, 'studentHistory'])->name('fee.student-history');
@@ -1317,7 +1317,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
         // Fee (permission: fee_collect)
         Route::get('fee/collect',                     [StaffFeeController::class, 'create'])->name('fee.create');
         Route::post('fee/collect',                    [StaffFeeController::class, 'store'])->name('fee.store');
-        Route::get('fee/search-student',              [StaffFeeController::class, 'searchStudent'])->name('fee.search-student');
+        Route::get('fee/search-student',              [StaffFeeController::class, 'searchStudent'])->name('fee.search-student')->middleware('throttle:180,1');
         Route::get('fee/export',                      [StaffFeeController::class, 'export'])->name('fee.export');
         Route::get('fee/{student}/receipt/{invoice}', [StaffFeeController::class, 'receipt'])->name('fee.receipt');
         Route::get('fee/history',                     [StaffFeeController::class, 'index'])->name('fee.index');
@@ -1425,7 +1425,7 @@ Route::prefix('staff')->name('staff.')->group(function () {
 
         // Statement (permission: get_statement, statement_export)
         Route::prefix('statement')->name('statement.')->group(function () {
-            Route::get('/search-student', [StatementController::class, 'searchStudent'])->name('search-student');
+            Route::get('/search-student', [StatementController::class, 'searchStudent'])->name('search-student')->middleware('throttle:180,1');
             Route::get('/balance',        [StatementController::class, 'studentBalance'])->name('balance');
             Route::get('/fee-record',     [StatementController::class, 'feeRecord'])->name('fee-record');
             Route::get('/export-csv',     [StatementController::class, 'exportCsv'])->name('export-csv');
@@ -1561,7 +1561,7 @@ Route::prefix('partner')->name('partner.')->group(function () {
         Route::get('fee/collections',                 [PartnerFeeController::class, 'index'])->name('fee.index');
         Route::get('fee/collect',                     [PartnerFeeController::class, 'create'])->name('fee.create');
         Route::post('fee/collect',                    [PartnerFeeController::class, 'store'])->name('fee.store');
-        Route::get('fee/search-student',              [PartnerFeeController::class, 'searchStudent'])->name('fee.search-student');
+        Route::get('fee/search-student',              [PartnerFeeController::class, 'searchStudent'])->name('fee.search-student')->middleware('throttle:180,1');
         Route::get('fee/{student}/receipt/{invoice}', [PartnerFeeController::class, 'receipt'])->name('fee.receipt');
         Route::get('fee/{student}/history',           [PartnerFeeController::class, 'studentHistory'])->name('fee.student-history');
         Route::get('fee/{student}/history/print',     [PartnerFeeController::class, 'historyPrint'])->name('fee.history-print');

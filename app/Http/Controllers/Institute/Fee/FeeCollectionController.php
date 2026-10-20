@@ -896,9 +896,12 @@ class FeeCollectionController extends Controller
         $request->validate([
             'student_id'   => 'required|exists:students,id',
             'payment_mode' => 'required|in:cash,online,cheque,dd,upi,neft,rtgs',
-            'payment_date' => 'required_without:payment_datetime|nullable|date',
-            'fee_items'    => 'required|array|min:1',
-            'semester'     => 'required|integer|min:1',
+            'payment_date' => 'required_without:payment_datetime|nullable|date|before_or_equal:today',
+            'fee_items'    => 'required|array|min:1|max:100',
+            'semester'     => 'required|integer|min:1|max:20',
+            'remarks'         => 'nullable|string|max:255',
+            'transaction_ref' => 'nullable|string|max:100',
+            'bank_name'       => 'nullable|string|max:100',
         ], [
             'student_id.required'   => 'Please select a student.',
             'student_id.exists'     => 'Selected student does not exist.',
@@ -1811,7 +1814,9 @@ class FeeCollectionController extends Controller
         $query = $request->q;
         $instituteId = $this->instituteId();
 
-        if (mb_strlen(trim((string) $query)) < 2) {
+        $columnFilters = Student::searchColumnFilters($request);
+
+        if (mb_strlen(trim((string) $query)) < 2 && !$columnFilters) {
             return response()->json([]);
         }
 
@@ -1827,8 +1832,10 @@ class FeeCollectionController extends Controller
         $students = Student::where('institute_id', $instituteId)
             ->where('academic_session_id', $sessionId)
             ->searchAnyField((string) $query, $sessionId)
+            ->searchColumns($columnFilters, $sessionId)
             ->select(['id', 'institute_id', 'academic_session_id', 'student_uid', 'name', 'mobile',
-                'father_name', 'mother_name', 'course_stream_id', 'course_part_id', 'current_semester'])
+                'father_name', 'mother_name', 'roll_no', 'enrollment_no', 'uin_no',
+                'course_stream_id', 'course_part_id', 'current_semester'])
             ->with(['stream.course', 'session', 'coursePart'])
             ->orderBy('name')
             ->orderBy('student_uid');
@@ -1852,6 +1859,9 @@ class FeeCollectionController extends Controller
             'session'     => $student->session->name ?? '',
             'year'        => $student->coursePart->year_label ?? '',
             'semester'    => $student->current_semester,
+            'roll_no'       => $student->roll_no ?? '',
+            'enrollment_no' => $student->enrollment_no ?? '',
+            'uin_no'        => $student->uin_no ?? '',
         ]))->header('X-Has-More', $hasMore ? '1' : '0');
     }
 }

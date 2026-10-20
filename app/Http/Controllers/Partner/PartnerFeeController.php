@@ -283,7 +283,9 @@ class PartnerFeeController extends Controller
     {
         $query = $request->q ?? '';
 
-        if (mb_strlen(trim((string) $query)) < 2) {
+        $columnFilters = Student::searchColumnFilters($request);
+
+        if (mb_strlen(trim((string) $query)) < 2 && !$columnFilters) {
             return response()->json([]);
         }
 
@@ -301,8 +303,10 @@ class PartnerFeeController extends Controller
             ->where('admission_source', 'channel_partner')
             ->where('admission_source_id', $partner->id)
             ->searchAnyField((string) $query, $sessionId)
+            ->searchColumns($columnFilters, $sessionId)
             ->select(['id', 'institute_id', 'academic_session_id', 'student_uid', 'name', 'mobile',
-                'father_name', 'mother_name', 'course_stream_id', 'course_part_id', 'current_semester'])
+                'father_name', 'mother_name', 'roll_no', 'enrollment_no', 'uin_no',
+                'course_stream_id', 'course_part_id', 'current_semester'])
             ->with(['stream.course', 'session', 'coursePart'])
             ->orderBy('name')
             ->orderBy('student_uid')
@@ -324,6 +328,9 @@ class PartnerFeeController extends Controller
             'session'     => $s->session->name ?? '',
             'year'        => $s->coursePart->year_label ?? '',
             'semester'    => $s->current_semester,
+            'roll_no'       => $s->roll_no ?? '',
+            'enrollment_no' => $s->enrollment_no ?? '',
+            'uin_no'        => $s->uin_no ?? '',
         ]))->header('X-Has-More', $hasMore ? '1' : '0');
     }
 

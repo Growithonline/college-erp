@@ -79,6 +79,68 @@ class Student extends Authenticatable
     public function admittedBy()       { return $this->belongsTo(\App\Models\StaffMember::class, 'admitted_by_staff_id'); }
     public function approvedByStaff()  { return $this->belongsTo(\App\Models\StaffMember::class, 'approved_by_staff_id'); }
 
+    /** Request keys accepted by the column-wise search (one filter box per table column). */
+    public const SEARCH_COLUMN_KEYS = [
+        'student_id', 'student_name', 'father_name', 'mother_name', 'mobile',
+        'roll_no', 'enrollment_no', 'uin_no', 'course', 'stream',
+    ];
+
+    /** Column filters from the request: trimmed, known keys only, at least 2 characters each. */
+    public static function searchColumnFilters(\Illuminate\Http\Request $request): array
+    {
+        $filters = [];
+        foreach (self::SEARCH_COLUMN_KEYS as $key) {
+            $value = trim((string) $request->input($key, ''));
+            if (mb_strlen($value) >= 2) {
+                $filters[$key] = mb_substr($value, 0, 100);
+            }
+        }
+
+        return $filters;
+    }
+
+    /** Column-wise search: every filled filter must match its own column (all words, any order). */
+    public function scopeSearchColumns($query, array $filters, ?int $sessionId = null)
+    {
+        $like = fn(string $word) => '%' . addcslashes($word, '%_\\') . '%';
+        $words = fn(string $value) => array_slice(array_values(array_filter(preg_split('/\s+/', $value))), 0, 6);
+
+        $simple = [
+            'student_id'   => 'student_uid',
+            'student_name' => 'name',
+            'father_name'  => 'father_name',
+            'mother_name'  => 'mother_name',
+            'mobile'       => 'mobile',
+            'enrollment_no' => 'enrollment_no',
+            'uin_no'       => 'uin_no',
+        ];
+
+        foreach ($filters as $key => $value) {
+            if (isset($simple[$key])) {
+                foreach ($words($value) as $word) {
+                    $query->where($simple[$key], 'like', $like($word));
+                }
+            } elseif ($key === 'roll_no') {
+                $term = $like($value);
+                $query->where(function ($b) use ($term, $sessionId) {
+                    $b->where('roll_no', 'like', $term)
+                        ->orWhereIn('students.id', fn($q) => $q->from('student_academic_identity')->select('student_id')
+                            ->when($sessionId, fn($w) => $w->where('academic_session_id', $sessionId))
+                            ->where(fn($w) => $w->where('roll_no', 'like', $term)->orWhere('roll_no_snapshot', 'like', $term)));
+                });
+            } elseif ($key === 'stream') {
+                foreach ($words($value) as $word) {
+                    $query->whereIn('course_stream_id', fn($q) => $q->from('course_streams')->select('id')->where('name', 'like', $like($word)));
+                }
+            } elseif ($key === 'course') {
+                foreach ($words($value) as $word) {
+                    $query->whereIn('course_stream_id', fn($q) => $q->from('course_streams')->select('id')
+                        ->whereIn('course_id', fn($c) => $c->from('courses')->select('id')->where('name', 'like', $like($word))));
+                }
+            }
+        }
+    }
+
     /**
      * Global-style search built for large institutes: every word must match somewhere (any order).
      *

@@ -401,8 +401,49 @@
             </div>
             <div class="card-body p-3">
                 <input type="text" id="studentSearch" class="form-control mb-3"
-                       placeholder="Name, Mobile or Student ID...">
-                <div id="searchResults" data-table="1" style="max-height:60vh;overflow:auto;"></div>
+                       placeholder="Search any field: name, father, mother, mobile, ID, roll, course...">
+                <div id="searchResults" data-table="1" style="max-height:65vh;overflow:auto;">
+                    <table class="table table-hover table-sm align-middle mb-0" style="font-size:13px;">
+                        <thead class="table-light" style="position:sticky;top:0;z-index:2;">
+                            <tr>
+                                <th style="width:40px;">#</th>
+                                <th>Session</th>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Father Name</th>
+                                <th>Mother Name</th>
+                                <th>Mobile</th>
+                                <th>Roll No</th>
+                                <th>Enroll No</th>
+                                <th>UIN</th>
+                                <th>Course</th>
+                                <th>Stream</th>
+                                <th>Year / Sem</th>
+                                <th class="text-end" style="width:90px;">Action</th>
+                            </tr>
+                            <tr id="searchFilterRow">
+                                <th></th>
+                                <th></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="student_id" placeholder="Filter ID"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="student_name" placeholder="Filter name"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="father_name" placeholder="Filter father"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="mother_name" placeholder="Filter mother"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="mobile" placeholder="Filter mobile"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="roll_no" placeholder="Filter roll"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="enrollment_no" placeholder="Filter enroll"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="uin_no" placeholder="Filter UIN"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="course" placeholder="Filter course"></th>
+                                <th><input type="text" class="form-control form-control-sm col-filter" data-key="stream" placeholder="Filter stream"></th>
+                                <th></th>
+                                <th class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearColumnFilters()">Clear</button></th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchRows">
+                            <tr><td colspan="14" class="text-center text-muted py-4">Type in the search box above, or in any column filter below the headings (at least 2 characters).</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="searchNote"></div>
             </div>
         </div>
     </div>
@@ -2186,42 +2227,55 @@ function runStudentSearch() {
     const input = document.getElementById('studentSearch');
     if (!input) return;
     const q = input.value.trim();
-    if (q.length < 2) { document.getElementById('searchResults').innerHTML = ''; return; }
+    const box0 = document.getElementById('searchResults');
+    const tableMode = !!(box0 && box0.dataset.table);
+
+    // Column-wise filters (one box under each table header); each needs at least 2 characters
+    let filterParam = '';
+    let hasFilter = false;
+    if (tableMode) {
+        document.querySelectorAll('.col-filter').forEach(el => {
+            const v = el.value.trim();
+            if (v.length >= 2) {
+                hasFilter = true;
+                filterParam += `&${el.dataset.key}=${encodeURIComponent(v)}`;
+            }
+        });
+    }
+
+    if (q.length < 2 && !hasFilter) {
+        if (searchAbort) searchAbort.abort();
+        if (tableMode) {
+            document.getElementById('searchRows').innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">Type in the search box above, or in any column filter below the headings (at least 2 characters).</td></tr>';
+            document.getElementById('searchNote').innerHTML = '';
+        } else {
+            box0.innerHTML = '';
+        }
+        return;
+    }
     searchTimer = setTimeout(() => {
         const sessionId = getSelectedSessionId();
         const sessionParam = sessionId ? `&session_id=${sessionId}` : '';
         if (searchAbort) searchAbort.abort();
         searchAbort = new AbortController();
-        fetch(`${@json($feeSearchUrl)}?q=${encodeURIComponent(q)}${sessionParam}`, { signal: searchAbort.signal })
+        fetch(`${@json($feeSearchUrl)}?q=${encodeURIComponent(q)}${sessionParam}${filterParam}`, { signal: searchAbort.signal })
             .then(r => { window.__searchHasMore = r.headers.get('X-Has-More') === '1'; return r.json(); })
             .then(data => {
                 const box = document.getElementById('searchResults');
                 if (!data.length) {
-                    box.innerHTML = '<div class="list-group-item text-muted small">No students found</div>';
+                    if (box.dataset.table) {
+                        document.getElementById('searchRows').innerHTML = '<tr><td colspan="14" class="text-center text-muted py-4">No students found</td></tr>';
+                        document.getElementById('searchNote').innerHTML = '';
+                    } else {
+                        box.innerHTML = '<div class="list-group-item text-muted small">No students found</div>';
+                    }
                     return;
                 }
                 const sidParam = sessionId ? `&session_id=${sessionId}` : '';
                 if (box.dataset.table) {
                     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
                     const dash = v => v ? esc(v) : '—';
-                    box.innerHTML = `
-                    <table class="table table-hover table-sm align-middle mb-0" style="font-size:13px;">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width:40px;">#</th>
-                                <th>Session</th>
-                                <th>Student ID</th>
-                                <th>Student Name</th>
-                                <th>Father Name</th>
-                                <th>Mother Name</th>
-                                <th>Mobile</th>
-                                <th>Course</th>
-                                <th>Stream</th>
-                                <th>Year / Sem</th>
-                                <th class="text-end" style="width:90px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>${data.map((s, i) => `
+                    document.getElementById('searchRows').innerHTML = `${data.map((s, i) => `
                             <tr style="cursor:pointer;" onclick="window.location='${@json($feeCreateUrl)}?student_id=${encodeURIComponent(s.id)}${sidParam}'">
                                 <td class="text-muted">${i + 1}</td>
                                 <td>${dash(s.session)}</td>
@@ -2230,29 +2284,31 @@ function runStudentSearch() {
                                 <td>${dash(s.father_name)}</td>
                                 <td>${dash(s.mother_name)}</td>
                                 <td>${dash(s.mobile)}</td>
+                                <td>${dash(s.roll_no)}</td>
+                                <td>${dash(s.enrollment_no)}</td>
+                                <td>${dash(s.uin_no)}</td>
                                 <td>${dash(s.course)}</td>
                                 <td>${dash(s.stream)}</td>
                                 <td style="white-space:nowrap;">${dash(s.year)}${s.semester ? ` <span class="badge bg-primary bg-opacity-10 text-primary border" style="font-size:10px;">S${esc(s.semester)}</span>` : ''}</td>
                                 <td class="text-end"><a href="${@json($feeCreateUrl)}?student_id=${encodeURIComponent(s.id)}${sidParam}" class="btn btn-sm btn-success py-0 px-2" onclick="event.stopPropagation()">Collect</a></td>
-                            </tr>`).join('')}
-                        </tbody>
-                    </table>`;
-                    if (window.__searchHasMore) {
-                        box.insertAdjacentHTML('beforeend', `<div class="alert alert-warning py-2 mt-2 mb-0 small fw-semibold">Showing the first ${data.length} matches — more students match. Type more of the name, father name, mobile or ID to narrow down.</div>`);
-                    }
+                            </tr>`).join('')}`;
+                    document.getElementById('searchNote').innerHTML = window.__searchHasMore
+                        ? `<div class="alert alert-warning py-2 mt-2 mb-0 small fw-semibold">Showing the first ${data.length} matches — more students match. Type more in the search box or a column filter to narrow down.</div>`
+                        : '';
                     return;
                 }
+                const e = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
                 box.innerHTML = data.map(s => `
-                    <a href="${@json($feeCreateUrl)}?student_id=${s.id}${sidParam}"
+                    <a href="${@json($feeCreateUrl)}?student_id=${encodeURIComponent(s.id)}${sidParam}"
                        class="list-group-item list-group-item-action py-2">
-                        <div class="fw-semibold small">${s.name}
-                            <span class="text-muted fw-normal ms-1" style="font-size:10px;">${s.student_uid}</span>
+                        <div class="fw-semibold small">${e(s.name)}
+                            <span class="text-muted fw-normal ms-1" style="font-size:10px;">${e(s.student_uid)}</span>
                         </div>
                         <div class="text-muted" style="font-size:11px;">
-                            ${s.course}${s.stream ? ' · ' + s.stream : ''} &bull; ${s.mobile}
+                            ${e(s.course)}${s.stream ? ' · ' + e(s.stream) : ''} &bull; ${e(s.mobile)}
                         </div>
                         ${(s.father_name || s.mother_name) ? `<div class="text-muted" style="font-size:10px;">
-                            ${s.father_name ? 'F: ' + s.father_name : ''}${s.father_name && s.mother_name ? ' &bull; ' : ''}${s.mother_name ? 'M: ' + s.mother_name : ''}
+                            ${s.father_name ? 'F: ' + e(s.father_name) : ''}${s.father_name && s.mother_name ? ' &bull; ' : ''}${s.mother_name ? 'M: ' + e(s.mother_name) : ''}
                         </div>` : ''}
                     </a>`).join('');
             })
@@ -2261,9 +2317,16 @@ function runStudentSearch() {
 }
 
 document.getElementById('studentSearch')?.addEventListener('input', runStudentSearch);
+document.querySelectorAll('.col-filter').forEach(el => el.addEventListener('input', runStudentSearch));
+
+function clearColumnFilters() {
+    document.querySelectorAll('.col-filter').forEach(el => { el.value = ''; });
+    runStudentSearch();
+}
 
 document.getElementById('feeSessionSelect')?.addEventListener('change', function () {
-    document.getElementById('searchResults').innerHTML = '';
+    const resBox = document.getElementById('searchResults');
+    if (resBox && !resBox.dataset.table) { resBox.innerHTML = ''; }
     runStudentSearch();
 });
 
