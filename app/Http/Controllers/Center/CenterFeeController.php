@@ -403,6 +403,10 @@ class CenterFeeController extends Controller
     {
         $query = $request->q ?? '';
 
+        if (mb_strlen(trim((string) $query)) < 2) {
+            return response()->json([]);
+        }
+
         if (!$sessionId) {
             $sessionId = (int) AcademicSession::where('institute_id', $center->institute_id)
                 ->where('is_active', true)->value('id');
@@ -416,14 +420,17 @@ class CenterFeeController extends Controller
             ->where('academic_session_id', $sessionId)
             ->where('admission_source', 'center')
             ->where('admission_source_id', $center->id)
-            ->where(function ($builder) use ($query) {
-                $builder->where('name', 'like', "%{$query}%")
-                    ->orWhere('mobile', 'like', "%{$query}%")
-                    ->orWhere('student_uid', 'like', "%{$query}%");
-            })
+            ->searchAnyField((string) $query, $sessionId)
+            ->select(['id', 'institute_id', 'academic_session_id', 'student_uid', 'name', 'mobile',
+                'father_name', 'mother_name', 'course_stream_id', 'course_part_id', 'current_semester'])
             ->with(['stream.course', 'session', 'coursePart'])
-            ->limit(10)
+            ->orderBy('name')
+            ->orderBy('student_uid')
+            ->limit(51)
             ->get();
+
+        $hasMore  = $students->count() > 50;
+        $students = $students->take(50);
 
         return response()->json($students->map(fn($s) => [
             'id'          => $s->id,
@@ -437,7 +444,7 @@ class CenterFeeController extends Controller
             'session'     => $s->session->name ?? '',
             'year'        => $s->coursePart->year_label ?? '',
             'semester'    => $s->current_semester,
-        ]));
+        ]))->header('X-Has-More', $hasMore ? '1' : '0');
     }
 
     public function studentHistory(Student $student)

@@ -79,6 +79,74 @@ class Student extends Authenticatable
     public function admittedBy()       { return $this->belongsTo(\App\Models\StaffMember::class, 'admitted_by_staff_id'); }
     public function approvedByStaff()  { return $this->belongsTo(\App\Models\StaffMember::class, 'approved_by_staff_id'); }
 
+    /**
+     * Global-style search built for large institutes: every word must match somewhere (any order).
+     *
+     * Each word is classified first so only the relevant columns are checked:
+     *  - digits only      -> mobile / roll / enrollment / UIN / form numbers (indexed prefix match) + student ID
+     *  - contains "@"     -> email
+     *  - contains "/"     -> student ID / form number
+     *  - anything else    -> names, prefix match on the number columns, and course / stream / year names
+     * Course / stream / year / identity lookups are uncorrelated sub-selects on small, indexed tables
+     * (resolved once) instead of a per-row EXISTS. Pass the session id so identity lookups stay in range.
+     */
+    public function scopeSearchAnyField($query, string $text, ?int $sessionId = null)
+    {
+        $words = array_slice(array_values(array_filter(preg_split('/\s+/', trim($text)))), 0, 6);
+
+        $numberColumns = ['mobile', 'father_mobile', 'mother_mobile', 'roll_no', 'enrollment_no',
+            'uin_no', 'sr_no', 'exam_form_no', 'institute_form_no', 'reference_no'];
+
+        foreach ($words as $word) {
+            $escaped  = addcslashes($word, '%_\\');
+            $contains = '%' . $escaped . '%';
+            $prefix   = $escaped . '%';
+
+            $query->where(function ($builder) use ($word, $contains, $prefix, $numberColumns, $sessionId) {
+                if (ctype_digit($word)) {
+                    foreach ($numberColumns as $column) {
+                        $builder->orWhere($column, 'like', $prefix);
+                    }
+                    $builder->orWhere('student_uid', 'like', $contains);
+                } elseif (str_contains($word, '@')) {
+                    $builder->orWhere('email', 'like', $contains);
+                } elseif (str_contains($word, '/')) {
+                    $builder->orWhere('student_uid', 'like', $contains)
+                        ->orWhere('institute_form_no', 'like', $contains);
+                } else {
+                    foreach (['name', 'father_name', 'mother_name', 'guardian_name'] as $column) {
+                        $builder->orWhere($column, 'like', $contains);
+                    }
+                    foreach ($numberColumns as $column) {
+                        $builder->orWhere($column, 'like', $prefix);
+                    }
+                    $builder->orWhere('student_uid', 'like', $contains);
+
+                    // Course / stream / year names: resolve to ids once (tiny tables)
+                    $builder->orWhereIn('course_stream_id', fn($q) => $q->from('course_streams')->select('id')
+                        ->where('name', 'like', $contains)
+                        ->orWhereIn('course_id', fn($c) => $c->from('courses')->select('id')->where('name', 'like', $contains)));
+                    $builder->orWhereIn('course_part_id', fn($q) => $q->from('course_parts')->select('id')
+                        ->where('part_name', 'like', $contains));
+                }
+
+                // Per-session roll / form / enrollment numbers (prefix match on indexed columns)
+                if (!str_contains($word, '@')) {
+                    $builder->orWhereIn('students.id', function ($q) use ($prefix, $sessionId) {
+                        $q->from('student_academic_identity')->select('student_id')
+                            ->when($sessionId, fn($w) => $w->where('academic_session_id', $sessionId))
+                            ->where(function ($w) use ($prefix) {
+                                $w->where('roll_no', 'like', $prefix)
+                                    ->orWhere('form_no', 'like', $prefix)
+                                    ->orWhere('roll_no_snapshot', 'like', $prefix)
+                                    ->orWhere('enrollment_no_snapshot', 'like', $prefix);
+                            });
+                    });
+                }
+            });
+        }
+    }
+
     public function academicIdentities()
     {
         return $this->hasMany(\App\Models\StudentAcademicIdentity::class);

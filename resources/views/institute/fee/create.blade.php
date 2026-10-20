@@ -2175,6 +2175,7 @@ document.getElementById('oneTimePay')?.addEventListener('input', function () {
 });
 
 let searchTimer;
+let searchAbort = null;
 function getSelectedSessionId() {
     const sel = document.getElementById('feeSessionSelect');
     return sel ? sel.value : '';
@@ -2189,8 +2190,10 @@ function runStudentSearch() {
     searchTimer = setTimeout(() => {
         const sessionId = getSelectedSessionId();
         const sessionParam = sessionId ? `&session_id=${sessionId}` : '';
-        fetch(`${@json($feeSearchUrl)}?q=${encodeURIComponent(q)}${sessionParam}`)
-            .then(r => r.json())
+        if (searchAbort) searchAbort.abort();
+        searchAbort = new AbortController();
+        fetch(`${@json($feeSearchUrl)}?q=${encodeURIComponent(q)}${sessionParam}`, { signal: searchAbort.signal })
+            .then(r => { window.__searchHasMore = r.headers.get('X-Has-More') === '1'; return r.json(); })
             .then(data => {
                 const box = document.getElementById('searchResults');
                 if (!data.length) {
@@ -2234,6 +2237,9 @@ function runStudentSearch() {
                             </tr>`).join('')}
                         </tbody>
                     </table>`;
+                    if (window.__searchHasMore) {
+                        box.insertAdjacentHTML('beforeend', `<div class="alert alert-warning py-2 mt-2 mb-0 small fw-semibold">Showing the first ${data.length} matches — more students match. Type more of the name, father name, mobile or ID to narrow down.</div>`);
+                    }
                     return;
                 }
                 box.innerHTML = data.map(s => `
@@ -2249,7 +2255,8 @@ function runStudentSearch() {
                             ${s.father_name ? 'F: ' + s.father_name : ''}${s.father_name && s.mother_name ? ' &bull; ' : ''}${s.mother_name ? 'M: ' + s.mother_name : ''}
                         </div>` : ''}
                     </a>`).join('');
-            });
+            })
+            .catch(err => { if (err.name !== 'AbortError') { console.error(err); } });
     }, 300);
 }
 

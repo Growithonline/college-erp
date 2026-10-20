@@ -1811,6 +1811,10 @@ class FeeCollectionController extends Controller
         $query = $request->q;
         $instituteId = $this->instituteId();
 
+        if (mb_strlen(trim((string) $query)) < 2) {
+            return response()->json([]);
+        }
+
         $sessionId = $request->filled('session_id')
             ? (int) $request->session_id
             : (int) AcademicSession::where('institute_id', $instituteId)
@@ -1820,22 +1824,21 @@ class FeeCollectionController extends Controller
             return response()->json([]);
         }
 
-        $safeQuery = addcslashes($query, '%_\\');
         $students = Student::where('institute_id', $instituteId)
             ->where('academic_session_id', $sessionId)
-            ->where(function ($builder) use ($safeQuery) {
-                $builder->where('name', 'like', "%{$safeQuery}%")
-                    ->orWhere('mobile', 'like', "%{$safeQuery}%")
-                    ->orWhere('student_uid', 'like', "%{$safeQuery}%")
-                    ->orWhere('father_name', 'like', "%{$safeQuery}%")
-                    ->orWhere('mother_name', 'like', "%{$safeQuery}%");
-            })
+            ->searchAnyField((string) $query, $sessionId)
+            ->select(['id', 'institute_id', 'academic_session_id', 'student_uid', 'name', 'mobile',
+                'father_name', 'mother_name', 'course_stream_id', 'course_part_id', 'current_semester'])
             ->with(['stream.course', 'session', 'coursePart'])
-            ->limit(10);
+            ->orderBy('name')
+            ->orderBy('student_uid');
         if ($staff = $this->currentStaff()) {
             $staff->scopeOperationalStudents($students);
         }
-        $students = $students->get();
+        // Fetch one extra row to know whether more matches exist, instead of a full COUNT(*) scan.
+        $students = $students->limit(51)->get();
+        $hasMore  = $students->count() > 50;
+        $students = $students->take(50);
 
         return response()->json($students->map(fn($student) => [
             'id'          => $student->id,
@@ -1849,6 +1852,6 @@ class FeeCollectionController extends Controller
             'session'     => $student->session->name ?? '',
             'year'        => $student->coursePart->year_label ?? '',
             'semester'    => $student->current_semester,
-        ]));
+        ]))->header('X-Has-More', $hasMore ? '1' : '0');
     }
 }
