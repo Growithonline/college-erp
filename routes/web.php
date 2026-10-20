@@ -468,6 +468,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/export',                      [FeeCollectionController::class, 'export'])->name('export');
         Route::get('/{student}/history',           [FeeCollectionController::class, 'studentHistory'])->name('student-history');
         Route::get('/{student}/history/print',     [FeeCollectionController::class, 'historyPrint'])->name('history-print');
+        Route::get('/{student}/statement',         [\App\Http\Controllers\Institute\Fee\StudentFeeStatementController::class, 'show'])->name('student-statement');
+        Route::get('/{student}/statement/pdf',     [\App\Http\Controllers\Institute\Fee\StudentFeeStatementController::class, 'pdf'])->name('student-statement-pdf');
         Route::get('/{student}/receipt/{invoice}', [FeeCollectionController::class, 'receipt'])->name('receipt');
         Route::get('/{student}/wallet',            [WalletController::class, 'studentWallet'])->name('wallet.student');
         Route::get('/{student}/wallet/print',       [WalletController::class, 'walletPrint'])->name('wallet.student-print');
@@ -1323,6 +1325,8 @@ Route::prefix('staff')->name('staff.')->group(function () {
         Route::get('fee/history',                     [StaffFeeController::class, 'index'])->name('fee.index');
         Route::get('fee/{student}/history',           [StaffFeeController::class, 'studentHistory'])->name('fee.student-history');
         Route::get('fee/{student}/history/print',     [StaffFeeController::class, 'historyPrint'])->name('fee.history-print');
+        Route::get('fee/{student}/statement',         [\App\Http\Controllers\Institute\Fee\StudentFeeStatementController::class, 'show'])->name('fee.student-statement');
+        Route::get('fee/{student}/statement/pdf',     [\App\Http\Controllers\Institute\Fee\StudentFeeStatementController::class, 'pdf'])->name('fee.student-statement-pdf');
         Route::get('fee/{student}/wallet',            [StaffFeeController::class, 'studentWallet'])->name('fee.wallet.student');
         Route::get('fee/{student}/wallet/print',       [StaffFeeController::class, 'walletPrint'])->name('fee.wallet.student-print');
         Route::post('fee/{student}/invoice/{invoice}/cancel', [StaffFeeController::class, 'cancel'])->name('fee.cancel');

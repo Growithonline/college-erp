@@ -167,6 +167,13 @@
                                         <i class="bi bi-receipt"></i>
                                     </a>
                                     @endif
+                                    @php $statementRoute = !empty($historyRoute) ? str_replace('student-history', 'student-statement', $historyRoute) : null; @endphp
+                                    @if(!empty($showHistoryAction) && $statementRoute && IlluminateSupportacadesroute::has($statementroute))
+                                    <a href="{{ route($statementroute, $student->id) }}"
+                                       class="btn btn-outline-dark btn-xs" title="full fee statement (year-wise)" style="padding:2px 7px;font-size:11px;">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </a>
+                                    @endif
                                     @if(!empty($showCollectFeeAction) && !empty($collectFeeRoute))
                                     <a href="{{ route($collectFeeRoute, ['student_id' => $student->id]) }}"
                                        class="btn btn-outline-success btn-xs" title="Collect Fee" style="padding:2px 7px;font-size:11px;">

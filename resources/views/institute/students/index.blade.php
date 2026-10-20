@@ -393,6 +393,11 @@
                                style="padding:2px 6px; font-size:11px;">
                                 <i class="bi bi-receipt"></i>
                             </a>
+                            <a href="{{ route('fee.student-statement', $student->id) }}"
+                               class="btn btn-sm btn-outline-dark" title="Full Fee Statement (year-wise)"
+                               style="padding:2px 6px; font-size:11px;">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
                             <a href="{{ route('fee.create', ['student_id' => $student->id]) }}"
                                class="btn btn-sm btn-outline-success" title="Collect Fee"
                                style="padding:2px 6px; font-size:11px;">

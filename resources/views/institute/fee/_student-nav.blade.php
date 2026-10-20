@@ -11,9 +11,10 @@
     $_navWallet  = $_navStaff ? 'staff.fee.wallet.student'  : ($_navCenter ? 'center.fee.wallet.student'  : ($_navPartner ? 'partner.fee.wallet.student'  : 'fee.wallet.student'));
     $_navHistory = $_navStaff ? 'staff.fee.student-history' : ($_navCenter ? 'center.fee.student-history' : ($_navPartner ? 'partner.fee.student-history' : 'fee.student-history'));
     $_navStmt    = $_navStaff ? 'staff.statement'           : (($_navCenter || $_navPartner) ? null : 'statement');
+    $_navFull    = $_navStaff ? 'staff.fee.student-statement' : (($_navCenter || $_navPartner) ? null : 'fee.student-statement');
     $_navCurrent = $current ?? 'collect';
     $_navCanWallet = $canViewWallet ?? true;
-    $_navCanHistory = $canViewHistory ?? true;
+    $_navCanHistory = $canViewHistory ?? ($_navStaff ? (bool) auth()->guard('staff')->user()?->canViewFeeHistory() : true);
     $_navSid     = $student->id;
 @endphp
 <a href="{{ route($_navProfile, $_navSid) }}" class="btn btn-sm {{ $_navCurrent === 'profile' ? 'btn-primary' : 'btn-outline-primary' }}">
@@ -27,6 +28,11 @@
 @if($_navCanHistory)
 <a href="{{ route($_navHistory, $_navSid) }}" class="btn btn-sm {{ $_navCurrent === 'history' ? 'btn-secondary' : 'btn-outline-secondary' }}">
     <i class="bi bi-receipt me-1"></i> Fee History
+</a>
+@endif
+@if($_navFull && $_navCanHistory)
+<a href="{{ route($_navFull, $_navSid) }}" class="btn btn-sm {{ $_navCurrent === 'statement' ? 'btn-dark' : 'btn-outline-dark' }}">
+    <i class="bi bi-file-earmark-text me-1"></i> Full Statement
 </a>
 @endif
 @if($_navStmt)
