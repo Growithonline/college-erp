@@ -168,9 +168,9 @@
                                     </a>
                                     @endif
                                     @php $statementRoute = !empty($historyRoute) ? str_replace('student-history', 'student-statement', $historyRoute) : null; @endphp
-                                    @if(!empty($showHistoryAction) && $statementRoute && IlluminateSupportacadesroute::has($statementroute))
-                                    <a href="{{ route($statementroute, $student->id) }}"
-                                       class="btn btn-outline-dark btn-xs" title="full fee statement (year-wise)" style="padding:2px 7px;font-size:11px;">
+                                    @if(!empty($showHistoryAction) && $statementRoute && \Illuminate\Support\Facades\Route::has($statementRoute))
+                                    <a href="{{ route($statementRoute, $student->id) }}"
+                                       class="btn btn-outline-dark btn-xs" title="Full Fee Statement (year-wise)" style="padding:2px 7px;font-size:11px;">
                                         <i class="bi bi-file-earmark-text"></i>
                                     </a>
                                     @endif
