@@ -275,6 +275,7 @@ class BankWiseCollectionReportController extends Controller
             'allModes'   => self::MODES,
             'allSources' => self::SOURCES,
             'printedAt'  => now()->format('d M Y h:i A'),
+            'orientation' => $request->input('orientation') === 'landscape' ? 'landscape' : 'portrait',
         ] + $this->build($instituteId, $filters);
     }
 
@@ -293,7 +294,7 @@ class BankWiseCollectionReportController extends Controller
         $data = $this->viewData($request);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute.reports.bank-wise-collection-document', $data + ['pdf' => true, 'autoPrint' => false]);
-        $pdf->setPaper('A4', 'landscape');
+        $pdf->setPaper('A4', $data['orientation']);
         $pdf->setOptions(['defaultFont' => 'DejaVu Sans', 'isRemoteEnabled' => false, 'dpi' => 96]);
 
         return $pdf->download($this->fileName($data['filters'], 'pdf'));

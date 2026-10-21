@@ -17,8 +17,20 @@
         <small class="text-muted">All income (fee receipts, library fine, other income) grouped by bank, with payment-mode split and the source of every amount — for the CA's daily report</small>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{{ route('reports.bank-wise.print', $q()) }}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer me-1"></i> Print</a>
-        <a href="{{ route('reports.bank-wise.pdf', $q()) }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-printer me-1"></i> Print</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" target="_blank" href="{{ route('reports.bank-wise.print', $q(['orientation' => 'portrait'])) }}"><i class="bi bi-file-earmark me-2"></i>Portrait (more rows per page)</a></li>
+                <li><a class="dropdown-item" target="_blank" href="{{ route('reports.bank-wise.print', $q(['orientation' => 'landscape'])) }}"><i class="bi bi-file-earmark-text me-2"></i>Landscape (wider columns)</a></li>
+            </ul>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ route('reports.bank-wise.pdf', $q(['orientation' => 'portrait'])) }}"><i class="bi bi-file-earmark me-2"></i>Portrait (more rows per page)</a></li>
+                <li><a class="dropdown-item" href="{{ route('reports.bank-wise.pdf', $q(['orientation' => 'landscape'])) }}"><i class="bi bi-file-earmark-text me-2"></i>Landscape (wider columns)</a></li>
+            </ul>
+        </div>
         <a href="{{ route('reports.bank-wise.export', $q(['format' => 'xlsx'])) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
         <a href="{{ route('reports.bank-wise.export', $q(['format' => 'csv'])) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-filetype-csv me-1"></i> CSV</a>
     </div>
@@ -107,11 +119,11 @@
     .bw-wrap .bw-table .r { text-align: right; white-space: nowrap; }
     .bw-wrap .bw-table .nw { white-space: nowrap; }
     .bw-wrap .bw-table tfoot td { font-weight: 700; background: #f1f5f9; }
-    .bw-wrap .bw-sub { color: #64748b; font-size: 11px; }
+    .bw-wrap .bw-sub { color: #000; font-size: 11px; }
     .bw-wrap .bw-group { margin-top: 18px; }
     .bw-wrap .bw-group-head { background: #1e293b; color: #fff; padding: 6px 10px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
     .bw-wrap .bw-modes { font-weight: 400; font-size: 12px; margin-left: 10px; }
-    .bw-wrap .bw-empty { color: #64748b; padding: 24px 0; text-align: center; }
+    .bw-wrap .bw-empty { color: #000; padding: 24px 0; text-align: center; }
 </style>
 <div class="card border-0 shadow-sm">
     <div class="card-body bw-wrap table-responsive">
