@@ -17,13 +17,15 @@
     @page { size: A4 landscape; margin: 8mm; }
     * { box-sizing: border-box; }
     html, body { width: 100%; }
-    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #000; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #000; margin: 0; padding-right: 2px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .head h1 { margin: 0; font-size: 16px; }
     .head .meta { font-size: 10px; margin-top: 2px; }
     .bw-title { margin: 10px 0 4px; font-weight: 700; font-size: 11.5px; }
-    .bw-table th { background: #e2e8f0; border: 1px solid #000; padding: 3px 5px; font-size: 9.5px; text-align: left; }
-    .bw-table td { border: 1px solid #000; padding: 2.5px 5px; font-size: 9.5px; vertical-align: top; word-wrap: break-word; overflow-wrap: anywhere; }
+    /* Each cell draws its own right/bottom border (separate model) — a collapsed 1px right edge can vanish when printing */
+    .bw-table { border-collapse: separate; border-spacing: 0; border-top: 1px solid #000; border-left: 1px solid #000; }
+    .bw-table th { background: #e2e8f0; border: 0; border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 5px; font-size: 9.5px; text-align: left; }
+    .bw-table td { border: 0; border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 2.5px 5px; font-size: 9.5px; vertical-align: top; word-wrap: break-word; overflow-wrap: anywhere; }
     .bw-table th { word-wrap: break-word; }
     /* fixed column widths so a table can never grow wider than the page */
     .bw-source th:nth-child(1) { width: 70%; }
