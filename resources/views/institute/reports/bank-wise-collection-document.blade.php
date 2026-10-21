@@ -16,19 +16,29 @@
 <style>
     @page { size: A4 landscape; margin: 8mm; }
     * { box-sizing: border-box; }
-    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #000; margin: 0; }
-    table { width: 100%; border-collapse: collapse; }
+    html, body { width: 100%; }
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #000; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .head h1 { margin: 0; font-size: 16px; }
     .head .meta { font-size: 10px; margin-top: 2px; }
     .bw-title { margin: 10px 0 4px; font-weight: 700; font-size: 11.5px; }
     .bw-table th { background: #e2e8f0; border: 1px solid #000; padding: 3px 5px; font-size: 9.5px; text-align: left; }
-    .bw-table td { border: 1px solid #000; padding: 2.5px 5px; font-size: 9.5px; vertical-align: top; }
+    .bw-table td { border: 1px solid #000; padding: 2.5px 5px; font-size: 9.5px; vertical-align: top; word-wrap: break-word; overflow-wrap: anywhere; }
+    .bw-table th { word-wrap: break-word; }
+    /* fixed column widths so a table can never grow wider than the page */
+    .bw-source th:nth-child(1) { width: 70%; }
+    .bw-summary th:first-child { width: 28%; }
+    .bw-detail th:nth-child(1) { width: 3%; }  .bw-detail th:nth-child(2) { width: 7%; }
+    .bw-detail th:nth-child(3) { width: 12%; } .bw-detail th:nth-child(4) { width: 17%; }
+    .bw-detail th:nth-child(5) { width: 21%; } .bw-detail th:nth-child(6) { width: 6%; }
+    .bw-detail th:nth-child(7) { width: 11%; } .bw-detail th:nth-child(8) { width: 14%; }
+    .bw-detail th:nth-child(9) { width: 9%; }
     .bw-table .r { text-align: right; white-space: nowrap; }
-    .bw-table .nw { white-space: nowrap; }
+    .bw-table .nw { white-space: normal; }
     .bw-table tfoot td { font-weight: 700; background: #f1f5f9; }
     .bw-sub { color: #475569; font-size: 8.5px; }
     .bw-group { margin-top: 12px; page-break-inside: auto; }
-    .bw-group-head { background: #1e293b; color: #fff; padding: 4px 6px; font-size: 10.5px; }
+    .bw-group-head { background: #e2e8f0; color: #000; border: 1px solid #000; border-bottom: 0; padding: 4px 6px; font-size: 10.5px; overflow: hidden; }
     .bw-group-head span { display: inline-block; }
     .bw-group-total { float: right; font-weight: 700; }
     .bw-detail thead { display: table-header-group; }
