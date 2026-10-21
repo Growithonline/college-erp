@@ -4224,7 +4224,8 @@ class AdmissionController extends Controller
 
         $allowedBankIds = $this->allowedBankAccountIds();
         $selectedBankAccount = null;
-        if ($request->filled('bank_account_id')) {
+        // Cash is never tied to a bank account — a stale bank id sent with cash is ignored.
+        if ($request->payment_mode !== 'cash' && $request->filled('bank_account_id')) {
             $selectedBankAccount = $this->allowedBankAccounts($instituteId, $allowedPaymentModes, $allowedBankIds)
                 ->firstWhere('id', (int) $request->bank_account_id);
 

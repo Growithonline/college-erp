@@ -2188,6 +2188,9 @@ function toggleQuickBankAccount() {
     if (wrap && select) {
         wrap.style.display = isCash ? 'none' : 'block';
         select.required = !isCash;
+        // A hidden select still submits its value — clear and disable it for cash so no bank id is sent
+        select.disabled = isCash;
+        if (isCash) { select.value = ''; }
         Array.from(select.options).forEach((option, index) => {
             if (index === 0) return;
             const modes = String(option.dataset.modes || '').split(',').map(v => v.trim());
