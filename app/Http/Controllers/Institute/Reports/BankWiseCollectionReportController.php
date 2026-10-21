@@ -204,7 +204,10 @@ class BankWiseCollectionReportController extends Controller
         // Normalise the payment mode and decide the group (bank account / cash / bank not recorded)
         return $entries->map(function (array $e) {
             $e['mode'] = array_key_exists((string) $e['mode'], self::MODES) ? $e['mode'] : 'other';
-            $e['group'] = $e['bank_id'] ? (string) $e['bank_id'] : ($e['mode'] === 'cash' ? 'cash' : 'none');
+            // Cash is cash — even if an old receipt still carries a bank account id. Only non-cash goes to a bank.
+            $e['group'] = $e['mode'] === 'cash'
+                ? 'cash'
+                : ($e['bank_id'] ? (string) $e['bank_id'] : 'none');
 
             return $e;
         })->sortBy(fn($e) => $e['date']?->timestamp ?? 0)->values();

@@ -10,6 +10,17 @@ class FeeInvoice extends Model
     public const STATUS_PENDING  = 'pending';
     public const STATUS_REJECTED = 'rejected';
 
+    protected static function booted(): void
+    {
+        // A cash receipt never goes into a bank account at the time of collection — only UPI / NEFT / RTGS /
+        // cheque / DD / online receipts carry a bank account. (Accounting already treats cash as cash.)
+        static::saving(function (FeeInvoice $invoice) {
+            if ($invoice->payment_mode === 'cash' && $invoice->bank_account_id) {
+                $invoice->bank_account_id = null;
+            }
+        });
+    }
+
     protected $fillable = [
         'institute_id', 'student_id', 'academic_session_id', 'semester',
         'invoice_no', 'total_amount', 'discount', 'paid_amount',
