@@ -1185,6 +1185,15 @@ class WalletService
 
         $feeData = ['total' => 0.0, 'items' => []];
 
+        // Same rule PromotionController::chargePromotionFees() applies when a semester
+        // promotion charges the new semester: yearly fees (semester = 0) belong to the whole
+        // session and were already charged in Sem 1, so they must not come back as a fresh
+        // current-semester item. Whatever of them is still unpaid is already inside the
+        // semester promotion's carried-forward "Previous Due" (added below) — listing the
+        // same fee again here counted it twice (e.g. 5,000 carried + 4,000 live = 9,000).
+        // A session promotion starts a new year, so yearly fees apply again there.
+        $includeYearlyFees = !($promotionLog && $promotionLog->promotion_type === 'semester');
+
         if (!$skipLiveFeeCalcForBulkImport && $context['course_id'] > 0 && $student->stream) {
             try {
                 $feeData = FeeCalculatorService::calculate(
@@ -1199,7 +1208,8 @@ class WalletService
                     gender:          $student->gender ?? 'other',
                     subjectIds:      $context['subject_ids'],
                     courseStreamId:  $student->course_stream_id,
-                    coursePartId:    $context['course_part']->id ?? $student->course_part_id
+                    coursePartId:    $context['course_part']->id ?? $student->course_part_id,
+                    includeYearlyFees: $includeYearlyFees
                 );
             } catch (\Throwable $e) {
                 $feeData = ['total' => 0.0, 'items' => []];

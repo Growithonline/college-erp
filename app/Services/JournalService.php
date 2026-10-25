@@ -178,6 +178,68 @@ class JournalService
     }
 
     /**
+     * Reduces the receivable/income recognized by a student's admission fee entry (see
+     * safePostAdmissionFeeAssigned()) after the fee rule was later lowered. Posts a separate
+     * adjusting entry (Debit fee income, Credit fees receivable) instead of reversing the
+     * original, so the audit trail keeps both. Idempotent on $adjustmentKey. Returns null
+     * when the student has no admission fee entry (nothing was ever booked to reduce).
+     * Not wrapped in safely(): callers run this inside their own transaction and must roll
+     * back with it if the posting fails.
+     */
+    public static function postAdmissionFeeReduction(
+        Student $student,
+        int     $academicSessionId,
+        float   $amount,
+        string  $adjustmentKey,
+        string  $narration
+    ): ?JournalEntry {
+        $original = JournalEntry::with('lines')
+            ->where('institute_id', (int) $student->institute_id)
+            ->where('entry_key', sprintf(self::ENTRY_KEY_ADMISSION_FEE, (int) $student->id, $academicSessionId))
+            ->where('status', JournalEntry::STATUS_POSTED)
+            ->first();
+
+        if (!$original) {
+            return null;
+        }
+
+        $receivableLine = $original->lines->firstWhere('entry_type', 'debit');
+        $incomeLines    = $original->lines->where('entry_type', 'credit');
+
+        if (!$receivableLine || $incomeLines->count() !== 1) {
+            throw new InvalidArgumentException("Admission fee entry #{$original->id} is not a single receivable/income pair; adjust it manually.");
+        }
+
+        $amount = round($amount, 2);
+
+        return self::post([
+            'institute_id'        => (int) $student->institute_id,
+            'academic_session_id' => $academicSessionId,
+            'date'                => now()->toDateString(),
+            'entry_key'           => $adjustmentKey,
+            'reference_type'      => 'student_fee_rule_adjustment',
+            'reference_id'        => (int) $student->id,
+            'narration'           => $narration,
+            'meta'                => ['student_id' => (int) $student->id, 'adjusted_entry_id' => $original->id],
+        ], [
+            [
+                'account_id' => (int) $incomeLines->first()->account_id,
+                'entry_type' => 'debit',
+                'amount'     => $amount,
+                'narration'  => 'Fee income adjusted',
+                'meta'       => ['academic_session_id' => $academicSessionId],
+            ],
+            [
+                'account_id' => (int) $receivableLine->account_id,
+                'entry_type' => 'credit',
+                'amount'     => $amount,
+                'narration'  => 'Fee receivable adjusted',
+                'meta'       => ['academic_session_id' => $academicSessionId],
+            ],
+        ]);
+    }
+
+    /**
      * Recognizes ONE past semester's still-OWED due (not the full historical fee — only
      * what the reviewer entered as outstanding) as a receivable — used only by Bulk
      * Student Import's fee-history review (see
