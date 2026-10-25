@@ -1210,6 +1210,36 @@ class WalletService
         return (float) ($row?->paid_total ?? 0) + (float) ($row?->discount_total ?? 0);
     }
 
+    /**
+     * What the student still owed on transport allocations that already existed when the
+     * semester promotion snapshot (dues_carried_forward) was taken: today's balance plus
+     * whatever was paid on them since (transport payments reduce the live transport line, not
+     * the Previous Due line). Allocations created after the promotion were never in the
+     * snapshot and are ignored.
+     */
+    private static function transportDueInsideCarriedForward(
+        Student $student,
+        int $sessionId,
+        PromotionLog $promotionLog
+    ): float {
+        $allocations = TransportAllocation::where('student_id', $student->id)
+            ->where('academic_session_id', $sessionId)
+            ->where('created_at', '<', $promotionLog->created_at)
+            ->get();
+
+        $total = 0.0;
+        foreach ($allocations as $ta) {
+            $paidSince = (float) TransportPayment::where('transport_allocation_id', $ta->id)
+                ->where('is_reversed', false)
+                ->where('created_at', '>=', $promotionLog->created_at)
+                ->sum('amount');
+
+            $total += max(0, round((float) $ta->balance, 2)) + $paidSince;
+        }
+
+        return round($total, 2);
+    }
+
     public static function buildPromotionAwareFeeState(Student $student, int $sessionId): array
     {
         $student->loadMissing(['stream.course', 'coursePart']);
@@ -1363,6 +1393,16 @@ class WalletService
             if ($dueAmount > 0 && !$includeYearlyFees) {
                 $dueAmount = max(0, round($dueAmount - self::paidSincePromotionOnHiddenYearlyItems(
                     $student, $sessionId, $context, $promotionLog, $feeData['items'] ?? []
+                ), 2));
+            }
+
+            // Transport allocations are listed below as their own live lines, but the amount
+            // still owed on them when the promotion snapshot was taken is also inside
+            // $dueAmount (it came from buildPendingRows(), which includes transport) — so the
+            // same ₹ showed twice. Take that part back out of the carried due.
+            if ($dueAmount > 0) {
+                $dueAmount = max(0, round($dueAmount - self::transportDueInsideCarriedForward(
+                    $student, $sessionId, $promotionLog
                 ), 2));
             }
 
@@ -1606,6 +1646,15 @@ class WalletService
 
         // Use buildPendingRows so fine-coverage logic is consistent across the app
         $pendingRows = self::buildPendingRows($student, $sessionId);
+
+        // After a semester promotion the yearly fees are no longer listed (their unpaid part is
+        // inside the carried-forward Previous Due), so a fine charged on one of them — usually
+        // already paid with its invoice — matches no row. Counting it here left the Balance
+        // 100-odd rupees off from the Pending Due; only the fines on listed rows count.
+        $stateLog = self::currentStatePromotionLog($student, $sessionId);
+        if ($stateLog && $stateLog->promotion_type === 'semester') {
+            $netFine = min($netFine, (float) $pendingRows->sum('fine'));
+        }
 
         $totalCollectionApplied = (float) $pendingRows->sum('collection');
         $totalDiscountApplied   = (float) $pendingRows->sum('discount');
