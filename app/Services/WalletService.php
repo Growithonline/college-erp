@@ -1151,6 +1151,65 @@ class WalletService
         return $alreadyPaid;
     }
 
+    /**
+     * After a semester promotion the yearly fees (semester = 0) are hidden from the current
+     * semester's items — their unpaid part lives inside the carried-forward "Previous Due".
+     * A payment made against one of those yearly items AFTER the promotion (before they were
+     * hidden, the fee page still listed them) therefore matches no visible line and would
+     * leave the carried due overstated. Returns that paid+discount amount so the caller can
+     * deduct it from the carried due. Payments made before the promotion are already
+     * reflected in dues_carried_forward, hence the created_at filter.
+     */
+    private static function paidSincePromotionOnHiddenYearlyItems(
+        Student $student,
+        int $sessionId,
+        array $context,
+        PromotionLog $promotionLog,
+        array $shownItems
+    ): float {
+        try {
+            $withYearly = FeeCalculatorService::calculate(
+                instituteId:       $student->institute_id,
+                sessionId:         $sessionId,
+                courseId:          $context['course_id'],
+                coursePart:        $context['course_part_year'],
+                semester:          $context['semester'],
+                studentType:       $student->student_type ?? 'regular',
+                admissionSource:   $student->admission_source ?? 'direct',
+                category:          $student->category ?? 'general',
+                gender:            $student->gender ?? 'other',
+                subjectIds:        $context['subject_ids'],
+                courseStreamId:    $student->course_stream_id,
+                coursePartId:      $context['course_part']->id ?? $student->course_part_id,
+                includeYearlyFees: true
+            );
+        } catch (\Throwable $e) {
+            return 0.0;
+        }
+
+        $hiddenLabels = collect($withYearly['items'] ?? [])->pluck('label')
+            ->diff(collect($shownItems)->pluck('label'))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($hiddenLabels)) {
+            return 0.0;
+        }
+
+        $row = FeeInvoiceItem::whereHas('invoice', function ($query) use ($student, $sessionId, $promotionLog) {
+                $query->where('student_id', $student->id)
+                    ->where('academic_session_id', $sessionId)
+                    ->where('is_cancelled', false)
+                    ->where('created_at', '>=', $promotionLog->created_at);
+            })
+            ->whereIn('fee_name', $hiddenLabels)
+            ->selectRaw('COALESCE(SUM(amount), 0) as paid_total, COALESCE(SUM(COALESCE(discount, 0)), 0) as discount_total')
+            ->first();
+
+        return (float) ($row?->paid_total ?? 0) + (float) ($row?->discount_total ?? 0);
+    }
+
     public static function buildPromotionAwareFeeState(Student $student, int $sessionId): array
     {
         $student->loadMissing(['stream.course', 'coursePart']);
@@ -1289,6 +1348,12 @@ class WalletService
             // owed from before this promotion needs its own line — otherwise a leftover balance
             // from an earlier semester would vanish from the item-based breakdown the moment the
             // new semester has its own distinct charges.
+            if ($dueAmount > 0 && !$includeYearlyFees) {
+                $dueAmount = max(0, round($dueAmount - self::paidSincePromotionOnHiddenYearlyItems(
+                    $student, $sessionId, $context, $promotionLog, $feeData['items'] ?? []
+                ), 2));
+            }
+
             if ($dueAmount > 0) {
                 $previousDueItems->push([
                     'type'        => 'previous_due',
