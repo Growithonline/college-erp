@@ -1759,9 +1759,16 @@ class WalletService
         // inside the carried-forward Previous Due), so a fine charged on one of them — usually
         // already paid with its invoice — matches no row. Counting it here left the Balance
         // 100-odd rupees off from the Pending Due; only the fines on listed rows count.
+        // A transport fine is added to the allocation's own charged_amount (see
+        // settleTransportFromInvoice's $fine), so the transport row's "charged" already contains it;
+        // counting it again here as a separate fine overstated the Balance by exactly that fine.
+        $isTransportRow = fn($row) => str_contains((string) ($row['name'] ?? ''), 'Transport Fee');
+        $transportFine  = (float) $pendingRows->filter($isTransportRow)->sum('fine');
+        $netFine        = max(0, $netFine - $transportFine);
+
         $stateLog = self::currentStatePromotionLog($student, $sessionId);
         if ($stateLog && $stateLog->promotion_type === 'semester') {
-            $netFine = min($netFine, (float) $pendingRows->sum('fine'));
+            $netFine = min($netFine, (float) $pendingRows->reject($isTransportRow)->sum('fine'));
         }
 
         $totalCollectionApplied = (float) $pendingRows->sum('collection');
