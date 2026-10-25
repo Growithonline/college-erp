@@ -1723,11 +1723,22 @@ class WalletService
      */
     public static function getOriginalFeeCharged(int $studentId, int $sessionId): float
     {
-        return (float) StudentTransaction::where('student_id', $studentId)
+        $charged = (float) StudentTransaction::where('student_id', $studentId)
             ->where('academic_session_id', $sessionId)
             ->where('type', StudentTransaction::DEBIT)
             ->where('des', 'like', 'Fee charged:%')
             ->sum('debit');
+
+        // A fee-rule correction (fees:correct-charged-amount) lowers what was charged by posting
+        // a "Fee adjustment: ..." credit instead of editing the original debit — the fee-plan
+        // installment base must follow it.
+        $adjusted = (float) StudentTransaction::where('student_id', $studentId)
+            ->where('academic_session_id', $sessionId)
+            ->where('type', StudentTransaction::CREDIT)
+            ->where('des', 'like', 'Fee adjustment: %')
+            ->sum('credit');
+
+        return max(0, round($charged - $adjusted, 2));
     }
 
     public static function onFeeCancel(FeeInvoice $invoice): void
