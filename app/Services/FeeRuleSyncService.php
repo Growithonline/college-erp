@@ -230,8 +230,10 @@ class FeeRuleSyncService
                 $wallet->save();
 
                 // Only fees journaled at admission ("Fee charged: ...") have a receivable to adjust;
-                // promotion fees never got a journal entry.
-                if ($target && str_starts_with((string) $target->des, 'Fee charged:')) {
+                // promotion fees never got a journal entry. A fee that was never charged to this
+                // student (rule added later) is booked too, provided the student has an admission
+                // journal entry at all — postFeeRuleAdjustment() posts nothing when it has none.
+                if (!$target || str_starts_with((string) $target->des, 'Fee charged:')) {
                     $entry = JournalService::postFeeRuleAdjustment(
                         $student,
                         $sessionId,
