@@ -1212,10 +1212,12 @@ class WalletService
 
     /**
      * What the student still owed on transport allocations that already existed when the
-     * semester promotion snapshot (dues_carried_forward) was taken: today's balance plus
-     * whatever was paid on them since (transport payments reduce the live transport line, not
-     * the Previous Due line). Allocations created after the promotion were never in the
-     * snapshot and are ignored.
+     * semester promotion snapshot (dues_carried_forward) was taken: today's balance, plus what
+     * was paid on them since (payments reduce the live transport line, not the Previous Due
+     * line), plus credits applied since (the promotion itself credits the unused part of the
+     * old semester's transport right after the snapshot), minus fee corrections that raised
+     * the charge since. Allocations created after the promotion were never in the snapshot
+     * and are ignored.
      */
     private static function transportDueInsideCarriedForward(
         Student $student,
@@ -1234,7 +1236,25 @@ class WalletService
                 ->where('created_at', '>=', $promotionLog->created_at)
                 ->sum('amount');
 
-            $total += max(0, round((float) $ta->balance, 2)) + $paidSince;
+            // Credit notes / charge corrections written by creditTransportAllocation() and
+            // adjustTransportAllocationCharge() — tagged with the allocation id, but not with
+            // an invoice or transport payment (those are the payments counted above).
+            $sinceAdjustments = StudentTransaction::where('transport_allocation_id', $ta->id)
+                ->whereNull('transport_payment_id')
+                ->whereNull('fee_invoice_id')
+                ->where('created_at', '>=', $promotionLog->created_at)
+                ->selectRaw('COALESCE(SUM(credit), 0) as credits, COALESCE(SUM(debit), 0) as debits')
+                ->first();
+
+            $atSnapshot = round(
+                max(0, (float) $ta->balance)
+                + $paidSince
+                + (float) ($sinceAdjustments?->credits ?? 0)
+                - (float) ($sinceAdjustments?->debits ?? 0),
+                2
+            );
+
+            $total += max(0, $atSnapshot);
         }
 
         return round($total, 2);
