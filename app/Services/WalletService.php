@@ -1325,6 +1325,16 @@ class WalletService
             }
         }
 
+        // "Carried due correction: <Previous Due label>" credits (fees:correct-carried-due) lower
+        // a carried-forward due that was booked too high, without editing the original debit.
+        $dueCorrections = StudentTransaction::where('student_id', $student->id)
+            ->where('academic_session_id', $sessionId)
+            ->where('type', StudentTransaction::CREDIT)
+            ->where('des', 'like', 'Carried due correction: Previous Due (%')
+            ->selectRaw('des, SUM(credit) as amount')
+            ->groupBy('des')
+            ->pluck('amount', 'des');
+
         $previousDueItems = StudentTransaction::where('student_id', $student->id)
             ->where('academic_session_id', $sessionId)
             ->where('type', StudentTransaction::DEBIT)
@@ -1337,8 +1347,10 @@ class WalletService
                 'type'        => 'previous_due',
                 'fee_type_id' => null,
                 'label'       => $row->label,
-                'amount'      => (float) $row->amount,
-            ]);
+                'amount'      => max(0.0, round((float) $row->amount - (float) ($dueCorrections['Carried due correction: ' . $row->label] ?? 0), 2)),
+            ])
+            ->filter(fn($item) => $item['amount'] > 0)
+            ->values();
 
         // Controls the date filter in getAlreadyPaidByFeeName. A semester promotion never
         // crosses academic_session_id — the same session-wide fee obligation continues, and
