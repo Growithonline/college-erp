@@ -1315,9 +1315,21 @@ class WalletService
             // has happened once, even though the amount is still a real, unpaid debit in the ledger.
             $dueAmount = (float) $promotionLog->dues_carried_forward;
 
+            // The fallback below drops the carried due in favour of the previous semester's live
+            // items, so a payment already recorded against this promotion's "Previous Due
+            // (Before Semester N)" line would match nothing and the due would be overstated.
+            // Such a student keeps the Previous Due line (netted by those payments) instead.
+            $hasPaymentsOnPreviousDue = FeeInvoiceItem::whereHas('invoice', function ($query) use ($student, $sessionId) {
+                    $query->where('student_id', $student->id)
+                        ->where('academic_session_id', $sessionId)
+                        ->where('is_cancelled', false);
+                })
+                ->where('fee_name', 'like', 'Previous Due (Before Semester%')
+                ->exists();
+
             // Current semester has no fee rules of its own: show the previous semester's fee
             // items so Total Charged / Total Paid display correctly.
-            if (empty($feeData['items'])) {
+            if (empty($feeData['items']) && !$hasPaymentsOnPreviousDue) {
                 $fromSemester = (int) $promotionLog->from_semester;
                 try {
                     $prevData = FeeCalculatorService::calculate(
