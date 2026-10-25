@@ -3913,7 +3913,7 @@ class AdmissionController extends Controller
         // Name & Father Name are admin-only — staff can view but not change them (Mother Name follows the Parents permission).
         $trackedBefore = $this->trackedStudentFieldValues($student);
 
-        DB::transaction(function () use ($request, $validated, $student, $stream, $selectedPart, $subjectSelection, $oldSnapshot, $isStaffRequest) {
+        DB::transaction(function () use ($request, $validated, $student, $stream, $selectedPart, $subjectSelection, $oldSnapshot, $isStaffRequest, $staffLockedFields) {
             $sessionId = (int) $student->academic_session_id;
             $oldYearNumber = (int) ($oldSnapshot['course_part_year'] ?? ($student->coursePart?->year_number ?? 1));
             $oldRoleMap = StudentAcademicChangeService::currentRoleMap($student, $sessionId, $oldYearNumber);
