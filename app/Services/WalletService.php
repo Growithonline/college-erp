@@ -1526,10 +1526,80 @@ class WalletService
             'total'         => (float) ($feeData['total'] ?? 0) + (float) $previousDueItems->sum('amount') + $transportTotal,
             'items'         => $items,
             'grouped_items' => self::groupFeeItems($items),
-            'already_paid'  => self::getAlreadyPaidByFeeName($student, $sessionId, $effectivePromotionLog),
+            'already_paid'  => self::reassignStrandedPreviousDuePayments(
+                $items,
+                self::getAlreadyPaidByFeeName($student, $sessionId, $effectivePromotionLog),
+                self::getFineByFee($student, $sessionId)
+            ),
             'context'       => $context,
             'promotion_log' => $promotionLog,
         ];
+    }
+
+    /**
+     * A payment made against a "Previous Due (...)" line that has since been taken off the page
+     * (promotion reversed) or lowered (carried due corrected) would otherwise vanish: it matches
+     * no line, or exceeds the line's shrunken amount, so the student looked like they still owed
+     * it even though the wallet already counted the cash. Move that stranded amount onto the
+     * course-fee lines that are still pending, in page order, so page and wallet agree.
+     * Previous Due lines that are paid within their amount are left exactly as they were.
+     */
+    private static function reassignStrandedPreviousDuePayments(array $items, Collection $alreadyPaid, array $fineByFee): Collection
+    {
+        $amountByLabel = [];
+        foreach ($items as $item) {
+            $label = (string) ($item['label'] ?? '');
+            $amountByLabel[$label] = ($amountByLabel[$label] ?? 0.0) + (float) ($item['amount'] ?? 0);
+        }
+
+        $pool = 0.0;
+        foreach ($alreadyPaid as $label => $row) {
+            if (!str_starts_with((string) $label, 'Previous Due (')) {
+                continue;
+            }
+
+            $capacity = ($amountByLabel[$label] ?? 0.0) + (float) ($fineByFee[$label] ?? 0);
+            $paid     = (float) $row->paid_total;
+
+            if ($paid > $capacity + 0.005) {
+                $pool += $paid - $capacity;
+                $row->paid_total = $capacity;
+            }
+        }
+
+        if ($pool <= 0.005) {
+            return $alreadyPaid;
+        }
+
+        foreach ($items as $item) {
+            if ($pool <= 0.005) {
+                break;
+            }
+            if (!in_array($item['type'] ?? '', ['course', 'course_assignment'], true)) {
+                continue;
+            }
+
+            $label = (string) ($item['label'] ?? '');
+            $row   = $alreadyPaid->get($label) ?? (object) [
+                'fee_name'       => $label,
+                'paid_total'     => 0.0,
+                'discount_total' => 0.0,
+                'fine_total'     => 0.0,
+            ];
+
+            $capacity = (float) ($item['amount'] ?? 0) + (float) ($fineByFee[$label] ?? 0)
+                - (float) $row->paid_total - (float) $row->discount_total;
+            $add = min($pool, max(0.0, $capacity));
+            if ($add <= 0.005) {
+                continue;
+            }
+
+            $row->paid_total = (float) $row->paid_total + $add;
+            $alreadyPaid->put($label, $row);
+            $pool -= $add;
+        }
+
+        return $alreadyPaid;
     }
 
     public static function getFineByFee(Student $student, int $sessionId): array
