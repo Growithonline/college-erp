@@ -870,6 +870,7 @@
                                 {{ $item['label'] }}
                                 @if(($item['type'] ?? null) === 'previous_due')
                                     <span class="badge bg-danger bg-opacity-10 text-danger border ms-1" style="font-size:10px;">Carry Forward</span>
+                                    @include('institute.fee._due-breakdown', ['breakdown' => $item['breakdown'] ?? null])
                                 @endif
                             </td>
                             <td class="text-end pe-3 fw-semibold text-danger small">
@@ -987,6 +988,36 @@
             </div>
         </div>
     @else
+        @if(!empty($excessPlan) && ($excessPlan['excess_total'] ?? 0) > 0)
+        <div class="alert alert-info py-2 small mb-3">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <i class="bi bi-piggy-bank me-1"></i>
+                    <strong>Excess paid ₹{{ number_format($excessPlan['excess_total'], 2) }}</strong>
+                    on {{ implode(', ', array_map(fn($l, $a) => $l . ' (₹' . number_format($a, 2) . ')', array_keys($excessPlan['excess']), $excessPlan['excess'])) }}
+                    — the fee is now lower than what was paid.
+                    @if(!empty($excessPlan['moves']))
+                        <div class="mt-1">Adjust it against pending fees:
+                        @foreach($excessPlan['moves'] as $mv)
+                            <span class="badge bg-white text-dark border">{{ $mv['from'] }} → {{ $mv['to'] }}: ₹{{ number_format($mv['amount'], 2) }}</span>
+                        @endforeach
+                        </div>
+                    @else
+                        <div class="mt-1 text-muted">No pending fee to adjust it against. It stays as excess and moves to the next session as advance when the student is promoted.</div>
+                    @endif
+                </div>
+                @if(!empty($excessPlan['moves']) && !auth()->guard('web')->check())
+                    <div class="text-muted">Ask the institute admin to adjust this excess.</div>
+                @endif
+                @if(!empty($excessPlan['moves']) && auth()->guard('web')->check())
+                <form method="POST" action="{{ route('fee.adjust-excess', $student->id) }}" onsubmit="return confirm('Adjust ₹{{ number_format($excessPlan['adjustable_total'], 2) }} of excess against the pending fees shown?');">
+                    @csrf
+                    <button class="btn btn-sm btn-primary"><i class="bi bi-arrow-left-right me-1"></i> Adjust ₹{{ number_format($excessPlan['adjustable_total'], 2) }}</button>
+                </form>
+                @endif
+            </div>
+        </div>
+        @endif
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-white border-bottom py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h6 class="mb-0 fw-semibold small d-flex align-items-center gap-2">
@@ -1142,6 +1173,7 @@
                             </label>
                             @if(($item['type'] ?? null) === 'previous_due')
                                 <span class="badge bg-danger bg-opacity-10 text-danger border ms-1" style="font-size:10px;">Previous Due</span>
+                                @include('institute.fee._due-breakdown', ['breakdown' => $item['breakdown'] ?? null])
                             @endif
                             @if($fullyPaid)
                                 <span class="badge bg-success ms-1" style="font-size:10px;">✓ Paid</span>

@@ -250,7 +250,9 @@
             <tbody>
                 @foreach($pendingFees as $fee)
                 <tr>
-                    <td class="fw-semibold small">{{ $fee['name'] }}</td>
+                    <td class="fw-semibold small">{{ $fee['name'] }}
+                        @include('institute.fee._due-breakdown', ['breakdown' => $fee['breakdown'] ?? null])
+                    </td>
                     <td class="text-end small">₹ {{ number_format($fee['charged'], 2) }}</td>
                     <td class="text-end small text-primary">₹ {{ number_format($fee['collection'] ?? 0, 2) }}</td>
                     <td class="text-end small" style="color:#7c3aed;">

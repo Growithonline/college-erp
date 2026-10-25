@@ -240,6 +240,92 @@ class JournalService
     }
 
     /**
+     * Cash a student paid beyond what they owe sits as a credit balance on Fees Receivable
+     * (collections credit it in full). When that excess is carried to the next session as an
+     * advance, or held for a refund, it is a liability to the student, not a negative receivable:
+     * Debit Fees Receivable, Credit Student Advance. Safe — returns null (and reports) if the
+     * accounts are not configured, so a promotion is never blocked by the books.
+     */
+    public static function safePostAdvanceReclass(
+        Student $student,
+        int     $academicSessionId,
+        float   $amount,
+        string  $entryKey,
+        string  $narration
+    ): ?JournalEntry {
+        return self::safely(function () use ($student, $academicSessionId, $amount, $entryKey, $narration) {
+            $amount = round($amount, 2);
+            if ($amount <= 0) {
+                return null;
+            }
+
+            $instituteId = (int) $student->institute_id;
+            $settings    = self::settings($instituteId);
+            $receivable  = self::accountOrFail($settings?->fees_receivable_account_id);
+            $advance     = self::accountOrFail($settings?->student_advance_account_id);
+            $meta        = ['academic_session_id' => $academicSessionId];
+
+            return self::post([
+                'institute_id'        => $instituteId,
+                'academic_session_id' => $academicSessionId,
+                'date'                => now()->toDateString(),
+                'entry_key'           => $entryKey,
+                'reference_type'      => 'student_advance',
+                'reference_id'        => (int) $student->id,
+                'narration'           => $narration,
+                'meta'                => ['student_id' => (int) $student->id],
+            ], [
+                ['account_id' => (int) $receivable->id, 'entry_type' => 'debit',  'amount' => $amount, 'narration' => 'Excess collection reclassified', 'meta' => $meta],
+                ['account_id' => (int) $advance->id,    'entry_type' => 'credit', 'amount' => $amount, 'narration' => 'Student advance',                'meta' => $meta],
+            ]);
+        });
+    }
+
+    /** Undoes safePostAdvanceReclass() when the promotion that created the advance is reversed. */
+    public static function safeReverseAdvanceReclass(int $instituteId, string $entryKey, string $narration): ?JournalEntry
+    {
+        return self::safely(function () use ($instituteId, $entryKey, $narration) {
+            return self::reverseByEntryKey($instituteId, $entryKey, ['narration' => $narration]);
+        });
+    }
+
+    /**
+     * Pays out a refund: Debit Student Advance, Credit Cash / the bank account's ledger account.
+     * Not wrapped in safely(): the refund is only marked paid together with its entry, so a
+     * missing account must stop the payment instead of leaving it unbooked.
+     */
+    public static function postRefundPaid(
+        Student $student,
+        int     $academicSessionId,
+        float   $amount,
+        string  $paymentMode,
+        ?int    $bankAccountId,
+        string  $entryKey,
+        string  $narration
+    ): JournalEntry {
+        $amount      = round($amount, 2);
+        $instituteId = (int) $student->institute_id;
+        $settings    = self::settings($instituteId);
+        $advance     = self::accountOrFail($settings?->student_advance_account_id);
+        $payout      = self::collectionAccountFromPayment($instituteId, $paymentMode, $bankAccountId, $settings);
+        $meta        = ['academic_session_id' => $academicSessionId];
+
+        return self::post([
+            'institute_id'        => $instituteId,
+            'academic_session_id' => $academicSessionId,
+            'date'                => now()->toDateString(),
+            'entry_key'           => $entryKey,
+            'reference_type'      => 'student_refund',
+            'reference_id'        => (int) $student->id,
+            'narration'           => $narration,
+            'meta'                => ['student_id' => (int) $student->id],
+        ], [
+            ['account_id' => (int) $advance->id, 'entry_type' => 'debit',  'amount' => $amount, 'narration' => 'Student advance refunded', 'meta' => $meta],
+            ['account_id' => (int) $payout->id,  'entry_type' => 'credit', 'amount' => $amount, 'narration' => 'Refund paid out',          'meta' => $meta],
+        ]);
+    }
+
+    /**
      * Books a later change of an admission-charged fee (the fee rule was raised/lowered after the
      * student was charged) as a separate adjusting entry: a decrease debits the fee's income
      * account and credits Fees Receivable, an increase does the opposite. The admission entry

@@ -139,7 +139,8 @@ class CourseFeeRuleController extends Controller
                 'course_id'  => $validated['course_id'],
                 'session_id' => $validated['academic_session_id'],
             ])
-            ->with('success', 'Fee rule saved!');
+            ->with('success', 'Fee rule saved!')
+            ->with('sync_hint', true);
     }
 
     // ── Update (amount + remarks only) ────────────────────────────────────
@@ -173,7 +174,8 @@ class CourseFeeRuleController extends Controller
                 'course_id'  => $courseFeeRule->course_id,
                 'session_id' => $courseFeeRule->academic_session_id,
             ])
-            ->with('success', 'Fee rule updated!');
+            ->with('success', 'Fee rule updated!')
+            ->with('sync_hint', true);
     }
 
     // ── Delete ────────────────────────────────────────────────────────────
@@ -202,6 +204,7 @@ class CourseFeeRuleController extends Controller
                 'course_id'  => $courseId,
                 'session_id' => $sessionId,
             ])
-            ->with('success', 'Fee rule deleted.');
+            ->with('success', 'Fee rule deleted.')
+            ->with('sync_hint', true);
     }
 }

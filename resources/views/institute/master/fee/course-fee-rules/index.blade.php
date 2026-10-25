@@ -11,10 +11,26 @@
         </h4>
         <small class="text-muted">Set fee rules by course, year, student type and session</small>
     </div>
-    <a href="{{ route('master.fee-structure.subject-fees') }}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-book me-1"></i> Subject Fees
-    </a>
+    <div class="d-flex gap-2">
+        @if(auth()->guard('web')->check() && !empty($sessionId))
+        <a href="{{ route('master.fee-structure.course-fees.sync', array_filter(['session_id' => $sessionId, 'course_id' => $selectedCourse?->id])) }}"
+           class="btn btn-outline-warning btn-sm" title="Compare students' charged fees with these rules">
+            <i class="bi bi-arrow-repeat me-1"></i> Sync Students
+        </a>
+        @endif
+        <a href="{{ route('master.fee-structure.subject-fees') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-book me-1"></i> Subject Fees
+        </a>
+    </div>
 </div>
+
+@if(session('sync_hint') && auth()->guard('web')->check() && !empty($sessionId))
+<div class="alert alert-warning py-2 small">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    Fee rule changed. Students already charged keep their old amount until synced.
+    <a href="{{ route('master.fee-structure.course-fees.sync', array_filter(['session_id' => $sessionId, 'course_id' => $selectedCourse?->id])) }}" class="alert-link">Preview students affected</a>.
+</div>
+@endif
 
 @if(session('success'))
 <div class="alert alert-success alert-dismissible fade show py-2">

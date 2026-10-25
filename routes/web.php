@@ -17,6 +17,7 @@ use App\Http\Controllers\Institute\Master\FeeAssignmentController;
 use App\Http\Controllers\Institute\Master\StudentTypeController;
 use App\Http\Controllers\Institute\Master\CourseTypeController;
 use App\Http\Controllers\Institute\Master\CourseFeeRuleController;
+use App\Http\Controllers\Institute\Master\FeeRuleSyncController;
 use App\Http\Controllers\Institute\Master\SubjectFeeRuleController;
 use App\Http\Controllers\Institute\Master\FeePlanController;
 use App\Http\Controllers\Institute\Master\CenterController;
@@ -35,6 +36,7 @@ use App\Http\Controllers\Institute\Admission\StudentBulkImportController;
 use App\Http\Controllers\Institute\Admission\BulkImportApprovalController;
 use App\Http\Controllers\Institute\Admission\StudentPromoteController;
 use App\Http\Controllers\Institute\Admission\PromotionController;
+use App\Http\Controllers\Institute\Admission\PromotionReviewController;
 use App\Http\Controllers\Institute\Fee\FeeCollectionController;
 use App\Http\Controllers\Institute\Fee\FeeApprovalController;
 use App\Http\Controllers\Institute\Fee\PracticalFeeTokenController;
@@ -285,6 +287,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('fee-structure/course-fees',                   [CourseFeeRuleController::class, 'store'])->name('fee-structure.course-fees.store');
         Route::patch('fee-structure/course-fees/{courseFeeRule}',  [CourseFeeRuleController::class, 'update'])->name('fee-structure.course-fees.update');
         Route::delete('fee-structure/course-fees/{courseFeeRule}', [CourseFeeRuleController::class, 'destroy'])->name('fee-structure.course-fees.destroy');
+        Route::get('fee-structure/course-fees-sync',               [FeeRuleSyncController::class, 'preview'])->name('fee-structure.course-fees.sync');
+        Route::post('fee-structure/course-fees-sync',              [FeeRuleSyncController::class, 'apply'])->middleware('throttle:6,1')->name('fee-structure.course-fees.sync.apply');
 
         Route::get('fee-structure/subject-fees/summary',  [SubjectFeeRuleController::class, 'summary'])->name('fee-structure.subject-fees.summary');
         Route::get('fee-structure/subject-fees/get-fees', [SubjectFeeRuleController::class, 'getSubjectFees'])->name('fee-structure.subject-fees.get');
@@ -474,6 +478,13 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::get('/{student}/wallet',            [WalletController::class, 'studentWallet'])->name('wallet.student');
         Route::get('/{student}/wallet/print',       [WalletController::class, 'walletPrint'])->name('wallet.student-print');
         Route::post('/{student}/invoice/{invoice}/cancel', [FeeCollectionController::class, 'cancel'])->name('cancel');
+        Route::post('/{student}/adjust-excess',     [FeeCollectionController::class, 'adjustExcess'])->middleware('throttle:30,1')->name('adjust-excess');
+        // Refund portal (institute admin only — the controller refuses staff)
+        Route::get('/refunds',                      [\App\Http\Controllers\Institute\Fee\FeeRefundController::class, 'index'])->name('refunds.index');
+        Route::post('/refunds/{refund}/approve',    [\App\Http\Controllers\Institute\Fee\FeeRefundController::class, 'approve'])->middleware('throttle:30,1')->name('refunds.approve');
+        Route::post('/refunds/{refund}/reject',     [\App\Http\Controllers\Institute\Fee\FeeRefundController::class, 'reject'])->middleware('throttle:30,1')->name('refunds.reject');
+        Route::post('/refunds/{refund}/pay',        [\App\Http\Controllers\Institute\Fee\FeeRefundController::class, 'pay'])->middleware('throttle:30,1')->name('refunds.pay');
+        Route::get('/refunds/{refund}/voucher',     [\App\Http\Controllers\Institute\Fee\FeeRefundController::class, 'voucher'])->name('refunds.voucher');
         // Collect a leftover due from a Passed Out/Detained/Transferred/Cancelled student —
         // separate from the regular Collect Fee flow above (see PreviousDueCollectionController).
         Route::prefix('previous-dues')->name('previous-dues.')->group(function () {
@@ -798,6 +809,8 @@ Route::middleware(['auth', 'policy.accepted'])->group(function () {
         Route::post('semester',               [PromotionController::class, 'semesterPromote']) ->name('semester.do');
         Route::get ('session',                [PromotionController::class, 'sessionIndex'])    ->name('session');
         Route::post('session',                [PromotionController::class, 'sessionPromote'])  ->name('session.do');
+        Route::get ('review',                 [PromotionReviewController::class, 'review'])    ->name('review');
+        Route::post('review/adjust',          [PromotionReviewController::class, 'adjust'])    ->middleware('throttle:20,1')->name('review.adjust');
         // Single-student session promotion (search-first, one student at a time)
         Route::get ('single',                 [PromotionController::class, 'singleIndex'])         ->name('single');
         Route::get ('single/search',          [PromotionController::class, 'singleSearchStudents'])->name('single.search');
@@ -1275,6 +1288,8 @@ Route::prefix('staff')->name('staff.')->group(function () {
             Route::post('semester',                [PromotionController::class, 'semesterPromote'])     ->name('semester.do');
             Route::get ('session',                 [PromotionController::class, 'sessionIndex'])        ->name('session');
             Route::post('session',                 [PromotionController::class, 'sessionPromote'])      ->name('session.do');
+            Route::get ('review',                  [PromotionReviewController::class, 'review'])        ->name('review');
+            Route::post('review/adjust',           [PromotionReviewController::class, 'adjust'])        ->middleware('throttle:20,1')->name('review.adjust');
             // Single-student session promotion (search-first, one student at a time)
             Route::get ('single',                  [PromotionController::class, 'singleIndex'])         ->name('single');
             Route::get ('single/search',           [PromotionController::class, 'singleSearchStudents'])->name('single.search');

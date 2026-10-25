@@ -16,6 +16,7 @@ use App\Models\PaymentModePermission;
 use App\Models\SmsTemplate;
 use App\Models\Student;
 use App\Models\TransportAllocation;
+use App\Services\ExcessAdjustmentService;
 use App\Services\SmsService;
 use App\Services\StudentIdService;
 use App\Services\WalletService;
@@ -631,6 +632,7 @@ class FeeCollectionController extends Controller
 
         $student = null;
         $feeBreakup = null;
+        $excessPlan = null;
         $alreadyPaid = collect();
         $recentInvoices = collect();
         $allFeeTypes = FeeType::where(function ($q) use ($instituteId) {
@@ -673,6 +675,13 @@ class FeeCollectionController extends Controller
             $pendingByFee  = $pendingRows->pluck('pending', 'name')->toArray();
 
             $walletSummary = WalletService::getStudentSummary($student, (int) $student->academic_session_id);
+            // Only drives an optional banner — the Collect Fee page must open even if this ever fails.
+            try {
+                $excessPlan = ExcessAdjustmentService::plan($student, (int) $student->academic_session_id);
+            } catch (\Throwable $e) {
+                report($e);
+                $excessPlan = null;
+            }
 
             // Library fine data for the modal
             $libraryMember = LibraryMember::where('student_id', $student->id)->first();
@@ -871,6 +880,7 @@ class FeeCollectionController extends Controller
             'fineByFee',
             'pendingByFee',
             'walletSummary',
+            'excessPlan',
             'recentInvoices',
             'allFeeTypes',
             'bankAccounts',
@@ -1462,6 +1472,26 @@ class FeeCollectionController extends Controller
             'student' => $student->id,
             'invoice' => $invoiceId,
         ])->with('success', "Fee collected! Invoice: {$invoiceNo}");
+    }
+
+    // Moves cash that a student paid beyond what a fee now costs onto the fees still pending
+    // (see ExcessAdjustmentService). Recomputed under a wallet lock — the preview is never trusted.
+    public function adjustExcess(Student $student)
+    {
+        abort_if((int) $student->institute_id !== $this->instituteId(), 403);
+        $this->ensureAccessibleStudent($student);
+
+        $moves = ExcessAdjustmentService::apply(
+            $student,
+            (int) $student->academic_session_id,
+            ['type' => $this->currentStaff() ? 'staff' : 'admin', 'id' => $this->actorId()]
+        );
+
+        return redirect()
+            ->route('fee.create', ['student_id' => $student->id])
+            ->with('success', empty($moves)
+                ? 'Nothing to adjust — the excess or the pending fee has changed.'
+                : 'Excess adjusted: ' . collect($moves)->map(fn($m) => "{$m['from']} → {$m['to']} ₹" . number_format($m['amount'], 2))->implode(', '));
     }
 
     public function cancel(Request $request, Student $student, FeeInvoice $invoice)

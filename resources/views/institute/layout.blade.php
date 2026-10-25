@@ -601,6 +601,12 @@
                            href="{{ route('fee.practical-tokens.index') }}">
                         <i class="bi bi-ticket-perforated"></i> Practical Tokens
                     </a></li>
+                    @if(auth()->guard('web')->check())
+                    <li><a class="nav-link {{ request()->routeIs('fee.refunds.*') ? 'active' : '' }}"
+                           href="{{ route('fee.refunds.index') }}">
+                        <i class="bi bi-cash-stack"></i> Refunds
+                    </a></li>
+                    @endif
                     <li>
                         @php
                             $walletPending = \App\Models\WalletExtensionRequest::where('institute_id', auth()->user()?->institute_id ?? 0)->where('status','pending')->count();

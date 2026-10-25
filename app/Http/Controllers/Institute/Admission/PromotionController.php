@@ -19,8 +19,11 @@ use App\Models\StudentTransaction;
 use App\Models\StudentWallet;
 use App\Models\TransportAllocation;
 use App\Http\Controllers\Institute\Master\AdmissionFormController;
+use App\Services\AdvanceService;
 use App\Services\AuditLogService;
+use App\Services\ExcessAdjustmentService;
 use App\Services\FeeCalculatorService;
+use App\Services\PromotionReviewService;
 use App\Services\WalletService;
 use App\Support\SimpleSpreadsheet;
 use App\Support\StudentSnapshotBuilder;
@@ -134,6 +137,61 @@ class PromotionController extends Controller
     private function authenticatedUser()
     {
         return $this->currentStaff() ?: Auth::user();
+    }
+
+    /**
+     * A student who has paid more than a fee now costs while another fee is still pending must have
+     * that excess set against the pending fee first (see PromotionReviewService). Returns a redirect
+     * to the review page when any selected student is in that state, null when promotion may go on.
+     *
+     * @param  array<int, int|string>  $studentIds
+     */
+    private function holdForExcessReview(array $studentIds): ?\Illuminate\Http\RedirectResponse
+    {
+        // The review is a safeguard, not a prerequisite: if the check itself errors, log it and let the
+        // promotion proceed exactly as it did before the review existed.
+        try {
+            $blocked = PromotionReviewService::blockers($studentIds, $this->instituteId());
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
+
+        $staff = $this->currentStaff();
+        if ($staff) {
+            $blocked = array_values(array_filter($blocked, fn($b) => $staff->canAccessStudentForOperations($b['student'])));
+        }
+
+        if (empty($blocked)) {
+            return null;
+        }
+
+        // Only ever link back to a page of this site (the previous URL comes from the Referer header).
+        $back = url()->previous();
+
+        session([
+            'promotion_review_ids'  => array_map(fn($b) => (int) $b['student']->id, $blocked),
+            'promotion_review_back' => str_starts_with($back, url('/')) ? $back : null,
+        ]);
+
+        return redirect()
+            ->route(($staff ? 'staff.' : '') . 'admissions.promote.review')
+            ->with('error', count($blocked) . ' student(s) have excess fee paid that is not adjusted against their pending fees yet. Adjust it here, then promote again — nobody has been promoted.');
+    }
+
+    /**
+     * Runs an add-on step of a promotion (advance / refund, excess adjustment) in its own savepoint:
+     * if it fails everything it wrote is rolled back, the failure is logged, and the promotion itself
+     * carries on — the student's fees and promotion record must never be lost to an add-on.
+     */
+    private function runAddOn(callable $step, string $what, Student $student): void
+    {
+        try {
+            DB::transaction($step);
+        } catch (\Throwable $e) {
+            report($e);
+            Log::warning("Promotion add-on '{$what}' failed for student {$student->id}: " . $e->getMessage());
+        }
     }
 
     private function ensurePromotionAccess(): void
@@ -421,6 +479,9 @@ class PromotionController extends Controller
             'from_course_part_name' => $student->coursePart?->part_name,
             'from_year_label' => $yearLabel,
             'from_semester' => (int) $student->current_semester,
+            // Which fee items the carried-forward due is made of, as they stood at promotion —
+            // shown under the "Previous Due" line so nobody has to guess what it contains.
+            'due_breakdown' => $this->dueBreakdown($student, (int) $student->academic_session_id),
         ];
     }
 
@@ -610,6 +671,22 @@ class PromotionController extends Controller
                 $studentQuery->whereHas('stream', fn($streamQuery) => $streamQuery->whereIn('course_id', $staff->allowedCourseIds() ?: [-1]));
             }
         });
+    }
+
+    /** @return array<int, array{label: string, amount: float}> */
+    private function dueBreakdown(Student $student, int $sessionId): array
+    {
+        // Display-only extra stored on the promotion log — a failure here must never stop a promotion.
+        try {
+            return WalletService::buildPendingRows($student, $sessionId)
+                ->filter(fn($row) => (float) $row['pending'] > 0.005)
+                ->map(fn($row) => ['label' => (string) $row['name'], 'amount' => round((float) $row['pending'], 2)])
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            report($e);
+            return [];
+        }
     }
 
     private function getWalletDue(Student $student, int $sessionId): float
@@ -857,6 +934,12 @@ class PromotionController extends Controller
 
     private function ensureReverseSafety(PromotionLog $log): void
     {
+        abort_if(
+            AdvanceService::hasPaidRefund($log),
+            422,
+            'A refund raised by this promotion has already been paid out, so it cannot be reversed.'
+        );
+
         // status='reversed' rows are themselves audit entries created by a prior reverse
         // action (see reversePromotion()) — they record an undo, not a forward promotion
         // built on top of $log, so they must not block reversing an older log once whatever
@@ -1285,6 +1368,10 @@ class PromotionController extends Controller
         // hop where a 2-semester course would already be at year-end and reject it).
         $studentIds = array_unique($request->student_ids);
 
+        if ($held = $this->holdForExcessReview($studentIds)) {
+            return $held;
+        }
+
         foreach ($studentIds as $sid) {
             try {
                 DB::transaction(function () use ($sid, $instituteId, $request, &$promoted) {
@@ -1330,6 +1417,7 @@ class PromotionController extends Controller
                         'to_course_part_id'    => $targetPart?->id ?? $student->course_part_id,
                         'to_semester'          => $toSemester,
                         'dues_carried_forward' => $due,
+                        'carry_forward_context' => $this->carryForwardContext($student, $student->session),
                         'status'               => 'promoted',
                         'remarks'              => $request->remarks,
                         'promoted_by'          => $this->promotedBy(),
@@ -1346,6 +1434,17 @@ class PromotionController extends Controller
 
                     $this->upsertCurrentIdentity($student, $sessionId, StudentAcademicIdentity::SOURCE_PROMOTION);
                     $this->applyPromotionFee($student, $sessionId, $toSemester, $log);
+
+                    // Fees that differ per semester: whatever excess the closed semester left over is set
+                    // against the new semester's fees (same order as One-time pay); if some is still left
+                    // it stays as excess until the session promotion turns it into an advance. A course
+                    // whose fees are yearly charges nothing here, so nothing moves.
+                    if (StudentTransaction::where('promotion_log_id', $log->id)->where('des', 'like', 'Promotion fee:%')->exists()) {
+                        $this->runAddOn(fn() => ExcessAdjustmentService::apply($student, $sessionId, [
+                            'type' => $this->currentStaff() ? 'staff' : 'admin',
+                            'id'   => $this->authenticatedUser()?->id,
+                        ]), 'excess adjustment', $student);
+                    }
 
                     // Carry forward semester-frequency transport to the new semester for
                     // students who are still riding an active route. A student who is
@@ -1493,6 +1592,10 @@ class PromotionController extends Controller
         // submission (e.g. an overlapping double-click) shouldn't process the same student twice.
         $studentIds = array_unique($request->student_ids);
 
+        if ($held = $this->holdForExcessReview($studentIds)) {
+            return $held;
+        }
+
         foreach ($studentIds as $sid) {
             try {
                 $result = DB::transaction(function () use ($sid, $instituteId, $request) {
@@ -1590,6 +1693,9 @@ class PromotionController extends Controller
                         // Bug 8: audit ledger entry for outstanding dues at exit
                         $this->recordTerminalDue($student, $student->academic_session_id, $due, $log, $terminalStatus);
 
+                        // Cash paid beyond the fees is owed back: raise a refund request for the admin.
+                        $this->runAddOn(fn() => AdvanceService::settle($student, $student->session ?: AcademicSession::find($student->academic_session_id), null, $log), 'refund', $student);
+
                         $this->upsertCurrentIdentity(
                             $student,
                             $student->academic_session_id,
@@ -1630,6 +1736,7 @@ class PromotionController extends Controller
                         ]);
                         // Bug 8: audit ledger entry for outstanding dues at exit
                         $this->recordTerminalDue($student, $student->academic_session_id, $due, $droppedLog, 'dropped');
+                        $this->runAddOn(fn() => AdvanceService::settle($student, $student->session ?: AcademicSession::find($student->academic_session_id), null, $droppedLog), 'refund', $student);
                         $student->update(['status' => 'dropped']);
                         return 'completed';
                     }
@@ -1676,6 +1783,8 @@ class PromotionController extends Controller
 
                         $this->syncSubjectsForTargetPart($student, $toSession->id, $student->coursePart);
                         $this->carryForwardDue($student, $fromSession, $toSession, $due, $log);
+                        // Leftover excess (nothing pending to set it against) moves to the new session as advance.
+                        $this->runAddOn(fn() => AdvanceService::settle($student, $fromSession, $toSession, $log), 'advance', $student);
                         $student->update([
                             'academic_session_id' => $toSession->id,
                             'current_semester'    => $bounds['start'],
@@ -1747,6 +1856,8 @@ class PromotionController extends Controller
 
                     $this->syncSubjectsForTargetPart($student, $toSession->id, $nextPart);
                     $this->carryForwardDue($student, $fromSession, $toSession, $due, $log);
+                    // Leftover excess (nothing pending to set it against) moves to the new session as advance.
+                    $this->runAddOn(fn() => AdvanceService::settle($student, $fromSession, $toSession, $log), 'advance', $student);
 
                     $student->update([
                         'academic_session_id' => $toSession->id,
@@ -2013,6 +2124,7 @@ class PromotionController extends Controller
             ]);
 
             $this->reversePromotionTransactions($student, $log, $reverseLog);
+            AdvanceService::reverseForLog($log, $student);
 
             $log->update([
                 'is_reversed'        => true,

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\AcademicSession;
 use App\Models\Expense;
+use App\Models\FeeRefund;
 use App\Models\InstituteManualIncome;
 use App\Models\InstituteTransaction;
 use App\Models\InstituteWallet;
@@ -138,6 +139,45 @@ class InstituteWalletService
             ->first();
 
         return (float) ($wallet?->main_b ?? 0);
+    }
+
+    /**
+     * Cash handed back to a student (see FeeRefund). Takes the money out of the institute wallet of
+     * the session in which it is paid out — like an expense — and refuses when the wallet cannot
+     * cover it. Runs inside the caller's transaction.
+     */
+    public static function debitStudentRefund(FeeRefund $refund, string $voucherNo, string $studentName): void
+    {
+        $instituteId = (int) $refund->institute_id;
+        $sessionId   = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->value('id')
+            ?? (int) $refund->academic_session_id;
+
+        $wallet = self::lockedWallet($instituteId, (int) $sessionId);
+
+        $opBal  = (float) $wallet->main_b;
+        $amount = (float) $refund->amount;
+        $clBal  = round($opBal - $amount, 2);
+
+        if ($clBal < 0) {
+            throw new InsufficientWalletBalanceException($opBal, $amount);
+        }
+
+        InstituteTransaction::create([
+            'institute_id'        => $instituteId,
+            'academic_session_id' => $sessionId,
+            'des'                 => 'Student refund: ' . $studentName . ' (' . $voucherNo . ')',
+            'credit'              => 0.00,
+            'debit'               => $amount,
+            'type'                => InstituteTransaction::DEBIT,
+            'date'                => now()->toDateString(),
+            'op_bal'              => $opBal,
+            'cl_bal'              => $clBal,
+            'source_type'         => 'student_refund',
+            'source_id'           => $refund->id,
+            'by_user_id'          => self::resolveActorId(),
+        ]);
+
+        $wallet->update(['main_b' => $clBal]);
     }
 
     public static function debitExpense(Expense $expense): void

@@ -7,6 +7,7 @@ use App\Models\CenterWallet;
 use App\Models\ChannelWallet;
 use App\Models\ChequePayment;
 use App\Models\CoursePart;
+use App\Models\FeeExcessTransfer;
 use App\Models\FeeInvoice;
 use App\Models\FeeInvoiceItem;
 use App\Models\FeeType;
@@ -1341,19 +1342,36 @@ class WalletService
             ->groupBy(fn($row) => preg_replace('/^(Carried due correction|Promotion reversal): /', '', (string) $row->des))
             ->map(fn($rows) => (float) $rows->sum('amount'));
 
-        $previousDueItems = StudentTransaction::where('student_id', $student->id)
+        $previousDueQuery = fn(string $columns) => StudentTransaction::where('student_id', $student->id)
             ->where('academic_session_id', $sessionId)
             ->where('type', StudentTransaction::DEBIT)
             ->where('des', 'like', 'Previous Due (%')
-            ->selectRaw('des as label, SUM(debit) as amount')
+            ->selectRaw($columns)
             ->groupBy('des')
             ->orderBy('des')
-            ->get()
+            ->get();
+
+        // Which fee items made up each carried-forward due, saved by the promotion itself
+        // (PromotionController::carryForwardContext()) so the page can show them under the line.
+        // Display-only: if the lookup fails the line simply shows without its breakdown.
+        try {
+            $previousDueRows = $previousDueQuery('des as label, SUM(debit) as amount, MAX(promotion_log_id) as log_id');
+            $breakdownByLog  = PromotionLog::whereIn('id', $previousDueRows->pluck('log_id')->filter()->all())
+                ->get(['id', 'carry_forward_context'])
+                ->mapWithKeys(fn($log) => [$log->id => $log->carry_forward_context['due_breakdown'] ?? null]);
+        } catch (\Throwable $e) {
+            report($e);
+            $previousDueRows = $previousDueQuery('des as label, SUM(debit) as amount');
+            $breakdownByLog  = collect();
+        }
+
+        $previousDueItems = $previousDueRows
             ->map(fn($row) => [
                 'type'        => 'previous_due',
                 'fee_type_id' => null,
                 'label'       => $row->label,
                 'amount'      => max(0.0, round((float) $row->amount - (float) ($dueCorrections[$row->label] ?? 0), 2)),
+                'breakdown'   => $breakdownByLog[$row->log_id] ?? null,
             ])
             ->filter(fn($item) => $item['amount'] > 0)
             ->values();
@@ -1450,6 +1468,7 @@ class WalletService
                     'fee_type_id' => null,
                     'label'       => 'Previous Due (Before Semester ' . $promotionLog->to_semester . ')',
                     'amount'      => $dueAmount,
+                    'breakdown'   => $promotionLog->carry_forward_context['due_breakdown'] ?? null,
                 ]);
             }
         } elseif ($previousDueItems->isEmpty() && $promotionLog) {
@@ -1522,15 +1541,35 @@ class WalletService
             ];
         }
 
+        // Same order and labels as the Collect Fee page rows (and One-time pay): grouped items sorted by hierarchy.
+        $groupedItems = self::groupFeeItems($items);
+        $fineByFee    = self::getFineByFee($student, $sessionId);
+
+        // The re-allocation steps below only move cash between fee lines (stranded Previous Due
+        // payments, excess transfers, advance). If one of them ever fails — a bug, or a table that a
+        // deploy has not migrated yet — the page must still show the plain paid-by-label figures
+        // rather than error out for every student, so fall back to those.
+        try {
+            $alreadyPaid = self::reassignStrandedPreviousDuePayments(
+                $groupedItems,
+                self::getAlreadyPaidByFeeName($student, $sessionId, $effectivePromotionLog),
+                $fineByFee
+            );
+            $alreadyPaid = self::applyExcessTransfers($student, $sessionId, $groupedItems, $alreadyPaid, $fineByFee);
+            [$alreadyPaid, $advanceApplied] = self::applyAdvancePool($student, $sessionId, $groupedItems, $alreadyPaid, $fineByFee);
+        } catch (\Throwable $e) {
+            report($e);
+            $alreadyPaid    = self::getAlreadyPaidByFeeName($student, $sessionId, $effectivePromotionLog);
+            $advanceApplied = 0.0;
+        }
+
         return [
             'total'         => (float) ($feeData['total'] ?? 0) + (float) $previousDueItems->sum('amount') + $transportTotal,
             'items'         => $items,
-            'grouped_items' => self::groupFeeItems($items),
-            'already_paid'  => self::reassignStrandedPreviousDuePayments(
-                $items,
-                self::getAlreadyPaidByFeeName($student, $sessionId, $effectivePromotionLog),
-                self::getFineByFee($student, $sessionId)
-            ),
+            'grouped_items' => $groupedItems,
+            'already_paid'  => $alreadyPaid,
+            'excess'        => self::excessByLabel($groupedItems, $alreadyPaid, $fineByFee),
+            'advance_applied' => $advanceApplied,
             'context'       => $context,
             'promotion_log' => $promotionLog,
         ];
@@ -1541,7 +1580,7 @@ class WalletService
      * (promotion reversed) or lowered (carried due corrected) would otherwise vanish: it matches
      * no line, or exceeds the line's shrunken amount, so the student looked like they still owed
      * it even though the wallet already counted the cash. Move that stranded amount onto the
-     * course-fee lines that are still pending, in page order, so page and wallet agree.
+     * fee lines that are still pending, in page order, so page and wallet agree.
      * Previous Due lines that are paid within their amount are left exactly as they were.
      */
     private static function reassignStrandedPreviousDuePayments(array $items, Collection $alreadyPaid, array $fineByFee): Collection
@@ -1575,7 +1614,7 @@ class WalletService
             if ($pool <= 0.005) {
                 break;
             }
-            if (!in_array($item['type'] ?? '', ['course', 'course_assignment'], true)) {
+            if (!self::isExcessTransferable($item)) {
                 continue;
             }
 
@@ -1600,6 +1639,167 @@ class WalletService
         }
 
         return $alreadyPaid;
+    }
+
+    /**
+     * Every fee item on the Collect Fee page can take part in an excess adjustment except transport,
+     * whose cash is settled through its own allocation (TransportPayment), not by fee name.
+     */
+    public static function isExcessTransferable(array $item): bool
+    {
+        return ($item['type'] ?? '') !== 'transport';
+    }
+
+    /**
+     * What each transferable fee item may still cost: charged + fine, per label.
+     *
+     * @return array<string, float>
+     */
+    private static function transferableCapacity(array $items, array $fineByFee): array
+    {
+        $capacity = [];
+        foreach ($items as $item) {
+            if (!self::isExcessTransferable($item)) {
+                continue;
+            }
+            $label = (string) ($item['label'] ?? '');
+            $capacity[$label] = ($capacity[$label] ?? 0.0) + (float) ($item['amount'] ?? 0);
+        }
+        foreach ($capacity as $label => $amount) {
+            $capacity[$label] = $amount + (float) ($fineByFee[$label] ?? 0);
+        }
+
+        return $capacity;
+    }
+
+    /**
+     * Cash on a fee item beyond what it now costs (charged + fine − discount), per label. This is
+     * what a lowered fee rule or a corrected carried due leaves behind; collectionApplied in
+     * buildPendingRows() caps it away, so without this it simply vanishes from the page.
+     *
+     * @return array<string, float>
+     */
+    public static function excessByLabel(array $items, Collection $alreadyPaid, array $fineByFee): array
+    {
+        $excess = [];
+        foreach (self::transferableCapacity($items, $fineByFee) as $label => $capacity) {
+            $row = $alreadyPaid->get($label);
+            if (!$row) {
+                continue;
+            }
+
+            $over = round((float) $row->paid_total - max(0.0, $capacity - (float) $row->discount_total), 2);
+            if ($over > 0.005) {
+                $excess[$label] = $over;
+            }
+        }
+
+        return $excess;
+    }
+
+    /**
+     * Applies the student's active fee_excess_transfers: moves cash from the source item to the
+     * target item. In the student's live session the amount is re-capped on every read — it can
+     * never exceed what the source still has in excess nor what the target still owes — so a
+     * fee that goes back up un-transfers itself. In any other session it stays as it was booked.
+     */
+    private static function applyExcessTransfers(
+        Student $student,
+        int $sessionId,
+        array $items,
+        Collection $alreadyPaid,
+        array $fineByFee
+    ): Collection {
+        $transfers = FeeExcessTransfer::where('student_id', $student->id)
+            ->where('academic_session_id', $sessionId)
+            ->where('status', FeeExcessTransfer::ACTIVE)
+            ->orderBy('id')
+            ->get();
+
+        if ($transfers->isEmpty()) {
+            return $alreadyPaid;
+        }
+
+        $capacity = self::transferableCapacity($items, $fineByFee);
+        $live     = (int) $student->academic_session_id === $sessionId;
+        $blank    = fn(string $label) => (object) ['fee_name' => $label, 'paid_total' => 0.0, 'discount_total' => 0.0, 'fine_total' => 0.0];
+
+        foreach ($transfers as $t) {
+            if (!isset($capacity[$t->from_label], $capacity[$t->to_label])) {
+                continue;
+            }
+
+            $from = $alreadyPaid->get($t->from_label);
+            if (!$from) {
+                continue;
+            }
+            $to = $alreadyPaid->get($t->to_label) ?? $blank($t->to_label);
+
+            $amount = (float) $t->amount;
+            if ($live) {
+                $sourceExcess = (float) $from->paid_total - max(0.0, $capacity[$t->from_label] - (float) $from->discount_total);
+                $targetRoom   = $capacity[$t->to_label] - (float) $to->paid_total - (float) $to->discount_total;
+                $amount       = min($amount, $sourceExcess, $targetRoom);
+            } else {
+                $amount = min($amount, (float) $from->paid_total);
+            }
+
+            if ($amount <= 0.005) {
+                continue;
+            }
+
+            $from->paid_total = round((float) $from->paid_total - $amount, 2);
+            $to->paid_total   = round((float) $to->paid_total + $amount, 2);
+            $alreadyPaid->put($t->to_label, $to);
+        }
+
+        return $alreadyPaid;
+    }
+
+    /**
+     * Cash carried into this session from the last one as an advance (a session promotion's
+     * leftover excess, see AdvanceService) counts against this session's pending fees, in page
+     * order. Not stored per fee: it is re-spread on every read, so whatever the student pays
+     * later simply leaves less for it to cover. The wallet already holds the matching credit.
+     *
+     * @return array{0: Collection, 1: float}  [already paid, amount of advance used]
+     */
+    private static function applyAdvancePool(
+        Student $student,
+        int $sessionId,
+        array $items,
+        Collection $alreadyPaid,
+        array $fineByFee
+    ): array {
+        $pool = AdvanceService::pool($student, $sessionId);
+        if ($pool <= 0.005) {
+            return [$alreadyPaid, 0.0];
+        }
+
+        $capacityByLabel = self::transferableCapacity($items, $fineByFee);
+        $used = 0.0;
+
+        foreach ($capacityByLabel as $label => $capacity) {
+            if ($pool - $used <= 0.005) {
+                break;
+            }
+
+            $row = $alreadyPaid->get($label) ?? (object) [
+                'fee_name' => $label, 'paid_total' => 0.0, 'discount_total' => 0.0, 'fine_total' => 0.0,
+            ];
+
+            $room = $capacity - (float) $row->paid_total - (float) $row->discount_total;
+            $add  = min($pool - $used, max(0.0, $room));
+            if ($add <= 0.005) {
+                continue;
+            }
+
+            $row->paid_total = round((float) $row->paid_total + $add, 2);
+            $alreadyPaid->put($label, $row);
+            $used = round($used + $add, 2);
+        }
+
+        return [$alreadyPaid, $used];
     }
 
     public static function getFineByFee(Student $student, int $sessionId): array
@@ -1653,9 +1853,11 @@ class WalletService
         }
     }
 
-    public static function buildPendingRows(Student $student, int $sessionId): Collection
+    public static function buildPendingRows(Student $student, int $sessionId, ?array $feeState = null): Collection
     {
-        $feeState = self::buildPromotionAwareFeeState($student, $sessionId);
+        // A caller that already built the fee state (e.g. ExcessAdjustmentService::plan(), run for
+        // every student of a bulk promotion) passes it in so it is not computed twice.
+        $feeState ??= self::buildPromotionAwareFeeState($student, $sessionId);
         $items = $feeState['grouped_items'] ?? $feeState['items'] ?? [];
         $alreadyPaid = $feeState['already_paid'] ?? collect();
 
@@ -1709,6 +1911,7 @@ class WalletService
                 'fine'       => $fine,
                 'paid'       => $collectionApplied + $discountApplied,
                 'pending'    => max(0, $charged + $fine - $collectionApplied - $discountApplied),
+                'breakdown'  => $item['breakdown'] ?? null,
             ];
         })->filter(fn($row) => $row['charged'] > 0)->values();
     }
