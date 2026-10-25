@@ -1325,15 +1325,21 @@ class WalletService
             }
         }
 
-        // "Carried due correction: <Previous Due label>" credits (fees:correct-carried-due) lower
-        // a carried-forward due that was booked too high, without editing the original debit.
+        // Credits that take a "Previous Due (...)" debit back without editing it: a reversed
+        // promotion ("Promotion reversal: <label>") and a corrected over-booked carry
+        // ("Carried due correction: <label>", fees:correct-carried-due). Keyed by the label.
         $dueCorrections = StudentTransaction::where('student_id', $student->id)
             ->where('academic_session_id', $sessionId)
             ->where('type', StudentTransaction::CREDIT)
-            ->where('des', 'like', 'Carried due correction: Previous Due (%')
+            ->where(function ($q) {
+                $q->where('des', 'like', 'Carried due correction: Previous Due (%')
+                  ->orWhere('des', 'like', 'Promotion reversal: Previous Due (%');
+            })
             ->selectRaw('des, SUM(credit) as amount')
             ->groupBy('des')
-            ->pluck('amount', 'des');
+            ->get()
+            ->groupBy(fn($row) => preg_replace('/^(Carried due correction|Promotion reversal): /', '', (string) $row->des))
+            ->map(fn($rows) => (float) $rows->sum('amount'));
 
         $previousDueItems = StudentTransaction::where('student_id', $student->id)
             ->where('academic_session_id', $sessionId)
@@ -1347,7 +1353,7 @@ class WalletService
                 'type'        => 'previous_due',
                 'fee_type_id' => null,
                 'label'       => $row->label,
-                'amount'      => max(0.0, round((float) $row->amount - (float) ($dueCorrections['Carried due correction: ' . $row->label] ?? 0), 2)),
+                'amount'      => max(0.0, round((float) $row->amount - (float) ($dueCorrections[$row->label] ?? 0), 2)),
             ])
             ->filter(fn($item) => $item['amount'] > 0)
             ->values();
