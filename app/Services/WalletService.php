@@ -1827,13 +1827,20 @@ class WalletService
         // A fee-rule correction (fees:correct-charged-amount) lowers what was charged by posting
         // a "Fee adjustment: ..." credit instead of editing the original debit — the fee-plan
         // installment base must follow it.
-        $adjusted = (float) StudentTransaction::where('student_id', $studentId)
+        $lowered = (float) StudentTransaction::where('student_id', $studentId)
             ->where('academic_session_id', $sessionId)
             ->where('type', StudentTransaction::CREDIT)
             ->where('des', 'like', 'Fee adjustment: %')
             ->sum('credit');
 
-        return max(0, round($charged - $adjusted, 2));
+        // fees:sync-rule-change books a fee INCREASE as a debit with the same prefix.
+        $raised = (float) StudentTransaction::where('student_id', $studentId)
+            ->where('academic_session_id', $sessionId)
+            ->where('type', StudentTransaction::DEBIT)
+            ->where('des', 'like', 'Fee adjustment: %')
+            ->sum('debit');
+
+        return max(0, round($charged + $raised - $lowered, 2));
     }
 
     public static function onFeeCancel(FeeInvoice $invoice): void

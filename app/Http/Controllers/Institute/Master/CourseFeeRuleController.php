@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\CourseFeeRule;
 use App\Models\FeeType;
 use App\Models\StudentType;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -97,24 +98,40 @@ class CourseFeeRuleController extends Controller
             'remarks'             => 'nullable|string|max:255',
         ]);
 
-        CourseFeeRule::updateOrCreate(
-            [
-                'institute_id'        => $instituteId,
-                'academic_session_id' => $validated['academic_session_id'],
-                'course_id'           => $validated['course_id'],
-                'fee_type_id'         => $validated['fee_type_id'],
-                'course_part'         => $validated['course_part'],
-                'semester'            => $validated['semester'],
-                'student_type'        => $validated['student_type'],
-                'admission_source'    => $validated['admission_source'],
-                'category'            => $validated['category'],
-                'gender'              => $validated['gender'],
-            ],
+        $ruleKey = [
+            'institute_id'        => $instituteId,
+            'academic_session_id' => $validated['academic_session_id'],
+            'course_id'           => $validated['course_id'],
+            'fee_type_id'         => $validated['fee_type_id'],
+            'course_part'         => $validated['course_part'],
+            'semester'            => $validated['semester'],
+            'student_type'        => $validated['student_type'],
+            'admission_source'    => $validated['admission_source'],
+            'category'            => $validated['category'],
+            'gender'              => $validated['gender'],
+        ];
+
+        $oldAmount = CourseFeeRule::where($ruleKey)->value('amount');
+
+        $rule = CourseFeeRule::updateOrCreate(
+            $ruleKey,
             [
                 'amount'    => $validated['amount'],
                 'remarks'   => $validated['remarks'] ?? null,
                 'is_active' => true,
             ]
+        );
+
+        // Existing students' wallets do not follow a rule change on their own — this trail
+        // is what fees:sync-rule-change (and a human) reads to see what changed and when.
+        AuditLogService::log(
+            $instituteId,
+            'fee_rule',
+            $rule->wasRecentlyCreated ? 'created' : 'updated',
+            'Fee rule ' . ($rule->wasRecentlyCreated ? 'created' : 'saved') . ': amount '
+                . ($oldAmount !== null ? $oldAmount . ' -> ' : '') . $rule->amount,
+            $rule,
+            ['old_amount' => $oldAmount, 'new_amount' => $rule->amount, 'rule' => $rule->only(array_keys($ruleKey))]
         );
 
         return redirect()
@@ -135,10 +152,21 @@ class CourseFeeRuleController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
+        $oldAmount = $courseFeeRule->amount;
+
         $courseFeeRule->update([
             'amount'  => $validated['amount'],
             'remarks' => $validated['remarks'] ?? null,
         ]);
+
+        AuditLogService::log(
+            $courseFeeRule->institute_id,
+            'fee_rule',
+            'updated',
+            'Fee rule amount ' . $oldAmount . ' -> ' . $courseFeeRule->amount,
+            $courseFeeRule,
+            ['old_amount' => $oldAmount, 'new_amount' => $courseFeeRule->amount, 'rule' => $courseFeeRule->only(['academic_session_id', 'course_id', 'fee_type_id', 'course_part', 'semester', 'student_type', 'admission_source', 'category', 'gender'])]
+        );
 
         return redirect()
             ->route('master.fee-structure.course-fees', [
@@ -155,6 +183,18 @@ class CourseFeeRuleController extends Controller
 
         $courseId  = $courseFeeRule->course_id;
         $sessionId = $courseFeeRule->academic_session_id;
+
+        // The row is hard-deleted, so keep a full copy in the audit log — the only record of
+        // what the amount used to be once students were charged on it.
+        AuditLogService::log(
+            $courseFeeRule->institute_id,
+            'fee_rule',
+            'deleted',
+            'Fee rule deleted: amount ' . $courseFeeRule->amount,
+            $courseFeeRule,
+            ['rule' => $courseFeeRule->toArray()]
+        );
+
         $courseFeeRule->delete();
 
         return redirect()

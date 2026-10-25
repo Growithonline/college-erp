@@ -240,6 +240,72 @@ class JournalService
     }
 
     /**
+     * Books a later change of an admission-charged fee (the fee rule was raised/lowered after the
+     * student was charged) as a separate adjusting entry: a decrease debits the fee's income
+     * account and credits Fees Receivable, an increase does the opposite. The admission entry
+     * is never touched. Returns null — nothing posted — when the student has no admission fee
+     * entry (e.g. fees that were never journaled, like promotion fees). Not wrapped in safely():
+     * the caller runs it inside its own transaction and must roll back with it.
+     *
+     * @param  array  $item  ['fee_type_id' => ?int, 'label' => string, 'type' => 'course']
+     */
+    public static function postFeeRuleAdjustment(
+        Student $student,
+        int     $academicSessionId,
+        array   $item,
+        float   $delta,
+        string  $adjustmentKey,
+        string  $narration
+    ): ?JournalEntry {
+        $delta = round($delta, 2);
+        if (abs($delta) < 0.01) {
+            return null;
+        }
+
+        $hasAdmissionEntry = JournalEntry::where('institute_id', (int) $student->institute_id)
+            ->where('entry_key', sprintf(self::ENTRY_KEY_ADMISSION_FEE, (int) $student->id, $academicSessionId))
+            ->where('status', JournalEntry::STATUS_POSTED)
+            ->exists();
+
+        if (!$hasAdmissionEntry) {
+            return null;
+        }
+
+        $instituteId = (int) $student->institute_id;
+        $settings    = self::settings($instituteId);
+        $receivable  = self::accountOrFail($settings?->fees_receivable_account_id);
+        $income      = self::incomeAccountForItem($instituteId, $item, $settings);
+        $amount      = abs($delta);
+        $meta        = ['academic_session_id' => $academicSessionId];
+
+        return self::post([
+            'institute_id'        => $instituteId,
+            'academic_session_id' => $academicSessionId,
+            'date'                => now()->toDateString(),
+            'entry_key'           => $adjustmentKey,
+            'reference_type'      => 'student_fee_rule_adjustment',
+            'reference_id'        => (int) $student->id,
+            'narration'           => $narration,
+            'meta'                => ['student_id' => (int) $student->id, 'fee' => $item['label'] ?? null],
+        ], [
+            [
+                'account_id' => (int) ($delta < 0 ? $income->id : $receivable->id),
+                'entry_type' => 'debit',
+                'amount'     => $amount,
+                'narration'  => $delta < 0 ? 'Fee income adjusted' : 'Fee receivable adjusted',
+                'meta'       => $meta,
+            ],
+            [
+                'account_id' => (int) ($delta < 0 ? $receivable->id : $income->id),
+                'entry_type' => 'credit',
+                'amount'     => $amount,
+                'narration'  => $delta < 0 ? 'Fee receivable adjusted' : 'Fee income adjusted',
+                'meta'       => $meta,
+            ],
+        ]);
+    }
+
+    /**
      * Recognizes ONE past semester's still-OWED due (not the full historical fee — only
      * what the reviewer entered as outstanding) as a receivable — used only by Bulk
      * Student Import's fee-history review (see
