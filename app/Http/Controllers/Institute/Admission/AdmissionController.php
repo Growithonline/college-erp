@@ -3761,7 +3761,34 @@ class AdmissionController extends Controller
     }
 
     // ─── Update Student Profile ────────────────────────────────────────
+    // Friendly wrapper: an unexpected failure while saving a profile must never open the raw
+    // error page. Field errors (validation) and 403/404 keep their normal handling.
     public function update(\Illuminate\Http\Request $request, Student $student)
+    {
+        try {
+            return $this->updateStudentProfile($request, $student);
+        } catch (\Illuminate\Validation\ValidationException
+            | \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+            | \Illuminate\Auth\AuthenticationException
+            | \Illuminate\Auth\Access\AuthorizationException
+            | \Illuminate\Database\Eloquent\ModelNotFoundException
+            | \Illuminate\Http\Exceptions\HttpResponseException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $ref = strtoupper(\Illuminate\Support\Str::random(8));
+            \Illuminate\Support\Facades\Log::error("Student profile update failed [{$ref}]", [
+                'student_id' => $student->id,
+                'exception'  => $e,
+            ]);
+            report($e);
+
+            return back()->withInput()->with('error',
+                "Student profile could not be saved because of an unexpected problem. Nothing was changed - "
+                . "please check the details and try again. If it keeps happening, contact support with reference {$ref}.");
+        }
+    }
+
+    private function updateStudentProfile(\Illuminate\Http\Request $request, Student $student)
     {
         if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);
         $this->ensureStaffCanAccessStudent($student);

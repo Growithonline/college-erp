@@ -114,6 +114,13 @@
 </div>
 @endif
 
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm">
+    <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
 <form method="POST" action="{{ route($updateRoute, $student->id) }}" enctype="multipart/form-data" id="editAdmissionForm" class="adm-form">
 @include('partials.admission-form-layout')
 @csrf
