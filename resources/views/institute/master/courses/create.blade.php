@@ -167,6 +167,9 @@ function onStructureChange() {
     const lateralPart  = document.getElementById('lateralPart');
     const shortTermBanner = document.getElementById('shortTermBanner');
 
+    // Hidden modular value is 0; min=1 would silently block form submit
+    spyInput.min = structure === 'modular' ? 0 : 1;
+
     // Reset visibility
     spyWrapper.style.display    = 'block';
     atktWrapper.style.display   = 'block';
