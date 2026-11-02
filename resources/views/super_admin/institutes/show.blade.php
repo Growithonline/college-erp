@@ -164,7 +164,7 @@
                         <td class="text-muted fw-semibold">Days Remaining</td>
                         <td>
                             @if($institute->subscription_end && !$isExpired)
-                                {{ now()->diffInDays($institute->subscription_end) }} days
+                                {{ (int) floor(now()->diffInDays($institute->subscription_end)) }} days
                             @elseif($isExpired)
                                 <span class="text-danger">Expired</span>
                             @else —

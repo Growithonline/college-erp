@@ -45,6 +45,8 @@ class Institute extends Model
     ];
 
     protected $casts = [
+        'subscription_start'      => 'date',
+        'subscription_end'        => 'date',
         'smtp_password'           => 'encrypted',
         'smtp_verified'           => 'boolean',
         'fee_balance_enabled'     => 'boolean',
