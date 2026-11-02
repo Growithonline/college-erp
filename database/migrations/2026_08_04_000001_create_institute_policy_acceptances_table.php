@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('ip_address', 45)->nullable();
             $table->timestamps();
 
-            $table->unique(['institute_id', 'document_type', 'version']);
+            $table->unique(['institute_id', 'document_type', 'version'], 'ipa_institute_doc_version_unique');
         });
     }
 

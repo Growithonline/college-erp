@@ -13,7 +13,7 @@ return new class extends Migration
         }
         Schema::create('expense_vendor_work_order_transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('expense_vendor_work_order_id')->constrained('expense_vendor_work_orders')->onDelete('cascade');
+            $table->foreignId('expense_vendor_work_order_id')->constrained('expense_vendor_work_orders', indexName: 'evwo_txn_work_order_fk')->onDelete('cascade');
             $table->enum('type', ['credit', 'debit']);
             $table->decimal('amount', 14, 2);
             $table->decimal('balance_after', 14, 2)->default(0);
