@@ -176,7 +176,7 @@
         @endphp
         <tr>
             <td class="c">{{ $i + 1 }}</td>
-            <td>{{ $student->session?->name ?? '—' }}</td>
+            <td>{{ $student->display_session_name ?? $student->session?->name ?? '—' }}</td>
             <td style="font-weight:700;">{{ $student->student_uid ?? '—' }}</td>
             <td>
                 {{ $student->name }}
@@ -196,12 +196,13 @@
                 @endif
             </td>
             <td>
-                {{ $student->coursePart?->year_label ?? '—' }}@if($student->current_semester) / S{{ $student->current_semester }}@endif
+                @php $isPromoted = isset($student->promoted_to_session); @endphp
+                {{ ($isPromoted ? $student->display_year_label : $student->coursePart?->year_label) ?? '—' }}@if($isPromoted ? $student->display_semester : $student->current_semester) / S{{ $isPromoted ? $student->display_semester : $student->current_semester }}@endif
             </td>
             <td>{{ $pdfAdmittedBy }}</td>
             <td>{{ $pdfSourceName }}</td>
             <td style="white-space:nowrap;">{{ $student->admission_date?->format('d/m/Y') ?? '—' }}</td>
-            <td style="font-weight:700;">{{ ucfirst($student->status ?? 'pending') }}</td>
+            <td style="font-weight:700;">{{ isset($student->promoted_to_session) ? 'Session Promoted → ' . $student->promoted_to_session : ucfirst($student->status ?? 'pending') }}</td>
         </tr>
         @empty
         <tr>

@@ -66,7 +66,8 @@ class StudentDirectoryController extends Controller
 
         $instituteId   = $this->instituteId();
         $institute     = Institute::findOrFail($instituteId);
-        $activeSession = AcademicSession::viewSession($instituteId);
+        // Same default as the list page, so an export without session_id matches what is on screen.
+        $activeSession = AcademicSession::where('institute_id', $instituteId)->where('is_active', true)->first();
         // Param present but empty = "All" sessions; param absent = default to the active session.
         $sessionId     = $request->has('session_id') ? ($request->filled('session_id') ? (int) $request->session_id : null) : $activeSession?->id;
         $sessionObj    = $sessionId ? AcademicSession::find($sessionId) : null;
@@ -78,36 +79,15 @@ class StudentDirectoryController extends Controller
         if ($request->boolean('quick_only')) {
             $query->where('is_quick_admission', true);
         }
-        if ($sessionId) {
-            $query->where('academic_session_id', $sessionId);
-        }
-        if ($request->filled('search')) {
-            $s = $request->search;
-            $query->where(function ($b) use ($s) {
-                $b->where('name', 'like', "%{$s}%")
-                  ->orWhere('mobile', 'like', "%{$s}%")
-                  ->orWhere('father_name', 'like', "%{$s}%")
-                  ->orWhere('mother_name', 'like', "%{$s}%")
-                  ->orWhere('student_uid', 'like', "%{$s}%");
-            });
-        }
-        if ($request->filled('course_type_id')) {
-            $query->where('course_type_id', (int) $request->course_type_id);
-        }
-        if ($request->filled('course_id')) {
-            $query->whereHas('stream', fn($q) => $q->where('course_id', (int) $request->course_id));
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        if ($request->filled('from_date')) {
-            $query->whereDate('admission_date', '>=', $request->from_date);
-        }
-        if ($request->filled('to_date')) {
-            $query->whereDate('admission_date', '<=', $request->to_date);
-        }
+        $this->applyStudentFilters($query, $request, $sessionId);
 
         $students = $query->get();
+        if ($sessionId) {
+            $sessionNames = AcademicSession::where('institute_id', $instituteId)->pluck('name', 'id');
+            foreach ($students as $student) {
+                $student->applyPromotedDisplay($sessionId, $sessionNames);
+            }
+        }
 
         $centerIds   = $students->where('admission_source', 'center')->pluck('admission_source_id')->filter()->unique();
         $partnerIds  = $students->whereIn('admission_source', ['partner', 'channel_partner'])->pluck('admission_source_id')->filter()->unique();
@@ -134,7 +114,7 @@ class StudentDirectoryController extends Controller
             };
             return [
                 $i + 1,
-                $student->session?->name ?? '—',
+                $student->display_session_name ?? $student->session?->name ?? '—',
                 $student->student_uid ?? '—',
                 $student->name,
                 $student->father_name ?: '—',
@@ -144,7 +124,9 @@ class StudentDirectoryController extends Controller
                 $student->uin_no ?: '—',
                 $student->stream?->course?->name ?? '—',
                 $student->stream?->name ?? '—',
-                ($student->coursePart?->year_label ?? '—') . ($student->current_semester ? ' S' . $student->current_semester : ''),
+                isset($student->promoted_to_session)
+                    ? ($student->display_year_label ?? '—') . ($student->display_semester ? ' S' . $student->display_semester : '')
+                    : ($student->coursePart?->year_label ?? '—') . ($student->current_semester ? ' S' . $student->current_semester : ''),
                 $student->admittedBy?->name ?? match($student->admission_source) {
                     'center'                     => ($centersMap[$student->admission_source_id] ?? null) ? 'Center: ' . $centersMap[$student->admission_source_id] : 'Center',
                     'partner', 'channel_partner' => ($partnersMap[$student->admission_source_id] ?? null) ? 'Partner: ' . $partnersMap[$student->admission_source_id] : 'Partner',
@@ -152,7 +134,7 @@ class StudentDirectoryController extends Controller
                 },
                 $source,
                 $student->admission_date?->format('d/m/Y') ?? '—',
-                ucfirst($student->status ?? 'pending'),
+                isset($student->promoted_to_session) ? 'Session Promoted -> ' . $student->promoted_to_session : ucfirst($student->status ?? 'pending'),
             ];
         })->toArray();
 
@@ -166,6 +148,55 @@ class StudentDirectoryController extends Controller
         }
 
         return $this->exportCsv($expHeaders, $expRows, $filename . '.csv');
+    }
+
+    // Filters shared by the list page and its exports, so an export always matches what is on screen.
+    private function applyStudentFilters($query, Request $request, ?int $sessionId): void
+    {
+        if ($sessionId) {
+            $query->inSessionView($sessionId);
+        }
+
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($b) use ($s) {
+                $b->where('name', 'like', "%{$s}%")
+                  ->orWhere('mobile', 'like', "%{$s}%")
+                  ->orWhere('father_name', 'like', "%{$s}%")
+                  ->orWhere('mother_name', 'like', "%{$s}%")
+                  ->orWhere('student_uid', 'like', "%{$s}%");
+            });
+        }
+
+        if ($request->filled('course_type_id')) {
+            $query->where('course_type_id', (int) $request->course_type_id);
+        }
+
+        if ($request->filled('course_id')) {
+            $query->whereHas('stream', fn($q) => $q->where('course_id', (int) $request->course_id));
+        }
+
+        if ($request->filled('course_stream_id')) {
+            $query->where('course_stream_id', (int) $request->course_stream_id);
+        }
+
+        $query->atYearSemester((int) $request->input('current_year', 0), (int) $request->input('current_semester', 0), $sessionId);
+
+        if ($request->filled('student_type')) {
+            $query->where('student_type', $request->student_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('admission_date', '>=', $request->from_date);
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('admission_date', '<=', $request->to_date);
+        }
     }
 
     private function listStudents(Request $request, bool $quickOnly, string $view = 'institute.students.index')
@@ -214,50 +245,7 @@ class StudentDirectoryController extends Controller
             $query->where('is_quick_admission', true);
         }
 
-        if ($sessionId) {
-            $query->inSessionView($sessionId);
-        }
-
-        if ($request->filled('search')) {
-            $s = $request->search;
-            $query->where(function ($b) use ($s) {
-                $b->where('name', 'like', "%{$s}%")
-                  ->orWhere('mobile', 'like', "%{$s}%")
-                  ->orWhere('father_name', 'like', "%{$s}%")
-                  ->orWhere('mother_name', 'like', "%{$s}%")
-                  ->orWhere('student_uid', 'like', "%{$s}%");
-            });
-        }
-
-        if ($request->filled('course_type_id')) {
-            $query->where('course_type_id', (int) $request->course_type_id);
-        }
-
-        if ($request->filled('course_id')) {
-            $query->whereHas('stream', fn($q) => $q->where('course_id', (int) $request->course_id));
-        }
-
-        if ($request->filled('course_stream_id')) {
-            $query->where('course_stream_id', (int) $request->course_stream_id);
-        }
-
-        $query->atYearSemester((int) $request->input('current_year', 0), (int) $request->input('current_semester', 0), $sessionId);
-
-        if ($request->filled('student_type')) {
-            $query->where('student_type', $request->student_type);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('from_date')) {
-            $query->whereDate('admission_date', '>=', $request->from_date);
-        }
-
-        if ($request->filled('to_date')) {
-            $query->whereDate('admission_date', '<=', $request->to_date);
-        }
+        $this->applyStudentFilters($query, $request, $sessionId);
 
         // Per-course year count and semesters-per-year drive the linked Year → Semester dropdowns.
         $courseTerms = $courses->mapWithKeys(fn($c) => [$c->id => [
