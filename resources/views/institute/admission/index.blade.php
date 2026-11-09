@@ -5,6 +5,7 @@
 @section('content')
 @php
     $selectedSessionId = request()->has('session_id') ? request('session_id') : $activeSession?->id;
+    $selectedSessionName = $sessions->firstWhere('id', (int) $selectedSessionId)?->name ?? 'All Sessions';
     $selectedAdmittedBy = array_map('strval', (array) request('admitted_by', []));
 @endphp
 
@@ -12,7 +13,7 @@
     <div>
         <h4 class="mb-0 fw-bold">Admissions</h4>
         <small class="text-muted">
-            Session: <span class="fw-semibold text-primary">{{ $activeSession?->name ?? 'No Active Session' }}</span>
+            Session: <span class="fw-semibold text-primary">{{ $selectedSessionName }}</span>
             | {{ number_format($students->total()) }} student(s)
         </small>
     </div>
@@ -33,7 +34,7 @@
 <input type="hidden" name="export" id="exportField" value="">
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white border-bottom-0 py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2"
-             style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#advFilterBody" aria-expanded="{{ request()->hasAny(['search','session_id','course_type_id','course_id','course_stream_id','subject_id','course_part_id','current_semester','admission_source','source_detail_id','status','admission_date_from','admission_date_to','admitted_by','form_status']) ? 'true' : 'false' }}">
+             style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#advFilterBody" aria-expanded="{{ request()->hasAny(['search','session_id','course_type_id','course_id','course_stream_id','subject_id','current_year','current_semester','admission_source','source_detail_id','status','admission_date_from','admission_date_to','admitted_by','form_status']) ? 'true' : 'false' }}">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-funnel text-primary"></i>
                 <span class="fw-bold small">Advanced Filters</span>
@@ -52,7 +53,7 @@
                 <i class="bi bi-chevron-down text-muted" id="filterChevron"></i>
             </div>
         </div>
-        <div class="collapse {{ request()->hasAny(['search','session_id','course_type_id','course_id','course_stream_id','subject_id','course_part_id','current_semester','admission_source','source_detail_id','status','admission_date_from','admission_date_to','admitted_by','form_status']) ? 'show' : '' }}" id="advFilterBody">
+        <div class="collapse {{ request()->hasAny(['search','session_id','course_type_id','course_id','course_stream_id','subject_id','current_year','current_semester','admission_source','source_detail_id','status','admission_date_from','admission_date_to','admitted_by','form_status']) ? 'show' : '' }}" id="advFilterBody">
         <div class="card-body pt-2">
             <div class="row g-3">
                 <div class="col-md-3">
@@ -72,7 +73,7 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small fw-semibold">Course Type</label>
-                    <select name="course_type_id" class="form-select form-select-sm">
+                    <select name="course_type_id" id="admCourseType" class="form-select form-select-sm" onchange="admCascade(true)">
                         <option value="">All Types</option>
                         @foreach($courseTypes as $courseType)
                             <option value="{{ $courseType->id }}" {{ request('course_type_id') == $courseType->id ? 'selected' : '' }}>
@@ -83,10 +84,10 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small fw-semibold">Course</label>
-                    <select name="course_id" class="form-select form-select-sm">
+                    <select name="course_id" id="admCourse" class="form-select form-select-sm" onchange="admCascade(true)">
                         <option value="">All Courses</option>
                         @foreach($courses as $course)
-                            <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
+                            <option value="{{ $course->id }}" data-type="{{ $course->course_type_id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
                                 {{ $course->name }}
                             </option>
                         @endforeach
@@ -94,10 +95,11 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Subject / Stream</label>
-                    <select name="course_stream_id" class="form-select form-select-sm">
+                    <select name="course_stream_id" id="admStream" class="form-select form-select-sm" onchange="admCascade(true)">
                         <option value="">All Streams</option>
                         @foreach($streams as $stream)
-                            <option value="{{ $stream->id }}" {{ request('course_stream_id') == $stream->id ? 'selected' : '' }}>
+                            <option value="{{ $stream->id }}" data-course="{{ $stream->course_id }}" data-type="{{ $stream->course?->course_type_id }}"
+                                    {{ request('course_stream_id') == $stream->id ? 'selected' : '' }}>
                                 {{ $stream->course->name ?? '' }} - {{ $stream->name }}
                             </option>
                         @endforeach
@@ -106,10 +108,11 @@
 
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Subject</label>
-                    <select name="subject_id" class="form-select form-select-sm">
+                    <select name="subject_id" id="admSubject" class="form-select form-select-sm">
                         <option value="">All Subjects</option>
                         @foreach($subjects as $subject)
-                            <option value="{{ $subject->id }}" {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
+                            <option value="{{ $subject->id }}" data-streams="{{ json_encode($subjectStreams[$subject->id] ?? []) }}"
+                                    {{ request('subject_id') == $subject->id ? 'selected' : '' }}>
                                 {{ $subject->name }}
                             </option>
                         @endforeach
@@ -117,18 +120,16 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Course Year</label>
-                    <select name="course_part_id" class="form-select form-select-sm">
+                    <select name="current_year" id="admYear" class="form-select form-select-sm" onchange="admCascade(true)">
                         <option value="">All Years</option>
-                        @foreach($parts as $part)
-                            <option value="{{ $part->id }}" {{ request('course_part_id') == $part->id ? 'selected' : '' }}>
-                                {{ $part->course->name ?? '' }} - {{ $part->year_label }}
-                            </option>
-                        @endforeach
+                        @for($yr = 1; $yr <= max(1, (int) $courseTerms->max('years')); $yr++)
+                            <option value="{{ $yr }}" {{ request('current_year') == $yr ? 'selected' : '' }}>Year {{ $yr }}</option>
+                        @endfor
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small fw-semibold">Semester</label>
-                    <select name="current_semester" class="form-select form-select-sm">
+                    <select name="current_semester" id="admSemester" class="form-select form-select-sm">
                         <option value="">All Semesters</option>
                         @for($semester = 1; $semester <= 12; $semester++)
                             <option value="{{ $semester }}" {{ request('current_semester') == $semester ? 'selected' : '' }}>
@@ -247,6 +248,54 @@ function submitExport(type) {
     setTimeout(() => { document.getElementById('exportField').value = ''; form.target = ''; }, 300);
 }
 
+// Linked filters: Type -> Course -> Stream -> Subject, and Course -> Year -> Semester.
+// Options that no longer fit the parent selection are hidden, and a stale selection is cleared.
+const admCourseTerms = @json($courseTerms);
+
+function admCascade(resetInvalid) {
+    const el = id => document.getElementById(id);
+    const typeSel = el('admCourseType'), courseSel = el('admCourse'), streamSel = el('admStream'),
+          subjectSel = el('admSubject'), yearSel = el('admYear'), semSel = el('admSemester');
+
+    function limit(sel, visible) {
+        Array.from(sel.options).forEach(function (opt) {
+            if (opt.value === '') return;
+            const show = visible(opt);
+            opt.hidden = opt.disabled = !show;
+            if (!show && opt.selected && resetInvalid) sel.value = '';
+        });
+    }
+
+    limit(courseSel, opt => !typeSel.value || opt.dataset.type === typeSel.value);
+    limit(streamSel, opt => (!typeSel.value || opt.dataset.type === typeSel.value)
+        && (!courseSel.value || opt.dataset.course === courseSel.value));
+
+    const courseStreamIds = new Set();
+    Array.from(streamSel.options).forEach(function (opt) {
+        if (opt.value !== '' && (!courseSel.value || opt.dataset.course === courseSel.value)) courseStreamIds.add(opt.value);
+    });
+    limit(subjectSel, function (opt) {
+        const ids = JSON.parse(opt.dataset.streams || '[]').map(String);
+        if (streamSel.value) return ids.includes(streamSel.value);
+        if (courseSel.value) return ids.some(id => courseStreamIds.has(id));
+        return true;
+    });
+
+    const list = courseSel.value && admCourseTerms[courseSel.value] ? [admCourseTerms[courseSel.value]] : Object.values(admCourseTerms);
+    const maxYears = Math.max.apply(null, [1].concat(list.map(t => t.years)));
+    const spys = Array.from(new Set(list.map(t => t.spy)));
+    limit(yearSel, opt => parseInt(opt.value, 10) <= maxYears);
+
+    const year = parseInt(yearSel.value, 10) || 0;
+    const allowed = new Set();
+    if (year) {
+        spys.forEach(function (spy) {
+            for (let n = (year - 1) * spy + 1; n <= year * spy; n++) allowed.add(n);
+        });
+    }
+    limit(semSel, opt => !year || allowed.has(parseInt(opt.value, 10)));
+}
+
 function onSourceChange(val) {
     const wrap = document.getElementById('sourceDetailWrap');
     const label = document.getElementById('sourceDetailLabel');
@@ -274,6 +323,7 @@ function onSourceChange(val) {
 
 // Chevron rotate on collapse toggle
 document.addEventListener('DOMContentLoaded', function () {
+    admCascade(false);
     const collapseEl = document.getElementById('advFilterBody');
     const chevron = document.getElementById('filterChevron');
     if (collapseEl && chevron) {
@@ -374,9 +424,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>
                         </td>
                         <td class="small text-muted">
-                            {{ $student->coursePart?->year_label ?? '-' }}
-                            @if($student->current_semester)
-                                <span class="badge bg-primary bg-opacity-10 text-primary border ms-1">S{{ $student->current_semester }}</span>
+                            {{ $student->term_year_label ?? '-' }}
+                            @if($student->term_semester)
+                                <span class="badge bg-primary bg-opacity-10 text-primary border ms-1">S{{ $student->term_semester }}</span>
                             @endif
                         </td>
                         <td class="small text-muted">
@@ -400,9 +450,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             @endif
                         </td>
                         <td>
-                            <span class="badge {{ ($student->status ?? 'active') === 'pending' ? 'bg-warning text-dark' : (($student->status ?? 'active') === 'active' ? 'bg-success' : 'bg-secondary') }}">
-                                {{ ucfirst((string) ($student->status ?? 'active')) }}
-                            </span>
+                            @if(isset($student->promoted_to_session))
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle text-nowrap">
+                                    <i class="bi bi-arrow-up-circle me-1"></i>Session Promoted
+                                </span>
+                                <div class="text-muted" style="font-size:11px;">&rarr; {{ $student->promoted_to_session ?? '-' }}</div>
+                            @else
+                                <span class="badge {{ ($student->status ?? 'active') === 'pending' ? 'bg-warning text-dark' : (($student->status ?? 'active') === 'active' ? 'bg-success' : 'bg-secondary') }}">
+                                    {{ ucfirst((string) ($student->status ?? 'active')) }}
+                                </span>
+                            @endif
                         </td>
                         <td class="text-end pe-3">
                             <div class="d-flex justify-content-end gap-1">

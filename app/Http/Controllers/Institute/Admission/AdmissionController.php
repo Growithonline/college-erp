@@ -720,14 +720,22 @@ class AdmissionController extends Controller
         return $query;
     }
 
-    private function applyAdmissionFilters($query, Request $request, ?AcademicSession $activeSession): void
+    // Param present but empty = "All Sessions"; param absent = the active session.
+    private function admissionSessionId(Request $request, ?AcademicSession $activeSession): ?int
     {
         if ($request->has('session_id')) {
-            if ($request->filled('session_id')) {
-                $query->where('academic_session_id', (int) $request->session_id);
-            }
-        } elseif ($activeSession) {
-            $query->where('academic_session_id', $activeSession->id);
+            return $request->filled('session_id') ? (int) $request->session_id : null;
+        }
+
+        return $activeSession?->id ? (int) $activeSession->id : null;
+    }
+
+    private function applyAdmissionFilters($query, Request $request, ?AcademicSession $activeSession): void
+    {
+        $sessionId = $this->admissionSessionId($request, $activeSession);
+        if ($sessionId) {
+            // Includes students promoted out of this session (shown as "Session Promoted").
+            $query->inSessionView($sessionId);
         }
 
         if ($request->filled('search')) {
@@ -758,9 +766,7 @@ class AdmissionController extends Controller
 
         if ($request->filled('subject_id')) {
             $subjectId = (int) $request->subject_id;
-            $selectedSessionId = $request->filled('session_id')
-                ? (int) $request->session_id
-                : ($activeSession?->id ? (int) $activeSession->id : null);
+            $selectedSessionId = $sessionId;
 
             $query->whereHas('studentSubjects', function ($subjectQuery) use ($subjectId, $selectedSessionId) {
                 $subjectQuery->where('subject_id', $subjectId);
@@ -771,13 +777,7 @@ class AdmissionController extends Controller
             });
         }
 
-        if ($request->filled('course_part_id')) {
-            $query->where('course_part_id', (int) $request->course_part_id);
-        }
-
-        if ($request->filled('current_semester')) {
-            $query->where('current_semester', (int) $request->current_semester);
-        }
+        $query->atYearSemester((int) $request->input('current_year', 0), (int) $request->input('current_semester', 0), $sessionId);
 
         if ($request->filled('admission_date_from')) {
             $query->whereDate('admission_date', '>=', $request->admission_date_from);
@@ -866,6 +866,8 @@ class AdmissionController extends Controller
         }
     }
 
+    // Full (un-narrowed) option lists: the page links Type -> Course -> Stream -> Subject and
+    // Course -> Year -> Semester in the browser, so changing one filter never strands the others.
     private function admissionFilterOptions(int $instituteId, Request $request): array
     {
         $courseTypes = CourseType::forInstitute($instituteId)
@@ -876,37 +878,24 @@ class AdmissionController extends Controller
 
         $courses = Course::where('institute_id', $instituteId)
             ->where('status', true)
-            ->when($request->filled('course_type_id'), fn($query) => $query->where('course_type_id', (int) $request->course_type_id))
             ->with('type')
             ->orderBy('name')
             ->get();
 
-        $streams = CourseStream::whereHas('course', function ($courseQuery) use ($instituteId, $request) {
-            $courseQuery->where('institute_id', $instituteId);
-            if ($request->filled('course_type_id')) {
-                $courseQuery->where('course_type_id', (int) $request->course_type_id);
-            }
-            if ($request->filled('course_id')) {
-                $courseQuery->where('id', (int) $request->course_id);
-            }
-        })->with('course')->orderBy('name')->get();
+        $streams = CourseStream::whereIn('course_id', $courses->pluck('id'))
+            ->with('course')->orderBy('name')->get();
 
-        $courseIds = $courses->pluck('id');
-        $parts = CoursePart::whereIn('course_id', $courseIds->isNotEmpty() ? $courseIds : [-1])
-            ->where('status', true)
-            ->with('course')
-            ->orderBy('course_id')
-            ->orderBy('part_number')
-            ->get();
+        $subjects = Subject::where('institute_id', $instituteId)->where('status', true)->orderBy('name')->get();
+        $subjectStreams = CourseStreamSubject::whereIn('course_stream_id', $streams->pluck('id'))
+            ->where('is_active', true)
+            ->get(['course_stream_id', 'subject_id'])
+            ->groupBy('subject_id')
+            ->map(fn($rows) => $rows->pluck('course_stream_id')->unique()->values()->all());
 
-        $subjectQuery = Subject::where('institute_id', $instituteId)->where('status', true)->orderBy('name');
-        if ($request->filled('course_stream_id')) {
-            $subjectIds = CourseStreamSubject::where('course_stream_id', (int) $request->course_stream_id)
-                ->where('is_active', true)
-                ->pluck('subject_id');
-            $subjectQuery->whereIn('id', $subjectIds->isNotEmpty() ? $subjectIds : [-1]);
-        }
-        $subjects = $subjectQuery->get();
+        $courseTerms = $courses->mapWithKeys(fn($c) => [$c->id => [
+            'years' => max(1, (int) ($c->duration ?? 1)),
+            'spy'   => $c->effectiveSemestersPerYear(),
+        ]]);
 
         $staffMembers = \App\Models\StaffMember::where('institute_id', $instituteId)
             ->where('status', true)
@@ -923,7 +912,7 @@ class AdmissionController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return compact('courseTypes', 'courses', 'streams', 'parts', 'subjects', 'staffMembers', 'centers', 'partners');
+        return compact('courseTypes', 'courses', 'streams', 'subjects', 'subjectStreams', 'courseTerms', 'staffMembers', 'centers', 'partners');
     }
 
     private function admissionAppliedFilters(Request $request, ?AcademicSession $activeSession, array $options): array
@@ -970,11 +959,8 @@ class AdmissionController extends Controller
             }
         }
 
-        if ($request->filled('course_part_id')) {
-            $part = $options['parts']->firstWhere('id', (int) $request->course_part_id);
-            if ($part) {
-                $filters['Course Year / Semester'] = trim(($part->course->name ?? '') . ' - ' . ($part->year_label ?? $part->name ?? 'Year'), ' -');
-            }
+        if ($request->filled('current_year')) {
+            $filters['Year'] = 'Year ' . (int) $request->current_year;
         }
 
         if ($request->filled('current_semester')) {
@@ -1046,6 +1032,23 @@ class AdmissionController extends Controller
         return $filters;
     }
 
+    // Marks students promoted out of the viewed session and sets term_* display values
+    // (year label, semester) as they were in that session.
+    private function annotatePromotedStudents($students, ?int $sessionId, Collection $sessions): void
+    {
+        $names = $sessions->pluck('name', 'id');
+
+        foreach ($students as $student) {
+            if ($sessionId && $student->applyPromotedDisplay($sessionId, $names)) {
+                $student->term_year_label = $student->display_year_label;
+                $student->term_semester   = $student->display_semester;
+                continue;
+            }
+            $student->term_year_label = $student->coursePart?->year_label;
+            $student->term_semester   = $student->current_semester;
+        }
+    }
+
     private function admissionExportRows(Collection $students, Collection $centers, Collection $partners): array
     {
         return $students->map(function (Student $student) use ($centers, $partners) {
@@ -1068,17 +1071,19 @@ class AdmissionController extends Controller
                 $student->father_name ?? '-',
                 $student->mother_name ?? '-',
                 $student->mobile,
-                $student->session?->name ?? '-',
+                $student->display_session_name ?? $student->session?->name ?? '-',
                 $student->stream?->course?->type?->name ?? '-',
                 $student->stream?->course?->name ?? '-',
                 $student->stream?->name ?? '-',
                 $student->studentSubjects->pluck('subject.name')->filter()->unique()->implode(', '),
-                $student->coursePart?->year_label ?? '-',
-                $student->current_semester ? 'Semester ' . $student->current_semester : '-',
+                $student->term_year_label ?? '-',
+                $student->term_semester ? 'Semester ' . $student->term_semester : '-',
                 $student->admission_date?->format('d M Y') ?? '-',
                 $admittedBy,
                 ucwords(str_replace('_', ' ', (string) ($student->admission_source ?? 'direct'))),
-                ucfirst((string) ($student->status ?? 'active')),
+                isset($student->promoted_to_session)
+                    ? 'Session Promoted -> ' . $student->promoted_to_session
+                    : ucfirst((string) ($student->status ?? 'active')),
             ];
         })->all();
     }
@@ -3090,12 +3095,14 @@ class AdmissionController extends Controller
         $sessions = AcademicSession::where('institute_id', $instituteId)->orderBy('name')->get();
         $options = $this->admissionFilterOptions($instituteId, $request);
         extract($options);
+        $sessionId = $this->admissionSessionId($request, $activeSession);
         $query = $this->baseAdmissionQuery($instituteId);
         $this->applyAdmissionFilters($query, $request, $activeSession);
         $appliedFilters = $this->admissionAppliedFilters($request, $activeSession, $options);
 
         if ($request->filled('export')) {
             $students = (clone $query)->orderBy('admission_date')->orderBy('id')->get();
+            $this->annotatePromotedStudents($students, $sessionId, $sessions);
             $headers = $this->admissionExportHeaders();
             $rows = $this->admissionExportRows($students, $centers, $partners);
             $generatedAt = now()->format('d M Y, h:i A');
@@ -3140,10 +3147,11 @@ class AdmissionController extends Controller
         $perPage  = $request->integer('per_page', 20);
         $perPage  = in_array($perPage, [10, 20, 50, 100], true) ? $perPage : 20;
         $students = $query->orderBy('admission_date')->orderBy('id')->paginate($perPage)->withQueryString();
+        $this->annotatePromotedStudents($students, $sessionId, $sessions);
 
         return view('institute.admission.index', compact(
-            'students', 'activeSession', 'sessions', 'perPage', 'appliedFilters',
-            'courseTypes', 'courses', 'streams', 'parts', 'subjects', 'staffMembers', 'centers', 'partners'
+            'students', 'activeSession', 'sessions', 'perPage', 'appliedFilters', 'sessionId',
+            'courseTypes', 'courses', 'streams', 'subjects', 'subjectStreams', 'courseTerms', 'staffMembers', 'centers', 'partners'
         ));
     }
 
