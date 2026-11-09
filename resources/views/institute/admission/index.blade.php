@@ -356,6 +356,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <thead class="table-light">
                 <tr>
                     <th class="ps-3">#</th>
+                    <th>Session</th>
                     <th>Student</th>
                     <th>Father Name</th>
                     <th>Mother Name</th>
@@ -403,6 +404,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     @endphp
                     <tr class="{{ !$isComplete ? 'table-warning bg-opacity-25' : '' }}">
                         <td class="ps-3 text-muted small">{{ $students->firstItem() + $i }}</td>
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle text-nowrap">
+                                <i class="bi bi-calendar3 me-1"></i>{{ $student->display_session_name ?? $student->session?->name ?? '-' }}
+                            </span>
+                        </td>
                         <td>
                             <div class="fw-semibold">{{ $student->name }}</div>
                             <div class="text-muted small">{{ $student->mobile ?: '-' }}</div>
@@ -477,7 +483,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="13" class="text-center py-5 text-muted">
+                        <td colspan="14" class="text-center py-5 text-muted">
                             <i class="bi bi-person-plus fs-2 d-block mb-2 opacity-25"></i>
                             No admissions found
                         </td>
