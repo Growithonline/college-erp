@@ -245,8 +245,38 @@ class StudentDirectoryController extends Controller
             $query->where('course_stream_id', (int) $request->course_stream_id);
         }
 
-        if ($request->filled('current_semester')) {
-            $query->where('current_semester', (int) $request->current_semester);
+        $yearNo = (int) $request->input('current_year', 0);
+        $semNo  = (int) $request->input('current_semester', 0);
+        if ($yearNo || $semNo) {
+            // Current placement for students still in the viewed session; for students promoted
+            // out of it, match the year/semester they held in that session.
+            $query->where(function ($b) use ($yearNo, $semNo, $sessionId) {
+                $b->where(function ($c) use ($yearNo, $semNo, $sessionId) {
+                    if ($sessionId) {
+                        $c->where('academic_session_id', $sessionId);
+                    }
+                    if ($semNo) {
+                        $c->where('current_semester', $semNo);
+                    }
+                    if ($yearNo) {
+                        $c->whereHas('coursePart', fn($p) => $p->where('year_number', $yearNo));
+                    }
+                });
+                if ($sessionId) {
+                    $b->orWhere(function ($c) use ($yearNo, $semNo, $sessionId) {
+                        $c->where('academic_session_id', '!=', $sessionId)
+                          ->whereHas('academicIdentities', function ($i) use ($yearNo, $semNo, $sessionId) {
+                              $i->where('academic_session_id', $sessionId)->realOnly();
+                              if ($semNo) {
+                                  $i->where('semester_at_time', $semNo);
+                              }
+                              if ($yearNo) {
+                                  $i->whereHas('coursePart', fn($p) => $p->where('year_number', $yearNo));
+                              }
+                          });
+                    });
+                }
+            });
         }
 
         if ($request->filled('student_type')) {
@@ -264,6 +294,12 @@ class StudentDirectoryController extends Controller
         if ($request->filled('to_date')) {
             $query->whereDate('admission_date', '<=', $request->to_date);
         }
+
+        // Per-course year count and semesters-per-year drive the linked Year → Semester dropdowns.
+        $courseTerms = $courses->mapWithKeys(fn($c) => [$c->id => [
+            'years' => max(1, (int) ($c->duration ?? 1)),
+            'spy'   => $c->effectiveSemestersPerYear(),
+        ]]);
 
         $students = $query->paginate(50)->withQueryString();
 
@@ -291,7 +327,7 @@ class StudentDirectoryController extends Controller
 
         return view($view, compact(
             'students', 'activeSession', 'sessions', 'courseTypes', 'courses', 'streams',
-            'sessionId', 'quickOnly', 'centersMap', 'partnersMap', 'studentTypes', 'maxSemester'
+            'sessionId', 'quickOnly', 'centersMap', 'partnersMap', 'studentTypes', 'maxSemester', 'courseTerms'
         ));
     }
 

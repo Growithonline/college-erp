@@ -136,10 +136,21 @@
                     </select>
                 </div>
 
+                {{-- Year → linked to Course; Semester narrows to the chosen year --}}
+                <div class="col-auto" style="min-width:95px;">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Year</label>
+                    <select name="current_year" id="filterYear" class="form-select form-select-sm" onchange="stdFilterTerms(true)">
+                        <option value="">All Years</option>
+                        @for($y = 1; $y <= max(1, (int) $courseTerms->max('years')); $y++)
+                            <option value="{{ $y }}" {{ request('current_year') == $y ? 'selected' : '' }}>Year {{ $y }}</option>
+                        @endfor
+                    </select>
+                </div>
+
                 {{-- Semester --}}
                 <div class="col-auto" style="min-width:95px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Semester</label>
-                    <select name="current_semester" class="form-select form-select-sm" onchange="stdAutoSubmit()">
+                    <select name="current_semester" id="filterSemester" class="form-select form-select-sm" onchange="stdAutoSubmit()">
                         <option value="">All Sem</option>
                         @for($s = 1; $s <= $maxSemester; $s++)
                             <option value="{{ $s }}" {{ request('current_semester') == $s ? 'selected' : '' }}>
@@ -477,6 +488,50 @@
         submitFilter();
     };
 
+    // Year → Semester link. Semesters of year N are (N-1)*spy+1 .. N*spy, where spy is the
+    // semesters-per-year of the selected course (or of every course when none is selected).
+    const courseTerms = @json($courseTerms);
+
+    function termScope() {
+        const cId = getEl('filterCourse') ? getEl('filterCourse').value : '';
+        const list = cId && courseTerms[cId] ? [courseTerms[cId]] : Object.values(courseTerms);
+        return {
+            years: Math.max.apply(null, [1].concat(list.map(function (t) { return t.years; }))),
+            spys: Array.from(new Set(list.map(function (t) { return t.spy; }))),
+        };
+    }
+
+    function refreshTerms(resetInvalid) {
+        const yearSel = getEl('filterYear'), semSel = getEl('filterSemester');
+        if (!yearSel || !semSel) return;
+        const scope = termScope();
+        const year = parseInt(yearSel.value, 10) || 0;
+
+        Array.from(yearSel.options).forEach(function (opt) {
+            if (opt.value === '') return;
+            opt.hidden = opt.disabled = parseInt(opt.value, 10) > scope.years;
+        });
+        if (yearSel.value && parseInt(yearSel.value, 10) > scope.years) yearSel.value = '';
+
+        const allowed = new Set();
+        if (year) {
+            scope.spys.forEach(function (spy) {
+                for (let s = (year - 1) * spy + 1; s <= year * spy; s++) allowed.add(s);
+            });
+        }
+        Array.from(semSel.options).forEach(function (opt) {
+            if (opt.value === '') return;
+            const show = !year || allowed.has(parseInt(opt.value, 10));
+            opt.hidden = opt.disabled = !show;
+            if (!show && opt.selected && resetInvalid) semSel.value = '';
+        });
+    }
+
+    window.stdFilterTerms = function (submit) {
+        refreshTerms(true);
+        if (submit) submitFilter();
+    };
+
     function submitFilter() {
         const form = document.getElementById('filterForm');
         if (form) form.submit();
@@ -488,6 +543,7 @@
         const cVal  = getEl('filterCourse')     ? getEl('filterCourse').value     : '';
         if (ctVal) filterOptions('filterCourse', 'type', ctVal);
         if (cVal)  filterOptions('filterStream', 'course', cVal);
+        refreshTerms(false);
     });
 }());
 </script>
