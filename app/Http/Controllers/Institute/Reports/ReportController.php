@@ -1297,10 +1297,12 @@ class ReportController extends Controller
             ->leftJoin('course_streams', 'students.course_stream_id', '=', 'course_streams.id')
             ->leftJoin('courses', 'course_streams.course_id', '=', 'courses.id')
             ->selectRaw('COALESCE(courses.name, "— No Course —") as course_name,
+                         COALESCE(course_streams.name, "— No Stream —") as stream_name,
                          COALESCE(students.current_semester, 0) as semester,
                          COUNT(*) as cnt')
-            ->groupBy('course_name', 'semester')
+            ->groupBy('course_name', 'stream_name', 'semester')
             ->orderBy('course_name')
+            ->orderBy('stream_name')
             ->orderBy('semester');
         $this->applyStaffStudentScope($courseWiseRaw);
         $courseWiseRaw = $courseWiseRaw->get();

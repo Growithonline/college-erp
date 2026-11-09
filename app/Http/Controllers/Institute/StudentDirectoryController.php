@@ -213,7 +213,13 @@ class StudentDirectoryController extends Controller
         }
 
         if ($sessionId) {
-            $query->where('academic_session_id', $sessionId);
+            // Students promoted out of this session keep a real academic identity row for it,
+            // so they still belong in the session's list (shown as "Session Promoted").
+            $query->where(function ($b) use ($sessionId) {
+                $b->where('academic_session_id', $sessionId)
+                  ->orWhereHas('academicIdentities', fn($q) => $q->where('academic_session_id', $sessionId)->realOnly());
+            })->with(['academicIdentities' => fn($q) => $q->where('academic_session_id', $sessionId)
+                ->realOnly()->with('coursePart')->orderByDesc('id')]);
         }
 
         if ($request->filled('search')) {
@@ -260,6 +266,22 @@ class StudentDirectoryController extends Controller
         }
 
         $students = $query->paginate(50)->withQueryString();
+
+        // Mark students whose current session differs from the viewed one as promoted,
+        // and show their year/semester as of the viewed session.
+        if ($sessionId) {
+            $promotedToNames = $sessions->pluck('name', 'id');
+            foreach ($students as $student) {
+                if ((int) $student->academic_session_id === $sessionId) {
+                    continue;
+                }
+                $identity = $student->academicIdentities->first();
+                $student->promoted_to_session = $promotedToNames[$student->academic_session_id] ?? null;
+                $student->display_session_name = $promotedToNames[$sessionId] ?? null;
+                $student->display_year_label   = $identity?->coursePart?->year_label;
+                $student->display_semester     = $identity?->semester_at_time;
+            }
+        }
 
         // Eager-load guide (center/partner) names in one pass to avoid N+1
         $centerIds  = $students->where('admission_source', 'center')->pluck('admission_source_id')->filter()->unique();

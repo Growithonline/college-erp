@@ -303,7 +303,7 @@
                     <td>
                         <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"
                               style="font-size:10px; font-weight:600; white-space:nowrap;">
-                            <i class="bi bi-calendar3 me-1"></i>{{ $student->session?->name ?? '—' }}
+                            <i class="bi bi-calendar3 me-1"></i>{{ $student->display_session_name ?? $student->session?->name ?? '—' }}
                         </span>
                     </td>
 
@@ -336,10 +336,15 @@
 
                     {{-- Year/Sem --}}
                     <td class="fw-semibold" style="white-space:nowrap;">
-                        {{ $student->coursePart?->year_label ?? '—' }}
-                        @if($student->current_semester)
+                        @php
+                            $isPromoted = isset($student->promoted_to_session);
+                            $yearLabel  = $isPromoted ? $student->display_year_label : $student->coursePart?->year_label;
+                            $semNo      = $isPromoted ? $student->display_semester : $student->current_semester;
+                        @endphp
+                        {{ $yearLabel ?? '—' }}
+                        @if($semNo)
                             <span class="badge bg-primary bg-opacity-10 text-primary border ms-1"
-                                  style="font-size:9px;">S{{ $student->current_semester }}</span>
+                                  style="font-size:9px;">S{{ $semNo }}</span>
                         @endif
                     </td>
 
@@ -371,9 +376,16 @@
 
                     {{-- Status --}}
                     <td>
-                        <span class="badge border {{ $statusColor }}" style="font-size:10px; font-weight:600;">
-                            {{ ucfirst($student->status ?? 'pending') }}
-                        </span>
+                        @if(isset($student->promoted_to_session))
+                            <span class="badge border bg-info-subtle text-info border-info-subtle" style="font-size:10px; font-weight:600; white-space:nowrap;">
+                                <i class="bi bi-arrow-up-circle me-1"></i>Session Promoted
+                            </span>
+                            <div class="text-muted" style="font-size:10px;">→ {{ $student->promoted_to_session ?? '—' }}</div>
+                        @else
+                            <span class="badge border {{ $statusColor }}" style="font-size:10px; font-weight:600;">
+                                {{ ucfirst($student->status ?? 'pending') }}
+                            </span>
+                        @endif
                     </td>
 
                     <td>

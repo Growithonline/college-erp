@@ -153,9 +153,16 @@
                             </td>
                             <td class="text-end pe-3 fw-bold text-primary" style="font-size:13px; vertical-align:middle;">{{ $courseTotal }}</td>
                         </tr>
-                        @foreach($semRows as $row)
+                        @foreach($semRows->groupBy('stream_name') as $streamName => $streamRows)
                         <tr>
-                            <td class="ps-4 text-muted" style="font-size:11px; border-left:3px solid #e0e8f4;">
+                            <td class="ps-4 fw-semibold" colspan="2" style="font-size:11.5px; border-left:3px solid #9db7dc;">
+                                <i class="bi bi-diagram-3 me-1" style="font-size:10px;"></i>{{ $streamName }}
+                            </td>
+                            <td class="text-end pe-3 fw-semibold" style="font-size:12px;">{{ $streamRows->sum('cnt') }}</td>
+                        </tr>
+                        @foreach($streamRows as $row)
+                        <tr>
+                            <td class="text-muted" style="font-size:11px; padding-left:2.25rem; border-left:3px solid #e0e8f4;">
                                 <i class="bi bi-arrow-return-right me-1" style="font-size:9px;"></i>
                                 @if($row->semester > 0)
                                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle" style="font-size:9.5px;">Sem {{ $row->semester }}</span>
@@ -166,6 +173,7 @@
                             <td></td>
                             <td class="text-end pe-3 text-muted fw-semibold" style="font-size:11px;">{{ $row->cnt }}</td>
                         </tr>
+                        @endforeach
                         @endforeach
                         @endforeach
                     </tbody>
