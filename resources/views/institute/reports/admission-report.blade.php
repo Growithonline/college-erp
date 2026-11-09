@@ -393,6 +393,7 @@
                 <div class="col-auto" style="min-width:110px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Session</label>
                     <select name="session_id" class="form-select form-select-sm" onchange="arAutoSubmit()">
+                        <option value="">All</option>
                         @foreach($sessions as $sess)
                             <option value="{{ $sess->id }}" {{ $sessionId==$sess->id ? 'selected':'' }}>{{ $sess->name }}</option>
                         @endforeach
@@ -438,12 +439,23 @@
                     </select>
                 </div>
 
+                {{-- Year → linked to Course; Semester narrows to the chosen year --}}
+                <div class="col-auto" style="min-width:90px;">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Year</label>
+                    <select name="current_year" id="arFilterYear" class="form-select form-select-sm" onchange="arFilterTerms(true)">
+                        <option value="">All Years</option>
+                        @for($yr = 1; $yr <= max(1, (int) $courseTerms->max('years')); $yr++)
+                            <option value="{{ $yr }}" {{ request('current_year')==$yr ? 'selected':'' }}>Year {{ $yr }}</option>
+                        @endfor
+                    </select>
+                </div>
+
                 {{-- Semester --}}
                 <div class="col-auto" style="min-width:90px;">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:11px;">Semester</label>
-                    <select name="current_semester" class="form-select form-select-sm" onchange="arAutoSubmit()">
+                    <select name="current_semester" id="arFilterSemester" class="form-select form-select-sm" onchange="arAutoSubmit()">
                         <option value="">All Sem</option>
-                        @for($sem = 1; $sem <= 10; $sem++)
+                        @for($sem = 1; $sem <= 12; $sem++)
                             <option value="{{ $sem }}" {{ request('current_semester')==$sem ? 'selected':'' }}>Sem {{ $sem }}</option>
                         @endfor
                     </select>
@@ -630,7 +642,7 @@
                         <td class="ps-2 fw-semibold text-muted">{{ $students->firstItem() + $i }}</td>
                         <td>
                             <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle fw-semibold" style="font-size:10px;">
-                                <i class="bi bi-calendar3 me-1"></i>{{ $s->session?->name ?? '—' }}
+                                <i class="bi bi-calendar3 me-1"></i>{{ $s->display_session_name ?? $s->session?->name ?? '—' }}
                             </span>
                         </td>
                         <td>
@@ -653,8 +665,8 @@
                         </td>
                         <td style="white-space:nowrap;">
                             <span class="fw-semibold">{{ $s->resolved_year_label ?? '—' }}</span>
-                            @if($s->current_semester)
-                                <span class="badge bg-primary bg-opacity-10 text-primary ms-1" style="font-size:9px;">S{{ $s->current_semester }}</span>
+                            @if($s->term_semester)
+                                <span class="badge bg-primary bg-opacity-10 text-primary ms-1" style="font-size:9px;">S{{ $s->term_semester }}</span>
                             @endif
                         </td>
                         <td style="white-space:nowrap;">
@@ -671,9 +683,16 @@
                             {{ $s->admission_date?->format('d M Y') ?? '—' }}
                         </td>
                         <td>
-                            <span class="badge {{ $statusColor }} fw-semibold" style="font-size:10px;">
-                                {{ ucfirst($s->status ?? 'pending') }}
-                            </span>
+                            @if(isset($s->promoted_to_session))
+                                <span class="badge bg-info bg-opacity-10 text-info fw-semibold" style="font-size:10px; white-space:nowrap;">
+                                    <i class="bi bi-arrow-up-circle me-1"></i>Session Promoted
+                                </span>
+                                <div class="text-muted" style="font-size:10px;">&rarr; {{ $s->promoted_to_session ?? '—' }}</div>
+                            @else
+                                <span class="badge {{ $statusColor }} fw-semibold" style="font-size:10px;">
+                                    {{ ucfirst($s->status ?? 'pending') }}
+                                </span>
+                            @endif
                         </td>
                         <td class="text-center pe-2">
                             <a href="{{ route($profileRoute, $s->id) }}"
@@ -734,6 +753,44 @@
         arAutoSubmit();
     };
 
+    // Year → Semester link. Semesters of year N are (N-1)*spy+1 .. N*spy, where spy is the
+    // semesters-per-year of the selected course (or of every course when none is selected).
+    const courseTerms = @json($courseTerms);
+
+    function arRefreshTerms(resetInvalid) {
+        const yearSel = getEl('arFilterYear'), semSel = getEl('arFilterSemester');
+        if (!yearSel || !semSel) return;
+        const cId  = getEl('arFilterCourse') ? getEl('arFilterCourse').value : '';
+        const list = cId && courseTerms[cId] ? [courseTerms[cId]] : Object.values(courseTerms);
+        const maxYears = Math.max.apply(null, [1].concat(list.map(function (t) { return t.years; })));
+        const spys = Array.from(new Set(list.map(function (t) { return t.spy; })));
+        const year = parseInt(yearSel.value, 10) || 0;
+
+        Array.from(yearSel.options).forEach(function (opt) {
+            if (opt.value === '') return;
+            opt.hidden = opt.disabled = parseInt(opt.value, 10) > maxYears;
+        });
+        if (year > maxYears) yearSel.value = '';
+
+        const allowed = new Set();
+        if (year && year <= maxYears) {
+            spys.forEach(function (spy) {
+                for (let n = (year - 1) * spy + 1; n <= year * spy; n++) allowed.add(n);
+            });
+        }
+        Array.from(semSel.options).forEach(function (opt) {
+            if (opt.value === '') return;
+            const show = !yearSel.value || allowed.has(parseInt(opt.value, 10));
+            opt.hidden = opt.disabled = !show;
+            if (!show && opt.selected && resetInvalid) semSel.value = '';
+        });
+    }
+
+    window.arFilterTerms = function (submit) {
+        arRefreshTerms(true);
+        if (submit) arAutoSubmit();
+    };
+
     window.arAutoSubmit = function () {
         const form = getEl('filterForm');
         if (form) form.submit();
@@ -755,6 +812,7 @@
         const cVal  = getEl('arFilterCourse')     ? getEl('arFilterCourse').value     : '';
         if (ctVal) arFilterOptions('arFilterCourse', 'type', ctVal);
         if (cVal)  arFilterOptions('arFilterStream', 'course', cVal);
+        arRefreshTerms(false);
     });
 }());
 

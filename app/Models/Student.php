@@ -214,6 +214,70 @@ class Student extends Authenticatable
         return $this->hasMany(\App\Models\StudentAcademicIdentity::class);
     }
 
+    // Students of a session, including those promoted out of it (they keep a real academic
+    // identity row for that session). Loads that identity for applyPromotedDisplay().
+    public function scopeInSessionView($query, int $sessionId)
+    {
+        return $query->where(function ($b) use ($sessionId) {
+            $b->where('academic_session_id', $sessionId)
+              ->orWhereHas('academicIdentities', fn($q) => $q->where('academic_session_id', $sessionId)->realOnly());
+        })->with(['academicIdentities' => fn($q) => $q->where('academic_session_id', $sessionId)
+            ->realOnly()->with('coursePart')->orderByDesc('id')]);
+    }
+
+    // Year/semester filter. Students still in the viewed session match on their current
+    // placement; students promoted out of it match on what they held in that session.
+    public function scopeAtYearSemester($query, int $yearNo, int $semNo, ?int $sessionId = null)
+    {
+        if (!$yearNo && !$semNo) {
+            return $query;
+        }
+
+        return $query->where(function ($b) use ($yearNo, $semNo, $sessionId) {
+            $b->where(function ($c) use ($yearNo, $semNo, $sessionId) {
+                if ($sessionId) {
+                    $c->where('academic_session_id', $sessionId);
+                }
+                if ($semNo) {
+                    $c->where('current_semester', $semNo);
+                }
+                if ($yearNo) {
+                    $c->whereHas('coursePart', fn($p) => $p->where('year_number', $yearNo));
+                }
+            });
+            if ($sessionId) {
+                $b->orWhere(function ($c) use ($yearNo, $semNo, $sessionId) {
+                    $c->where('academic_session_id', '!=', $sessionId)
+                      ->whereHas('academicIdentities', function ($i) use ($yearNo, $semNo, $sessionId) {
+                          $i->where('academic_session_id', $sessionId)->realOnly();
+                          if ($semNo) {
+                              $i->where('semester_at_time', $semNo);
+                          }
+                          if ($yearNo) {
+                              $i->whereHas('coursePart', fn($p) => $p->where('year_number', $yearNo));
+                          }
+                      });
+                });
+            }
+        });
+    }
+
+    // For a student promoted out of the viewed session: set the display_* attributes
+    // (as-of year/semester and the session they moved to). Returns whether it was promoted.
+    public function applyPromotedDisplay(int $viewSessionId, $sessionNames): bool
+    {
+        if ((int) $this->academic_session_id === $viewSessionId) {
+            return false;
+        }
+        $identity = $this->relationLoaded('academicIdentities') ? $this->academicIdentities->first() : null;
+        $this->promoted_to_session  = $sessionNames[$this->academic_session_id] ?? null;
+        $this->display_session_name = $sessionNames[$viewSessionId] ?? null;
+        $this->display_year_label   = $identity?->coursePart?->year_label;
+        $this->display_semester     = $identity?->semester_at_time;
+        $this->display_year_number  = $identity?->coursePart?->year_number;
+        return true;
+    }
+
     public function currentAcademicIdentity()
     {
         return $this->hasOne(\App\Models\StudentAcademicIdentity::class)

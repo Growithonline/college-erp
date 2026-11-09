@@ -1120,7 +1120,10 @@ class ReportController extends Controller
         $activeSession = AcademicSession::where('institute_id', $instituteId)
             ->where('is_active', true)->first();
 
-        $sessionId = $request->session_id ?? $activeSession?->id;
+        // Param present but empty = "All" sessions; param absent = default to the active session.
+        $sessionId = $request->has('session_id')
+            ? ($request->filled('session_id') ? (int) $request->session_id : null)
+            : $activeSession?->id;
 
         $sessions    = AcademicSession::where('institute_id', $instituteId)->orderByDesc('id')->get();
         $courseTypes = CourseType::where('institute_id', $instituteId)->orderBy('name')->get();
@@ -1140,7 +1143,7 @@ class ReportController extends Controller
         // ── Base query ────────────────────────────────────────────────────
         $query = Student::with(['session', 'stream.course', 'coursePart', 'admittedBy'])
             ->where('institute_id', $instituteId)
-            ->when($sessionId, fn($q) => $q->where('academic_session_id', $sessionId));
+            ->when($sessionId, fn($q) => $q->inSessionView($sessionId));
         $this->applyStaffStudentScope($query);
 
         if ($request->filled('course_type_id')) {
@@ -1152,9 +1155,7 @@ class ReportController extends Controller
         if ($request->filled('stream_id')) {
             $query->where('course_stream_id', $request->stream_id);
         }
-        if ($request->filled('current_semester')) {
-            $query->where('current_semester', (int) $request->current_semester);
-        }
+        $query->atYearSemester((int) $request->input('current_year', 0), (int) $request->input('current_semester', 0), $sessionId ? (int) $sessionId : null);
         if ($request->filled('admission_source')) {
             $query->where('admission_source', $request->admission_source);
         }
@@ -1194,19 +1195,35 @@ class ReportController extends Controller
         $perPage  = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
         $students = $query->orderByDesc('admission_date')->paginate($perPage)->withQueryString();
 
-        foreach ($students as $student) {
-            if ($student->academic_session_id) {
-                $context = WalletService::resolveAcademicContext($student, (int) $student->academic_session_id);
+        $sessionNames = $sessions->pluck('name', 'id');
+        // Students promoted out of the viewed session show their year/semester as of that session.
+        $annotate = function ($s) use ($sessionId, $sessionNames) {
+            if ($sessionId && $s->applyPromotedDisplay((int) $sessionId, $sessionNames)) {
+                $s->term_semester       = $s->display_semester;
+                $s->resolved_year_label = AcademicState::yearLabel(
+                    $s->stream?->course?->structure_type,
+                    $s->display_semester,
+                    $s->display_year_number,
+                    $s->stream?->course?->effectiveSemestersPerYear() ?? 2
+                );
+                return;
+            }
+            if ($s->academic_session_id) {
+                $context = WalletService::resolveAcademicContext($s, (int) $s->academic_session_id);
                 if (!empty($context['course_part'])) {
-                    $student->setRelation('coursePart', $context['course_part']);
+                    $s->setRelation('coursePart', $context['course_part']);
                 }
             }
-            $student->resolved_year_label = AcademicState::yearLabel(
-                $student->stream?->course?->structure_type,
-                $student->current_semester,
-                $student->coursePart?->year_number,
-                $student->stream?->course?->effectiveSemestersPerYear() ?? 2
+            $s->term_semester       = $s->current_semester;
+            $s->resolved_year_label = AcademicState::yearLabel(
+                $s->stream?->course?->structure_type,
+                $s->current_semester,
+                $s->coursePart?->year_number,
+                $s->stream?->course?->effectiveSemestersPerYear() ?? 2
             );
+        };
+        foreach ($students as $student) {
+            $annotate($student);
         }
 
         // ── Export PDF / Excel / CSV ──────────────────────────────────────
@@ -1214,16 +1231,7 @@ class ReportController extends Controller
             $allStudents = $query->orderByDesc('admission_date')->get();
 
             foreach ($allStudents as $s) {
-                if ($s->academic_session_id) {
-                    $ctx = WalletService::resolveAcademicContext($s, (int) $s->academic_session_id);
-                    if (!empty($ctx['course_part'])) $s->setRelation('coursePart', $ctx['course_part']);
-                }
-                $s->resolved_year_label = AcademicState::yearLabel(
-                    $s->stream?->course?->structure_type,
-                    $s->current_semester,
-                    $s->coursePart?->year_number,
-                    $s->stream?->course?->effectiveSemestersPerYear() ?? 2
-                );
+                $annotate($s);
             }
 
             if ($request->export === 'pdf') {
@@ -1251,7 +1259,7 @@ class ReportController extends Controller
                 };
                 $expRows[] = [
                     $i + 1,
-                    $s->session?->name ?? '',
+                    $s->display_session_name ?? $s->session?->name ?? '',
                     $s->student_uid ?? '',
                     $s->name,
                     $s->father_name ?? '',
@@ -1261,13 +1269,13 @@ class ReportController extends Controller
                     $s->uin_no ?? '',
                     $s->stream?->course?->name ?? '',
                     $s->stream?->name ?? '',
-                    ($s->resolved_year_label ?? '') . ($s->current_semester ? ' / S' . $s->current_semester : ''),
+                    ($s->resolved_year_label ?? '') . ($s->term_semester ? ' / S' . $s->term_semester : ''),
                     ucfirst($s->gender ?? ''),
                     strtoupper($s->category ?? ''),
                     $srcName,
                     $admittedBy,
                     $s->admission_date?->format('d/m/Y') ?? '',
-                    ucfirst($s->status ?? 'pending'),
+                    isset($s->promoted_to_session) ? 'Session Promoted -> ' . $s->promoted_to_session : ucfirst($s->status ?? 'pending'),
                 ];
             }
 
@@ -1280,6 +1288,12 @@ class ReportController extends Controller
             }
             return $this->exportCsv($expHeaders, $expRows, $filename . '.csv');
         }
+
+        // Per-course year count and semesters-per-year drive the linked Year → Semester dropdowns.
+        $courseTerms = $courses->mapWithKeys(fn($c) => [$c->id => [
+            'years' => max(1, (int) ($c->duration ?? 1)),
+            'spy'   => $c->effectiveSemestersPerYear(),
+        ]]);
 
         // ── Summary stats ─────────────────────────────────────────────────
         $baseQ = Student::where('institute_id', $instituteId)
@@ -1377,7 +1391,7 @@ class ReportController extends Controller
             'sessionObj', 'sessionId', 'activeSession', 'perPage',
             'totalAdmissions', 'maleCount', 'femaleCount', 'todayCount',
             'courseWise', 'courseWiseRaw', 'sourceWise', 'categoryWise', 'centerDetail',
-            'staffWise'
+            'staffWise', 'courseTerms'
         ));
     }
 

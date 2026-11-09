@@ -215,13 +215,7 @@ class StudentDirectoryController extends Controller
         }
 
         if ($sessionId) {
-            // Students promoted out of this session keep a real academic identity row for it,
-            // so they still belong in the session's list (shown as "Session Promoted").
-            $query->where(function ($b) use ($sessionId) {
-                $b->where('academic_session_id', $sessionId)
-                  ->orWhereHas('academicIdentities', fn($q) => $q->where('academic_session_id', $sessionId)->realOnly());
-            })->with(['academicIdentities' => fn($q) => $q->where('academic_session_id', $sessionId)
-                ->realOnly()->with('coursePart')->orderByDesc('id')]);
+            $query->inSessionView($sessionId);
         }
 
         if ($request->filled('search')) {
@@ -247,39 +241,7 @@ class StudentDirectoryController extends Controller
             $query->where('course_stream_id', (int) $request->course_stream_id);
         }
 
-        $yearNo = (int) $request->input('current_year', 0);
-        $semNo  = (int) $request->input('current_semester', 0);
-        if ($yearNo || $semNo) {
-            // Current placement for students still in the viewed session; for students promoted
-            // out of it, match the year/semester they held in that session.
-            $query->where(function ($b) use ($yearNo, $semNo, $sessionId) {
-                $b->where(function ($c) use ($yearNo, $semNo, $sessionId) {
-                    if ($sessionId) {
-                        $c->where('academic_session_id', $sessionId);
-                    }
-                    if ($semNo) {
-                        $c->where('current_semester', $semNo);
-                    }
-                    if ($yearNo) {
-                        $c->whereHas('coursePart', fn($p) => $p->where('year_number', $yearNo));
-                    }
-                });
-                if ($sessionId) {
-                    $b->orWhere(function ($c) use ($yearNo, $semNo, $sessionId) {
-                        $c->where('academic_session_id', '!=', $sessionId)
-                          ->whereHas('academicIdentities', function ($i) use ($yearNo, $semNo, $sessionId) {
-                              $i->where('academic_session_id', $sessionId)->realOnly();
-                              if ($semNo) {
-                                  $i->where('semester_at_time', $semNo);
-                              }
-                              if ($yearNo) {
-                                  $i->whereHas('coursePart', fn($p) => $p->where('year_number', $yearNo));
-                              }
-                          });
-                    });
-                }
-            });
-        }
+        $query->atYearSemester((int) $request->input('current_year', 0), (int) $request->input('current_semester', 0), $sessionId);
 
         if ($request->filled('student_type')) {
             $query->where('student_type', $request->student_type);
@@ -310,14 +272,7 @@ class StudentDirectoryController extends Controller
         if ($sessionId) {
             $promotedToNames = $sessions->pluck('name', 'id');
             foreach ($students as $student) {
-                if ((int) $student->academic_session_id === $sessionId) {
-                    continue;
-                }
-                $identity = $student->academicIdentities->first();
-                $student->promoted_to_session = $promotedToNames[$student->academic_session_id] ?? null;
-                $student->display_session_name = $promotedToNames[$sessionId] ?? null;
-                $student->display_year_label   = $identity?->coursePart?->year_label;
-                $student->display_semester     = $identity?->semester_at_time;
+                $student->applyPromotedDisplay($sessionId, $promotedToNames);
             }
         }
 

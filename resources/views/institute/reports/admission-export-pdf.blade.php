@@ -180,7 +180,7 @@
         @endphp
         <tr>
             <td class="c">{{ $i + 1 }}</td>
-            <td>{{ $student->session?->name ?? '—' }}</td>
+            <td>{{ $student->display_session_name ?? $student->session?->name ?? '—' }}</td>
             <td style="font-weight:700;">{{ $student->student_uid ?? '—' }}</td>
             <td class="wrap">
                 {{ \Illuminate\Support\Str::limit($student->name, 22) }}
@@ -200,14 +200,14 @@
                 @endif
             </td>
             <td>
-                {{ $student->resolved_year_label ?? '—' }}@if($student->current_semester)<span class="sub">S{{ $student->current_semester }}</span>@endif
+                {{ $student->resolved_year_label ?? '—' }}@if($student->term_semester)<span class="sub">S{{ $student->term_semester }}</span>@endif
             </td>
             <td>{{ ucfirst(substr($student->gender ?? '—', 0, 1)) }}</td>
             <td style="text-align:center;">{{ strtoupper($student->category ?? '—') }}</td>
             <td class="wrap">{{ $pdfSourceName }}</td>
             <td class="wrap">{{ \Illuminate\Support\Str::limit($pdfAdmittedBy, 22) }}</td>
             <td style="white-space:nowrap;">{{ $student->admission_date?->format('d/m/Y') ?? '—' }}</td>
-            <td style="font-weight:700;">{{ ucfirst($student->status ?? 'pending') }}</td>
+            <td style="font-weight:700;">{{ isset($student->promoted_to_session) ? 'Session Promoted → ' . $student->promoted_to_session : ucfirst($student->status ?? 'pending') }}</td>
         </tr>
         @empty
         <tr>
