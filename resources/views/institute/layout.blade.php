@@ -221,32 +221,6 @@
                         <i class="bi bi-mortarboard"></i> Course Types
                     </a></li>
 
-                    {{-- Course --}}
-                    <li>
-                        <a class="nav-link d-flex {{ request()->routeIs('master.courses*') || request()->routeIs('master.streams*') ? 'active' : '' }}"
-                           data-bs-toggle="collapse" href="#menuCourse" role="button"
-                           aria-expanded="{{ request()->routeIs('master.courses*') || request()->routeIs('master.streams*') ? 'true' : 'false' }}">
-                            <i class="bi bi-book"></i> Course
-                            <i class="bi bi-chevron-down collapse-arrow"></i>
-                        </a>
-                        <div class="collapse {{ request()->routeIs('master.courses*') || request()->routeIs('master.streams*') ? 'show' : '' }}" id="menuCourse">
-                            <ul class="nav flex-column sub-sub-menu">
-                                <li><a class="nav-link {{ request()->routeIs('master.courses.create') ? 'active' : '' }}"
-                                       href="{{ route('master.courses.create') }}">
-                                    <i class="bi bi-plus-circle"></i> Add Course
-                                </a></li>
-                                <li><a class="nav-link {{ request()->routeIs('master.courses.index') ? 'active' : '' }}"
-                                       href="{{ route('master.courses.index') }}">
-                                    <i class="bi bi-list-ul"></i> View / Edit
-                                </a></li>
-                            </ul>
-                        </div>
-                    </li>
-
-                    
-
-                    
-
                     {{-- Subject --}}
                     <li>
                         <a class="nav-link d-flex {{ request()->routeIs('master.subjects*') ? 'active' : '' }}"
@@ -263,6 +237,28 @@
                                 </a></li>
                                 <li><a class="nav-link {{ request()->routeIs('master.subjects.index') ? 'active' : '' }}"
                                        href="{{ route('master.subjects.index') }}">
+                                    <i class="bi bi-list-ul"></i> View / Edit
+                                </a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    {{-- Course --}}
+                    <li>
+                        <a class="nav-link d-flex {{ request()->routeIs('master.courses*') || request()->routeIs('master.streams*') ? 'active' : '' }}"
+                           data-bs-toggle="collapse" href="#menuCourse" role="button"
+                           aria-expanded="{{ request()->routeIs('master.courses*') || request()->routeIs('master.streams*') ? 'true' : 'false' }}">
+                            <i class="bi bi-book"></i> Course
+                            <i class="bi bi-chevron-down collapse-arrow"></i>
+                        </a>
+                        <div class="collapse {{ request()->routeIs('master.courses*') || request()->routeIs('master.streams*') ? 'show' : '' }}" id="menuCourse">
+                            <ul class="nav flex-column sub-sub-menu">
+                                <li><a class="nav-link {{ request()->routeIs('master.courses.create') ? 'active' : '' }}"
+                                       href="{{ route('master.courses.create') }}">
+                                    <i class="bi bi-plus-circle"></i> Add Course
+                                </a></li>
+                                <li><a class="nav-link {{ request()->routeIs('master.courses.index') ? 'active' : '' }}"
+                                       href="{{ route('master.courses.index') }}">
                                     <i class="bi bi-list-ul"></i> View / Edit
                                 </a></li>
                             </ul>

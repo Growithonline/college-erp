@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\FeePlan;
 use App\Models\FeePlanInstallment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -97,9 +98,43 @@ class FeePlanController extends Controller
             'name'        => 'required|string|max:100',
             'description' => 'nullable|string|max:500',
             'is_active'   => 'boolean',
+            'installments'                     => 'nullable|array|max:12',
+            'installments.*.id'                => ['required', Rule::exists('fee_plan_installments', 'id')->where('fee_plan_id', $feePlan->id)],
+            'installments.*.percentage'        => 'required|numeric|min:0.01|max:100',
+            'installments.*.due_trigger'       => ['required', Rule::in(['at_admission', 'semester_start', 'months_after'])],
+            'installments.*.due_semester'      => 'nullable|required_if:installments.*.due_trigger,semester_start|integer|min:1|max:12',
+            'installments.*.due_months_after'  => 'nullable|required_if:installments.*.due_trigger,months_after|integer|min:1|max:60',
         ]);
 
-        $feePlan->update($validated);
+        $submitted = collect($validated['installments'] ?? []);
+
+        // The form must carry every installment of this plan, and the % must still add up to 100
+        if ($submitted->isNotEmpty()) {
+            if ($submitted->pluck('id')->map(fn($id) => (int) $id)->sort()->values()->all()
+                !== $feePlan->installments()->pluck('id')->sort()->values()->all()) {
+                return back()->withErrors(['installments' => 'Installment list does not match this plan. Please reopen and try again.'])->withInput();
+            }
+
+            $totalPct = $submitted->sum('percentage');
+            if (abs($totalPct - 100) > 0.01) {
+                return back()->withErrors(['installments' => 'Installment percentages must add up to 100%. Current total: ' . $totalPct . '%'])->withInput();
+            }
+        }
+
+        DB::transaction(function () use ($feePlan, $validated) {
+            $feePlan->update(Arr::only($validated, ['name', 'description', 'is_active']));
+
+            // Label stays as is; % and due time are editable
+            foreach ($validated['installments'] ?? [] as $inst) {
+                $trigger = $inst['due_trigger'];
+                $feePlan->installments()->whereKey($inst['id'])->update([
+                    'percentage'       => $inst['percentage'],
+                    'due_trigger'      => $trigger,
+                    'due_semester'     => $trigger === 'semester_start' ? $inst['due_semester'] : null,
+                    'due_months_after' => $trigger === 'months_after'   ? $inst['due_months_after'] : null,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Fee plan updated.');
     }

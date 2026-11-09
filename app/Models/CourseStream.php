@@ -68,6 +68,12 @@ class CourseStream extends Model
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+    // Short-term (modular) courses have fixed subjects — no major/minor selection or year rules
+    public function hasFixedSubjects(): bool
+    {
+        return $this->course?->structure_type === 'modular';
+    }
+
     public function getRuleForYear(int $year): ?StreamYearSubjectRule
     {
         return $this->yearRules()->where('year_number', $year)->first();

@@ -61,7 +61,17 @@
                             onclick="openEditModal(this)"
                             data-id="{{ $plan->id }}"
                             data-name="{{ $plan->name }}"
-                            data-description="{{ $plan->description ?? '' }}">
+                            data-description="{{ $plan->description ?? '' }}"
+                            data-student-count="{{ $plan->students()->count() }}"
+                            data-installments="{{ json_encode($plan->installments->map(fn($i) => [
+                                'id'      => $i->id,
+                                'number'  => $i->installment_number,
+                                'label'   => $i->label,
+                                'pct'     => $i->percentage,
+                                'trigger' => $i->due_trigger,
+                                'sem'     => $i->due_semester,
+                                'months'  => $i->due_months_after,
+                            ])->values()) }}">
                         <i class="bi bi-pencil"></i>
                     </button>
                     {{-- Toggle --}}
@@ -205,7 +215,7 @@
 
 {{-- ── Edit Modal ── --}}
 <div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header py-2" style="background:#1e293b; color:white;">
                 <h6 class="modal-title fw-semibold"><i class="bi bi-pencil me-2"></i>Edit Fee Plan</h6>
@@ -224,6 +234,16 @@
                         <input type="text" name="description" id="editDescription" class="form-control form-control-sm"
                                maxlength="500" placeholder="Optional note...">
                     </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="small fw-semibold">Installments — % and When Due</div>
+                        <span id="editPctTotal" class="badge bg-success">Total: 100.00%</span>
+                    </div>
+                    <div class="alert alert-warning py-1 small d-none" id="editInUseWarn">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <span id="editInUseCount"></span> student(s) already use this plan — changing % or due time affects their due amounts too.
+                    </div>
+                    <div id="editInstallmentRows"></div>
                 </div>
                 <div class="modal-footer py-2">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
@@ -250,7 +270,71 @@ function openEditModal(btn) {
     form.action = '{{ url('master/fee-plans') }}/' + btn.dataset.id;
     document.getElementById('editName').value        = btn.dataset.name || '';
     document.getElementById('editDescription').value = btn.dataset.description || '';
+
+    const inUse = parseInt(btn.dataset.studentCount) || 0;
+    document.getElementById('editInUseWarn').classList.toggle('d-none', inUse === 0);
+    document.getElementById('editInUseCount').textContent = inUse;
+
+    // Label and % stay read-only (they decide amounts); only the due time is editable
+    const rows = JSON.parse(btn.dataset.installments || '[]');
+    document.getElementById('editInstallmentRows').innerHTML = rows.map((r, i) => `
+        <div class="row g-2 mb-2 align-items-center border-bottom pb-2">
+            <input type="hidden" name="installments[${i}][id]" value="${r.id}">
+            <div class="col-md-3 small"><span class="text-muted me-1">${r.number}.</span><strong>${escHtml(r.label)}</strong></div>
+            <div class="col-md-2">
+                <div class="input-group input-group-sm">
+                    <input type="number" name="installments[${i}][percentage]" class="form-control edit-pct-input"
+                           value="${r.pct}" min="0.01" max="100" step="0.01" required
+                           oninput="updateEditPctTotal()">
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="installments[${i}][due_trigger]" class="form-select form-select-sm"
+                        onchange="toggleEditTrigger(this, ${i})">
+                    <option value="at_admission" ${r.trigger === 'at_admission' ? 'selected' : ''}>At Admission</option>
+                    <option value="months_after" ${r.trigger === 'months_after' ? 'selected' : ''}>After N Months</option>
+                    ${r.trigger === 'semester_start'
+                        ? '<option value="semester_start" selected>Semester Start</option>' : ''}
+                </select>
+            </div>
+            <div class="col-md-4 offset-md-5" id="edit-mo-${i}" style="display:${r.trigger === 'months_after' ? 'block' : 'none'}">
+                <div class="input-group input-group-sm">
+                    <input type="number" name="installments[${i}][due_months_after]" class="form-control"
+                           value="${r.months || 3}" min="1" max="60">
+                    <span class="input-group-text">months</span>
+                </div>
+            </div>
+            <div class="col-md-4 offset-md-5" id="edit-sem-${i}" style="display:${r.trigger === 'semester_start' ? 'block' : 'none'}">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">Sem</span>
+                    <input type="number" name="installments[${i}][due_semester]" class="form-control"
+                           value="${r.sem || 1}" min="1" max="12">
+                </div>
+            </div>
+        </div>`).join('');
+
+    updateEditPctTotal();
     new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function updateEditPctTotal() {
+    let total = 0;
+    document.querySelectorAll('.edit-pct-input').forEach(el => total += parseFloat(el.value) || 0);
+    const badge = document.getElementById('editPctTotal');
+    badge.textContent = 'Total: ' + total.toFixed(2) + '%';
+    badge.className   = Math.abs(total - 100) < 0.02 ? 'badge bg-success' : 'badge bg-danger';
+}
+
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s ?? '';
+    return d.innerHTML;
+}
+
+function toggleEditTrigger(sel, i) {
+    document.getElementById('edit-mo-' + i).style.display  = sel.value === 'months_after'   ? 'block' : 'none';
+    document.getElementById('edit-sem-' + i).style.display = sel.value === 'semester_start' ? 'block' : 'none';
 }
 
 function openCreateModal() {
@@ -267,6 +351,9 @@ function updateInstallmentRows(count) {
     container.innerHTML = '';
     for (let i = 0; i < count; i++) {
         const n = i + 1;
+        const trigger = i === 0 ? 'at_admission' : 'months_after';
+        // spread installments evenly across the first 12 months
+        const months  = Math.max(1, Math.round(12 * i / count));
         container.innerHTML += `
         <div class="row g-2 mb-2 align-items-end border-bottom pb-2">
             <div class="col-auto text-muted fw-bold" style="width:28px;">${n}</div>
@@ -285,22 +372,15 @@ function updateInstallmentRows(count) {
                 <label class="form-label small mb-0">When Due</label>
                 <select name="installments[${i}][due_trigger]" class="form-select form-select-sm"
                         onchange="toggleDueTrigger(this, ${i})">
-                    <option value="at_admission" ${i === 0 ? 'selected' : ''}>At Admission</option>
-                    <option value="semester_start" ${i > 0 ? 'selected' : ''}>Semester Start</option>
-                    <option value="months_after">After N Months</option>
+                    <option value="at_admission" ${trigger === 'at_admission' ? 'selected' : ''}>At Admission</option>
+                    <option value="months_after" ${trigger === 'months_after' ? 'selected' : ''}>After N Months</option>
                 </select>
             </div>
-            <div class="col-md-2" id="sem-col-${i}" style="display:${i > 0 ? 'block' : 'none'}">
-                <label class="form-label small mb-0">Semester #</label>
-                <input type="number" name="installments[${i}][due_semester]"
-                       class="form-control form-control-sm"
-                       value="${n}" min="1" max="12">
-            </div>
-            <div class="col-md-2" id="mo-col-${i}" style="display:none">
+            <div class="col-md-2" id="mo-col-${i}" style="display:${trigger === 'months_after' ? 'block' : 'none'}">
                 <label class="form-label small mb-0">Months After</label>
                 <input type="number" name="installments[${i}][due_months_after]"
                        class="form-control form-control-sm"
-                       value="${n * 3}" min="1" max="60">
+                       value="${months}" min="1" max="60">
             </div>
         </div>`;
     }
@@ -308,10 +388,7 @@ function updateInstallmentRows(count) {
 }
 
 function toggleDueTrigger(sel, i) {
-    const semCol = document.getElementById('sem-col-' + i);
-    const moCol  = document.getElementById('mo-col-' + i);
-    semCol.style.display = sel.value === 'semester_start' ? 'block' : 'none';
-    moCol.style.display  = sel.value === 'months_after'   ? 'block' : 'none';
+    document.getElementById('mo-col-' + i).style.display = sel.value === 'months_after' ? 'block' : 'none';
 }
 
 function updatePctTotal() {

@@ -10,6 +10,7 @@ use App\Models\FeeType;
 use App\Models\StudentType;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 class CourseFeeRuleController extends Controller
@@ -143,30 +144,63 @@ class CourseFeeRuleController extends Controller
             ->with('sync_hint', true);
     }
 
-    // ── Update (amount + remarks only) ────────────────────────────────────
+    // ── Update (every field except course + session) ──────────────────────
     public function update(Request $request, CourseFeeRule $courseFeeRule)
     {
-        abort_if($courseFeeRule->institute_id !== $this->instituteId(), 403);
+        $instituteId = $this->instituteId();
+        abort_if($courseFeeRule->institute_id !== $instituteId, 403);
+
+        $validSlugs = StudentType::forInstitute($instituteId)->pluck('slug')->push('all')->toArray();
 
         $validated = $request->validate([
-            'amount'  => 'required|numeric|min:0|max:999999',
-            'remarks' => 'nullable|string|max:255',
+            'fee_type_id'      => ['required', Rule::exists('fee_types', 'id')->where(fn($q) => $q->where('institute_id', $instituteId)->orWhere('is_system', true))],
+            'course_part'      => 'required|integer|min:0|max:20',
+            'semester'         => 'required|integer|min:0|max:60',
+            'student_type'     => ['required', Rule::in($validSlugs)],
+            'admission_source' => ['required', Rule::in(['direct', 'center', 'channel_partner', 'all'])],
+            'category'         => ['required', Rule::in(['general', 'obc', 'sc', 'st', 'all'])],
+            'gender'           => ['required', Rule::in(['male', 'female', 'other', 'all'])],
+            'amount'           => 'required|numeric|min:0|max:999999',
+            'remarks'          => 'nullable|string|max:255',
         ]);
+
+        $keyFields = ['fee_type_id', 'course_part', 'semester', 'student_type', 'admission_source', 'category', 'gender'];
+
+        // The unique key must stay unique — another rule may already cover the new combination
+        $clash = CourseFeeRule::where('institute_id', $instituteId)
+            ->where('academic_session_id', $courseFeeRule->academic_session_id)
+            ->where('course_id', $courseFeeRule->course_id)
+            ->where('id', '!=', $courseFeeRule->id)
+            ->where(Arr::only($validated, $keyFields))
+            ->exists();
+
+        if ($clash) {
+            return back()->withErrors(['rule' => 'Another fee rule already exists for this combination (fee type, year, sem, student type, source, category, gender).']);
+        }
 
         $oldAmount = $courseFeeRule->amount;
+        $ruleCols  = array_merge(['academic_session_id', 'course_id'], $keyFields);
+        $oldRule   = $courseFeeRule->only($ruleCols);
 
-        $courseFeeRule->update([
-            'amount'  => $validated['amount'],
+        $courseFeeRule->update(Arr::only($validated, array_merge($keyFields, ['amount'])) + [
             'remarks' => $validated['remarks'] ?? null,
         ]);
+
+        $changed = array_keys(array_diff_assoc(array_map('strval', $courseFeeRule->only($ruleCols)), array_map('strval', $oldRule)));
 
         AuditLogService::log(
             $courseFeeRule->institute_id,
             'fee_rule',
             'updated',
-            'Fee rule amount ' . $oldAmount . ' -> ' . $courseFeeRule->amount,
+            'Fee rule updated: amount ' . $oldAmount . ' -> ' . $courseFeeRule->amount
+                . ($changed ? ' (also changed: ' . implode(', ', $changed) . ')' : ''),
             $courseFeeRule,
-            ['old_amount' => $oldAmount, 'new_amount' => $courseFeeRule->amount, 'rule' => $courseFeeRule->only(['academic_session_id', 'course_id', 'fee_type_id', 'course_part', 'semester', 'student_type', 'admission_source', 'category', 'gender'])]
+            [
+                'old_amount' => $oldAmount,
+                'new_amount' => $courseFeeRule->amount,
+                'old_rule'   => $oldRule,
+                'rule'       => $courseFeeRule->only($ruleCols),
+            ]
         );
 
         return redirect()

@@ -129,6 +129,11 @@
                         @error('subject_role')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                        @if($isFixed)
+                        <div class="form-text small">
+                            Short-term course: all subjects are fixed and auto-included on admission.
+                        </div>
+                        @else
                         <div class="form-text small">
                             <strong>Major:</strong> Student selects (only 1 allowed) &nbsp;|&nbsp;
                             <strong>Minor:</strong> Student selects (multiple allowed) &nbsp;|&nbsp;
@@ -136,10 +141,11 @@
                             <strong>Optional:</strong> Student selects &nbsp;|&nbsp;
                             <strong class="text-purple">Both:</strong> Same subject used as major or minor
                         </div>
+                        @endif
                     </div>
 
                     {{-- Chooseable toggle --}}
-                    <div class="mb-3">
+                    <div class="mb-3" @if($isFixed) style="display:none;" @endif>
                         <div class="form-check form-switch">
                             <input type="hidden" name="is_chooseable" value="0">
                             <input class="form-check-input" type="checkbox"
@@ -198,7 +204,7 @@
 
                 {{-- Year summary --}}
                 <div class="row g-2 mb-3">
-                    @foreach(['major' => 'primary', 'minor' => 'info', 'compulsory' => 'success', 'optional' => 'secondary'] as $role => $color)
+                    @foreach(($isFixed ? ['compulsory' => 'success'] : ['major' => 'primary', 'minor' => 'info', 'compulsory' => 'success', 'optional' => 'secondary']) as $role => $color)
                     @php $cnt = $yearSubjects->where('subject_role', $role)->count(); @endphp
                     <div class="col-3">
                         <div class="card border-0 bg-{{ $color }} bg-opacity-10 text-center py-2">

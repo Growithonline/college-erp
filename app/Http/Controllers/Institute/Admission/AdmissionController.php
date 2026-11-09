@@ -2242,6 +2242,11 @@ class AdmissionController extends Controller
         $minorMin = (int) ($yearRule?->minor_optional_min ?? 0);
         $minorMax = (int) ($yearRule?->minor_optional_max ?? 99);
 
+        // Fixed-subject (modular) courses: nothing to choose, so any saved rule is ignored
+        if (CourseStream::with('course')->find($streamId)?->hasFixedSubjects()) {
+            $majorMin = $majorMax = $minorMin = $minorMax = 0;
+        }
+
         if (!$skipMinValidation && count($majorIds) < $majorMin) {
             throw ValidationException::withMessages([
                 'selected_major_subjects' => "At least {$majorMin} major subject(s) must be selected.",
@@ -2978,15 +2983,20 @@ class AdmissionController extends Controller
             ->where('year_number', (int) $validated['year_number'])
             ->first();
 
+        if (CourseStream::with('course')->find((int) $validated['stream_id'])?->hasFixedSubjects()) {
+            $yearRule = null;
+            $noRule   = ['minor_min' => 0, 'minor_max' => 0, 'major_min' => 0, 'major_max' => 0];
+        }
+
         return response()->json([
             'success'   => true,
             'subjects'  => $subjects,
-            'year_rule' => $yearRule ? [
+            'year_rule' => isset($noRule) ? $noRule : ($yearRule ? [
                 'minor_min' => $yearRule->minor_optional_min,
                 'minor_max' => $yearRule->minor_optional_max,
                 'major_min' => $yearRule->major_min ?? 1,
                 'major_max' => $yearRule->major_max ?? 99,
-            ] : ['minor_min' => 0, 'minor_max' => 99, 'major_min' => 1, 'major_max' => 99],
+            ] : ['minor_min' => 0, 'minor_max' => 99, 'major_min' => 1, 'major_max' => 99]),
         ]);
     }
 

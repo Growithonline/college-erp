@@ -239,7 +239,9 @@ class CourseStreamController extends Controller
         for ($y = 1; $y <= $years; $y++) {
             $isLastYear = ($y === $years);
 
-            if ($isPG) {
+            if ($course->structure_type === 'modular') {
+                $min = 0; $max = 0;
+            } elseif ($isPG) {
                 $min = $isLastYear ? 0 : 1;
                 $max = $isLastYear ? 0 : 1;
             } elseif ($isUG && $isLastYear) {

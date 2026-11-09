@@ -81,6 +81,13 @@
 
 @if($selectedCourse)
 
+@php
+    // Month-based courses (e.g. 6 months) fit inside 1 academic year
+    $maxYear = $selectedCourse->duration_type === 'month'
+        ? max(1, (int) ceil($selectedCourse->duration / 12))
+        : (int) ($selectedCourse->duration ?? 3);
+@endphp
+
 {{-- Add Rule Form --}}
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header py-3" style="background:#1e293b; color:white;">
@@ -108,7 +115,6 @@
                     <label class="form-label small fw-semibold">Year</label>
                     <select name="course_part" id="feeYear" class="form-select form-select-sm" required onchange="updateSemOptions()">
                         <option value="0">All</option>
-                        @php $maxYear = (int)($selectedCourse->duration ?? 3); @endphp
                         @for($i = 1; $i <= $maxYear; $i++)
                         <option value="{{ $i }}" {{ old('course_part') == $i ? 'selected' : '' }}>
                             {{ $i }}{{ $i==1?'st':($i==2?'nd':($i==3?'rd':'th')) }}
@@ -232,8 +238,10 @@
                             {{-- Edit --}}
                             <button type="button"
                                     class="btn btn-outline-primary btn-sm py-0 px-2"
-                                    onclick="openEditModal({{ $rule->id }}, {{ $rule->amount }}, '{{ addslashes($rule->remarks ?? '') }}')"
-                                    title="Edit Amount">
+                                    onclick="openEditModal(this)"
+                                    data-id="{{ $rule->id }}"
+                                    data-rule="{{ json_encode($rule->only(['fee_type_id', 'course_part', 'semester', 'student_type', 'admission_source', 'category', 'gender', 'amount', 'remarks'])) }}"
+                                    title="Edit Rule">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             {{-- Delete --}}
@@ -271,7 +279,7 @@
 
 {{-- ── Edit Modal ── --}}
 <div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header py-2">
                 <h6 class="modal-title fw-semibold">Edit Fee Rule</h6>
@@ -280,19 +288,88 @@
             <form id="editForm" method="POST">
                 @csrf @method('PATCH')
                 <div class="modal-body p-3">
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold">Amount ₹ <span class="text-danger">*</span></label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text">₹</span>
-                            <input type="number" name="amount" id="edit_amount"
-                                   class="form-control" min="0" max="999999" step="1" required>
+                    @if($selectedCourse)
+                    <div class="alert alert-warning py-1 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Students already charged keep their old amount until synced (use <strong>Sync Students</strong> after saving).
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Fee Type</label>
+                            <select name="fee_type_id" id="edit_fee_type" class="form-select form-select-sm" required>
+                                @foreach($feeTypes as $ft)
+                                <option value="{{ $ft->id }}">{{ $ft->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Year</label>
+                            <select name="course_part" id="edit_year" class="form-select form-select-sm" required
+                                    onchange="fillSemOptions(this, document.getElementById('edit_sem'))">
+                                <option value="0">All</option>
+                                @for($i = 1; $i <= $maxYear; $i++)
+                                <option value="{{ $i }}">{{ $i }}{{ $i==1?'st':($i==2?'nd':($i==3?'rd':'th')) }}</option>
+                                @endfor
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Sem</label>
+                            <select name="semester" id="edit_sem" class="form-select form-select-sm" required></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Student Type</label>
+                            <select name="student_type" id="edit_student_type" class="form-select form-select-sm" required>
+                                <option value="all">All Types</option>
+                                @foreach($studentTypes as $st)
+                                <option value="{{ $st->slug }}">{{ $st->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Source</label>
+                            <select name="admission_source" id="edit_source" class="form-select form-select-sm" required>
+                                <option value="all">All Sources</option>
+                                <option value="direct">Direct</option>
+                                <option value="center">Center</option>
+                                <option value="channel_partner">Channel Partner</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Category</label>
+                            <select name="category" id="edit_category" class="form-select form-select-sm" required>
+                                <option value="all">All</option>
+                                <option value="general">General</option>
+                                <option value="obc">OBC</option>
+                                <option value="sc">SC</option>
+                                <option value="st">ST</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Gender</label>
+                            <select name="gender" id="edit_gender" class="form-select form-select-sm" required>
+                                <option value="all">All</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label small fw-semibold">Remarks</label>
-                        <input type="text" name="remarks" id="edit_remarks"
-                               class="form-control form-control-sm" maxlength="255"
-                               placeholder="Optional...">
+                    @endif
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Amount ₹ <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" name="amount" id="edit_amount"
+                                       class="form-control" min="0" max="999999" step="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold">Remarks</label>
+                            <input type="text" name="remarks" id="edit_remarks"
+                                   class="form-control form-control-sm" maxlength="255"
+                                   placeholder="Optional...">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer py-2">
@@ -305,11 +382,22 @@
 </div>
 
 <script>
-function openEditModal(ruleId, amount, remarks) {
+function openEditModal(btn) {
+    const rule = JSON.parse(btn.dataset.rule || '{}');
     document.getElementById('editForm').action =
-        '{{ url("master/fee-structure/course-fees") }}/' + ruleId;
-    document.getElementById('edit_amount').value  = amount;
-    document.getElementById('edit_remarks').value = remarks;
+        '{{ url("master/fee-structure/course-fees") }}/' + btn.dataset.id;
+    document.getElementById('edit_amount').value  = parseInt(rule.amount) || 0;
+    document.getElementById('edit_remarks').value = rule.remarks || '';
+
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    setVal('edit_fee_type',    rule.fee_type_id);
+    setVal('edit_year',        rule.course_part);
+    fillSemOptions(document.getElementById('edit_year'), document.getElementById('edit_sem'), rule.semester);
+    setVal('edit_student_type', rule.student_type);
+    setVal('edit_source',       rule.admission_source);
+    setVal('edit_category',     rule.category);
+    setVal('edit_gender',       rule.gender);
+
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }
 
@@ -317,14 +405,13 @@ function openEditModal(ruleId, amount, remarks) {
 // Semester options per year — Year=0 (All) has relative values; Year>0 has absolute values
 const semesterData = @json($selectedCourse->allSemesterOptionsByYear());
 
-function updateSemOptions() {
-    const yearSel = document.getElementById('feeYear');
-    const semSel  = document.getElementById('feeSem');
+// Rebuild a semester <select> for the chosen year; keeps `keep` (or the current value) if still valid
+function fillSemOptions(yearSel, semSel, keep) {
     if (!yearSel || !semSel) return;
 
     const year    = parseInt(yearSel.value, 10);
     const options = semesterData[year] || semesterData[0];
-    const oldVal  = parseInt(semSel.value, 10);
+    const oldVal  = keep !== undefined ? parseInt(keep, 10) : parseInt(semSel.value, 10);
 
     semSel.innerHTML = '';
     Object.entries(options).forEach(([val, lbl]) => {
@@ -339,6 +426,10 @@ function updateSemOptions() {
     if (!semSel.querySelector('option[selected]')) {
         semSel.value = '0';
     }
+}
+
+function updateSemOptions() {
+    fillSemOptions(document.getElementById('feeYear'), document.getElementById('feeSem'));
 }
 
 // Init on page load (respects old() values after validation failure)

@@ -17,6 +17,13 @@
     </a>
 </div>
 
+@if($stream->hasFixedSubjects())
+<div class="alert alert-info py-2 small mb-4">
+    <i class="bi bi-info-circle me-1"></i>
+    <strong>Short-term course:</strong> subjects are fixed and auto-included on admission.
+    Major/Minor year rules do not apply to this course.
+</div>
+@else
 <div class="alert alert-info py-2 small mb-4">
     <i class="bi bi-info-circle me-1"></i>
     Define how many <strong>Major</strong> and <strong>Minor</strong> subjects a student can choose each year.
@@ -160,4 +167,5 @@
         </div>
     </div>
 </div>
+@endif
 @endsection

@@ -60,12 +60,15 @@ class CourseSubjectController extends Controller
             ->mapWithKeys(fn($m) => [$m->subject_id . '_' . $m->year_number => true])
             ->toArray();
 
-        $years = range(1, $stream->course->duration ?? 3);
-        $roles = CourseStreamSubject::roles();
+        $years = range(1, $this->courseYears($stream));
+        $isFixed = $this->hasFixedSubjects($stream);
+        $roles = $isFixed
+            ? [CourseStreamSubject::ROLE_COMPULSORY => CourseStreamSubject::roles()[CourseStreamSubject::ROLE_COMPULSORY]]
+            : CourseStreamSubject::roles();
 
         return view('institute.master.courses.subjects.index', compact(
             'stream', 'subjectsByYear', 'availableSubjects',
-            'mappedSubjectYears', 'years', 'roles'
+            'mappedSubjectYears', 'years', 'roles', 'isFixed'
         ));
     }
 
@@ -74,7 +77,7 @@ class CourseSubjectController extends Controller
     {
         $this->authorizeStream($stream);
 
-        $maxDuration = (int) ($stream->course->duration ?? 10);
+        $maxDuration = $this->courseYears($stream);
 
         $validated = $request->validate([
             'subject_id'   => [
@@ -97,6 +100,11 @@ class CourseSubjectController extends Controller
         ]);
 
         $yearNumber = (int) $validated['year_number'];
+
+        if ($this->hasFixedSubjects($stream)) {
+            $validated['subject_role'] = CourseStreamSubject::ROLE_COMPULSORY;
+            $request->merge(['is_chooseable' => 0]);
+        }
 
         // ── All Years mode ────────────────────────────────────────────────
         if ($yearNumber === 0) {
@@ -169,6 +177,23 @@ class CourseSubjectController extends Controller
             ->with('success', 'Subject mapped successfully!');
     }
 
+    // Short-term (modular) courses have fixed subjects: always compulsory, no major/minor choice
+    private function hasFixedSubjects(CourseStream $stream): bool
+    {
+        return $stream->course?->structure_type === 'modular';
+    }
+
+    // Number of academic years — month-based courses (e.g. 6 months) count as 1 year
+    private function courseYears(CourseStream $stream): int
+    {
+        $course   = $stream->course;
+        $duration = (int) ($course->duration ?? 3);
+
+        return $course?->duration_type === 'month'
+            ? max(1, (int) ceil($duration / 12))
+            : max(1, $duration);
+    }
+
     // ── Bulk Store — save full year's subjects at once ───────────────────
     public function bulkStore(Request $request, CourseStream $stream): RedirectResponse
     {
@@ -177,7 +202,7 @@ class CourseSubjectController extends Controller
         $validated = $request->validate([
             'year_number'            => [
                 'required', 'integer', 'min:1',
-                'max:' . ($stream->course->duration ?? 10),
+                'max:' . $this->courseYears($stream),
             ],
             'subjects'               => 'required|array|min:1|max:50',
             'subjects.*.subject_id'  => [
@@ -194,6 +219,13 @@ class CourseSubjectController extends Controller
         ]);
 
         $yearNumber = (int) $validated['year_number'];
+
+        if ($this->hasFixedSubjects($stream)) {
+            foreach ($validated['subjects'] as $i => $item) {
+                $validated['subjects'][$i]['subject_role']  = CourseStreamSubject::ROLE_COMPULSORY;
+                $validated['subjects'][$i]['is_chooseable'] = false;
+            }
+        }
 
         DB::transaction(function () use ($stream, $yearNumber, $validated) {
             foreach ($validated['subjects'] as $idx => $item) {
@@ -236,6 +268,11 @@ class CourseSubjectController extends Controller
             'sort_order'    => 'nullable|integer|min:0|max:999',
             'is_active'     => 'boolean',
         ]);
+
+        if ($this->hasFixedSubjects($stream)) {
+            $validated['subject_role'] = CourseStreamSubject::ROLE_COMPULSORY;
+            $request->merge(['is_chooseable' => 0]);
+        }
 
         $mapping->update([
             'subject_role'  => $validated['subject_role'],
@@ -325,6 +362,10 @@ class CourseSubjectController extends Controller
         $yearRule = \App\Models\StreamYearSubjectRule::where('course_stream_id', (int) $validated['stream_id'])
             ->where('year_number', (int) $validated['year_number'])
             ->first();
+
+        if ($this->hasFixedSubjects(CourseStream::with('course')->findOrFail((int) $validated['stream_id']))) {
+            $yearRule = null;
+        }
 
         return response()->json([
             'success'   => true,

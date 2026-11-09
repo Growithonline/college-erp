@@ -39,7 +39,8 @@ class FeePlanInstallment extends Model
             'at_admission'   => true,
             'semester_start' => (int) ($student->current_semester ?? 1) >= (int) ($this->due_semester ?? 1),
             'months_after'   => $student->admission_date
-                ? now()->diffInMonths($student->admission_date) >= (int) ($this->due_months_after ?? 0)
+                // admission_date first: Carbon 3 diffInMonths is signed, so now()->diffInMonths(past) is negative
+                ? $student->admission_date->diffInMonths(now()) >= (int) ($this->due_months_after ?? 0)
                 : false,
             default          => false,
         };
