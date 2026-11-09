@@ -67,7 +67,8 @@ class StudentDirectoryController extends Controller
         $instituteId   = $this->instituteId();
         $institute     = Institute::findOrFail($instituteId);
         $activeSession = AcademicSession::viewSession($instituteId);
-        $sessionId     = $request->filled('session_id') ? (int) $request->session_id : $activeSession?->id;
+        // Param present but empty = "All" sessions; param absent = default to the active session.
+        $sessionId     = $request->has('session_id') ? ($request->filled('session_id') ? (int) $request->session_id : null) : $activeSession?->id;
         $sessionObj    = $sessionId ? AcademicSession::find($sessionId) : null;
 
         $query = Student::where('institute_id', $instituteId)
@@ -202,7 +203,8 @@ class StudentDirectoryController extends Controller
             return max($max, $courseMax);
         }, 8);
 
-        $sessionId = $request->filled('session_id') ? (int) $request->session_id : $activeSession?->id;
+        // Param present but empty = "All" sessions; param absent = default to the active session.
+        $sessionId = $request->has('session_id') ? ($request->filled('session_id') ? (int) $request->session_id : null) : $activeSession?->id;
 
         $query = Student::where('institute_id', $instituteId)
             ->with(['stream.course', 'session', 'coursePart', 'admittedBy'])
