@@ -22,90 +22,17 @@ class AuditPromotionFees extends Command
 
     public function handle(): int
     {
-        $charges = StudentTransaction::whereNotNull('promotion_log_id')
-            ->where('des', 'like', 'Promotion fee:%')
-            ->where('type', StudentTransaction::DEBIT);
+        $result = self::findStale(
+            $this->option('institute') ? (int) $this->option('institute') : null,
+            $this->option('student') ? (int) $this->option('student') : null,
+            $this->option('from') ?: null,
+            $this->option('to') ?: null,
+            $this->option('label') ?: null,
+            fn($msg) => $this->warn($msg)
+        );
+        $flagged = $result['flagged'];
 
-        if ($this->option('institute')) {
-            $charges->where('institute_id', (int) $this->option('institute'));
-        }
-        if ($this->option('student')) {
-            $charges->where('student_id', (int) $this->option('student'));
-        }
-        if ($this->option('from')) {
-            $charges->whereDate('created_at', '>=', $this->option('from'));
-        }
-        if ($this->option('to')) {
-            $charges->whereDate('created_at', '<=', $this->option('to'));
-        }
-        if ($this->option('label')) {
-            $charges->where('des', 'like', 'Promotion fee: ' . $this->option('label') . ' (Sem %');
-        }
-
-        $byLog = $charges->orderBy('id')->get()->groupBy('promotion_log_id');
-        $flagged = [];
-
-        foreach ($byLog as $logId => $txns) {
-            $log = PromotionLog::with(['student.stream.course', 'toCoursePart'])->find($logId);
-            $student = $log?->student;
-            if (!$student || !$log->toCoursePart) {
-                continue;
-            }
-
-            $sessionId = (int) $log->to_session_id;
-            $yearNumber = $log->toCoursePart->year_number;
-            $subjectIds = StudentSubject::where('student_id', $student->id)
-                ->where('academic_session_id', $sessionId)
-                ->where('year_number', $yearNumber)
-                ->pluck('subject_id')->unique()->values()->all();
-
-            try {
-                $now = FeeCalculatorService::calculate(
-                    instituteId:       (int) $student->institute_id,
-                    sessionId:         $sessionId,
-                    courseId:          (int) ($student->stream?->course_id ?? 0),
-                    coursePart:        (int) ($yearNumber ?? 1),
-                    semester:          (int) $log->to_semester,
-                    studentType:       $student->student_type ?? 'regular',
-                    admissionSource:   $student->admission_source ?? 'direct',
-                    category:          $student->category ?? 'general',
-                    gender:            $student->gender ?? 'other',
-                    subjectIds:        $subjectIds,
-                    courseStreamId:    $student->course_stream_id,
-                    coursePartId:      $log->to_course_part_id,
-                    includeYearlyFees: $log->promotion_type === 'session',
-                    semestersPerYear:  $student->stream?->course?->effectiveSemestersPerYear() ?? 2
-                );
-            } catch (\Throwable $e) {
-                $this->warn("Log #{$logId}: calculation failed — {$e->getMessage()}");
-                continue;
-            }
-
-            $expected = collect($now['items'] ?? [])->groupBy('label')->map(fn($g) => round((float) $g->sum('amount'), 2));
-
-            foreach ($txns->groupBy('des') as $des => $rows) {
-                $label = preg_replace('/^Promotion fee: (.*) \(Sem \d+\)$/', '$1', (string) $des);
-                $charged = round((float) $rows->sum('debit'), 2);
-                $today = (float) ($expected[$label] ?? 0);
-
-                if ($today + 0.005 >= $charged) {
-                    continue;
-                }
-
-                $flagged[] = [
-                    'student_id' => $student->id,
-                    'uid'        => $student->student_uid,
-                    'log'        => $logId,
-                    'type'       => $log->promotion_type,
-                    'fee'        => $label,
-                    'charged'    => $charged,
-                    'today'      => $today,
-                    'on'         => $rows->first()->created_at?->format('Y-m-d H:i'),
-                ];
-            }
-        }
-
-        $this->info('Promotion logs checked: ' . $byLog->count());
+        $this->info('Promotion logs checked: ' . $result['checked']);
 
         if (empty($flagged)) {
             $this->info('No charge differs from what current rules produce.');
@@ -117,7 +44,7 @@ class AuditPromotionFees extends Command
 
         $this->table(
             ['Student', 'UID', 'Log', 'Type', 'Fee', 'Charged', 'Today', 'On'],
-            collect($flagged)->map(fn($r) => array_values($r))->all()
+            collect($flagged)->map(fn($r) => [$r['student_id'], $r['uid'], $r['log'], $r['type'], $r['fee'], $r['charged'], $r['today'], $r['on']])->all()
         );
 
         $this->line('Summary by fee: ' . collect($flagged)->groupBy('fee')
@@ -125,5 +52,96 @@ class AuditPromotionFees extends Command
             ->implode(', '));
 
         return self::SUCCESS;
+    }
+
+    /** @return array{checked: int, flagged: array<int, array<string, mixed>>} */
+    public static function findStale(?int $institute, ?int $student, ?string $from, ?string $to, ?string $label, ?callable $warn = null): array
+    {
+        $charges = StudentTransaction::whereNotNull('promotion_log_id')
+            ->where('des', 'like', 'Promotion fee:%')
+            ->where('type', StudentTransaction::DEBIT);
+
+        if ($institute) {
+            $charges->where('institute_id', $institute);
+        }
+        if ($student) {
+            $charges->where('student_id', $student);
+        }
+        if ($from) {
+            $charges->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $charges->whereDate('created_at', '<=', $to);
+        }
+        if ($label) {
+            $charges->where('des', 'like', 'Promotion fee: ' . $label . ' (Sem %');
+        }
+
+        $byLog = $charges->orderBy('id')->get()->groupBy('promotion_log_id');
+        $flagged = [];
+
+        foreach ($byLog as $logId => $txns) {
+            $log = PromotionLog::with(['student.stream.course', 'toCoursePart'])->find($logId);
+            $studentModel = $log?->student;
+            if (!$studentModel || !$log->toCoursePart) {
+                continue;
+            }
+
+            $sessionId = (int) $log->to_session_id;
+            $yearNumber = $log->toCoursePart->year_number;
+            $subjectIds = StudentSubject::where('student_id', $studentModel->id)
+                ->where('academic_session_id', $sessionId)
+                ->where('year_number', $yearNumber)
+                ->pluck('subject_id')->unique()->values()->all();
+
+            try {
+                $now = FeeCalculatorService::calculate(
+                    instituteId:       (int) $studentModel->institute_id,
+                    sessionId:         $sessionId,
+                    courseId:          (int) ($studentModel->stream?->course_id ?? 0),
+                    coursePart:        (int) ($yearNumber ?? 1),
+                    semester:          (int) $log->to_semester,
+                    studentType:       $studentModel->student_type ?? 'regular',
+                    admissionSource:   $studentModel->admission_source ?? 'direct',
+                    category:          $studentModel->category ?? 'general',
+                    gender:            $studentModel->gender ?? 'other',
+                    subjectIds:        $subjectIds,
+                    courseStreamId:    $studentModel->course_stream_id,
+                    coursePartId:      $log->to_course_part_id,
+                    includeYearlyFees: $log->promotion_type === 'session',
+                    semestersPerYear:  $studentModel->stream?->course?->effectiveSemestersPerYear() ?? 2
+                );
+            } catch (\Throwable $e) {
+                if ($warn) {
+                    $warn("Log #{$logId}: calculation failed — {$e->getMessage()}");
+                }
+                continue;
+            }
+
+            $expected = collect($now['items'] ?? [])->groupBy('label')->map(fn($g) => round((float) $g->sum('amount'), 2));
+
+            foreach ($txns->groupBy('des') as $des => $rows) {
+                $feeLabel = preg_replace('/^Promotion fee: (.*) \(Sem \d+\)$/', '$1', (string) $des);
+                $charged = round((float) $rows->sum('debit'), 2);
+                $today = (float) ($expected[$feeLabel] ?? 0);
+
+                if ($today + 0.005 >= $charged) {
+                    continue;
+                }
+
+                $flagged[] = [
+                    'student_id' => $studentModel->id,
+                    'uid'        => $studentModel->student_uid,
+                    'log'        => $logId,
+                    'type'       => $log->promotion_type,
+                    'fee'        => $feeLabel,
+                    'charged'    => $charged,
+                    'today'      => $today,
+                    'on'         => $rows->first()->created_at?->format('Y-m-d H:i'),
+                ];
+            }
+        }
+
+        return ['checked' => $byLog->count(), 'flagged' => $flagged];
     }
 }
