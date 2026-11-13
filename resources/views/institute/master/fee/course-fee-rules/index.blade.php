@@ -32,6 +32,15 @@
 </div>
 @endif
 
+@if((int) session('promoted_frozen') > 0)
+<div class="alert alert-danger py-2 small">
+    <i class="bi bi-snow me-1"></i>
+    <strong>{{ (int) session('promoted_frozen') }} student(s)</strong> of this course were already promoted out of this session.
+    Their unpaid fees of this session are frozen in their new session's "Previous Due", so this change
+    <strong>will not reach them</strong> — the sync does not touch promoted students. Correct them separately if needed.
+</div>
+@endif
+
 @if(session('success'))
 <div class="alert alert-success alert-dismissible fade show py-2">
     <i class="bi bi-check-circle me-2"></i>{{ session('success') }}

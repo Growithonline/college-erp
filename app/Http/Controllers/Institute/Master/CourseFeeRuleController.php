@@ -7,6 +7,7 @@ use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CourseFeeRule;
 use App\Models\FeeType;
+use App\Models\PromotionLog;
 use App\Models\StudentType;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
@@ -141,7 +142,8 @@ class CourseFeeRuleController extends Controller
                 'session_id' => $validated['academic_session_id'],
             ])
             ->with('success', 'Fee rule saved!')
-            ->with('sync_hint', true);
+            ->with('sync_hint', true)
+            ->with('promoted_frozen', $this->promotedStudentCount((int) $validated['academic_session_id'], (int) $validated['course_id']));
     }
 
     // ── Update (every field except course + session) ──────────────────────
@@ -209,7 +211,8 @@ class CourseFeeRuleController extends Controller
                 'session_id' => $courseFeeRule->academic_session_id,
             ])
             ->with('success', 'Fee rule updated!')
-            ->with('sync_hint', true);
+            ->with('sync_hint', true)
+            ->with('promoted_frozen', $this->promotedStudentCount((int) $courseFeeRule->academic_session_id, (int) $courseFeeRule->course_id));
     }
 
     // ── Delete ────────────────────────────────────────────────────────────
@@ -239,6 +242,29 @@ class CourseFeeRuleController extends Controller
                 'session_id' => $sessionId,
             ])
             ->with('success', 'Fee rule deleted.')
-            ->with('sync_hint', true);
+            ->with('sync_hint', true)
+            ->with('promoted_frozen', $this->promotedStudentCount((int) $sessionId, (int) $courseId));
+    }
+
+    /**
+     * Students of this course who were already session-promoted OUT of $sessionId. Their unpaid
+     * fees of that session are frozen into the new session's "Previous Due", so a rule change here
+     * (or a delete) never reaches them — the admin is warned so it is not a silent surprise.
+     */
+    private function promotedStudentCount(int $sessionId, int $courseId): int
+    {
+        try {
+            return (int) PromotionLog::where('institute_id', $this->instituteId())
+                ->where('promotion_type', 'session')
+                ->where('is_reversed', false)
+                ->where('from_session_id', $sessionId)
+                ->whereHas('student', fn($q) => $q->where('academic_session_id', '!=', $sessionId)
+                    ->whereHas('stream', fn($s) => $s->where('course_id', $courseId)))
+                ->distinct()
+                ->count('student_id');
+        } catch (\Throwable $e) {
+            report($e);
+            return 0;
+        }
     }
 }
