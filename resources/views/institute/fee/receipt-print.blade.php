@@ -417,12 +417,7 @@ body.hide-institute .inst-name {
                         <div>
                             <div class="r-row"><span class="lbl">Name:</span><span class="val">{{ $student->name }}</span></div>
                             <div class="r-row"><span class="lbl">Father:</span><span class="val">{{ $student->father_name ?? '—' }}</span></div>
-                            @if($student->mother_name)
-                            <div class="r-row"><span class="lbl">Mother:</span><span class="val">{{ $student->mother_name }}</span></div>
-                            @endif
-                            @if($receiptConfig['receipt_mobile']['enabled'] ?? true)
-                            <div class="r-row"><span class="lbl">Mobile:</span><span class="val">{{ $student->mobile }}</span></div>
-                            @endif
+                            <div class="r-row"><span class="lbl">Mother:</span><span class="val">{{ $student->mother_name ?? '—' }}</span></div>
                         </div>
                         <div>
                             <div class="r-row"><span class="lbl">App No:</span><span class="val">{{ $student->student_uid }}</span></div>
