@@ -35,6 +35,17 @@
             @if($enrollNo)
                 &nbsp;•&nbsp; Enroll No: {{ $enrollNo }}
             @endif
+            <br>
+            Father: {{ $student->father_name ?: '—' }}
+            @if($student->stream?->course)
+                &nbsp;•&nbsp; Course: {{ $student->stream->course->name }}
+            @endif
+            @if($student->coursePart)
+                &nbsp;•&nbsp; {{ $student->coursePart->year_label }}
+            @endif
+            @if($student->current_semester)
+                &nbsp;•&nbsp; Sem {{ $student->current_semester }}
+            @endif
         </small>
     </div>
     <div class="d-flex gap-2">

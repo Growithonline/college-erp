@@ -162,15 +162,10 @@ table.wp tfoot td {
         @if($selectedSession?->name)
         <div class="sb-item"><div class="lbl">Session</div><div class="val">{{ $selectedSession->name }}</div></div>
         @endif
-        @if($student->mobile)
-        <div class="sb-item"><div class="lbl">Mobile</div><div class="val">{{ $student->mobile }}</div></div>
-        @endif
         @if($student->father_name)
         <div class="sb-item"><div class="lbl">Father's Name</div><div class="val">{{ $student->father_name }}</div></div>
         @endif
-        @if($student->mother_name)
-        <div class="sb-item"><div class="lbl">Mother's Name</div><div class="val">{{ $student->mother_name }}</div></div>
-        @endif
+        <div class="sb-item"><div class="lbl">Mother's Name</div><div class="val">{{ $student->mother_name ?: '—' }}</div></div>
     </div>
 
     {{-- ── Summary ── --}}

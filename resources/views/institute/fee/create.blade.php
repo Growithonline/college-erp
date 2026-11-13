@@ -567,6 +567,9 @@
                     @if($displayCoursePart) &nbsp;|&nbsp; {{ $displayCoursePart->year_label }}@if($displaySemester) / Sem {{ $displaySemester }}@endif @endif
                 </div>
                 <div class="opacity-75 small">
+                    Father: {{ $student->father_name ?: '—' }} &nbsp;|&nbsp; Mother: {{ $student->mother_name ?: '—' }}
+                </div>
+                <div class="opacity-75 small">
                     Mobile: {{ $student->mobile }} &nbsp;|&nbsp; Session: {{ $student->session->name ?? '' }}
                 </div>
             </div>
