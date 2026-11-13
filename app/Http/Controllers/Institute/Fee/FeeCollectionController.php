@@ -233,6 +233,35 @@ class FeeCollectionController extends Controller
         return $feeBreakup;
     }
 
+    // Display-only variant of the staff/center/partner scope filters: keeps every item (so the user
+    // sees the full fee and total) but flags the ones outside their access so the view renders them
+    // read-only. Collection stays enforced server-side by the filterFeeBreakupBy*Scope methods.
+    private function flagFeeBreakupByPortalScope(?array $feeBreakup): ?array
+    {
+        $portalUser = $this->currentStaff()
+            ?? auth()->guard('center')->user()
+            ?? auth()->guard('partner')->user();
+
+        if (!$portalUser || !$portalUser->hasRestrictedFeeCollectionTypes() || !$feeBreakup) {
+            return $feeBreakup;
+        }
+
+        $allowedIds = $portalUser->allowedFeeCollectionTypeIds();
+        $permissionMeta = $this->feeTypePermissionMeta($allowedIds);
+
+        $flag = fn (array $item): array => $item + [
+            'restricted' => !$this->isRestrictedItemAllowed($item, $allowedIds, $permissionMeta['categories'], $permissionMeta['names']),
+        ];
+
+        foreach (['items', 'grouped_items'] as $bucket) {
+            if (!empty($feeBreakup[$bucket]) && is_array($feeBreakup[$bucket])) {
+                $feeBreakup[$bucket] = array_map($flag, $feeBreakup[$bucket]);
+            }
+        }
+
+        return $feeBreakup;
+    }
+
     private function filterFeeBreakupByCenterScope(?array $feeBreakup): ?array
     {
         $center = auth()->guard('center')->user();
@@ -655,7 +684,7 @@ class FeeCollectionController extends Controller
             );
 
             $feeBreakup  = !empty($feeState['items'])
-                ? $this->filterFeeBreakupByPartnerScope($this->filterFeeBreakupByCenterScope($this->filterFeeBreakupByStaffScope($feeState)))
+                ? $this->flagFeeBreakupByPortalScope($feeState)
                 : null;
             if ($feeBreakup) {
                 foreach (['items', 'grouped_items'] as $bucket) {

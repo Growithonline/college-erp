@@ -1108,9 +1108,10 @@
                         $feeTypeId    = $item['fee_type_id'] ?? null;
                         // Blocked if restriction active and fee_type_id is not in allowed list.
                         // Null fee_type_id items (previous_due, combined groups) are pre-filtered by controller.
-                        $isBlocked    = $staffCollectFeeTypeIds !== null
-                            && $feeTypeId !== null
-                            && !in_array((int)$feeTypeId, $staffCollectFeeTypeIds, true);
+                        $isBlocked    = !empty($item['restricted'])
+                            || ($staffCollectFeeTypeIds !== null
+                                && $feeTypeId !== null
+                                && !in_array((int)$feeTypeId, $staffCollectFeeTypeIds, true));
                         // null = no per-item config (allow all); array = whitelist of allowed fee_type_ids
                         $discAllowed  = $staffFeeAllowedTypes === null || ($feeTypeId && in_array($feeTypeId, $staffFeeAllowedTypes));
                         $itemMaxDisc  = ($isBlocked || !$discAllowed) ? 0 : ($staffMaxDiscount ?? 100);
@@ -1151,16 +1152,14 @@
                             ? 'Transport usage adjustment: unused days to write off from the charged fee — not a fee waiver.'
                             : null;
                     @endphp
-                    @if($isBlocked)
-                        @php $idx++; @endphp
-                        @continue
-                    @endif
-                    <tr class="{{ $fullyPaid ? 'table-success' : ($finePending ? 'table-warning bg-opacity-25' : '') }}">
+                    <tr class="{{ $isBlocked ? 'fee-row-restricted' : ($fullyPaid ? 'table-success' : ($finePending ? 'table-warning bg-opacity-25' : '')) }}"
+                        @if($isBlocked) title="You do not have access to collect this fee item" style="background:#f8fafc;" @endif>
                         <td class="text-center">
                             <input type="checkbox" class="form-check-input fee-check"
                                    id="ck-{{ $idx }}"
                                    name="fee_items[{{ $idx }}][checked]" value="1"
                                    {{ $isChecked ? 'checked' : '' }}
+                                   {{ $isBlocked ? 'disabled' : '' }}
                                    onchange="toggleRow({{ $idx }})">
                         </td>
                         <td class="fee-item-col">
@@ -1174,6 +1173,9 @@
                             <label for="ck-{{ $idx }}" class="mb-0 small fw-semibold {{ !$isChecked ? 'text-muted' : '' }}" id="lbl-{{ $idx }}">
                                 {{ $feeName }}
                             </label>
+                            @if($isBlocked)
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border ms-1" style="font-size:10px;"><i class="bi bi-lock-fill"></i> No access</span>
+                            @endif
                             @if(($item['type'] ?? null) === 'previous_due')
                                 <span class="badge bg-danger bg-opacity-10 text-danger border ms-1" style="font-size:10px;">Previous Due</span>
                                 @include('institute.fee._due-breakdown', ['breakdown' => $item['breakdown'] ?? null])
@@ -1580,7 +1582,7 @@ foreach ($jsItems as $i => $item) {
     $rem       = isset($pendingByFee[$feeName])
         ? (float) $pendingByFee[$feeName]
         : max(0, $totalFee + $prevFine - $paidAmt - $paidDisc);
-    if ($rem > 0) {
+    if ($rem > 0 && empty($item['restricted'])) {
         $hierarchyData[] = ['idx' => $i, 'remaining' => $rem];
     }
 }
