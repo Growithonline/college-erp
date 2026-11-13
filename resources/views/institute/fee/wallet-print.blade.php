@@ -117,7 +117,9 @@ table.wp tfoot td {
         ?? auth()->guard('partner')->user()
         ?? auth()->guard('web')->user();
 
-    $pendingRows = $pendingFees->where('pending', '>', 0);
+    // Show every fee row (paid ones too) so a fully paid session still prints its breakup.
+    $pendingRows = $pendingFees;
+    $hasPendingRows = $pendingFees->where('pending', '>', 0)->isNotEmpty();
 @endphp
 
 <div class="toolbar no-print">
@@ -186,7 +188,7 @@ table.wp tfoot td {
 
     {{-- ── Pending Fees ── --}}
     @if($pendingRows->isNotEmpty())
-    <h2 class="sec-title">Pending Fees — {{ $selectedSession->name ?? '' }}</h2>
+    <h2 class="sec-title">{{ $hasPendingRows ? 'Pending Fees' : 'Fee Breakup (all paid)' }} — {{ $selectedSession->name ?? '' }}</h2>
     <table class="wp">
         <thead>
             <tr>
@@ -206,7 +208,7 @@ table.wp tfoot td {
                 <td class="num">₹ {{ number_format($fee['collection'] ?? 0, 2) }}</td>
                 <td class="num">{{ ($fee['discount'] ?? 0) > 0 ? '₹ '.number_format($fee['discount'], 2) : '—' }}</td>
                 <td class="num">{{ ($fee['fine'] ?? 0) > 0 ? '₹ '.number_format($fee['fine'], 2) : '—' }}</td>
-                <td class="num">₹ {{ number_format($fee['pending'], 2) }}</td>
+                <td class="num">{{ $fee['pending'] > 0 ? '₹ ' . number_format($fee['pending'], 2) : 'Paid' }}</td>
             </tr>
             @endforeach
         </tbody>

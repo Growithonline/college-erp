@@ -226,12 +226,13 @@
 @endif
 
 {{-- ── Pending Fees Breakup ── --}}
-@if($pendingFees->where('pending', '>', 0)->isNotEmpty())
+@php $hasPendingFees = $pendingFees->where('pending', '>', 0)->isNotEmpty(); @endphp
+@if($pendingFees->isNotEmpty())
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-warning bg-opacity-10 border-bottom py-3">
-        <h6 class="mb-0 fw-semibold text-warning">
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            Pending Fees — {{ $selectedSession->name ?? '' }}
+    <div class="card-header {{ $hasPendingFees ? 'bg-warning' : 'bg-success' }} bg-opacity-10 border-bottom py-3">
+        <h6 class="mb-0 fw-semibold {{ $hasPendingFees ? 'text-warning' : 'text-success' }}">
+            <i class="bi {{ $hasPendingFees ? 'bi-exclamation-triangle' : 'bi-check-circle' }} me-2"></i>
+            {{ $hasPendingFees ? 'Pending Fees' : 'Fee Breakup (all paid)' }} — {{ $selectedSession->name ?? '' }}
         </h6>
     </div>
     <div class="card-body p-0">
