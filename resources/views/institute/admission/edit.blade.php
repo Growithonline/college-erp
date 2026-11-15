@@ -292,14 +292,20 @@
                 'id' => $stream->id,
                 'name' => $stream->name,
             ])->values(),
+            // Semester courses hold two course_parts per year (Sem 1 / Sem 2). The edit form only
+            // changes the year, so list each year once; if the student's own part is in that year
+            // it is the one kept, otherwise the year's first part is used.
             'parts' => $course->parts->sortBy([
                 ['year_number', 'asc'],
                 ['part_number', 'asc'],
-            ])->map(fn($part) => [
-                'id' => $part->id,
-                'name' => $part->year_label ?: ('Year ' . $part->year_number),
-                'year' => $part->year_number,
-            ])->values(),
+            ])->groupBy('year_number')->map(function ($yearParts) use ($selectedPartId) {
+                $part = $yearParts->firstWhere('id', (int) $selectedPartId) ?? $yearParts->first();
+                return [
+                    'id' => $part->id,
+                    'name' => $part->year_label ?: ('Year ' . $part->year_number),
+                    'year' => $part->year_number,
+                ];
+            })->values(),
         ]];
     });
 @endphp

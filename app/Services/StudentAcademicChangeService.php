@@ -315,8 +315,12 @@ class StudentAcademicChangeService
                 $opBal = (float) $wallet->main_b;
                 $clBal = round($opBal - $delta, 2); // debit if delta>0, credit if delta<0
 
-                $description = implode(' | ', $descriptions)
-                    ?: 'Subject change fee adjustment';
+                // `des` is a 255-char column; a change touching many subjects (e.g. 10 removed
+                // majors) overflows it. The full per-subject detail lives in subject_change_logs.
+                $description = \Illuminate\Support\Str::limit(
+                    implode(' | ', $descriptions) ?: 'Subject change fee adjustment',
+                    250
+                );
 
                 $txn = StudentTransaction::create([
                     'student_id'          => $student->id,
