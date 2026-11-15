@@ -3806,6 +3806,20 @@ class AdmissionController extends Controller
         }
     }
 
+    // A TomSelect with maxItems=1 (e.g. "Max 1 minor") submits one empty value when nothing is
+    // picked. Drop blank entries so an empty minor/major selection is not rejected as "not an integer".
+    private function stripBlankSubjectIds(\Illuminate\Http\Request $request): void
+    {
+        foreach (['selected_subjects', 'selected_major_subjects', 'selected_minor_subjects'] as $key) {
+            if (is_array($request->input($key))) {
+                $request->merge([$key => array_values(array_filter(
+                    $request->input($key),
+                    fn ($v) => $v !== null && $v !== ''
+                ))]);
+            }
+        }
+    }
+
     private function updateStudentProfile(\Illuminate\Http\Request $request, Student $student)
     {
         if ($student->institute_id && $student->institute_id !== $this->instituteId()) abort(403);
@@ -3837,6 +3851,8 @@ class AdmissionController extends Controller
             }
         }
 
+        $this->stripBlankSubjectIds($request);
+
         $this->ensureStaffCanAccessCourseSelection(
             $request->filled('course_id') ? (int) $request->course_id : null,
             $request->filled('course_stream_id') ? (int) $request->course_stream_id : null
@@ -3848,20 +3864,6 @@ class AdmissionController extends Controller
             'email' => 'nullable|email|max:100',
             'dob' => 'nullable|date|before_or_equal:today',
             'gender' => 'nullable|in:male,female,other',
-    // A TomSelect with maxItems=1 (e.g. "Max 1 minor") submits one empty value when nothing is
-    // picked. Drop blank entries so an empty minor/major selection is not rejected as "not an integer".
-    private function stripBlankSubjectIds(\Illuminate\Http\Request $request): void
-    {
-        foreach (['selected_subjects', 'selected_major_subjects', 'selected_minor_subjects'] as $key) {
-            if (is_array($request->input($key))) {
-                $request->merge([$key => array_values(array_filter(
-                    $request->input($key),
-                    fn ($v) => $v !== null && $v !== ''
-                ))]);
-            }
-        }
-    }
-
             'religion' => 'nullable|string|max:50',
             'category' => 'nullable|string|max:50',
             'special_category' => 'nullable|string|max:50',
@@ -3902,8 +3904,6 @@ class AdmissionController extends Controller
             'perm_address' => 'nullable|string|max:255',
             'comm_address' => 'nullable|string|max:255',
             'comm_thana' => 'nullable|string|max:100',
-        $this->stripBlankSubjectIds($request);
-
             'comm_post' => 'nullable|string|max:100',
             'comm_city' => 'nullable|string|max:100',
             'comm_district' => 'nullable|string|max:100',
