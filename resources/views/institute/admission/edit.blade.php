@@ -284,7 +284,7 @@
 @endif
 
 @php
-    $courseStreamsData = $courses->mapWithKeys(function ($course) {
+    $courseStreamsData = $courses->mapWithKeys(function ($course) use ($selectedPartId) {
         return [$course->id => [
             'id' => $course->id,
             'name' => $course->name,
